@@ -1,10 +1,26 @@
-# Local credentials and environments
-.env
-.env.*
-!.env.example
+# Local Python environment and generated files
 .venv/
-
-# Python-generated files
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
+
+# Private configuration; keep the example tracked
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+
+# Local model files and private datasets
+models/
+datasets/private/
+
+# Logs
+*.log
+
+# Temporary working files
+/tmp/
