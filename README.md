@@ -107,7 +107,9 @@ and Chrome extension loading instructions will be added as those components are 
 Create a Python virtual environment, install `requirements.txt`, and set a development
 Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
 database role needs `CONNECT` on the development database and `USAGE, CREATE` on its
-`public` schema so Alembic can apply migrations.
+`public` schema so Alembic can apply migrations. Use the Neon URL format
+`postgresql://USER:URL_ENCODED_PASSWORD@HOST/phishlens_dev?sslmode=require`;
+the backend uses the `psycopg` driver. The current Alembic setup reads `DATABASE_URL`.
 
 From the repository root on macOS/Linux:
 
