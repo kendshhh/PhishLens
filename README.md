@@ -4,27 +4,47 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
+## Current Status
+
+The project is in Sprint 1: foundation and walking skeleton.
+
+Application implementation, automated CI/CD, and public
+deployment are not complete.
+
 ## Planned Features
 
 - Submit email content for analysis.
 - Classify emails as phishing or legitimate.
-- Display risk indicators and explanations.
+- Display risk levels, indicators, and explanations.
 - View saved analysis history.
 - Update notes and feedback.
 - Delete saved analyses.
 
 ## Technology Stack
 
-- Frontend: Chrome extension using HTML, CSS, and JavaScript
-- Backend: Python with FastAPI
-- Database: PostgreSQL hosted on Neon
-- AI: DistilBERT running through the backend
-- Version control: Git and GitHub
-- CI/CD: GitHub Actions and automated public deployment
-- Hosting provider: To be finalized
+| Component | Selected Technology |
+|---|---|
+| Frontend | Chrome extension using HTML, CSS, and JavaScript |
+| Backend | Python with FastAPI |
+| Database | PostgreSQL hosted on Neon |
+| AI | DistilBERT running through the backend |
+| Version control | Git and GitHub |
+| Planned CI/CD | GitHub Actions and automated public deployment |
+| Backend hosting | To be finalized |
 
-The frontend communicates with the backend API.
+The Chrome extension communicates with the backend API.
 The backend owns database access and AI processing.
+
+Neon hosts the PostgreSQL database. Hosting for the FastAPI
+backend is a separate decision.
+
+### Database Decision
+
+The team selected PostgreSQL hosted on Neon, replacing MySQL
+from the original project proposal.
+
+This change must be recorded in the scope change log and
+communicated to the instructor at Consultation 1.
 
 ## Team Roles
 
@@ -36,10 +56,8 @@ The backend owns database access and AI processing.
 | Leyan | Fullstack Developer | Saved-history API/UI integration and shared API contract |
 | Andrei | Frontend Developer | Chrome extension interface and user-facing states |
 
-## Current Status
-
-The project is in Sprint 1: foundation and walking skeleton.
-Application implementation and deployment are not complete.
+Members coordinate before editing shared files or another
+member's components.
 
 ## Sprint 1 Goals
 
@@ -47,28 +65,49 @@ Application implementation and deployment are not complete.
 - Create a backlog covering the instructor's requirements.
 - Implement and migrate related database tables.
 - Connect the frontend to a database-backed API endpoint.
-- Run install, lint, and build checks on pull requests.
-- Deploy the walking skeleton to a public URL automatically.
+- Run automatic install, lint, and build checks on every pull request.
+- Deploy the walking skeleton to a live public URL through the pipeline.
 - Demonstrate one successful AI inference call through the backend.
+
+## Collaboration and Delivery Workflow
+
+Our target workflow is:
+
+1. Create an assigned issue with acceptance criteria.
+2. Create a task branch from updated main.
+3. Implement and verify the change.
+4. Open a pull request and request teammate review.
+5. Pass the automated checks before merging.
+6. Merge approved work into main.
+7. Automatically deploy the successfully checked version.
+8. Verify the deployed behavior and record evidence.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for commands and team ownership.
+
+### Automation Status
+
+CI/CD is not configured yet.
+
+Sprint 1 must establish:
+
+- Automatic dependency installation, lint, and build checks on every PR.
+- Protected main with required checks and at least one teammate review.
+- Automatic deployment after successful checks on every merge to main.
+- A public walking skeleton connected to the database.
+- Pipeline documentation and baseline metrics.
+
+Pull request checkboxes document verification.
+They do not replace automated checks or reviewer approval.
 
 ## Local Setup
 
-Create a Python virtual environment and install `requirements.txt`. Set a **development**
-Neon connection URL as `DATABASE_URL` in `.env`. The backend explicitly loads `.env`; it
-does not rely on the shell to load it. Keep `.env` private and out of Git. The application
-role needs `CONNECT` on its development database and `USAGE, CREATE` on the `public`
-schema so Alembic can apply migrations.
+The backend database schema and synthetic demo seed can be set up now. Backend launch
+and Chrome extension loading instructions will be added as those components are built.
 
-From the repository root on Windows PowerShell:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-# Fill DATABASE_URL in .env privately before continuing.
-.\.venv\Scripts\python.exe -m alembic -c backend/alembic.ini upgrade head
-.\.venv\Scripts\python.exe scripts/seed_demo.py
-```
+Create a Python virtual environment, install `requirements.txt`, and set a development
+Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
+database role needs `CONNECT` on the development database and `USAGE, CREATE` on its
+`public` schema so Alembic can apply migrations.
 
 From the repository root on macOS/Linux:
 
@@ -81,14 +120,37 @@ test -e .env || cp .env.example .env
 .venv/bin/python scripts/seed_demo.py
 ```
 
-The seed uses only synthetic data, refuses a database other than `phishlens_dev`,
-and is safe to run more than once. Each teammate needs a private `.env` with a
-development database URL; Git does not distribute credentials. Schema details and the deletion policy
-are in [docs/schema.md](docs/schema.md).
+From the repository root on Windows PowerShell:
 
-Never commit real credentials or a `.env` file.
-Use `.env.example` to document required configuration.
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Fill DATABASE_URL in .env privately before continuing.
+.\.venv\Scripts\python.exe -m alembic -c backend/alembic.ini upgrade head
+.\.venv\Scripts\python.exe scripts/seed_demo.py
+```
+
+The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
+is safe to run more than once. Each teammate needs their own private `.env`; Git does
+not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
+the deletion policy. A complete application setup is not available yet.
+
+## Configuration and Secrets
+
+- Never commit real credentials or private `.env` files.
+- Use `.env.example` to document configuration without real secrets.
+- Keep database credentials and security secrets on the backend.
+- Configure deployment secrets through the host or CI secret store.
+- Use synthetic emails for tracked examples and demonstrations.
+- Keep private datasets and downloaded model files out of Git.
+
+The Chrome extension does not automatically read `.env` files.
+Its public backend URL configuration will be documented separately.
 
 ## Project Requirements
 
-Instructor guide: https://csp221a.vercel.app/
+The instructor's guide is the main authority for requirements,
+workflow, deliverables, and grading:
+
+[Read the instructor guide](https://csp221a.vercel.app/)
