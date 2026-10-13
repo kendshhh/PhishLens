@@ -8,14 +8,14 @@ risk indicators, and manage saved analysis reports.
 
 The project is in Sprint 1: foundation and walking skeleton.
 
-Application implementation, CI/CD configuration, and public
+Application implementation, automated CI/CD, and public
 deployment are not complete.
 
 ## Planned Features
 
 - Submit email content for analysis.
 - Classify emails as phishing or legitimate.
-- Display risk indicators and explanations.
+- Display risk levels, indicators, and explanations.
 - View saved analysis history.
 - Update notes and feedback.
 - Delete saved analyses.
@@ -26,14 +26,25 @@ deployment are not complete.
 |---|---|
 | Frontend | Chrome extension using HTML, CSS, and JavaScript |
 | Backend | Python with FastAPI |
-| Database | MySQL |
+| Database | PostgreSQL hosted on Neon |
 | AI | DistilBERT running through the backend |
 | Version control | Git and GitHub |
 | Planned CI/CD | GitHub Actions and automated public deployment |
-| Hosting provider | To be finalized |
+| Backend hosting | To be finalized |
 
-The frontend communicates with the backend API.
+The Chrome extension communicates with the backend API.
 The backend owns database access and AI processing.
+
+Neon hosts the PostgreSQL database. Hosting for the FastAPI
+backend is a separate decision.
+
+### Database Decision
+
+The team selected PostgreSQL hosted on Neon, replacing MySQL
+from the original project proposal.
+
+This change must be recorded in the scope change log and
+communicated to the instructor at Consultation 1.
 
 ## Team Roles
 
@@ -44,6 +55,9 @@ The backend owns database access and AI processing.
 | Trixia | Backend Developer | API foundation, database models, migrations, and validation |
 | Leyan | Fullstack Developer | Saved-history API/UI integration and shared API contract |
 | Andrei | Frontend Developer | Chrome extension interface and user-facing states |
+
+Members coordinate before editing shared files or another
+member's components.
 
 ## Sprint 1 Goals
 
@@ -77,7 +91,7 @@ CI/CD is not configured yet.
 Sprint 1 must establish:
 
 - Automatic dependency installation, lint, and build checks on every PR.
-- Protected main with required checks and teammate review.
+- Protected main with required checks and at least one teammate review.
 - Automatic deployment after successful checks on every merge to main.
 - A public walking skeleton connected to the database.
 - Pipeline documentation and baseline metrics.
@@ -87,15 +101,23 @@ They do not replace automated checks or reviewer approval.
 
 ## Local Setup
 
-Setup instructions will be added and verified as components
+Installation, database migration, backend launch, and extension
+loading instructions will be added and verified as components
 are implemented.
 
-Never commit real credentials or a `.env` file.
-Use `.env.example` to document required configuration.
+No complete application setup is available yet.
+
+## Configuration and Secrets
+
+- Never commit real credentials or private `.env` files.
+- Use `.env.example` to document configuration without real secrets.
+- Keep database credentials and security secrets on the backend.
+- Configure deployment secrets through the host or CI secret store.
+- Use synthetic emails for tracked examples and demonstrations.
+- Keep private datasets and downloaded model files out of Git.
 
 The Chrome extension does not automatically read `.env` files.
 Its public backend URL configuration will be documented separately.
-Database credentials and backend secrets must remain on the backend.
 
 ## Project Requirements
 
