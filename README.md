@@ -17,7 +17,7 @@ risk indicators, and manage saved analysis reports.
 
 - Frontend: Chrome extension using HTML, CSS, and JavaScript
 - Backend: Python with FastAPI
-- Database: MySQL
+- Database: PostgreSQL hosted on Neon
 - AI: DistilBERT running through the backend
 - Version control: Git and GitHub
 - CI/CD: GitHub Actions and automated public deployment
@@ -53,8 +53,38 @@ Application implementation and deployment are not complete.
 
 ## Local Setup
 
-Setup instructions will be added and verified as components
-are implemented.
+Create a Python virtual environment and install `requirements.txt`. Set a **development**
+Neon connection URL as `DATABASE_URL` in `.env`. The backend explicitly loads `.env`; it
+does not rely on the shell to load it. Keep `.env` private and out of Git. The application
+role needs `CONNECT` on its development database and `USAGE, CREATE` on the `public`
+schema so Alembic can apply migrations.
+
+From the repository root on Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Fill DATABASE_URL in .env privately before continuing.
+.\.venv\Scripts\python.exe -m alembic -c backend/alembic.ini upgrade head
+.\.venv\Scripts\python.exe scripts/seed_demo.py
+```
+
+From the repository root on macOS/Linux:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+test -e .env || cp .env.example .env
+# Fill DATABASE_URL in .env privately before continuing.
+.venv/bin/python -m alembic -c backend/alembic.ini upgrade head
+.venv/bin/python scripts/seed_demo.py
+```
+
+The seed uses only synthetic data, refuses a database other than `phishlens_dev`,
+and is safe to run more than once. Each teammate needs a private `.env` with a
+development database URL; Git does not distribute credentials. Schema details and the deletion policy
+are in [docs/schema.md](docs/schema.md).
 
 Never commit real credentials or a `.env` file.
 Use `.env.example` to document required configuration.
