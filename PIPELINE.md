@@ -2,10 +2,19 @@
 
 ## Status
 
-This pipeline is planned.
+Backend scaffold CI and automatic deployment are implemented
+and verified.
 
-Automated application checks and deployment are not configured
-or verified yet. Review enforcement has been verified on setup PR #2.
+GitHub Actions installs dependencies, checks compatibility,
+lints Python, tests /health, and checks Python compilation.
+
+Render deploys main automatically after CI checks pass.
+Automatic deployment was verified for commit 8a8634e,
+followed by a successful public /health check.
+
+Extension checks, PostgreSQL integration checks, and AI tests
+remain pending. Compilation is basic validation, not the
+complete application build stage.
 
 ## Delivery Flow
 
@@ -13,56 +22,97 @@ Task branch → Pull request → Automated checks → Teammate approval
 → Merge to main → Automated checks → Automatic deployment
 → Deployed verification
 
-## Pull Request Checks
+## Workflow Triggers
 
-| Stage | Purpose | Implementation dependency |
+Workflow file: .github/workflows/ci.yml
+
+- Every pull request triggers backend checks.
+- Every push to main, including a merged PR, triggers backend checks.
+- Render deploys changes to main after CI checks pass.
+
+The workflow uses Python 3.12 on an Ubuntu runner.
+Render is configured to use Python 3.12.10.
+
+## Implemented Backend Checks
+
+| Stage | Purpose | Command |
 |---|---|---|
-| Install | Install reproducible dependencies | Committed dependency files |
-| Lint | Detect source problems | Python and JavaScript lint configuration |
-| Build | Validate and package runnable components | Verified backend and extension build commands |
+| Install runtime dependencies | Install pinned application packages | python -m pip install -r backend/requirements.txt |
+| Install development dependencies | Install pinned checking tools | python -m pip install -r backend/requirements-dev.txt |
+| Dependency compatibility | Detect incompatible installed dependencies | python -m pip check |
+| Lint | Check backend Python code | python -m ruff check backend |
+| API test | Verify the health endpoint's status and response | python -m pytest backend/tests -q -p no:cacheprovider |
+| Compilation | Check Python source compilation | python -m compileall -q backend/app |
 
-Checks must run automatically on every pull request.
+Commands run from the repository root.
 
-Exact commands will be recorded after application owners implement
-and verify them. Checks must fail when the checked component is broken.
-Missing components or suppressed errors must not produce misleading
-successful runs.
+Disabling pytest's cache avoids a local cache-permission issue.
+It does not disable tests or suppress test failures.
 
-Regular AI tests will use mocked inference without model downloads.
-A successful actual-model call will be recorded separately.
+A failed command fails the job. Errors must not be suppressed
+to produce a misleading successful run.
+
+## Coverage Still Needed
+
+- Chrome extension linting, validation, and packaging.
+- PostgreSQL migration and integration checks.
+- Database-backed API and frontend verification.
+- Mocked AI tests when the inference adapter is available.
+
+Regular AI tests should use mocked inference without model downloads.
+Successful actual-model calls must be recorded separately.
 
 ## Deployment
 
-Every merge to main must deploy automatically after successful checks.
+- Backend host: Render.
+- Instance plan: Free.
+- Service: phishlens-api.
+- Deployment branch: main.
+- Root directory: repository root; the field is blank.
+- Python version: 3.12.10.
+- Auto-Deploy: After CI Checks Pass.
+- Public URL: https://phishlens-api-ocvt.onrender.com
+- Health check path: /health.
 
-- Proposed backend host: Render.
-- Database host: Neon.
-- Service creation: pending runnable backend.
-- Build, start, and migration commands: pending verification.
-- Automatic deployment: not configured.
-- Public application URL: pending.
+Build command:
 
-A successful build alone does not prove deployment succeeded.
-Verify the deployed version and the frontend-to-database connection.
+    python -m pip install -r backend/requirements.txt
+
+Start command:
+
+    python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+
+Render supplies PORT at runtime.
+
+Automatic deployment was verified after PR #12 merged:
+commit 8a8634e became Live without a manual deployment trigger.
+
+Public /health returned:
+
+    {"status":"ok","service":"phishlens-api"}
+
+This verifies the API process only.
+It does not establish database, frontend, or AI integration.
 
 ## Merge Protections
 
-Main must require:
+Main is configured to require:
 
 - A pull request.
 - At least one teammate approval.
-- Passing required CI checks.
+- Passing Backend checks from GitHub Actions.
 - Resolved review conversations.
 
-Review enforcement was verified on setup PR #2:
-GitHub requires approval and blocks merging while review is pending.
+Stale approvals are dismissed after new commits.
+Administrator bypass, force pushes, and branch deletion are disabled.
 
-Required CI status checks remain pending the first working workflow.
-The complete merge gate is therefore not finished.
+Review enforcement was observed on setup PR #2.
+The required backend check and teammate approval were verified
+on PR #11 before merging.
 
 ## Database Connections
 
-The database is PostgreSQL hosted on Neon.
+The selected database is PostgreSQL hosted on Neon.
 
 - Production branch: production.
 - Development branch: development.
@@ -71,39 +121,62 @@ The database is PostgreSQL hosted on Neon.
 - DATABASE_URL: pooled connection for application queries.
 - MIGRATION_DATABASE_URL: direct connection for migrations.
 
-Both connection URLs must target the intended database branch.
-The backend and migration configuration must explicitly read their
-respective variables using the selected PostgreSQL driver.
+Both URLs must target the intended database branch.
+Backend and migration code must explicitly read their respective
+variables using the selected PostgreSQL driver.
 
 Routine CI database checks will use an isolated test database.
 Ordinary PR checks must not use production Neon credentials.
 
 Neon branches are provisioned.
-Application connection testing and migrations remain pending.
+Application connection testing and migrations remain unverified
+in this recorded baseline.
 
 ## Secrets
 
-Local secrets belong in ignored .env files.
-.env.example contains configuration placeholders only.
+- Local credentials belong in ignored .env files.
+- .env.example contains configuration placeholders only.
+- Deployment secrets belong in the host or CI secret store.
+- Development and production use separate configuration.
+- Database credentials and backend secrets must never be
+  included in the Chrome extension.
+- Private emails and datasets must not enter Git.
 
-Deployment secrets belong in the host or CI secret store,
-with separate configuration for development and production.
+## Verified Evidence
 
-Database credentials and backend secrets must never be included
-in the Chrome extension.
+- [Backend scaffold PR #11](https://github.com/kendshhh/PhishLens/pull/11)
+- [Runbook PR #12](https://github.com/kendshhh/PhishLens/pull/12)
+- [Intentional failing CI run](https://github.com/kendshhh/PhishLens/actions/runs/38430884810)
+- [Repaired passing CI run](https://github.com/kendshhh/PhishLens/actions/runs/38431990720)
+- [Runbook PR CI run](https://github.com/kendshhh/PhishLens/actions/runs/38501111554)
+- [Public health endpoint](https://phishlens-api-ocvt.onrender.com/health)
 
-## Verification and Evidence
+The intentional failure changed the expected HTTP status from
+200 to 201. Restoring 200 produced passing CI.
 
-Record:
+Recorded deployment observations:
+- First deployment: commit 717334d; 50.3 seconds.
+- Automatic deployment: commit 8a8634e; 44.9 seconds.
+- Public health response verified after automatic deployment.
 
-- Pull request and check-run links.
-- Evidence that a broken change fails CI and the repaired change passes.
-- Deployed commit and public URL.
-- Frontend → backend → database verification.
-- Confirmation that database records survive redeployment.
-- Pipeline duration and deployment failures.
+Deployment duration is not complete merge-to-live lead time.
+These observations do not prove an optimization trend.
+
+## Documentation and Remaining Verification
 
 Update docs/devops/metrics.md with actual measurements,
 sample counts, and supporting links.
 
-Application checks, deployment, and measurements remain pending.
+Use docs/devops/runbook.md for deployment and recovery procedures.
+
+Still required:
+- Database-backed frontend verification.
+- Confirmation that records persist across redeployments.
+- Complete pipeline averages and success-rate measurements.
+- Merge-to-live lead time.
+- Tested rollback and recovery evidence.
+- Measured before-and-after optimization results.
+
+Backend scaffold CI, automatic deployment, and public health
+verification are complete. Full application integration,
+aggregate metrics, and rollback verification remain pending.

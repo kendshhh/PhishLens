@@ -2,8 +2,15 @@
 
 ## Current Status
 
-Render configuration is prepared.
-Public deployment and rollback have not been verified.
+The FastAPI backend scaffold is publicly deployed on Render.
+
+- Public /health endpoint verified.
+- Auto-Deploy configured as After CI Checks Pass.
+- Automatic deployment verified after PR #12 merged.
+- Verified deployed commit: 8a8634e.
+
+Database, extension, and AI integration remain pending.
+Rollback has not been tested.
 
 ## Planned Service Configuration
 
@@ -77,7 +84,13 @@ database migrations. Coordinate database recovery with Trixia.
 
 ## Evidence
 
-- Public URL: pending
-- First successful deployment: pending
-- Automatic deployment after a later merge: pending
-- Rollback verification: pending
+- Public URL: https://phishlens-api-ocvt.onrender.com
+- Health endpoint: https://phishlens-api-ocvt.onrender.com/health
+- First deployment: commit 717334d; duration 50.3 seconds.
+- Verified automatic deployment: PR #12, commit 8a8634e.
+- Automatic deployment duration: 44.9 seconds.
+- Post-deployment health response:
+  {"status":"ok","service":"phishlens-api"}
+- Rollback verification: pending.
+
+Deployment duration is not the full merge-to-live lead time.
