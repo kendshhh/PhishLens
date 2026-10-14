@@ -8,8 +8,10 @@ risk indicators, and manage saved analysis reports.
 
 The project is in Sprint 1: foundation and walking skeleton.
 
-Application implementation, automated CI/CD, and public
-deployment are not complete.
+Backend CI and Render automatic deployment are implemented. PostgreSQL migration,
+repeatable seed, and seed integrity checks run in isolated CI. Public /health and
+/ready respond successfully; readiness performs a real database query.
+The complete frontend/database user flow and AI feature remain unfinished.
 
 ## Planned Features
 
@@ -29,8 +31,8 @@ deployment are not complete.
 | Database | PostgreSQL hosted on Neon |
 | AI | DistilBERT running through the backend |
 | Version control | Git and GitHub |
-| Planned CI/CD | GitHub Actions and automated public deployment |
-| Backend hosting | To be finalized |
+| CI/CD | GitHub Actions and Render deployment after CI passes |
+| Backend hosting | Render Free; https://phishlens-api-ocvt.onrender.com |
 
 The Chrome extension communicates with the backend API.
 The backend owns database access and AI processing.
@@ -86,9 +88,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commands and team ownership.
 
 ### Automation Status
 
-CI/CD is not configured yet.
+Backend CI/CD is configured and verified. Extension checks and full application
+integration remain pending. See [PIPELINE.md](PIPELINE.md) for implemented checks,
+[metrics](docs/devops/metrics.md) for the measured snapshot, and the
+[runbook](docs/devops/runbook.md) for deployment and recovery.
 
-Sprint 1 must establish:
+Sprint 1 acceptance targets:
 
 - Automatic dependency installation, lint, and build checks on every PR.
 - Protected main with required checks and at least one teammate review.

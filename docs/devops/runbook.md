@@ -7,12 +7,15 @@ The FastAPI backend scaffold is publicly deployed on Render.
 - Public /health endpoint verified.
 - Auto-Deploy configured as After CI Checks Pass.
 - Automatic deployment verified after PR #12 merged.
-- Verified deployed commit: 8a8634e.
+- Historical automatic-deployment baseline: 8a8634e. Later deployments are
+  recorded in metrics.md; confirm the current Live SHA in Render for each release.
+- Public /ready independently returned HTTP 200 and database connected.
 
-Database, extension, and AI integration remain pending.
-Rollback has not been tested.
+Database connectivity is verified; schema-backed frontend and AI integration
+remain pending. Rollback and restoration were exercised, including one failed
+restoration attempt. See incidents.md for the evidence and limitations.
 
-## Planned Service Configuration
+## Service Configuration
 
 - Repository: kendshhh/PhishLens
 - Branch: main
@@ -56,6 +59,12 @@ It does not verify database access, AI inference or extension integration.
 6. Verify /health and the behavior affected by the change.
 7. Record merge-to-live time and evidence.
 
+For database-dependent changes, also request /ready and expect HTTP 200 with
+{"status":"ready","database":"connected"}. Keep /health as the process
+health check. Readiness currently executes SELECT 1; it does not verify tables
+or records. Confirm DATABASE_URL's intended Neon branch privately in the host.
+The base URL / has no homepage and may correctly return 404.
+
 ## Deployment Failure
 
 1. Open Render deployment logs.
@@ -69,7 +78,9 @@ Never paste secrets into issues or logs shared with teammates.
 
 ## Rollback Plan
 
-Rollback is untested.
+Rollback to 717334d was successful in 35.7 seconds. Restoration to 8a8634e
+succeeded on retry after an initial health-check/port-detection timeout.
+Full restoration duration remains unmeasured. This was a planned drill.
 
 After at least two successful deployments:
 1. Identify the last known-good deployment and its commit.
@@ -78,6 +89,18 @@ After at least two successful deployments:
 4. Check the Auto-Deploy setting after rollback.
 5. Coordinate a reviewed correction before resuming normal deployment.
 6. Record the result and recovery time.
+
+Dashboard rollback automatically disables Auto-Deploy. Deploying a specific
+commit also disables it. Restore After CI Checks Pass only after verifying the
+intended version and reviewing any newer main changes.
+
+To restore a known-good version during a drill, use Manual Deploy > Deploy a
+specific commit and select its verified SHA. Confirm the Live SHA and /health,
+then restore Auto-Deploy. A health response alone cannot identify a version.
+
+If replacement deployment times out, inspect that deployment's own logs.
+General service logs can come from the still-running older instance. Preserve
+the health check; do not change ports or suppress errors without evidence.
 
 Rolling back application code does not automatically reverse
 database migrations. Coordinate database recovery with Trixia.
@@ -91,6 +114,7 @@ database migrations. Coordinate database recovery with Trixia.
 - Automatic deployment duration: 44.9 seconds.
 - Post-deployment health response:
   {"status":"ok","service":"phishlens-api"}
-- Rollback verification: pending.
+- Rollback verification: successful operation; see incidents.md.
+- Database readiness: public /ready returned HTTP 200 and database connected.
 
 Deployment duration is not the full merge-to-live lead time.

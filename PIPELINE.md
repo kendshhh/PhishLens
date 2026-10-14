@@ -172,11 +172,26 @@ Use docs/devops/runbook.md for deployment and recovery procedures.
 Still required:
 - Database-backed frontend verification.
 - Confirmation that records persist across redeployments.
-- Complete pipeline averages and success-rate measurements.
+- Extend the measured CI snapshot and collect workflow wall-clock timings.
 - Merge-to-live lead time.
-- Tested rollback and recovery evidence.
+- Collect full restoration timings and Render deployment links.
 - Measured before-and-after optimization results.
 
 Backend scaffold CI, automatic deployment, and public health
 verification are complete. Full application integration,
-aggregate metrics, and rollback verification remain pending.
+frontend/AI integration, full recovery timings, and optimization evidence remain
+pending. CI job averages and success rates are recorded in docs/devops/metrics.md;
+the rollback drill and failed restoration are recorded in docs/devops/incidents.md.
+
+## Database verification and current CI coverage
+
+CI starts isolated PostgreSQL 17, applies migrations twice, seeds twice, and
+asserts the fixed demo records and user relationship. Readiness success/failure
+responses are tested with mocks. Public /ready independently returned HTTP 200
+and database connected; that is a real deployed SELECT 1, not a schema or
+frontend integration test. Production/environment selection is configured in
+Render, not inferred from the endpoint response.
+
+The measured snapshot contains 23 backend jobs, 20 passing and 3 failing
+(including two deliberate drills). See ci-run-evidence.csv for source timestamps.
+No optimization claim is made from changing durations or changing CI coverage.
