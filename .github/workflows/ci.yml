@@ -14,6 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: phishlens
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: phishlens_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U phishlens -d phishlens_dev"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -34,6 +52,18 @@ jobs:
 
       - name: Lint backend
         run: python -m ruff check backend
+
+      - name: Apply database migrations
+        run: python -m alembic -c backend/alembic.ini upgrade head
+
+      - name: Verify repeated migration
+        run: python -m alembic -c backend/alembic.ini upgrade head
+
+      - name: Seed synthetic database records
+        run: python scripts/seed_demo.py
+
+      - name: Verify repeated seed execution
+        run: python scripts/seed_demo.py
 
       - name: Test API
         run: python -m pytest backend/tests -q -p no:cacheprovider
