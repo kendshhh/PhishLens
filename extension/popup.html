@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>VeriQo</title>
+
+  <link
+    rel="stylesheet"
+    href="popup.css"
+  >
+</head>
+
+<body>
+
+  <main class="container">
+
+    <header>
+      <h1>Phishlens</h1>
+
+      <p class="subtitle">
+        Phishing email analysis
+      </p>
+    </header>
+
+
+    <!-- EMPTY -->
+
+    <section
+      id="empty-state"
+      class="panel"
+    >
+      <h2>No analysis yet</h2>
+
+      <p>
+        Highlight text on a webpage,
+        right-click it, and select
+        <strong>Analyze selection with VeriQo</strong>.
+      </p>
+    </section>
+
+
+    <!-- LOADING -->
+
+    <section
+      id="loading-state"
+      class="panel hidden"
+    >
+      <h2>Analyzing...</h2>
+
+      <p>
+        PhishLens is checking the selected text.
+      </p>
+    </section>
+
+
+    <!-- ERROR -->
+
+    <section
+      id="error-state"
+      class="panel hidden"
+    >
+      <h2>Analysis failed</h2>
+
+      <p id="error-message"></p>
+    </section>
+
+
+    <!-- RESULT -->
+
+    <section
+      id="result-state"
+      class="hidden"
+    >
+
+      <div class="panel">
+        <h2>Result</h2>
+
+        <p>
+          Classification:
+          <strong id="classification"></strong>
+        </p>
+
+        <p>
+          Risk level:
+          <strong id="risk-level"></strong>
+        </p>
+
+        <p id="analysis-mode" class="hidden"></p>
+      </div>
+
+
+      <div class="panel">
+        <h2>Tactics</h2>
+
+        <ul id="tactics"></ul>
+      </div>
+
+
+      <div class="panel">
+        <h2>Recommendations</h2>
+
+        <ul id="recommendations"></ul>
+      </div>
+
+
+      <div class="panel">
+        <h2>Selected text</h2>
+
+        <p id="selected-text"></p>
+      </div>
+
+    </section>
+
+
+    <button
+      id="clear-button"
+      type="button"
+    >
+      Clear
+    </button>
+
+  </main>
+
+
+  <script src="popup.js"></script>
+
+</body>
+</html>

@@ -1,14 +1,61 @@
-from fastapi import FastAPI
+from functools import lru_cache
+from typing import Literal
+
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from backend.ai.gemini_provider import GeminiProvider
+from backend.ai.mock_provider import MockProvider
+from backend.ai.schemas import AnalysisRequest, AnalysisResponse
+from backend.ai.service import AIService
+from backend.core.config import get_ai_config
+
 app = FastAPI(title="PhishLens API")
+
+
+@lru_cache(maxsize=1)
+def get_ai_service() -> tuple[AIService, Literal["mock", "gemini"]]:
+    mode, api_key, model = get_ai_config()
+    if mode == "mock":
+        return AIService(MockProvider()), "mock"
+    if api_key is None or model is None:
+        raise RuntimeError("Gemini configuration is incomplete")
+    return AIService(GeminiProvider(api_key=api_key, model=model)), "gemini"
 
 
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "phishlens-api"}
+
+
+@app.post("/analyses", response_model=AnalysisResponse)
+def analyze_email(request: AnalysisRequest) -> AnalysisResponse:
+    try:
+        service, mode = get_ai_service()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        result = service.analyze_email(
+            subject=None,
+            sender=None,
+            body=request.text,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    risk_level: Literal["low", "medium", "high"] = {
+        "legitimate": "low",
+        "spam": "medium",
+        "phishing": "high",
+    }[result.classification]
+    return AnalysisResponse(
+        **result.model_dump(),
+        risk_level=risk_level,
+        mode=mode,
+    )
 
 
 def check_database():

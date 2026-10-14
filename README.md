@@ -101,9 +101,6 @@ They do not replace automated checks or reviewer approval.
 
 ## Local Setup
 
-The backend database schema and synthetic demo seed can be set up now. Backend launch
-and Chrome extension loading instructions will be added as those components are built.
-
 Create a Python virtual environment, install `requirements.txt`, and set a development
 Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
 database role needs `CONNECT` on the development database and `USAGE, CREATE` on its
@@ -136,7 +133,39 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
 is safe to run more than once. Each teammate needs their own private `.env`; Git does
 not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
-the deletion policy. A complete application setup is not available yet.
+the deletion policy.
+
+### Run AI analysis locally
+
+The extension sends selected text to `POST /analyses`. The backend runs in mock mode
+when `AI_MODE=mock`; the response and extension UI label this as a mock, not an AI result.
+To use Gemini, set `AI_MODE=gemini`, `GEMINI_API_KEY`, and a valid `GEMINI_MODEL` in the
+private `.env`. The Google API key must never be added to the extension.
+
+Start the backend from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
+```
+
+Call the analysis endpoint directly (mock mode works without Gemini credentials):
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/analyses `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"text":"Your account will be closed today."}'
+```
+
+With `AI_MODE=gemini` and valid credentials configured, verify the provider connection:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\test_gemini_connection.py
+```
+
+Then load the `extension` folder as an unpacked Chrome extension, highlight email text,
+and choose **Analyze selection with VeriQo**. The popup displays the model result or
+reports a configuration/provider error.
 
 ## Configuration and Secrets
 

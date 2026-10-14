@@ -21,3 +21,22 @@ def get_database_url() -> str:
     if url.startswith("postgresql+psycopg://"):
         return url
     raise RuntimeError("DATABASE_URL must be a PostgreSQL URL")
+
+
+def get_ai_config() -> tuple[str, str | None, str | None]:
+    load_dotenv(ENV_FILE, override=False)
+    mode = os.getenv("AI_MODE", "mock").strip().lower()
+
+    if mode == "mock":
+        return mode, None, None
+    if mode != "gemini":
+        raise RuntimeError("AI_MODE must be either 'mock' or 'gemini'")
+
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    model = os.getenv("GEMINI_MODEL", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is required when AI_MODE=gemini")
+    if not model:
+        raise RuntimeError("GEMINI_MODEL is required when AI_MODE=gemini")
+
+    return mode, api_key, model
