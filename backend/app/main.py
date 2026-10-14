@@ -3,7 +3,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from backend.app.routers.history import router as history_router
+
 app = FastAPI(title="PhishLens API")
+app.include_router(history_router)
 
 
 @app.get("/health")

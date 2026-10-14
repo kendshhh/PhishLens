@@ -9,6 +9,38 @@ permissions:
   contents: read
 
 jobs:
+  extension:
+    name: Extension checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      # Current client uses Node built-ins and has no package dependencies.
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f extension/js/api.js
+          test -f extension/js/history.js
+          test -f extension/tests/api.test.mjs
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find extension -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
+
+      - name: Test history API client with mocked responses
+        run: node --test extension/tests/*.test.mjs
+
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
