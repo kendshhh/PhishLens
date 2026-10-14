@@ -9,7 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint extension/js/",
-    "package": "node -e \"require('child_process').execSync('zip -r PhishLens-Extension.zip extension/')\""
+    "package": "powershell -Command \"Compress-Archive -Path extension -DestinationPath PhishLens-Extension.zip -Force\""
   },
   "repository": {
     "type": "git",
