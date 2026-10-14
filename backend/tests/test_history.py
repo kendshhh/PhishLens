@@ -1,20 +1,14 @@
-
-import os
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
 
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql://test:test@localhost/phishlens_dev"
-)
-
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.app.main import app
-from backend.app.routers.history import get_analyses
-from backend.core.database import get_db
+from backend.app.routers.history import get_analyses, get_db
 
 
 def test_empty_history():
@@ -110,3 +104,19 @@ def test_history_http_empty():
 
     assert response.status_code == 200
     assert response.json() == {"items": []}
+
+
+@pytest.mark.parametrize("failed_query", ["scalar", "scalars"])
+def test_history_http_database_failure(failed_query):
+    db = Mock()
+    db.scalar.return_value = SimpleNamespace(id=uuid4())
+    getattr(db, failed_query).side_effect = SQLAlchemyError("private database credentials")
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/analyses")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "History temporarily unavailable"}
+    assert "private" not in response.text
