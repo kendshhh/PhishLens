@@ -24,6 +24,19 @@ Task branch → Pull request → Automated checks → Teammate approval
 
 ## Workflow Triggers
 
+```mermaid
+flowchart LR
+    PR[Task PR] --> CI[Install, lint, PostgreSQL checks, tests]
+    CI --> Review[Required check and teammate approval]
+    Review --> Main[Merge to main]
+    Main --> MainCI[Main CI]
+    MainCI --> Render[Render: After CI Checks Pass]
+    Render --> Verify[Confirm Live SHA, health and readiness]
+```
+
+The diagram describes current backend delivery. Extension packaging and real AI
+smoke evidence remain outside current coverage, not silently skipped stages.
+
 Workflow file: .github/workflows/ci.yml
 
 - Every pull request triggers backend checks.
