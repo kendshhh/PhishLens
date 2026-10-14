@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "PhishLens",
+  "version": "0.1.0",
+  "description": "Phishing email analysis interface",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "https://your-public-backend-url.com/*"
+  ]
+}
