@@ -8,7 +8,6 @@ from sqlalchemy import create_engine, pool
 from backend.core.config import get_database_url
 from backend.models import Base
 
-
 config = context.config
 if config.config_file_name:
     fileConfig(config.config_file_name)
