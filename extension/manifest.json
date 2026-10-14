@@ -8,6 +8,6 @@
   },
   "host_permissions": [
     "http://127.0.0.1:8000/*",
-    "https://your-public-backend-url.com/*"
+    "https://phishlens-api-ocvt.onrender.com/*"
   ]
 }
