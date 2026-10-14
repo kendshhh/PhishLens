@@ -37,8 +37,7 @@ The complete frontend/database user flow and AI feature remain unfinished.
 The Chrome extension communicates with the backend API.
 The backend owns database access and AI processing.
 
-Neon hosts the PostgreSQL database. Hosting for the FastAPI
-backend is a separate decision.
+Neon hosts PostgreSQL; Render hosts the FastAPI backend.
 
 ### Database Decision
 
@@ -106,8 +105,8 @@ They do not replace automated checks or reviewer approval.
 
 ## Local Setup
 
-The backend database schema and synthetic demo seed can be set up now. Backend launch
-and Chrome extension loading instructions will be added as those components are built.
+The backend database schema, synthetic demo seed and FastAPI scaffold can run now.
+Chrome extension loading instructions remain dependent on the frontend implementation.
 
 Create a Python virtual environment, install `requirements.txt`, and set a development
 Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
@@ -130,7 +129,7 @@ test -e .env || cp .env.example .env
 From the repository root on Windows PowerShell:
 
 ```powershell
-py -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 # Fill DATABASE_URL in .env privately before continuing.
@@ -142,6 +141,19 @@ The seed uses only synthetic data, refuses a database other than `phishlens_dev`
 is safe to run more than once. Each teammate needs their own private `.env`; Git does
 not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
 the deletion policy. A complete application setup is not available yet.
+
+Run the backend from the repository root on Windows:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
+```
+
+Open http://127.0.0.1:8000/health for process status and /ready for a database query.
+The root URL / has no homepage. For migrations, use a direct URL in DATABASE_URL:
+MIGRATION_DATABASE_URL is not implemented by the current Alembic configuration.
+Verify the Neon branch privately; the name phishlens_dev also exists on production
+and therefore does not alone establish development isolation. Do not run the demo
+seed against production merely because its database-name guard permits it.
 
 ## Configuration and Secrets
 

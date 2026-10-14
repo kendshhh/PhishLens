@@ -25,7 +25,7 @@ different measurements. Do not combine them into one average.
 | Average PR pipeline duration | Backend job execution: 25.94 seconds (0.43 minutes); queue/orchestration overhead excluded |
 | Main pipeline duration | Average backend job execution: 32.14 seconds (0.54 minutes), 7 runs |
 | Pipeline success rate | 20/23 = 86.96%, including 2 intentional drill failures; PR 13/16 = 81.25%, main 7/7 = 100% |
-| Successful production deployments | At least 7 evidenced operations through the environment-save redeploy; includes rollback and manual recovery, not 7 automatic releases |
+| Successful production deployments | Multiple dashboard-evidenced automatic, initial and manual deployments; full deduplicated Render inventory pending, so no aggregate count claimed |
 | Merge-to-live lead time | Not measured |
 | Failed production deployments | 1 observed restoration timeout; full Render history not directly accessible |
 | Recovery time | Rollback operation: 35.7 seconds; complete restoration/outage recovery time not measured |

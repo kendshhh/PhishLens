@@ -12,8 +12,9 @@ Render deploys main automatically after CI checks pass.
 Automatic deployment was verified for commit 8a8634e,
 followed by a successful public /health check.
 
-Extension checks, PostgreSQL integration checks, and AI tests
-remain pending. Compilation is basic validation, not the
+PostgreSQL migration, repeatable seed, seed integrity and readiness-response tests
+are implemented. Extension checks and AI tests remain pending.
+Compilation is basic validation, not the
 complete application build stage.
 
 ## Delivery Flow
@@ -54,7 +55,9 @@ Render is configured to use Python 3.12.10.
 | Install development dependencies | Install pinned checking tools | python -m pip install -r backend/requirements-dev.txt |
 | Dependency compatibility | Detect incompatible installed dependencies | python -m pip check |
 | Lint | Check backend Python code | python -m ruff check backend |
-| API test | Verify the health endpoint's status and response | python -m pytest backend/tests -q -p no:cacheprovider |
+| Migrate twice | Verify versioned schema application and repeat execution | python -m alembic -c backend/alembic.ini upgrade head (run twice) |
+| Seed twice | Insert synthetic demo records and verify repeat execution | python scripts/seed_demo.py (run twice) |
+| Tests | Verify health, readiness responses, seeded records and relationship | python -m pytest backend/tests -q -p no:cacheprovider |
 | Compilation | Check Python source compilation | python -m compileall -q backend/app |
 
 Commands run from the repository root.
@@ -68,7 +71,6 @@ to produce a misleading successful run.
 ## Coverage Still Needed
 
 - Chrome extension linting, validation, and packaging.
-- PostgreSQL migration and integration checks.
 - Database-backed API and frontend verification.
 - Mocked AI tests when the inference adapter is available.
 
@@ -130,20 +132,25 @@ The selected database is PostgreSQL hosted on Neon.
 - Production branch: production.
 - Development branch: development.
 - Region: AWS Asia Pacific 1 (Singapore).
-- Database: neondb.
-- DATABASE_URL: pooled connection for application queries.
-- MIGRATION_DATABASE_URL: direct connection for migrations.
+- Databases observed: neondb and phishlens_dev. The migrated demo database is
+  phishlens_dev; confirm the Neon branch rather than infer it from the name.
+- DATABASE_URL: currently read by application, Alembic and the seed. Runtime
+  configuration uses a pooled URL; migration verification used a direct URL.
+- MIGRATION_DATABASE_URL: placeholder for planned separation; not currently read
+  by the migration code.
 
-Both URLs must target the intended database branch.
-Backend and migration code must explicitly read their respective
-variables using the selected PostgreSQL driver.
+Use the intended branch and database for every operation. Do not assume setting
+MIGRATION_DATABASE_URL changes Alembic behavior. Driver: psycopg; URL normalization
+is implemented in backend/core/config.py.
 
-Routine CI database checks will use an isolated test database.
+Routine CI database checks use an isolated PostgreSQL 17 test database.
 Ordinary PR checks must not use production Neon credentials.
 
 Neon branches are provisioned.
-Application connection testing and migrations remain unverified
-in this recorded baseline.
+Migration 0001_initial_schema and repeated seed were verified locally, and the
+production dashboard showed the tables and synthetic records. Public /ready
+verified a deployed SELECT 1. Complete frontend/record persistence verification
+remains pending.
 
 ## Secrets
 
@@ -206,5 +213,6 @@ frontend integration test. Production/environment selection is configured in
 Render, not inferred from the endpoint response.
 
 The measured snapshot contains 23 backend jobs, 20 passing and 3 failing
-(including two deliberate drills). See ci-run-evidence.csv for source timestamps.
+(including two deliberate drills). See [CI run evidence](docs/devops/ci-run-evidence.csv)
+for source timestamps.
 No optimization claim is made from changing durations or changing CI coverage.
