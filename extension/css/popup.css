@@ -1,0 +1,3 @@
+body { width: 320px; font-family: sans-serif; padding: 12px; }
+.hidden { display: none !important; }
+.error-text { color: #d9534f; }
