@@ -11,7 +11,7 @@ The project is in Sprint 1: foundation and walking skeleton.
 Backend CI and Render automatic deployment are implemented. PostgreSQL migration,
 repeatable seed, and seed integrity checks run in isolated CI. Public /health and
 /ready respond successfully; readiness performs a real database query.
-The complete frontend/database user flow and AI feature remain unfinished.
+The frontend Chrome extension shell is implemented, packaged, and connected to the public backend API. Full database CRUD and the AI feature remain unfinished.
 
 ## Planned Features
 
@@ -106,7 +106,8 @@ They do not replace automated checks or reviewer approval.
 ## Local Setup
 
 The backend database schema, synthetic demo seed and FastAPI scaffold can run now.
-Chrome extension loading instructions remain dependent on the frontend implementation.
+
+### Backend Setup
 
 Create a Python virtual environment, install `requirements.txt`, and set a development
 Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
@@ -124,52 +125,3 @@ test -e .env || cp .env.example .env
 # Fill DATABASE_URL in .env privately before continuing.
 .venv/bin/python -m alembic -c backend/alembic.ini upgrade head
 .venv/bin/python scripts/seed_demo.py
-```
-
-From the repository root on Windows PowerShell:
-
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-# Fill DATABASE_URL in .env privately before continuing.
-.\.venv\Scripts\python.exe -m alembic -c backend/alembic.ini upgrade head
-.\.venv\Scripts\python.exe scripts/seed_demo.py
-```
-
-The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
-is safe to run more than once. Each teammate needs their own private `.env`; Git does
-not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
-the deletion policy. A complete application setup is not available yet.
-
-Run the backend from the repository root on Windows:
-
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
-```
-
-Open http://127.0.0.1:8000/health for process status and /ready for a database query.
-The root URL / has no homepage. For migrations, use a direct URL in DATABASE_URL:
-MIGRATION_DATABASE_URL is not implemented by the current Alembic configuration.
-Verify the Neon branch privately; the name phishlens_dev also exists on production
-and therefore does not alone establish development isolation. Do not run the demo
-seed against production merely because its database-name guard permits it.
-
-## Configuration and Secrets
-
-- Never commit real credentials or private `.env` files.
-- Use `.env.example` to document configuration without real secrets.
-- Keep database credentials and security secrets on the backend.
-- Configure deployment secrets through the host or CI secret store.
-- Use synthetic emails for tracked examples and demonstrations.
-- Keep private datasets and downloaded model files out of Git.
-
-The Chrome extension does not automatically read `.env` files.
-Its public backend URL configuration will be documented separately.
-
-## Project Requirements
-
-The instructor's guide is the main authority for requirements,
-workflow, deliverables, and grading:
-
-[Read the instructor guide](https://csp221a.vercel.app/)

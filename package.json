@@ -1,0 +1,28 @@
+{
+  "name": "phishlens",
+  "version": "1.0.0",
+  "description": "PhishLens is an AI-powered phishing email detection and analysis\r system. It helps users identify suspicious emails, understand\r risk indicators, and manage saved analysis reports.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint extension/js/",
+    "package": "node -e \"require('child_process').execSync('zip -r PhishLens-Extension.zip extension/')\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kendshhh/PhishLens.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kendshhh/PhishLens/issues"
+  },
+  "homepage": "https://github.com/kendshhh/PhishLens#readme",
+  "devDependencies": {
+    "eslint": "^10.12.0"
+  }
+}
