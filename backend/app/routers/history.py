@@ -1,16 +1,18 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
-from backend.models import User, AnalyzedEmail
+from backend.models import AnalyzedEmail, User
 
 router = APIRouter(prefix="/api", tags=["History"])
 
 
 @router.get("/analyses")
-def get_analyses(db: Session = Depends(get_db)):
-    # Get the demo user
+def get_analyses(db: Annotated[Session, Depends(get_db)]):
+  
     user = db.scalar(
         select(User).where(User.email == "demo@phishlens.test")
     )
@@ -18,7 +20,6 @@ def get_analyses(db: Session = Depends(get_db)):
     if user is None:
         return {"items": []}
 
-    # Get saved analyses
     query = select(AnalyzedEmail).where(
         AnalyzedEmail.user_id == user.id
     ).order_by(
