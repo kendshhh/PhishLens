@@ -101,11 +101,42 @@ They do not replace automated checks or reviewer approval.
 
 ## Local Setup
 
-Installation, database migration, backend launch, and extension
-loading instructions will be added and verified as components
-are implemented.
+The backend database schema and synthetic demo seed can be set up now. Backend launch
+and Chrome extension loading instructions will be added as those components are built.
 
-No complete application setup is available yet.
+Create a Python virtual environment, install `requirements.txt`, and set a development
+Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
+database role needs `CONNECT` on the development database and `USAGE, CREATE` on its
+`public` schema so Alembic can apply migrations. Use the Neon URL format
+`postgresql://USER:URL_ENCODED_PASSWORD@HOST/phishlens_dev?sslmode=require`;
+the backend uses the `psycopg` driver. The current Alembic setup reads `DATABASE_URL`.
+
+From the repository root on macOS/Linux:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+test -e .env || cp .env.example .env
+# Fill DATABASE_URL in .env privately before continuing.
+.venv/bin/python -m alembic -c backend/alembic.ini upgrade head
+.venv/bin/python scripts/seed_demo.py
+```
+
+From the repository root on Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Fill DATABASE_URL in .env privately before continuing.
+.\.venv\Scripts\python.exe -m alembic -c backend/alembic.ini upgrade head
+.\.venv\Scripts\python.exe scripts/seed_demo.py
+```
+
+The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
+is safe to run more than once. Each teammate needs their own private `.env`; Git does
+not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
+the deletion policy. A complete application setup is not available yet.
 
 ## Configuration and Secrets
 
