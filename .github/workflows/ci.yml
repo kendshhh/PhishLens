@@ -12,7 +12,7 @@ jobs:
   extension:
     name: Extension checks
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
@@ -26,7 +26,14 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
-      # Current client uses Node built-ins and has no package dependencies.
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install extension checking dependencies
+        run: npm ci
+
       - name: Check JavaScript syntax
         shell: bash
         run: |
@@ -38,8 +45,25 @@ jobs:
             node --check "$file"
           done < <(find extension -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
 
-      - name: Test history API client with mocked responses
-        run: node --test extension/tests/*.test.mjs
+      - name: Lint extension JavaScript
+        run: npm run lint
+
+      - name: Test history client with mocked responses
+        run: npm test
+
+      - name: Validate extension manifest and required files
+        run: npm run validate
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Upload extension package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PhishLens-Extension
+          path: output/extension/PhishLens-Extension.zip
+          if-no-files-found: error
+          retention-days: 7
 
   backend:
     name: Backend checks
