@@ -182,6 +182,8 @@ jobs:
             cat /tmp/phishlens-staging.log
             exit 1
           fi
+      - name: Test staging deployment guards
+        run: python -m unittest discover -s scripts/tests -v
 
   hosted-staging:
     name: Hosted staging
