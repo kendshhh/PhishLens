@@ -20,15 +20,15 @@ different measurements. Do not combine them into one average.
 
 | Metric | Result |
 |---|---|
-| Measurement period | Not finalized |
-| PR pipeline runs sampled | Not calculated |
-| Average PR pipeline duration | Not calculated |
-| Main pipeline duration | One observed run: 18 seconds; complete sample pending |
-| Pipeline success rate | Not calculated |
-| Successful production deployments | 2 observed through commit 8a8634e |
+| Measurement period | Runs started October 14, 2026, 00:15:46-12:56:04 GMT+8; snapshot through readiness merge 2a70ad3 |
+| PR pipeline runs sampled | 16 completed, single-job runs |
+| Average PR pipeline duration | Backend job execution: 25.94 seconds (0.43 minutes); queue/orchestration overhead excluded |
+| Main pipeline duration | Average backend job execution: 32.14 seconds (0.54 minutes), 7 runs |
+| Pipeline success rate | 20/23 = 86.96%, including 2 intentional drill failures; PR 13/16 = 81.25%, main 7/7 = 100% |
+| Successful production deployments | Multiple dashboard-evidenced automatic, initial and manual deployments; full deduplicated Render inventory pending, so no aggregate count claimed |
 | Merge-to-live lead time | Not measured |
-| Failed production deployments | Not audited |
-| Recovery time | Not measured |
+| Failed production deployments | 1 observed restoration timeout; full Render history not directly accessible |
+| Recovery time | Rollback operation: 35.7 seconds; complete restoration/outage recovery time not measured |
 
 These values describe the recorded baseline, not necessarily
 the latest state of every run or deployment.
@@ -78,12 +78,39 @@ Render observations:
 - Subsequent trigger: Auto-Deploy.
 - Auto-Deploy setting: After CI Checks Pass.
 
-Direct main CI run and Render deployment record links remain
-to be collected.
+## Measured CI snapshot
+
+[CI run evidence](ci-run-evidence.csv) records exact job start/end timestamps,
+conclusions, commits, and source URLs from the public GitHub API.
+There were 23 completed backend jobs: 20 success, 3 failure, no cancellations.
+Two failures were deliberate drills and one was database-PR lint.
+Excluding only the two deliberate drills gives 20/21 = 95.24%; this secondary
+rate does not replace the inclusive 86.96% result.
+
+Each run currently has one backend job. The calculated values measure execution
+from job started_at to completed_at, not the entire workflow wall-clock duration.
+Do not substitute the API updated_at timestamp for workflow completion time.
+Coverage changed during this period, so these averages are not optimization evidence.
+
+Additional dashboard observations:
+- Manual deployment of 67538f8: 56.2 seconds.
+- Automatic deployment of PR #13, a6336de: 48.9 seconds.
+- Environment-save redeployment of 3ae80c2: 45.3 seconds, manual trigger.
+- Another displayed Live deployment of 3ae80c2: 58.1 seconds; trigger not
+  shown on that screenshot, so do not infer it from the duration alone.
+
+Direct main CI sources:
+- [PR #14 main run](https://github.com/kendshhh/PhishLens/actions/runs/38510446866)
+- [PR #15 main run](https://github.com/kendshhh/PhishLens/actions/runs/38512502699)
+- [Readiness main run](https://github.com/kendshhh/PhishLens/actions/runs/38513965042)
+
+Direct Render deployment record links remain to be collected.
 
 The health endpoint verifies the backend process only.
-Database, extension, and AI integration are not established
-by this response.
+Database connectivity is established separately by the public /ready endpoint,
+which was independently checked and returned HTTP 200 with
+{"status":"ready","database":"connected"}. This does not prove the full
+schema, correct environment selection, frontend integration, or AI behavior.
 
 ## Optimization Log
 
@@ -96,10 +123,9 @@ Their difference alone does not prove an optimization.
 
 ## Remaining Measurements
 
-- Finalize the measurement period.
-- Collect all relevant pipeline runs and calculate averages.
-- Calculate pipeline success rate with drill failures identified.
+- Extend the recorded snapshot as new runs finish.
+- Capture whole-workflow duration separately from job execution time.
 - Record merge-to-live lead time.
 - Audit failed production deployments.
-- Verify rollback and record recovery time.
+- Collect restoration duration and attach rollback deployment links.
 - Measure future optimizations using comparable before-and-after runs.

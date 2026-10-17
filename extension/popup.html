@@ -8,12 +8,13 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>VeriQo</title>
+  <title>PhishLens</title>
 
   <link
     rel="stylesheet"
     href="popup.css"
   >
+  <link rel="stylesheet" href="css/popup.css">
 </head>
 
 <body>
@@ -125,10 +126,18 @@
       Clear
     </button>
 
+    <section class="panel">
+      <h2>Saved analysis history <span class="demo-indicator">(Demo)</span></h2>
+      <div id="loading">Loading analysis history...</div>
+      <div id="error" class="hidden error-text"></div>
+      <div id="empty" class="hidden">No saved analysis records found.</div>
+      <ul id="history-list"></ul>
+    </section>
   </main>
 
 
   <script src="popup.js"></script>
+  <script type="module" src="js/popup.js"></script>
 
 </body>
 </html>

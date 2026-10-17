@@ -11,8 +11,10 @@ from backend.ai.mock_provider import MockProvider
 from backend.ai.schemas import AnalysisRequest, AnalysisResponse
 from backend.ai.service import AIService
 from backend.core.config import get_ai_config
+from backend.app.routers.history import router as history_router
 
 app = FastAPI(title="PhishLens API")
+app.include_router(history_router)
 
 
 @lru_cache(maxsize=1)

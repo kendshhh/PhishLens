@@ -8,8 +8,10 @@ risk indicators, and manage saved analysis reports.
 
 The project is in Sprint 1: foundation and walking skeleton.
 
-Application implementation, automated CI/CD, and public
-deployment are not complete.
+Backend CI and Render automatic deployment are implemented. PostgreSQL migration,
+repeatable seed, and seed integrity checks run in isolated CI. Public /health and
+/ready respond successfully; readiness performs a real database query.
+The frontend Chrome extension shell is implemented, packaged, and connected to the public backend API. Full database CRUD and the AI feature remain unfinished.
 
 ## Planned Features
 
@@ -29,14 +31,13 @@ deployment are not complete.
 | Database | PostgreSQL hosted on Neon |
 | AI | DistilBERT running through the backend |
 | Version control | Git and GitHub |
-| Planned CI/CD | GitHub Actions and automated public deployment |
-| Backend hosting | To be finalized |
+| CI/CD | GitHub Actions and Render deployment after CI passes |
+| Backend hosting | Render Free; https://phishlens-api-ocvt.onrender.com |
 
 The Chrome extension communicates with the backend API.
 The backend owns database access and AI processing.
 
-Neon hosts the PostgreSQL database. Hosting for the FastAPI
-backend is a separate decision.
+Neon hosts PostgreSQL; Render hosts the FastAPI backend.
 
 ### Database Decision
 
@@ -86,9 +87,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commands and team ownership.
 
 ### Automation Status
 
-CI/CD is not configured yet.
+Backend CI/CD is configured and verified. Extension checks and full application
+integration remain pending. See [PIPELINE.md](PIPELINE.md) for implemented checks,
+[metrics](docs/devops/metrics.md) for the measured snapshot, and the
+[runbook](docs/devops/runbook.md) for deployment and recovery.
 
-Sprint 1 must establish:
+Sprint 1 acceptance targets:
 
 - Automatic dependency installation, lint, and build checks on every PR.
 - Protected main with required checks and at least one teammate review.
@@ -100,6 +104,10 @@ Pull request checkboxes document verification.
 They do not replace automated checks or reviewer approval.
 
 ## Local Setup
+
+The backend database schema, synthetic demo seed and FastAPI scaffold can run now.
+
+### Backend Setup
 
 Create a Python virtual environment, install `requirements.txt`, and set a development
 Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The

@@ -9,6 +9,62 @@ permissions:
   contents: read
 
 jobs:
+  extension:
+    name: Extension checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install extension checking dependencies
+        run: npm ci
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f extension/js/api.js
+          test -f extension/js/history.js
+          test -f extension/tests/api.test.mjs
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find extension -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
+
+      - name: Lint extension JavaScript
+        run: npm run lint
+
+      - name: Test history client with mocked responses
+        run: npm test
+
+      - name: Validate extension manifest and required files
+        run: npm run validate
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Upload extension package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PhishLens-Extension
+          path: output/extension/PhishLens-Extension.zip
+          if-no-files-found: error
+          retention-days: 7
+
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
@@ -35,12 +91,18 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
 
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt

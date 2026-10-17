@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Phishlens",
+  "name": "PhishLens",
   "version": "0.1.0",
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
@@ -9,13 +9,14 @@
   ],
   "host_permissions": [
     "http://127.0.0.1:8000/*",
-    "http://localhost:8000/*"
+    "http://localhost:8000/*",
+    "https://phishlens-api-ocvt.onrender.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Phishlens",
+    "default_title": "PhishLens",
     "default_popup": "popup.html"
   }
 }
