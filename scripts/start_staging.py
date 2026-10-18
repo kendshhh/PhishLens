@@ -11,12 +11,18 @@ from backend.core.config import get_database_url
 
 
 def main():
-    if make_url(get_database_url()).database != "phishlens_dev":
-        raise SystemExit("Staging requires a separate development database named phishlens_dev.")
-    subprocess.run([sys.executable, "-m", "alembic", "-c", "backend/alembic.ini", "upgrade", "head"], check=True)
-    subprocess.run([sys.executable, "scripts/seed_demo.py"], check=True)
     import os
 
+    database = make_url(get_database_url())
+    if database.database != "phishlens_dev":
+        raise SystemExit("Staging requires a separate development database named phishlens_dev.")
+    # Local disposable PostgreSQL needs no cloud host declaration. Hosted staging does.
+    if os.getenv("RENDER"):
+        expected_host = os.getenv("STAGING_DATABASE_HOST", "")
+        if not expected_host or database.host != expected_host or os.getenv("APP_ENV") != "staging":
+            raise SystemExit("Hosted staging requires APP_ENV=staging and an exact STAGING_DATABASE_HOST match before migrations.")
+    subprocess.run([sys.executable, "-m", "alembic", "-c", "backend/alembic.ini", "upgrade", "head"], check=True)
+    subprocess.run([sys.executable, "scripts/seed_demo.py"], check=True)
     import uvicorn
 
     uvicorn.run("backend.app.main:app", host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))

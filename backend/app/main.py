@@ -50,6 +50,17 @@ def health():
     return {"status": "ok", "service": "phishlens-api"}
 
 
+@app.get("/version")
+def version():
+    """Public deployment identity only; never expose environment or credential values."""
+    import os
+
+    return {
+        "commit": os.getenv("RENDER_GIT_COMMIT", "unknown"),
+        "environment": os.getenv("APP_ENV", "development"),
+    }
+
+
 @app.post("/analyses", response_model=AnalysisResponse, response_model_exclude_none=True)
 def analyze_email(request: AnalysisRequest) -> AnalysisResponse:
     try:

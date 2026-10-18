@@ -2,6 +2,25 @@
 
 ## Status
 
+### DevOps Secretary pilot (review required)
+
+The implementation in `.github/workflows/secretary-*.yml` separates trusted
+evidence reporting, shared exact-SHA staging, and read-only production observation.
+See [setup and workflow diagram](docs/devops/secretary.md),
+[inspection/course mapping](docs/devops/secretary-course.md), and
+[verification and demonstration](docs/devops/secretary-verification.md).
+It is not active merely because these files exist on a feature branch.
+
+Existing component and disposable-database CI remains. The legacy required
+`Hosted staging` bridge now uses trusted default-branch scripts and the `staging`
+environment. After the pilot is installed and proven, require `Secretary staging`
+before disabling/retiring that bridge. No merge protection is changed by the bot.
+Secretary reports never approve, merge, write fixes, edit secrets, or roll back.
+
+The historical snapshots below predate these changes. In current source,
+extension packaging and mocked AI/provider tests already exist; statements below
+that call them pending are historical, not a claim about current CI coverage.
+
 Pre-merge staging is added in `.github/workflows/ci.yml`: component checks,
 isolated API/database/extension-client integration, then exact-commit Render
 staging verification. Hosted staging requires separately configured development

@@ -1,5 +1,24 @@
 # Pipeline Metrics
 
+The [Secretary observer](secretary-verification.md) implements a new 28-day,
+latest-workflow-attempt calculation and produces downloadable evidence artifacts.
+It does not overwrite this historical log or push metrics commits. Its durations
+include workflow queue/rerun delay; the older job-only averages below use a
+different method. Keep reporting periods/sample counts/sources with each entry.
+New automation is not yet deployed; no new production or optimization result is
+claimed from its implementation.
+
+## Secretary read-only baseline — October 19, 2026
+
+Source: [ten latest CI runs and job end timestamps](evidence/secretary-baseline-2026-10-19.json).
+This bounded sample has 10 workflows, eight successes and two failures, with
+zero cancellations or pending runs: latest-outcome success rate 80%. Eight PR
+samples average 158.25 seconds (2.64 minutes); two main samples average 89.5
+seconds (1.49 minutes). Durations run from workflow creation to the last job end.
+These runs have different coverage/hosting behavior and are not a controlled
+optimization comparison. Production count, merge-to-live, and recovery are not
+available from this CI-only sample; see existing historical observations below.
+
 Record actual measurements before each consultation.
 Do not invent results or treat individual observations as averages.
 

@@ -72,6 +72,11 @@ member's components.
 
 ## Collaboration and Delivery Workflow
 
+The [DevOps Secretary pilot](docs/devops/secretary.md) adds a trusted PR evidence
+report, exact-commit staging extension builds, and production observation.
+It requires owner setup and review before activation; it cannot approve or merge.
+See the guide for click-by-click setup, manual tests, costs and disable steps.
+
 Our target workflow is:
 
 1. Create an assigned issue with acceptance criteria.

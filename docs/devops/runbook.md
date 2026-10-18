@@ -1,5 +1,12 @@
 # Deployment and Recovery Runbook
 
+The [Secretary pilot operator guide](secretary.md) adds exact-SHA preview and
+production observation. Its observer produces `metrics.json` and, on failure, an
+incident draft under the Actions artifact `Veriqo-Production-Evidence`. Inspect
+the exact failed deployment in Render before deciding recovery. The pilot never
+deploys production, changes secrets, applies production migrations, or executes
+rollback. The existing human recovery procedure below remains authoritative.
+
 ## Current Status
 
 The FastAPI backend scaffold is publicly deployed on Render.

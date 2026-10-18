@@ -1,5 +1,14 @@
 # Pipeline optimization evidence
 
+## Secretary pilot candidates — not measured improvements
+
+Duplicate-event fingerprints avoid repeated report writes and AI calls for
+unchanged evidence. Optional AI is capped per invocation; shared staging avoids
+per-PR service creation. These are implementation choices, not measured speed or
+cost gains. Compare equivalent PRs with the same tests, runner, model and preview
+settings; record workflow/run links, cache state, queue time, AI call counts and
+deployment count before claiming a gain. No before/after result is available yet.
+
 ## Baseline
 
 The measured snapshot through readiness merge 2a70ad3 has 16 PR backend jobs
