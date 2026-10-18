@@ -24,6 +24,21 @@ Demonstrate one actual AI inference call through backend code.
 
 ## Progress
 
+### October 19 integration follow-up
+
+Extension analysis and history now share `extension/js/config.js`. The staging
+package replaces that origin for both features and grants only staging host
+permission. Local verification passed 18 extension tests, configured ESLint,
+manifest validation, background syntax, and staging archive/configuration checks.
+These changes are local and have not been deployed.
+
+Render reported staging deployment `dep-dbaehj5g1s2s73bqcs80` live at commit
+`fc0741a100c15b898ca18d2a6ede169c367fe9da`. A synthetic hosted analysis returned
+HTTP 200 in 3.44 seconds with `mode: mock`; this is not real AI inference evidence.
+Initial health/readiness requests timed out. Installed-Chrome acceptance remains
+pending: browser automation cannot claim the Chrome extensions management tab.
+See [staging notes](devops/staging.md) for the current acceptance limits.
+
 Recorded October 14, 2026. This is a verified progress snapshot, not a
 reconstructed team standup or a claim about unpushed teammate work.
 
