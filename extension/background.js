@@ -2,6 +2,40 @@ const API_URL = "http://127.0.0.1:8000";
 
 const MENU_ID = "phishlens-analyze-selection";
 
+let analysisGeneration = 0;
+let stateUpdates = Promise.resolve();
+
+// Serialize storage and badge writes so Clear and newer requests always win.
+function updateAnalysis(generation, state, badge) {
+  const update = stateUpdates.catch(() => {}).then(async () => {
+    if (generation !== analysisGeneration) {
+      return;
+    }
+    if (state === null) {
+      await chrome.storage.session.remove("veriqoAnalysis");
+    } else {
+      await chrome.storage.session.set({ veriqoAnalysis: state });
+    }
+    if (generation === analysisGeneration) {
+      await chrome.action.setBadgeText({ text: badge });
+    }
+  });
+  stateUpdates = update;
+  return update;
+}
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "phishlens-clear-analysis") {
+    return;
+  }
+  const generation = ++analysisGeneration;
+  updateAnalysis(generation, null, "").then(
+    () => sendResponse({ ok: true }),
+    () => sendResponse({ ok: false })
+  );
+  return true;
+});
+
 
 // ---------------------------------------------------------
 // Create the context-menu item when extension is installed
@@ -42,20 +76,17 @@ chrome.contextMenus.onClicked.addListener((info) => {
 // ---------------------------------------------------------
 
 async function analyzeSelectedText(selectedText) {
+  const generation = ++analysisGeneration;
   // Save loading state for popup
-  await chrome.storage.session.set({
-    veriqoAnalysis: {
-      status: "loading",
-      selectedText,
-      result: null,
-      error: null
-    }
-  });
-
-  // Visual indicator
-  await chrome.action.setBadgeText({
-    text: "..."
-  });
+  await updateAnalysis(generation, {
+    status: "loading",
+    selectedText,
+    result: null,
+    error: null
+  }, "...");
+  if (generation !== analysisGeneration) {
+    return;
+  }
 
   try {
     const response = await fetch(
@@ -93,38 +124,29 @@ async function analyzeSelectedText(selectedText) {
     const result = await response.json();
 
     // Save successful result
-    await chrome.storage.session.set({
-      veriqoAnalysis: {
-        status: "success",
-        selectedText,
-        result,
-        error: null
-      }
-    });
-
-    await chrome.action.setBadgeText({
-      text: "✓"
-    });
+    await updateAnalysis(generation, {
+      status: "success",
+      selectedText,
+      result,
+      error: null
+    }, "✓");
   } catch (error) {
+    if (generation !== analysisGeneration) {
+      return;
+    }
     console.error(
       "PhishLens analysis failed:",
       error
     );
 
-    await chrome.storage.session.set({
-      veriqoAnalysis: {
-        status: "error",
-        selectedText,
-        result: null,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unknown error"
-      }
-    });
-
-    await chrome.action.setBadgeText({
-      text: "!"
-    });
+    await updateAnalysis(generation, {
+      status: "error",
+      selectedText,
+      result: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error"
+    }, "!");
   }
 }

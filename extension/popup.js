@@ -191,15 +191,14 @@ chrome.storage.onChanged.addListener(
 clearButton.addEventListener(
   "click",
   async () => {
-    await chrome.storage.session.remove(
-      "veriqoAnalysis"
-    );
-
-    await chrome.action.setBadgeText({
-      text: ""
+    const response = await chrome.runtime.sendMessage({
+      type: "phishlens-clear-analysis"
     });
-
-    render(null);
+    if (!response?.ok) {
+      errorMessage.textContent = "Could not clear the analysis. Please try again.";
+      hideAllStates();
+      errorState.classList.remove("hidden");
+    }
   }
 );
 
