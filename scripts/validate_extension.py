@@ -31,6 +31,9 @@ for asset in (
     "js/config.js",
     "js/api.js",
     "js/history.js",
+    "background.js",
+    "popup.js",
+    "popup.css",
 ):
     require_file(asset)
 

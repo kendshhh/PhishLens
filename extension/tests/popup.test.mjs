@@ -83,3 +83,17 @@ test("popup displays failed requests as errors", async t => {
   assert.equal(dom.get("error").classList.contains("hidden"), false);
   assert.ok(dom.get("empty").classList.contains("hidden"));
 });
+
+test("popup renders history with missing optional acceptance fields", async t => {
+  const subject = '<img src=x onerror="alert(1)">';
+  const dom = await openPopup(t, { ok: true, json: async () => ({ items: [{
+    subject, risk_level: "high"
+  }] }) });
+  const rows = dom.get("history-list").children;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].textContent,
+    `Subject: ${subject} | Prediction: Pending | Risk: high | Confidence: N/A`);
+  assert.ok(dom.get("loading").classList.contains("hidden"));
+  assert.ok(dom.get("empty").classList.contains("hidden"));
+  assert.ok(dom.get("error").classList.contains("hidden"));
+});

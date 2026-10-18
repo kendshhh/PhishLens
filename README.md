@@ -125,3 +125,76 @@ test -e .env || cp .env.example .env
 # Fill DATABASE_URL in .env privately before continuing.
 .venv/bin/python -m alembic -c backend/alembic.ini upgrade head
 .venv/bin/python scripts/seed_demo.py
+```
+
+From the repository root on Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Fill DATABASE_URL in .env privately before continuing.
+.\.venv\Scripts\python.exe -m alembic -c backend/alembic.ini upgrade head
+.\.venv\Scripts\python.exe scripts/seed_demo.py
+```
+
+The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
+is safe to run more than once. Each teammate needs their own private `.env`; Git does
+not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
+the deletion policy.
+
+### Run AI analysis locally
+
+See [the AI contract and setup](docs/ai.md) for the provider, token limits, score
+mapping, threshold, indicator sources, and optional local CPU model. The
+[October 18 DevOps handoff](docs/devops/ai-review-2026-10-18.md) records verification
+and the current model, hosting, and extension integration limitations.
+
+The extension sends selected text to `POST /analyses`. The backend runs in mock mode
+when `AI_MODE=mock`; the response and extension UI label this as a mock, not an AI result.
+To use Gemini, set `AI_MODE=gemini`, `GEMINI_API_KEY`, and a valid `GEMINI_MODEL` in the
+private `.env`. The Google API key must never be added to the extension.
+
+Start the backend from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
+```
+
+Call the analysis endpoint directly (mock mode works without Gemini credentials):
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/analyses `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"text":"Your account will be closed today."}'
+```
+
+With `AI_MODE=gemini` and valid credentials configured, verify the provider connection:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\test_gemini_connection.py
+```
+
+Then load the `extension` folder as an unpacked Chrome extension, highlight email text,
+and choose **Analyze selection with VeriQo**. The popup displays the model result or
+reports a configuration/provider error.
+
+## Configuration and Secrets
+
+- Never commit real credentials or private `.env` files.
+- Use `.env.example` to document configuration without real secrets.
+- Keep database credentials and security secrets on the backend.
+- Configure deployment secrets through the host or CI secret store.
+- Use synthetic emails for tracked examples and demonstrations.
+- Keep private datasets and downloaded model files out of Git.
+
+The Chrome extension does not automatically read `.env` files.
+Its public backend URL configuration will be documented separately.
+
+## Project Requirements
+
+The instructor's guide is the main authority for requirements,
+workflow, deliverables, and grading:
+
+[Read the instructor guide](https://csp221a.vercel.app/)

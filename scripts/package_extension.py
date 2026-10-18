@@ -18,6 +18,9 @@ assets = (
     "js/config.js",
     "js/history.js",
     "js/popup.js",
+    "background.js",
+    "popup.js",
+    "popup.css",
 )
 
 output = ROOT / "output" / "extension"
