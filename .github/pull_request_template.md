@@ -23,5 +23,7 @@ Write "None" if there are none.
 - [ ] I coordinated changes to shared files with their owners.
 - [ ] I updated relevant documentation.
 - [ ] I recorded the verification I actually performed.
+- [ ] Backend, extension, staging integration, and hosted staging checks pass for the latest commit.
+- [ ] I verified affected behavior in Chrome against that commit on staging and recorded evidence (or explained why the manual check is not applicable).
 - [ ] I can explain my changes.
 - [ ] I requested review from at least one teammate.
