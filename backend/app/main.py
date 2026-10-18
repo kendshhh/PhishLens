@@ -1,4 +1,5 @@
 from functools import lru_cache
+from threading import Lock
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -17,8 +18,17 @@ app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
 
 
-@lru_cache(maxsize=1)
+_ai_service_lock = Lock()
+
+
 def get_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local"]]:
+    # Lock outside the cache so concurrent misses cannot create separate providers.
+    with _ai_service_lock:
+        return _get_cached_ai_service()
+
+
+@lru_cache(maxsize=1)
+def _get_cached_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local"]]:
     mode, api_key, model = get_ai_config()
     if mode == "mock":
         return AIService(MockProvider()), "mock"
