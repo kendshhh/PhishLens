@@ -194,6 +194,9 @@ already known from `git remote`; the placeholder in the request did not block wo
 The new controller won't deploy unrelated documentation-only PRs; it writes
 `Secretary staging: success — not applicable`, avoiding a permanently pending
 gate after the legacy bootstrap has been retired.
+The temporary legacy job skips drafts/forks before requesting environment
+access. That skip is not preview acceptance; the new controller records drafts
+and relevant forks as `action_required` on its separate check after installation.
 Fork application PRs get `action_required`; run ordinary fork CI without secrets,
 review the work, then bring it into a trusted branch for staging. Do not switch
 to privileged checkout/execution of fork code.

@@ -37,6 +37,8 @@ def inspect(pr, files, config):
         findings.append(("confirmed", "medium", "PR", "Target branch is not the configured main branch."))
     if not re.search(r"(?:#\d+|/issues/\d+)", body):
         findings.append(("confirmed", "medium", "PR description", "Link the relevant issue and acceptance criteria."))
+    if len(pr.get("title", "").strip()) < 8 or "Describe the resulting behavior" in body:
+        findings.append(("confirmed", "medium", "PR description", "Explain the purpose and resulting behavior instead of leaving template text."))
     if len(files) > config["max_files"] or sum(len(f.get("patch") or "") for f in files) > config["max_diff_chars"]:
         gaps.append("Oversized diff: only the configured first files/characters were inspected. Split the PR or arrange manual review.")
     budget = config["max_diff_chars"]
@@ -120,6 +122,7 @@ def render(snapshot, ai, now):
     lines = [MARKER, f"<!-- evidence:{fingerprint(snapshot)} -->", "## DevOps Secretary — " + action,
              f"PR [#{pr['number']}]({url}) · {safe(pr['title'])} · author {safe(pr['user']['login'])}",
              f"Reviewed head: `{sha}` · report time: {now} · draft: {bool(pr.get('draft'))}",
+             "Branch: " + safe(pr["head"].get("ref", "not available")) + " → " + safe(pr["base"]["ref"]),
              "### Summary", f"{len(files)} changed files. Analysis covers bounded patches and available API evidence, not a full security or correctness audit.",
              "Related issues: " + (", ".join(sorted(set(re.findall(r"#\d+", pr.get("body") or "")))) or "not linked"),
              "Course mapping (affected areas, not completion): " + (", ".join(requirements) or "documentation/process only"),

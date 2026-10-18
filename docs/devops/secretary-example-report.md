@@ -12,6 +12,8 @@ PR [#0](https://github.com/kendshhh/PhishLens/pull/0) · OFFLINE EXAMPLE — his
 
 Reviewed head: `0000000000000000000000000000000000000000` · report time: OFFLINE EXAMPLE · draft: False
 
+Branch: not available → main
+
 ### Summary
 
 1 changed files. Analysis covers bounded patches and available API evidence, not a full security or correctness audit.

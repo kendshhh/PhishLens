@@ -193,7 +193,7 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true'
+    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
     needs: [staging]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -226,6 +226,3 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         run: node scripts/staging_smoke.mjs
-      - name: Reject untrusted or draft legacy preview
-        if: github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.draft
-        run: exit 1
