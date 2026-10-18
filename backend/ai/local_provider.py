@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from threading import Lock
 
-from backend.ai.schemas import AIAnalysisResult, EvidenceItem
+from backend.ai.schemas import MAX_EVIDENCE_TEXT_LENGTH, AIAnalysisResult, EvidenceItem
 
 MODEL_ID = "dima806/phishing-email-detection"
 MODEL_REVISION = "310a5602280486e01dd60e37230980cfcc327b41"
@@ -32,7 +32,8 @@ def rule_indicators(text: str) -> tuple[list[str], list[EvidenceItem]]:
         if match:
             tactics.append(f"Rule indicator: {name.lower()}")
             evidence.append(EvidenceItem(
-                text=match.group(0),
+                # Keep evidence verbatim while respecting the response contract.
+                text=match.group(0)[:MAX_EVIDENCE_TEXT_LENGTH],
                 reason=f"{name} appears in the text; this rule alone does not establish phishing.",
             ))
     return tactics, evidence

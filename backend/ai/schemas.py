@@ -2,12 +2,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+MAX_EVIDENCE_TEXT_LENGTH = 2_000
+
 
 class EvidenceItem(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     text: str = Field(
-        min_length=1, max_length=2_000,
+        min_length=1, max_length=MAX_EVIDENCE_TEXT_LENGTH,
         description="Evidence supported by the supplied email text."
     )
     reason: str = Field(

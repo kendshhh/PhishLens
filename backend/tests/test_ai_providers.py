@@ -166,7 +166,8 @@ def test_missing_local_weights_return_an_actionable_failure(monkeypatch):
     assert "private" not in str(exc.value)
 
 
-def test_phishing_in_later_window_is_detected(monkeypatch):
+@pytest.mark.parametrize("url_length", [0, 1_999, 2_000, 2_001, 25_000])
+def test_phishing_in_later_window_is_detected(monkeypatch, url_length):
     torch, modules, _ = fake_local_modules(monkeypatch)
 
     class Tensor:
@@ -181,9 +182,15 @@ def test_phishing_in_later_window_is_detected(monkeypatch):
     tokenizer = modules.AutoTokenizer.from_pretrained.return_value
     tokenizer.return_value = {"input_ids": Tensor(), "attention_mask": Tensor(), "overflow_to_sample_mapping": Tensor()}
     torch.softmax.return_value = Tensor()
+    url = "https://example.test/" + "a" * (url_length - len("https://example.test/")) if url_length else ""
+    body = "Benign newsletter. " * 100 + "Send your password now. " + url
     result = AIService(LocalProvider()).analyze_email(
-        subject=None, sender=None, body="Benign newsletter. " * 100 + "Send your password now.",
+        subject=None, sender=None, body=body,
     )
+    if url_length:
+        quote = next(item.text for item in result.evidence if item.text.startswith("https://"))
+        assert quote == url[:2_000]
+        assert quote in body
     assert result.classification == "phishing"
     assert result.confidence == .99
     assert result.windows_processed == 2
