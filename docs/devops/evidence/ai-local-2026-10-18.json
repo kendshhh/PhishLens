@@ -1,0 +1,52 @@
+{
+  "recorded_date": "2026-10-18",
+  "command": "python scripts/benchmark_ai.py --models local --repeats 1 --pause 0",
+  "event": "summary",
+  "model": "local",
+  "run_status": "finished",
+  "requested_cases": 40,
+  "unattempted_cases": 0,
+  "model_metadata": {
+    "model": "dima806/phishing-email-detection",
+    "model_revision": "310a5602280486e01dd60e37230980cfcc327b41",
+    "explanation_source": "rules"
+  },
+  "caseset": "synthetic-v1",
+  "cases_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+  "prompt_version": "phishing-v2",
+  "repeats": 1,
+  "hosted_pause_seconds": 0,
+  "supported_labels": ["legitimate", "phishing"],
+  "cold_seconds": 65.89701059999061,
+  "peak_process_rss_mb": 578.8671875,
+  "machine": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "logical_cpus": 16,
+    "ram_gb": 31.71
+  },
+  "limitations": "Synthetic development suite; English checkpoint; two-class local model; hosted memory measures client only; latency includes network; confidence is uncalibrated classifier softmax only.",
+  "attempts": 40,
+  "successful": 40,
+  "errors": 0,
+  "binary_correct": 24,
+  "binary_accuracy": 0.6,
+  "phishing_tp": 12,
+  "phishing_fp": 12,
+  "phishing_cases": 16,
+  "phishing_precision": 0.5,
+  "phishing_recall": 0.75,
+  "phishing_f1": 0.6,
+  "false_positive_rate": 0.5,
+  "three_class_accuracy": 0.6,
+  "p50_seconds": 0.0315205,
+  "p95_seconds": 0.06609,
+  "mean_seconds": 0.081410925,
+  "confusion": {
+    "phishing->phishing": 12,
+    "phishing->legitimate": 4,
+    "legitimate->legitimate": 12,
+    "legitimate->phishing": 4,
+    "spam->phishing": 8
+  }
+}

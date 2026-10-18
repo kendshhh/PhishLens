@@ -145,6 +145,11 @@ the deletion policy.
 
 ### Run AI analysis locally
 
+See [the AI contract and setup](docs/ai.md) for the provider, token limits, score
+mapping, threshold, indicator sources, and optional local CPU model. The
+[October 18 DevOps handoff](docs/devops/ai-review-2026-10-18.md) records verification
+and the current model, hosting, and extension integration limitations.
+
 The extension sends selected text to `POST /analyses`. The backend runs in mock mode
 when `AI_MODE=mock`; the response and extension UI label this as a mock, not an AI result.
 To use Gemini, set `AI_MODE=gemini`, `GEMINI_API_KEY`, and a valid `GEMINI_MODEL` in the
