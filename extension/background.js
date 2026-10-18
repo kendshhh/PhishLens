@@ -1,6 +1,8 @@
 const API_URL = "http://127.0.0.1:8000";
 
 const MENU_ID = "phishlens-analyze-selection";
+// Leave time to save an error before Chrome's 30-second fetch deadline.
+const ANALYSIS_TIMEOUT_MS = 25_000;
 
 let analysisGeneration = 0;
 let stateUpdates = Promise.resolve();
@@ -88,42 +90,19 @@ async function analyzeSelectedText(selectedText) {
     return;
   }
 
+  const controller = new AbortController();
+  let timeout;
   try {
-    const response = await fetch(
-      `${API_URL}/analyses`,
-      {
-        method: "POST",
+    const result = await Promise.race([
+      requestAnalysis(selectedText, controller.signal),
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error("Analysis timed out. Please try again; the local model may still be starting."));
+          controller.abort();
+        }, ANALYSIS_TIMEOUT_MS);
+      })
+    ]);
 
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-          text: selectedText
-        })
-      }
-    );
-
-    if (!response.ok) {
-      let errorBody;
-      try {
-        errorBody = await response.json();
-      } catch {
-        throw new Error(
-          `Backend returned HTTP ${response.status} with an invalid error response.`
-        );
-      }
-
-      throw new Error(
-        typeof errorBody.detail === "string"
-          ? errorBody.detail
-          : `Backend returned HTTP ${response.status}`
-      );
-    }
-
-    const result = await response.json();
-
-    // Save successful result
     await updateAnalysis(generation, {
       status: "success",
       selectedText,
@@ -134,19 +113,51 @@ async function analyzeSelectedText(selectedText) {
     if (generation !== analysisGeneration) {
       return;
     }
-    console.error(
-      "PhishLens analysis failed:",
-      error
-    );
-
+    console.error("PhishLens analysis failed:", error);
     await updateAnalysis(generation, {
       status: "error",
       selectedText,
       result: null,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error"
     }, "!");
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+async function requestAnalysis(selectedText, signal) {
+  const response = await fetch(
+    `${API_URL}/analyses`,
+    {
+      method: "POST",
+      signal,
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        text: selectedText
+      })
+    }
+  );
+
+  if (!response.ok) {
+    let errorBody;
+    try {
+      errorBody = await response.json();
+    } catch {
+      throw new Error(
+        `Backend returned HTTP ${response.status} with an invalid error response.`
+      );
+    }
+
+    throw new Error(
+      typeof errorBody.detail === "string"
+        ? errorBody.detail
+        : `Backend returned HTTP ${response.status}`
+    );
+  }
+
+  return response.json();
 }

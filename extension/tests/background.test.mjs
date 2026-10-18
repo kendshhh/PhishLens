@@ -17,10 +17,19 @@ function worker({ firstWrite } = {}) {
   const state = { analysis: undefined, badge: "" };
   let onMessage;
   let writes = 0;
+  const timers = new Map();
   const context = vm.createContext({
+    AbortController,
+    setTimeout(callback, delay) {
+      const id = Symbol();
+      timers.set(id, { callback, delay });
+      return id;
+    },
+    clearTimeout(id) { timers.delete(id); },
     console: { error() {} },
-    fetch: async () => {
+    fetch: async (_url, options) => {
       const request = deferred();
+      request.signal = options.signal;
       requests.push(request);
       return request.promise;
     },
@@ -42,7 +51,13 @@ function worker({ firstWrite } = {}) {
   });
   vm.runInContext(source, context);
   return {
-    state, requests,
+    state, requests, timers,
+    expire: () => {
+      for (const { callback, delay } of [...timers.values()]) {
+        assert.equal(delay, 25_000);
+        callback();
+      }
+    },
     analyze: text => context.analyzeSelectedText(text),
     clear: () => new Promise(resolve => {
       assert.equal(onMessage({ type: "phishlens-clear-analysis" }, {}, resolve), true);
@@ -106,4 +121,53 @@ test("a new analysis works after Clear", async () => {
   await pending;
   assert.equal(app.state.analysis.selectedText, "Email B");
   assert.equal(app.state.badge, "✓");
+});
+
+test("timeout aborts a stalled request, saves a retryable error, and allows retry", async () => {
+  const app = worker();
+  const pending = app.analyze("Email A");
+  await settle();
+  app.expire();
+  await pending;
+  assert.equal(app.requests[0].signal.aborted, true);
+  assert.equal(app.state.analysis.status, "error");
+  assert.match(app.state.analysis.error, /timed out.*try again/);
+  assert.equal(app.state.badge, "!");
+  assert.equal(app.timers.size, 0);
+  const retry = app.analyze("Email B");
+  await settle();
+  app.requests[1].resolve(success("legitimate"));
+  await retry;
+  app.requests[0].resolve(success("phishing"));
+  await settle();
+  assert.equal(app.state.analysis.selectedText, "Email B");
+  assert.equal(app.state.analysis.status, "success");
+  assert.equal(app.state.badge, "✓");
+  assert.equal(app.timers.size, 0);
+});
+
+test("deadline also covers stalled response bodies", async () => {
+  const app = worker();
+  const pending = app.analyze("Email A");
+  await settle();
+  const body = deferred();
+  app.requests[0].resolve({ ok: true, json: () => body.promise });
+  await settle();
+  app.expire();
+  await pending;
+  assert.equal(app.state.analysis.status, "error");
+  body.resolve({ classification: "phishing" });
+  await settle();
+  assert.equal(app.state.analysis.status, "error");
+});
+
+test("timeout after Clear cannot restore cleared state", async () => {
+  const app = worker();
+  const pending = app.analyze("Email A");
+  await settle();
+  await app.clear();
+  app.expire();
+  await pending;
+  assert.equal(app.state.analysis, undefined);
+  assert.equal(app.state.badge, "");
 });
