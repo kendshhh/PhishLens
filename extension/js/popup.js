@@ -24,8 +24,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const li = document.createElement("li");
       const subject = item.subject || "Analyzed Email";
       const risk = item.risk_level || "Unknown";
+      const prediction = item.prediction || "Pending";
+      const confidence = item.confidence == null
+        ? "N/A"
+        : `${Math.round(item.confidence * 100)}%`;
       
-      li.textContent = `Subject: ${subject} | Risk: ${risk}`;
+      li.textContent = `Subject: ${subject} | Prediction: ${prediction} | Risk: ${risk} | Confidence: ${confidence}`;
       list.appendChild(li);
     });
 

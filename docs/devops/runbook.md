@@ -51,6 +51,10 @@ It does not verify database access, AI inference or extension integration.
 
 ## Subsequent Deployments
 
+Before merging, follow [pre-merge staging](staging.md): all four required checks,
+the exact PR commit live on staging, Chrome verification with the staging package,
+and teammate approval. Missing staging settings must be fixed before merge.
+
 1. Open a focused PR.
 2. Pass required checks and obtain teammate approval.
 3. Merge into main.
