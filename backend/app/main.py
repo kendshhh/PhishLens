@@ -2,20 +2,91 @@ from functools import lru_cache
 from threading import Lock
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from backend.ai.errors import ModelUnavailableError
 from backend.ai.gemini_provider import DailyQuotaExceeded, GeminiProvider
 from backend.ai.mock_provider import MockProvider
-from backend.ai.schemas import AnalysisRequest, AnalysisResponse
+from backend.ai.schemas import (
+    AnalysisFailureResponse,
+    AnalysisRequest,
+    AnalysisResponse,
+    AnalysisValidationErrorResponse,
+)
 from backend.ai.service import AIService
 from backend.app.routers.history import router as history_router
 from backend.core.config import PROJECT_ROOT, get_ai_config
 
 app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
+
+
+def analysis_error(
+    status_code: int,
+    code: str,
+    message: str,
+    fields: list[dict[str, str]] | None = None,
+) -> JSONResponse:
+    error = {"code": code, "message": message}
+    if fields is not None:
+        error["fields"] = fields
+
+    return JSONResponse(
+        status_code=status_code,
+        content={"error": error},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation(
+    request: Request,
+    exc: RequestValidationError,
+):
+    if request.method == "POST" and request.url.path == "/analyses":
+        fields = []
+        for problem in exc.errors()[:10]:
+            location = problem.get("loc", ())
+            field = next(
+                (
+                    part
+                    for part in reversed(location)
+                    if isinstance(part, str)
+                    and part in ("text", "subject", "sender")
+                ),
+                "body",
+            )
+
+            error_type = problem.get("type")
+            if field == "text" and error_type in ("value_error", "string_too_short"):
+                field_code = "blank"
+            elif error_type == "missing":
+                field_code = "required"
+            elif error_type == "string_too_long":
+                field_code = "too_long"
+            elif error_type == "string_type":
+                field_code = "invalid_type"
+            elif error_type == "extra_forbidden":
+                field_code = "unknown_field"
+            elif error_type == "json_invalid":
+                field_code = "malformed_json"
+            else:
+                field_code = "invalid"
+
+            fields.append({"field": field, "code": field_code})
+
+        return analysis_error(
+            422,
+            "invalid_input",
+            "Invalid email input",
+            fields,
+        )
+
+    return await request_validation_exception_handler(request, exc)
 
 
 _ai_service_lock = Lock()
@@ -61,12 +132,34 @@ def version():
     }
 
 
-@app.post("/analyses", response_model=AnalysisResponse, response_model_exclude_none=True)
-def analyze_email(request: AnalysisRequest) -> AnalysisResponse:
+@app.post(
+    "/analyses",
+    response_model=AnalysisResponse,
+    response_model_exclude_none=True,
+    responses={
+        422: {
+            "model": AnalysisValidationErrorResponse,
+            "description": "Invalid email input",
+        },
+        502: {
+            "model": AnalysisFailureResponse,
+            "description": "Analysis failed",
+        },
+        503: {
+            "model": AnalysisFailureResponse,
+            "description": "Analysis unavailable",
+        },
+    },
+)
+def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
     try:
         service, mode = get_ai_service()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Analysis temporarily unavailable",
+        )
 
     try:
         result = service.analyze_email(
@@ -74,10 +167,24 @@ def analyze_email(request: AnalysisRequest) -> AnalysisResponse:
             sender=request.sender,
             body=request.text,
         )
-    except DailyQuotaExceeded as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ModelUnavailableError:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Analysis temporarily unavailable",
+        )
+    except DailyQuotaExceeded:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Analysis temporarily unavailable",
+        )
+    except RuntimeError:
+        return analysis_error(
+            502,
+            "inference_failed",
+            "Analysis failed",
+        )
 
     risk_level: Literal["low", "medium", "high"] = {
         "legitimate": "low",
