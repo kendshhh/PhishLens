@@ -40,3 +40,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     error.classList.remove("hidden");
   }
 });
+
+// Intentional K6 lint drill; repaired before review or merge.
+const weekOneLintDrill = true;
