@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
   push:
     branches: [main]
 
@@ -115,6 +116,8 @@ jobs:
 
       - name: Lint backend
         run: python -m ruff check backend
+      - name: Lint trusted secretary code
+        run: python -m ruff check scripts/secretary
 
       - name: Apply database migrations
         run: python -m alembic -c backend/alembic.ini upgrade head
@@ -185,46 +188,41 @@ jobs:
       - name: Test staging deployment guards
         run: python -m unittest discover -s scripts/tests -v
 
+  # Bootstrap bridge: preserve the current required check until the new controller
+  # is proven on main. It runs ONLY trusted default-branch scripts. Retire this
+  # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
     needs: [staging]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: staging
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
     steps:
-      - name: Check out exact PR commit
+      - name: Read trusted legacy controller only
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: "3.12"
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: "24"
+          node-version: '24'
           package-manager-cache: false
-      - name: Validate staging origin and build browser-test package
-        run: python scripts/package_staging_extension.py
-      - name: Deploy exact PR commit to staging
+      - name: Deploy exact PR head using the trusted legacy script
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
           STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
         run: python scripts/deploy_staging.py
-      - name: Verify hosted API and extension client
+      - name: Verify legacy hosted API integration
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         run: node scripts/staging_smoke.mjs
-      - name: Upload staging extension for Chrome verification
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: PhishLens-Staging-Extension
-          path: output/staging/PhishLens-Staging-Extension.zip
-          if-no-files-found: error
-          retention-days: 7
