@@ -23,8 +23,12 @@ The older local Week 1 notes predate the merged popup fix and staging automation
 - Production observer [39185962984](https://github.com/kendshhh/PhishLens/actions/runs/39185962984)
   completed successfully and published
   [Veriqo-Production-Evidence](https://github.com/kendshhh/PhishLens/actions/runs/39185962984/artifacts/12158006783).
-  Artifact contents have not been inspected here, so this is workflow/artifact
-  evidence, not a new assertion of the exact live SHA or health payload.
+  The downloaded metrics report verifies exact production SHA, health, and readiness.
+  The retained [metrics JSON](evidence/week1-production-2026-10-19.json) records
+  live deployment dep-dban778ae00c739v6hng, trigger new_commit, and matching SHA.
+  Independent public requests also returned HTTP 200 from /version, /health,
+  /ready, and /api/analyses; /version identified production at d6e5998 and
+  history returned the synthetic account notice (phishing/high/0.93).
 
 Source: [branch API](https://api.github.com/repos/kendshhh/PhishLens/branches/main)
 and the saved main protection editor under repository Settings > Branches.
@@ -74,15 +78,20 @@ These values must remain separate from the historical job-only averages.
   environment; do not modify production or real user records for this drill.
 - Collect actual teammate approval and required hosted checks before merge.
   This draft intentionally avoids deploying the failure drill to shared staging.
-- Inspect/download the production observer metrics before artifact expiry
-  (November 18, 2026), and retain exact deployment/health evidence.
+- Production metrics have been downloaded and retained before artifact expiry;
+  complete historical recovery timing remains unavailable.
 - Record real consultation feedback, standups, team retrospective, and instructor
   acceptance of the extension presentation arrangement. These cannot be
   reconstructed from code or CI.
 - Keep #9 open until its full remaining acceptance is evidenced.
 
-Local endpoint probes failed DNS resolution in this restricted execution
-environment. This is an observation about these probes, not evidence that the
-public service is down. Git operations could not access the repository root in
+Initial restricted endpoint probes failed DNS resolution. The authorized network
+retry succeeded for all four public routes; no public outage is inferred. Git operations could not access the repository root in
 this sandbox, so the draft was created through the GitHub connector without
 changing the user's local checkout.
+
+## Regression verification
+
+CI 39186216063 passed the four new validator cases within the 40-test scripts
+suite, alongside the real isolated PostgreSQL/API/client smoke. Latest-head checks
+remain the acceptance authority after documentation updates.
