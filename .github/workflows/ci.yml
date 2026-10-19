@@ -14,15 +14,12 @@ jobs:
     name: Extension checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    outputs:
-      application_changed: ${{ steps.scope.outputs.application_changed }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -37,29 +34,6 @@ jobs:
 
       - name: Install extension checking dependencies
         run: npm ci
-
-      - name: Determine hosted staging applicability
-        id: scope
-        if: github.event_name == 'pull_request'
-        env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          python - <<'PY'
-          import os
-          import subprocess
-          from scripts.secretary.core import application_change
-
-          # Disable rename detection so moving a runtime file OUT of an application
-          # directory still requires deployment. NUL delimiters preserve filenames.
-          paths = subprocess.check_output([
-              'git', 'diff', '--no-renames', '--name-only', '-z',
-              os.environ['PR_BASE_SHA'] + '...' + os.environ['PR_HEAD_SHA'],
-          ]).decode().split('\0')
-          changed = application_change([{'filename': path} for path in paths if path])
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('application_changed=' + str(changed).lower() + '\n')
-          PY
 
       - name: Check JavaScript syntax
         shell: bash
@@ -218,9 +192,9 @@ jobs:
   # is proven on main. It runs ONLY trusted default-branch scripts. Retire this
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
-    name: Hosted staging deployment
-    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository && needs.extension.outputs.application_changed == 'true'
-    needs: [staging, extension]
+    name: Hosted staging
+    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [staging]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: staging
@@ -252,34 +226,3 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         run: node scripts/staging_smoke.mjs
-
-  hosted-staging-result:
-    name: Hosted staging
-    needs: [extension, staging, hosted-staging]
-    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Require integration and applicable hosted deployment
-        env:
-          EXTENSION_RESULT: ${{ needs.extension.result }}
-          STAGING_RESULT: ${{ needs.staging.result }}
-          APPLICATION_CHANGED: ${{ needs.extension.outputs.application_changed }}
-          DEPLOYMENT_RESULT: ${{ needs.hosted-staging.result }}
-        run: |
-          set -euo pipefail
-          test "$EXTENSION_RESULT" = success
-          test "$STAGING_RESULT" = success
-          case "$APPLICATION_CHANGED" in
-            false)
-              echo 'Hosted deployment not applicable: no application/runtime files changed.' >> "$GITHUB_STEP_SUMMARY"
-              ;;
-            true)
-              test "$DEPLOYMENT_RESULT" = success
-              echo 'Hosted deployment and smoke checks passed.' >> "$GITHUB_STEP_SUMMARY"
-              ;;
-            *)
-              echo 'Hosted staging applicability is missing or invalid.' >&2
-              exit 1
-              ;;
-          esac
