@@ -146,3 +146,53 @@ test("handles a network failure", async () => {
         /Network unavailable/
     );
 });
+test("rejects an ID that is not a UUID", async () => {
+    mockResponse({
+        items: [{ ...validAnalysis, id: "not-a-uuid" }]
+    });
+
+    await assert.rejects(
+        getAnalyses("https://example.test"),
+        /Invalid history data/
+    );
+});
+
+for (const timestamp of [
+    0,
+    "0",
+    "2026-10-14",
+    "2026-10-14T04:00:00",
+    "2026-10-14T04:00:00+08:00",
+    "2026-02-30T04:00:00Z"
+]) {
+    test(`rejects invalid UTC timestamp ${JSON.stringify(timestamp)}`, async () => {
+        mockResponse({
+            items: [{ ...validAnalysis, created_at: timestamp }]
+        });
+
+        await assert.rejects(
+            getAnalyses("https://example.test"),
+            /Invalid history data/
+        );
+    });
+}
+
+for (const timestamp of [
+    "2026-10-14T04:00:00Z",
+    "2026-10-14T04:00:00+00:00",
+    "2026-10-13T15:07:51.365605+00:00"
+]) {
+    test(`accepts UTC timestamp ${timestamp}`, async () => {
+        const record = {
+            ...validAnalysis,
+            created_at: timestamp
+        };
+
+        mockResponse({ items: [record] });
+
+        assert.deepEqual(
+            await getAnalyses("https://example.test"),
+            [record]
+        );
+    });
+}

@@ -1,10 +1,39 @@
+function isValidUuid(value) {
+    const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    return typeof value === "string" && uuidPattern.test(value);
+}
+
+function isValidUtcTimestamp(value) {
+    if (typeof value !== "string") {
+        return false;
+    }
+
+    const timestampPattern =
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$/;
+
+    if (!timestampPattern.test(value)) {
+        return false;
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return false;
+    }
+
+    // Reject impossible dates that JavaScript silently adjusts.
+    return date.toISOString().slice(0, 19) === value.slice(0, 19);
+}
+
 function isValidAnalysis(analysis) {
     if (!analysis || typeof analysis !== "object") {
         return false;
     }
 
     if (
-        typeof analysis.id !== "string" ||
+        !isValidUuid(analysis.id) ||
         typeof analysis.subject !== "string"
     ) {
         return false;
@@ -60,10 +89,7 @@ function isValidAnalysis(analysis) {
         return false;
     }
 
-    if (
-        typeof analysis.created_at !== "string" ||
-        Number.isNaN(Date.parse(analysis.created_at))
-    ) {
+    if (!isValidUtcTimestamp(analysis.created_at)) {
         return false;
     }
 
