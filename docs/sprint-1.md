@@ -24,6 +24,20 @@ Demonstrate one actual AI inference call through backend code.
 
 ## Progress
 
+### October 19 Week 1 DevOps evidence refresh
+
+Main d6e5998 includes the popup response-shape fix and shared API configuration.
+Main CI 39185832544 passed backend, extension, and isolated staging integration.
+Saved protection settings require all four registered checks and one approval,
+with stale approvals dismissed and administrator bypass disabled.
+PR #34 records an intentional frontend ESLint failure and repair, adds direct
+popup asset-reference validation and regression cases, and records current timings.
+Installed Chrome rendering, changed-record/persistence checks, actual teammate
+review, and team/instructor feedback remain acceptance items.
+See [verification evidence](devops/week-1-verification-2026-10-19.md).
+This refresh supersedes older source-presence/local-only statements below; those
+snapshots remain historical and do not represent current main.
+
 ### October 19 integration follow-up
 
 Extension analysis and history now share `extension/js/config.js`. The staging

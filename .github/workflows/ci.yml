@@ -196,7 +196,7 @@ jobs:
     if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
     needs: [staging]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     environment: staging
     concurrency:
       group: phishlens-hosted-staging
@@ -226,3 +226,46 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         run: node scripts/staging_smoke.mjs
+      - name: Verify deployed identity and package exact PR assets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          from pathlib import Path
+          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.preview import package, smoke
+
+          config = json.loads(Path('.github/secretary.json').read_text())
+          if os.environ['STAGING_BASE_URL'].rstrip('/') != config['staging_origin']:
+              raise RuntimeError('Hosted smoke and extension must use the configured staging origin')
+          sha = os.environ['STAGING_COMMIT']
+          number = int(os.environ['STAGING_PR'])
+          evidence = smoke(config['staging_origin'], sha)
+          api = GitHub()
+          output = Path('output/hosted-staging')
+          package(api, sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          current = api.request(f'pulls/{number}')
+          if current['head']['sha'] != sha or current['state'] != 'open':
+              raise RuntimeError('PR changed during deployment; rerun CI for the current head')
+          evidence.update({
+              'pr': number, 'sha': sha, 'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
+              'chrome_manual_test': 'not performed',
+          })
+          (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'Hosted staging verified for PR #{number}, exact head `{sha}`.\n\n')
+              summary.write('Health, readiness, version, synthetic history and staging package passed. ')
+              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
+          PY
+      - name: Preserve hosted staging evidence and extension
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PhishLens-Staging-Extension
+          path: output/hosted-staging/
+          if-no-files-found: error
+          retention-days: 7
