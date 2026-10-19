@@ -156,5 +156,15 @@ Main CI 39185832544: one successful sample at d6e5998; workflow creation to last
 job completion was 98 seconds. Backend execution 49 seconds, extension 7 seconds,
 staging integration 44 seconds. Hosted staging skipped on main by design.
 This is one observation, not a comparable before/after optimization experiment.
-Production evidence run 39185962984 succeeded and published its metrics artifact;
-its contents remain to be inspected before quoting deployment totals or lead time.
+Production evidence run 39185962984 succeeded; its downloaded report is retained
+in [the source JSON](evidence/week1-production-2026-10-19.json).
+Reporting period: September 21 through October 19, 2026, approximately 01:34 UTC.
+66 workflows: 58 successful, 8 failed, zero cancelled/pending; latest-outcome
+success rate 87.88%. PR durations: 47 samples, 103.49 seconds average; main:
+18 samples, 51 seconds average. Coverage varies; no optimization gain is claimed.
+The bounded deployment snapshot reports one currently live and one failed deploy;
+these are not lifetime totals. One matched merge-to-Render-live sample is 172.56
+seconds. Recovery time is unavailable. The observer verified production SHA
+ d6e5998, health, and readiness at 01:35:35 UTC. Direct public read-only probes
+subsequently returned 200 for version, health, readiness, and synthetic history.
+
