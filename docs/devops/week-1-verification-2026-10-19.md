@@ -77,7 +77,8 @@ These values must remain separate from the historical job-only averages.
 - Coordinate changed-record and persistence verification in the agreed demo
   environment; do not modify production or real user records for this drill.
 - Collect actual teammate approval and required hosted checks before merge.
-  This draft intentionally avoids deploying the failure drill to shared staging.
+  The failure drill was completed in draft, avoiding deployment to shared staging.
+  The repaired PR is now ready for review and its hosted checks must pass.
 - Production metrics have been downloaded and retained before artifact expiry;
   complete historical recovery timing remains unavailable.
 - Record real consultation feedback, standups, team retrospective, and instructor
@@ -87,7 +88,7 @@ These values must remain separate from the historical job-only averages.
 
 Initial restricted endpoint probes failed DNS resolution. The authorized network
 retry succeeded for all four public routes; no public outage is inferred. Git operations could not access the repository root in
-this sandbox, so the draft was created through the GitHub connector without
+this sandbox, so the PR was created through the GitHub connector without
 changing the user's local checkout.
 
 ## Regression verification
