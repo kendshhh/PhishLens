@@ -11,7 +11,10 @@ The project is in Sprint 1: foundation and walking skeleton.
 Backend CI and Render automatic deployment are implemented. PostgreSQL migration,
 repeatable seed, and seed integrity checks run in isolated CI. Public /health and
 /ready respond successfully; readiness performs a real database query.
-The frontend Chrome extension shell is implemented, packaged, and connected to the public backend API. Full database CRUD and the AI feature remain unfinished.
+The Chrome extension is implemented and packaged. Analysis and history share the
+backend origin in `extension/js/config.js`; staging packaging replaces that origin
+for both features. AI adapters and history reads are implemented. Saving new
+assessments, full CRUD, and hosted AI/Chrome acceptance remain outstanding.
 
 ## Planned Features
 
@@ -93,7 +96,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commands and team ownership.
 ### Automation Status
 
 Backend CI/CD is configured and verified. Extension checks and full application
-integration remain pending. See [PIPELINE.md](PIPELINE.md) for implemented checks,
+acceptance remain pending. Extension tests, validation, packaging, and isolated and
+hosted staging jobs are configured. See [PIPELINE.md](PIPELINE.md) for implemented checks,
 [metrics](docs/devops/metrics.md) for the measured snapshot, and the
 [runbook](docs/devops/runbook.md) for deployment and recovery.
 
@@ -181,6 +185,11 @@ With `AI_MODE=gemini` and valid credentials configured, verify the provider conn
 .\.venv\Scripts\python.exe scripts\test_gemini_connection.py
 ```
 
+For local development, set `API_BASE_URL` in `extension/js/config.js` to
+`http://127.0.0.1:8000` and add `http://127.0.0.1:8000/*` to the manifest's
+`host_permissions`. Reload the extension after changing configuration. The default
+source package targets production; the separate staging package targets staging.
+
 Then load the `extension` folder as an unpacked Chrome extension, highlight email text,
 and choose **Analyze selection with VeriQo**. The popup displays the model result or
 reports a configuration/provider error.
@@ -195,7 +204,9 @@ reports a configuration/provider error.
 - Keep private datasets and downloaded model files out of Git.
 
 The Chrome extension does not automatically read `.env` files.
-Its public backend URL configuration will be documented separately.
+Its public backend origin is configured in `extension/js/config.js` for both
+analysis and history. See [staging instructions](docs/devops/staging.md) for the
+separate acceptance package.
 
 ## Project Requirements
 

@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+import { API_BASE_URL } from "./js/config.js";
 
 const MENU_ID = "phishlens-analyze-selection";
 // Leave time to save an error before Chrome's 30-second fetch deadline.
@@ -97,7 +97,7 @@ async function analyzeSelectedText(selectedText) {
       requestAnalysis(selectedText, controller.signal),
       new Promise((_, reject) => {
         timeout = setTimeout(() => {
-          reject(new Error("Analysis timed out. Please try again; the local model may still be starting."));
+          reject(new Error("Analysis timed out. Please try again; the backend may still be starting."));
           controller.abort();
         }, ANALYSIS_TIMEOUT_MS);
       })
@@ -127,7 +127,7 @@ async function analyzeSelectedText(selectedText) {
 
 async function requestAnalysis(selectedText, signal) {
   const response = await fetch(
-    `${API_URL}/analyses`,
+    `${API_BASE_URL}/analyses`,
     {
       method: "POST",
       signal,
