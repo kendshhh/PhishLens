@@ -1,5 +1,12 @@
 # Deployment and Recovery Runbook
 
+The [Secretary pilot operator guide](secretary.md) adds exact-SHA preview and
+production observation. Its observer produces `metrics.json` and, on failure, an
+incident draft under the Actions artifact `Veriqo-Production-Evidence`. Inspect
+the exact failed deployment in Render before deciding recovery. The pilot never
+deploys production, changes secrets, applies production migrations, or executes
+rollback. The existing human recovery procedure below remains authoritative.
+
 ## Current Status
 
 The FastAPI backend scaffold is publicly deployed on Render.
@@ -50,6 +57,10 @@ The health endpoint verifies the API process only.
 It does not verify database access, AI inference or extension integration.
 
 ## Subsequent Deployments
+
+Before merging, follow [pre-merge staging](staging.md): all four required checks,
+the exact PR commit live on staging, Chrome verification with the staging package,
+and teammate approval. Missing staging settings must be fixed before merge.
 
 1. Open a focused PR.
 2. Pass required checks and obtain teammate approval.

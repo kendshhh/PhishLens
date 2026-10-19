@@ -24,6 +24,35 @@ Demonstrate one actual AI inference call through backend code.
 
 ## Progress
 
+### October 19 Week 1 DevOps evidence refresh
+
+Main d6e5998 includes the popup response-shape fix and shared API configuration.
+Main CI 39185832544 passed backend, extension, and isolated staging integration.
+Saved protection settings require all four registered checks and one approval,
+with stale approvals dismissed and administrator bypass disabled.
+PR #34 records an intentional frontend ESLint failure and repair, adds direct
+popup asset-reference validation and regression cases, and records current timings.
+Installed Chrome rendering, changed-record/persistence checks, actual teammate
+review, and team/instructor feedback remain acceptance items.
+See [verification evidence](devops/week-1-verification-2026-10-19.md).
+This refresh supersedes older source-presence/local-only statements below; those
+snapshots remain historical and do not represent current main.
+
+### October 19 integration follow-up
+
+Extension analysis and history now share `extension/js/config.js`. The staging
+package replaces that origin for both features and grants only staging host
+permission. Local verification passed 18 extension tests, configured ESLint,
+manifest validation, background syntax, and staging archive/configuration checks.
+These changes are local and have not been deployed.
+
+Render reported staging deployment `dep-dbaehj5g1s2s73bqcs80` live at commit
+`fc0741a100c15b898ca18d2a6ede169c367fe9da`. A synthetic hosted analysis returned
+HTTP 200 in 3.44 seconds with `mode: mock`; this is not real AI inference evidence.
+Initial health/readiness requests timed out. Installed-Chrome acceptance remains
+pending: browser automation cannot claim the Chrome extensions management tab.
+See [staging notes](devops/staging.md) for the current acceptance limits.
+
 Recorded October 14, 2026. This is a verified progress snapshot, not a
 reconstructed team standup or a claim about unpushed teammate work.
 

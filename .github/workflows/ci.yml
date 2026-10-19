@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
   push:
     branches: [main]
 
@@ -115,6 +116,8 @@ jobs:
 
       - name: Lint backend
         run: python -m ruff check backend
+      - name: Lint trusted secretary code
+        run: python -m ruff check scripts/secretary
 
       - name: Apply database migrations
         run: python -m alembic -c backend/alembic.ini upgrade head
@@ -133,3 +136,136 @@ jobs:
 
       - name: Check Python compilation
         run: python -m compileall -q backend/app
+
+  staging:
+    name: Staging integration
+    needs: [extension, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: phishlens
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: phishlens_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U phishlens -d phishlens_dev"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Install runtime dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Start staging and test extension API integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/start_staging.py > /tmp/phishlens-staging.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          if ! node scripts/staging_smoke.mjs; then
+            cat /tmp/phishlens-staging.log
+            exit 1
+          fi
+      - name: Test staging deployment guards
+        run: python -m unittest discover -s scripts/tests -v
+
+  # Bootstrap bridge: preserve the current required check until the new controller
+  # is proven on main. It runs ONLY trusted default-branch scripts. Retire this
+  # after requiring Secretary staging; never bypass protection to install a bot.
+  hosted-staging:
+    name: Hosted staging
+    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    concurrency:
+      group: phishlens-hosted-staging
+      cancel-in-progress: false
+    env:
+      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+    steps:
+      - name: Read trusted legacy controller only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Deploy exact PR head using the trusted legacy script
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+        env:
+          RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/deploy_staging.py
+      - name: Verify legacy hosted API integration
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+        run: node scripts/staging_smoke.mjs
+      - name: Verify deployed identity and package exact PR assets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          from pathlib import Path
+          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.preview import package, smoke
+
+          config = json.loads(Path('.github/secretary.json').read_text())
+          if os.environ['STAGING_BASE_URL'].rstrip('/') != config['staging_origin']:
+              raise RuntimeError('Hosted smoke and extension must use the configured staging origin')
+          sha = os.environ['STAGING_COMMIT']
+          number = int(os.environ['STAGING_PR'])
+          evidence = smoke(config['staging_origin'], sha)
+          api = GitHub()
+          output = Path('output/hosted-staging')
+          package(api, sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          current = api.request(f'pulls/{number}')
+          if current['head']['sha'] != sha or current['state'] != 'open':
+              raise RuntimeError('PR changed during deployment; rerun CI for the current head')
+          evidence.update({
+              'pr': number, 'sha': sha, 'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
+              'chrome_manual_test': 'not performed',
+          })
+          (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'Hosted staging verified for PR #{number}, exact head `{sha}`.\n\n')
+              summary.write('Health, readiness, version, synthetic history and staging package passed. ')
+              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
+          PY
+      - name: Preserve hosted staging evidence and extension
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: PhishLens-Staging-Extension
+          path: output/hosted-staging/
+          if-no-files-found: error
+          retention-days: 7

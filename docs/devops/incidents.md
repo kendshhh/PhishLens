@@ -1,5 +1,15 @@
 # Deployment incidents and recovery drills
 
+## Secretary incident draft policy
+
+No new live incident or recovery drill is claimed by the pilot. A production
+observer failure emits an incident draft with the confirmed observation, unknown
+impact/root cause/recovery time, and bounded log-signature counts if accessible.
+Raw logs are not retained because they may contain credentials or user content.
+Copy a reviewed draft here after recording actual timestamps, affected SHA,
+service/deployment links, mitigation, verified restoration, and follow-up owner.
+Do not treat a guessed cause or successful rollback trigger as verified recovery.
+
 ## 2026-10-14: restoration timeout during rollback drill
 
 This was a planned rollback drill. The subsequent restoration failure was real;
