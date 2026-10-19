@@ -5,8 +5,8 @@ latest-workflow-attempt calculation and produces downloadable evidence artifacts
 It does not overwrite this historical log or push metrics commits. Its durations
 include workflow queue/rerun delay; the older job-only averages below use a
 different method. Keep reporting periods/sample counts/sources with each entry.
-New automation is not yet deployed; no new production or optimization result is
-claimed from its implementation.
+The automation is now merged on main. See the October 19 Week 1 verification
+record for observed runs; no optimization gain is inferred from implementation.
 
 ## Secretary read-only baseline — October 19, 2026
 
@@ -148,3 +148,13 @@ Their difference alone does not prove an optimization.
 - Audit failed production deployments.
 - Collect restoration duration and attach rollback deployment links.
 - Measure future optimizations using comparable before-and-after runs.
+
+## Week 1 verification follow-up - October 19, 2026
+
+[Verified gate, frontend failure/repair, and timing evidence](week-1-verification-2026-10-19.md).
+Main CI 39185832544: one successful sample at d6e5998; workflow creation to last
+job completion was 98 seconds. Backend execution 49 seconds, extension 7 seconds,
+staging integration 44 seconds. Hosted staging skipped on main by design.
+This is one observation, not a comparable before/after optimization experiment.
+Production evidence run 39185962984 succeeded and published its metrics artifact;
+its contents remain to be inspected before quoting deployment totals or lead time.
