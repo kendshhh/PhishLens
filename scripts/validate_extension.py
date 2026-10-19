@@ -20,6 +20,9 @@ manifest = json.loads(require_file("manifest.json").read_text(encoding="utf-8"))
 if manifest.get("manifest_version") != 3:
     raise ValueError("Expected manifest_version 3")
 
+if manifest.get("background") != {"service_worker": "background.js", "type": "module"}:
+    raise ValueError("Expected a module background worker for shared API configuration")
+
 popup = manifest.get("action", {}).get("default_popup")
 if popup != "popup.html":
     raise ValueError("Expected popup.html as the default popup")

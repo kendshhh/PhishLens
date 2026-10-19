@@ -90,6 +90,35 @@ walking skeleton, not unfinished AI or CRUD features.
 
 ## Verification status
 
+### October 19 follow-up
+
+The source worker now imports the same API origin as history. Its manifest uses
+a module service worker. The staging packager therefore redirects both requests
+using `js/config.js`, with staging-only host permission. The source package uses
+production; local development requires changing the shared origin and permission
+as described in README.
+
+Local checks: 18 extension tests passed, configured ESLint passed, worker syntax
+and manifest validation passed. Production packaging passed; the staging archive
+passed integrity, shared configuration, module worker, and host-permission checks.
+Packages are generated under `output/` and excluded from version control.
+
+Render's deployment API reported deployment `dep-dbaehj5g1s2s73bqcs80` live for
+commit `fc0741a100c15b898ca18d2a6ede169c367fe9da` (finished
+2026-10-18 15:43:25 UTC). This identifies the existing hosted code, not the local
+URL fix. A synthetic `POST /analyses` returned HTTP 200 in 3.44 seconds with
+`mode: mock` and instructions to configure Gemini. Real AI acceptance remains
+pending. Initial `/health` and `/ready` probes timed out; no readiness success is
+claimed from this verification. Warm retries also timed out for both endpoints;
+`GET /api/analyses` returned HTTP 200 with one item.
+
+Installed-Chrome verification remains pending. Chrome is connected, but its
+`chrome://extensions/` tab cannot be claimed by browser automation, and native
+app control is disabled in this session. No installed-package result is claimed.
+Teammate approval, current remote CI, deployment of the URL fix, and production
+acceptance are still outstanding. The earlier provisioning snapshot below is
+historical; its pending setup statements do not describe the latest live deploy.
+
 The service and workflow are provisioned in [PR #31](https://github.com/kendshhh/PhishLens/pull/31).
 [Initial CI run](https://github.com/kendshhh/PhishLens/actions/runs/38909864740)
 passed Backend checks, Extension checks, and Staging integration. Hosted staging

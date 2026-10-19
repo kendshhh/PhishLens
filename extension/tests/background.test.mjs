@@ -4,6 +4,9 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const source = await readFile(new URL("../background.js", import.meta.url), "utf8");
+const { API_BASE_URL } = await import("../js/config.js");
+assert.ok(source.startsWith('import { API_BASE_URL } from "./js/config.js";'));
+const workerSource = source.replace('import { API_BASE_URL } from "./js/config.js";', "");
 
 function deferred() {
   let resolve;
@@ -19,6 +22,7 @@ function worker({ firstWrite } = {}) {
   let writes = 0;
   const timers = new Map();
   const context = vm.createContext({
+    API_BASE_URL,
     AbortController,
     setTimeout(callback, delay) {
       const id = Symbol();
@@ -28,6 +32,7 @@ function worker({ firstWrite } = {}) {
     clearTimeout(id) { timers.delete(id); },
     console: { error() {} },
     fetch: async (_url, options) => {
+      assert.equal(_url, `${API_BASE_URL}/analyses`);
       const request = deferred();
       request.signal = options.signal;
       requests.push(request);
@@ -49,7 +54,7 @@ function worker({ firstWrite } = {}) {
       action: { async setBadgeText({ text }) { state.badge = text; } }
     }
   });
-  vm.runInContext(source, context);
+  vm.runInContext(workerSource, context);
   return {
     state, requests, timers,
     expire: () => {
