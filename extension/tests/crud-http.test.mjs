@@ -13,6 +13,8 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
             res.statusCode = status;
             res.end(data === undefined ? undefined : JSON.stringify(data));
         }
+        if (req.url === '/version') return send(200, { environment: 'disposable', commit: 'a'.repeat(40) });
+        if (req.url === '/ready') return send(200, { status: 'ready', database: 'connected' });
         let text = '';
         for await (const chunk of req) text += chunk;
         const input = text ? JSON.parse(text) : {};
@@ -42,8 +44,9 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     try {
-        const result = await verifyCrud('http://127.0.0.1:' + server.address().port);
+        const result = await verifyCrud('http://127.0.0.1:' + server.address().port, { environment: 'disposable', expectedSha: 'a'.repeat(40), allowWrites: true });
         assert.equal(result.result, 'passed');
+        assert.deepEqual(methods.slice(0, 3), ['GET', 'GET', 'POST']);
         assert.equal(records.size, 0);
         assert.ok(methods.includes('POST') && methods.includes('PATCH') && methods.includes('DELETE'));
     } finally {

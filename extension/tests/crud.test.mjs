@@ -152,3 +152,18 @@ test('rejects invalid IDs before making requests', async () => {
 test('rejects unexpected success statuses', async () => {
     await assert.rejects(setup(200, record).client.createAnalysis({ subject: 'Test', body: 'Test' }), /Unexpected response status/);
 });
+
+for (const method of ['getAnalysis', 'createAnalysis', 'updateAnalysis']) {
+    test(method + ' accepts nullable feedback without converting it', async () => {
+        const data = { ...record, feedback: null };
+        const { client } = setup(method === 'createAnalysis' ? 201 : 200, data);
+        const result = method === 'getAnalysis' ? await client.getAnalysis(id)
+            : method === 'createAnalysis' ? await client.createAnalysis({ subject: record.subject, body: record.body })
+            : await client.updateAnalysis(id, { notes: 'Reviewed' });
+        assert.equal(result.feedback, null);
+    });
+}
+
+test('rejects unknown feedback values', async () => {
+    await assert.rejects(setup(200, { ...record, feedback: 'bad' }).client.getAnalysis(id), /Invalid analysis detail/);
+});

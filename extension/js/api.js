@@ -96,11 +96,11 @@ function isValidAnalysis(analysis) {
     return true;
 }
 
-
-
 export async function getAnalyses(baseUrl) {
+    const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+
     const response = await fetch(
-        `${baseUrl}/api/analyses`,
+        `${cleanBaseUrl}/api/analyses`,
         { signal: AbortSignal.timeout(10000) }
     );
 
@@ -114,9 +114,14 @@ export async function getAnalyses(baseUrl) {
         throw new Error("Invalid history data");
     }
 
+    for (const analysis of data.items) {
+        if (!isValidAnalysis(analysis)) {
+            throw new Error("Invalid history data");
+        }
+    }
+
     return data.items;
 }
-
 
 export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch) {
     const url = baseUrl.replace(/\/+$/, '') + '/api/analyses';
@@ -159,7 +164,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch) {
         if (detail && (
             typeof record.body !== 'string' ||
             !(record.notes === null || typeof record.notes === 'string') ||
-            !['none', 'false_positive', 'false_negative'].includes(record.feedback) ||
+            ![null, 'none', 'false_positive', 'false_negative'].includes(record.feedback) ||
             !['mock', 'real', 'unknown', null].includes(record.analysis_mode)
         )) {
             throw new Error('Invalid analysis detail');

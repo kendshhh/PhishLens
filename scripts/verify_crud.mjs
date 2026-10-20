@@ -2,8 +2,49 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { createAnalysisClient } from '../extension/js/api.js';
 
-export async function verifyCrud(baseUrl) {
-    const client = createAnalysisClient(baseUrl);
+async function verifyTarget(baseUrl, options) {
+    const { environment, expectedSha, allowWrites } = options;
+    if (allowWrites !== true) throw new Error('Explicit write permission is required');
+    if (!/^[0-9a-f]{40}$/i.test(expectedSha || '')) {
+        throw new Error('A full expected backend commit SHA is required');
+    }
+    const url = new URL(baseUrl);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
+        url.pathname !== '/' || url.search || url.hash) {
+        throw new Error('Use a plain HTTP(S) origin without credentials, paths or queries');
+    }
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    const staging = url.origin === 'https://phishlens-staging.onrender.com';
+    if (!(local && ['demo', 'disposable'].includes(environment)) &&
+        !(staging && environment === 'staging')) {
+        throw new Error('Target must be loopback demo/disposable or the approved staging origin');
+    }
+    const safeFetch = (address, init = {}) => {
+        if (new URL(address).origin !== url.origin) throw new Error('Cross-origin request refused');
+        return fetch(address, { ...init, redirect: 'error' });
+    };
+    const response = await safeFetch(url.origin + '/version', {
+        signal: AbortSignal.timeout(10000)
+    });
+    if (response.status !== 200) throw new Error('Target identity check failed');
+    const identity = await response.json();
+    if (identity.environment !== environment || identity.commit !== expectedSha) {
+        throw new Error('Target environment or backend SHA does not match');
+    }
+    const ready = await safeFetch(url.origin + '/ready', {
+        signal: AbortSignal.timeout(10000)
+    });
+    if (ready.status !== 200) throw new Error('Test database is not ready');
+    const readiness = await ready.json();
+    if (readiness.status !== 'ready' || readiness.database !== 'connected') {
+        throw new Error('Test database is not ready');
+    }
+    return { baseUrl: url.origin, safeFetch };
+}
+
+export async function verifyCrud(baseUrl, options = {}) {
+    const target = await verifyTarget(baseUrl, options);
+    const client = createAnalysisClient(target.baseUrl, target.safeFetch);
     const subject = 'Synthetic CRUD check ' + crypto.randomUUID();
     let created;
     let deleted = false;
@@ -36,21 +77,19 @@ export async function verifyCrud(baseUrl) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const args = process.argv.slice(2);
-    const baseUrl = args[args.indexOf('--base-url') + 1];
-    const environment = args[args.indexOf('--environment') + 1];
-    if (!args.includes('--base-url') || !baseUrl ||
-        !args.includes('--allow-writes') ||
-        !['demo', 'disposable'].includes(environment)) {
-        console.error('Use --base-url URL --environment demo|disposable --allow-writes only for a confirmed test database.');
+    function value(flag) {
+        const index = args.indexOf(flag);
+        return index === -1 ? undefined : args[index + 1];
+    }
+    try {
+        const result = await verifyCrud(value('--base-url'), {
+            environment: value('--environment'),
+            expectedSha: value('--expected-sha'),
+            allowWrites: args.includes('--allow-writes')
+        });
+        console.log(JSON.stringify(result, null, 2));
+    } catch (error) {
+        console.error(error.message);
         process.exitCode = 1;
-    } else {
-        try {
-            const url = new URL(baseUrl);
-            if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Use an HTTP or HTTPS URL');
-            console.log(JSON.stringify(await verifyCrud(baseUrl), null, 2));
-        } catch (error) {
-            console.error(error.message);
-            process.exitCode = 1;
-        }
     }
 }
