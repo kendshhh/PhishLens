@@ -89,11 +89,13 @@ An old 0.1.0 installation is not fresh acceptance of PR #55.
 | Staging | https://phishlens-staging.onrender.com | Protected staging environment, RENDER_STAGING_API_KEY, STAGING_BASE_URL, RENDER_STAGING_SERVICE_ID; private development DATABASE_URL / STAGING_DATABASE_HOST |
 | Production | https://phishlens-api-ocvt.onrender.com | Runtime DATABASE_URL; observed main-to-production automation; secrets remain backend-only |
 
-No Render workspace is selected in this connector session. Workspace confirmation
-is pending before private service inspection. Distinct public URLs and identical
-synthetic seeds do not establish distinct DB branches or roles. The current
-separation guard tests are implementation evidence, not private configuration
-evidence. No .env values, real email bodies or model weights are added here.
+Read-only inspection of the PhishLens Render workspace verified different staging
+and production database endpoints, with `sslmode=require` on both. The role names
+are identical and owner-style; distinct endpoints do not prove least privilege or
+separate Neon role policies. No role/secret configuration was changed. A browser
+snapshot exposed a connection value during inspection; it is excluded from these
+files and GitHub updates. Subsequent comparison returned sanitized booleans only.
+See [fresh hosted evidence](evidence/2026-10-21-hosted-verification.json).
 
 Bounded [remote-history audit](evidence/2026-10-21-history-audit.json): all 298
 unique text blobs reachable from fetched origin refs were scanned; no binary or
@@ -114,13 +116,15 @@ was published. #51's final reviewed head e538a1c has Trixia approval
 [5587131601](https://github.com/kendshhh/PhishLens/pull/51#pullrequestreview-5587131601).
 That proves this PR's review, not universal review compliance.
 
-Fresh standalone production/staging version probes hit sandbox socket restrictions;
-the combined permitted retry returned a timeout without retaining a separate
-successful result for either origin. Cause is unestablished; no outage is inferred and
-no fresh independent reachability pass is claimed. The existing production
-observer evidence is dated and separate. No CRUD operation was performed against
-either hosted database. Run the guarded real HTTP acceptance after backend merge
-and private target verification, then record safe persistence/restart evidence.
+Earlier shell probes timed out. Fresh browser reads subsequently returned the
+production version `149808e3f76d9182688b5438153f57bd3cc03774`, healthy service,
+ready/connected database and saved synthetic history. These are response-body
+observations, not captured HTTP status assertions or full CRUD acceptance.
+Render confirms automatic `new_commit` deployment `dep-dbbois67bikc73b06fpg`
+for the same SHA, live at 2026-10-20T15:33:17.294784Z. Relative to the merge commit
+timestamp 15:30:13Z, this sample's merge-to-live time is 184.294784 seconds.
+No CRUD operation was performed against either hosted database. Run guarded real
+HTTP acceptance after backend merge and confirm safe persistence/restart evidence.
 
 No new rollback is necessary for a CI/package-only PR. Reuse the October 14
 drill; see runbook/incidents. A rollback does not reverse schema or external writes.

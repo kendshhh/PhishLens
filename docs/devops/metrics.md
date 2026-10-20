@@ -166,6 +166,17 @@ Their difference alone does not prove an optimization.
 - Collect restoration duration and attach rollback deployment links.
 - Measure future optimizations using comparable before-and-after runs.
 
+## October 21 hosted verification follow-up
+
+Read-only Render inspection now supplies a direct production deployment identity:
+[dep-dbbois67bikc73b06fpg](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbbois67bikc73b06fpg).
+Main `149808e` deployed automatically (`new_commit`, service configured for
+`checksPass`) and finished at 2026-10-20T15:33:17.294784Z. The merge commit timestamp
+is 15:30:13Z: **184.294784 seconds** merge-to-live for this single observation.
+Fresh browser response bodies matched version, health, readiness and synthetic
+history. No new deployment or write was initiated. Full CRUD and recovery duration
+remain unverified. [Sanitized source evidence](evidence/2026-10-21-hosted-verification.json).
+
 ## Week 1 verification follow-up - October 19, 2026
 
 [Verified gate, frontend failure/repair, and timing evidence](week-1-verification-2026-10-19.md).
