@@ -1,5 +1,25 @@
 # PhishLens Pipeline
 
+## Sprint 2 backend evidence gate (#38)
+
+Before migrations, `python scripts/ci_backend.py --check-environment` requires the
+explicit local disposable PostgreSQL service URL, `RUN_DATABASE_TESTS=1` and
+`AI_MODE=mock`. Missing configuration cannot fall back to a hosted `.env` target.
+Existing migration/repeated seed, lint/build, extension and AI mocked tests remain.
+
+`python scripts/ci_backend.py` runs the complete backend suite and retains fresh
+JUnit XML plus a SHA-labeled JSON summary as `Backend-Test-Evidence`, including
+when pytest fails. Missing, skipped or failed expected seed/relationship and
+HTTP/PostgreSQL tests fail the job. An unrelated passing client test cannot
+substitute for these tests. Missing reports fail the gate. Earlier job failures
+can produce no report; artifact upload warns in that case and cannot make CI pass.
+
+This guard currently requires the existing database-backed history/relationship
+checks. It does **not** establish full CRUD coverage. When #42/#43 merge, add their
+actual PostgreSQL API node IDs to `REQUIRED_DATABASE_TESTS` in the same integration
+change and replay the failure/repair check. Keep Hosted staging and teammate
+approval required; this change does not alter protection or approve deployments.
+
 ## Status
 
 ### DevOps Secretary pilot (review required)
