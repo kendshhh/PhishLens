@@ -111,11 +111,8 @@ jobs:
             backend/requirements.txt
             backend/requirements-dev.txt
 
-      - name: Install runtime dependencies
-        run: python -m pip install -r backend/requirements.txt
-
-      - name: Install development dependencies
-        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Install runtime and development dependencies
+        run: python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
       - name: Check dependency compatibility
         run: python -m pip check
