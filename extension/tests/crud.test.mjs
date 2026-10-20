@@ -122,7 +122,7 @@ for (const data of [null, {}, { items: {} }, { items: [null] }]) {
 
 for (const patch of [
     { id: 'not-a-uuid' }, { created_at: '0' }, { confidence: '0.93' },
-    { confidence: 2 }, { prediction: 'spam' }, { risk_level: 'unknown' },
+    { confidence: 2 }, { prediction: 'unsupported' }, { risk_level: 'unknown' },
     { threat_indicators: ['link'] }
 ]) {
     test('rejects invalid record ' + JSON.stringify(patch), async () => {
@@ -167,3 +167,101 @@ for (const method of ['getAnalysis', 'createAnalysis', 'updateAnalysis']) {
 test('rejects unknown feedback values', async () => {
     await assert.rejects(setup(200, { ...record, feedback: 'bad' }).client.getAnalysis(id), /Invalid analysis detail/);
 });
+
+for (const method of ['listAnalyses', 'getAnalysis', 'createAnalysis']) {
+    test(method + ' preserves a saved spam result', async () => {
+        const spam = { ...record, prediction: 'spam', risk_level: 'medium' };
+        const { client } = setup(
+            method === 'createAnalysis' ? 201 : 200,
+            method === 'listAnalyses' ? { items: [spam] } : spam
+        );
+        const result = method === 'listAnalyses' ? (await client.listAnalyses())[0]
+            : method === 'getAnalysis' ? await client.getAnalysis(id)
+            : await client.createAnalysis({ subject: record.subject, body: record.body });
+        assert.equal(result.prediction, 'spam');
+        assert.equal(result.risk_level, 'medium');
+    });
+}
+
+test('sends the aligned subject and body limits without truncation', async () => {
+    const input = { subject: 's'.repeat(320), body: 'b'.repeat(30000) };
+    const { client, calls } = setup(201, { ...record, ...input });
+    const result = await client.createAnalysis(input);
+    assert.deepEqual(JSON.parse(calls[0].body), input);
+    assert.equal(result.subject.length, 320);
+    assert.equal(result.body.length, 30000);
+});
+
+for (const subject of [undefined, '']) {
+    test('create allows an omitted or empty subject: ' + JSON.stringify(subject), async () => {
+        const input = { body: 'Synthetic body' };
+        if (subject !== undefined) input.subject = subject;
+        const { client, calls } = setup(201, { ...record, subject: '', body: input.body });
+        const result = await client.createAnalysis(input);
+        assert.deepEqual(JSON.parse(calls[0].body), input);
+        assert.equal(result.subject, '');
+    });
+}
+
+test('reads evidence quotes and preserves provenance without inventing values', async () => {
+    const data = {
+        ...record,
+        confidence: null,
+        analysis_mode: 'real',
+        threat_indicators: [{ type: 'evidence', quote: 'Account notice', detail: 'Quoted evidence' }],
+        analysis_provenance: {
+            model: 'synthetic-model', revision: 'synthetic-revision',
+            prompt_version: 'test-v1', explanation_source: 'provider',
+            input_truncated: false, windows_processed: 1
+        }
+    };
+    assert.deepEqual(await setup(200, data).client.getAnalysis(id), data);
+});
+
+test('continues reading old indicators and nullable provenance', async () => {
+    const data = { ...record, analysis_provenance: null };
+    assert.deepEqual(await setup(200, data).client.getAnalysis(id), data);
+});
+
+test('rejects malformed evidence quote', async () => {
+    const data = { ...record, threat_indicators: [{ type: 'evidence', quote: 123, detail: 'Reason' }] };
+    await assert.rejects(setup(200, data).client.getAnalysis(id), /Invalid analysis data/);
+});
+
+for (const provenance of ['model-name', [], 123]) {
+    test('rejects malformed provenance ' + JSON.stringify(provenance), async () => {
+        await assert.rejects(
+            setup(200, { ...record, analysis_provenance: provenance }).client.getAnalysis(id),
+            /Invalid analysis detail/
+        );
+    });
+}
+
+test('create uses its configurable deadline and leaves reads at ten seconds', async () => {
+    const originalTimeout = AbortSignal.timeout;
+    const deadlines = [];
+    const signal = new AbortController().signal;
+    AbortSignal.timeout = milliseconds => {
+        deadlines.push(milliseconds);
+        return signal;
+    };
+    try {
+        const fetchImpl = async () => ({ ok: true, status: 201, json: async () => record });
+        await createAnalysisClient('https://example.test', fetchImpl).createAnalysis({ body: 'Synthetic body' });
+        await createAnalysisClient('https://example.test', fetchImpl, { createTimeoutMs: 35000 })
+            .createAnalysis({ body: 'Synthetic body' });
+        await setup(200, record).client.getAnalysis(id);
+        assert.deepEqual(deadlines, [25000, 35000, 10000]);
+    } finally {
+        AbortSignal.timeout = originalTimeout;
+    }
+});
+
+for (const createTimeoutMs of [0, -1, NaN, Infinity, '25000', 2147483648]) {
+    test('rejects invalid create timeout ' + String(createTimeoutMs), () => {
+        assert.throws(
+            () => createAnalysisClient('https://example.test', async () => {}, { createTimeoutMs }),
+            /Create timeout/
+        );
+    });
+}
