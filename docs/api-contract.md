@@ -43,10 +43,10 @@ GET /api/analyses
 
 - `id`: UUID string identifying the saved analysis.
 - `subject`: Subject of the analyzed email.
-- `prediction`: "phishing", "legitimate", or null when unavailable.
+- `prediction`: "phishing", "legitimate", "spam", or null when unavailable. Week 2 saved records preserve the AI label rather than relabeling spam as phishing.
 - `confidence`: Number from 0 to 1, or null.
 - `risk_level`: "low", "medium", "high", "critical", or null.
-- `threat_indicators`: Array of indicator objects with type and detail.
+- `threat_indicators`: Array of indicator objects with type and detail. Week 2 evidence indicators may also include a string quote; existing indicators without quote remain supported.
 - `explanation`: Text explaining the result, or null.
 - `created_at`: UTC ISO 8601 timestamp.
 

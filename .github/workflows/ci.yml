@@ -89,6 +89,8 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev
       RUN_DATABASE_TESTS: "1"
+      AI_MODE: mock
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Check out repository
@@ -119,6 +121,9 @@ jobs:
       - name: Lint trusted secretary code
         run: python -m ruff check scripts/secretary
 
+      - name: Verify disposable database configuration before migrations
+        run: python scripts/ci_backend.py --check-environment
+
       - name: Apply database migrations
         run: python -m alembic -c backend/alembic.ini upgrade head
 
@@ -132,7 +137,16 @@ jobs:
         run: python scripts/seed_demo.py
 
       - name: Test API
-        run: python -m pytest backend/tests -q -p no:cacheprovider
+        run: python scripts/ci_backend.py
+
+      - name: Preserve backend API and PostgreSQL test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Backend-Test-Evidence
+          path: output/backend-ci/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Check Python compilation
         run: python -m compileall -q backend/app
@@ -201,6 +215,8 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
+      # Retain waiting deployments while keeping the shared staging service serialized.
+      queue: max
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
     steps:
