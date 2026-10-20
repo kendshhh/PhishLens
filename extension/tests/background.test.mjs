@@ -176,3 +176,71 @@ test("timeout after Clear cannot restore cleared state", async () => {
   assert.equal(app.state.analysis, undefined);
   assert.equal(app.state.badge, "");
 });
+
+
+for (const [status, code, message] of [
+  [422, 'invalid_input', 'Invalid email input'],
+  [502, 'inference_failed', 'Analysis failed'],
+  [503, 'analysis_unavailable', 'Analysis temporarily unavailable']
+]) {
+  test('POST HTTP ' + status + ' displays the structured backend message', async () => {
+    const app = worker();
+    const pending = app.analyze('Synthetic email body');
+    await settle();
+    app.requests[0].resolve({
+      ok: false, status,
+      json: async () => ({ error: { code, message } })
+    });
+    await pending;
+    assert.equal(app.state.analysis.status, 'error');
+    assert.equal(app.state.analysis.error, message);
+    assert.equal(app.state.analysis.result, null);
+    assert.equal(app.state.badge, '!');
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.timers.size, 0);
+  });
+
+  test('POST HTTP ' + status + ' preserves older detail responses', async () => {
+    const app = worker();
+    const pending = app.analyze('Synthetic email body');
+    await settle();
+    app.requests[0].resolve({ ok: false, status, json: async () => ({ detail: 'Older backend message' }) });
+    await pending;
+    assert.equal(app.state.analysis.status, 'error');
+    assert.equal(app.state.analysis.error, 'Older backend message');
+    assert.equal(app.state.analysis.result, null);
+  });
+}
+
+for (const body of [null, {}, { error: null }, { error: { message: 123 } },
+  { error: { message: '   ' }, detail: [] }, { detail: [{ msg: 'Invalid input' }] }]) {
+  test('POST uses a safe HTTP fallback for ' + JSON.stringify(body), async () => {
+    const app = worker();
+    const pending = app.analyze('Synthetic email body');
+    await settle();
+    app.requests[0].resolve({ ok: false, status: 422, json: async () => body });
+    await pending;
+    assert.equal(app.state.analysis.error, 'Backend returned HTTP 422');
+    assert.equal(app.state.analysis.result, null);
+    assert.equal(app.state.badge, '!');
+  });
+}
+
+test('invalid structured message falls back to readable legacy detail', async () => {
+  const app = worker();
+  const pending = app.analyze('Synthetic email body');
+  await settle();
+  app.requests[0].resolve({ ok: false, status: 503, json: async () => ({ error: { message: {} }, detail: 'Legacy unavailable' }) });
+  await pending;
+  assert.equal(app.state.analysis.error, 'Legacy unavailable');
+});
+
+test('non-JSON POST failure remains a readable HTTP error', async () => {
+  const app = worker();
+  const pending = app.analyze('Synthetic email body');
+  await settle();
+  app.requests[0].resolve({ ok: false, status: 502, json: async () => { throw new SyntaxError('Private parser details'); } });
+  await pending;
+  assert.equal(app.state.analysis.error, 'Backend returned HTTP 502 with an invalid error response.');
+  assert.equal(app.state.analysis.result, null);
+});
