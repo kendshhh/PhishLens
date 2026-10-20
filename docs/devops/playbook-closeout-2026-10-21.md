@@ -33,9 +33,9 @@ separate from automation.
 | W1 K5/K7 hosting, protection, delivery | Existing production, four-check protection history and automatic observer reused; current main reports protected; #51 has Trixia approval on its final reviewed head | Current protection-settings API returns 403; private settings are not inferred from passing CI |
 | W1 K6 / W2 CI (#38) | #52 merged; required real PostgreSQL test IDs, preflight, reports and intentional failed/repaired remote runs exist | Register actual persistent CRUD test IDs once #42/#43 merge; existing history tests are not full CRUD |
 | W1 K8 / W2 inventory (#36/#41) | Sprint ownership, requirements map, carryover, interfaces and gaps documented | Real standups, retrospective, team rehearsal and instructor acceptance cannot be reconstructed |
-| W2 packaging/environments (#37) | PR #55 rejects extra/wildcard production host permissions; sidecar identity/hashes are tested against ZIP bytes; 52 script/123 extension tests passed locally | Review/latest CI, private DB branch/role separation and broad secret/history audit remain pending |
+| W2 packaging/environments (#37) | Strict production hosts, verified ZIP identity, 52 script/123 extension tests; bounded history scan triaged below; ignore checks confirmed | Review/latest CI, private DB branch/role separation and hosting secrets remain pending |
 | W2 deployment (#39) | Main CI 39449001340 and production observer 39449283551 succeeded for 149808e | New independent version probes timed out; real persisted CRUD and browser workflow depend on backend/UI owners |
-| W2 measurement/recovery (#40) | Equivalent CI timing experiment; existing rollback evidence and schema-aware runbook retained | Final measured results/review; complete historical recovery duration remains unknown |
+| W2 measurement/recovery (#40) | Comparable cache experiment and schema-aware recovery runbook retained | No established whole-pipeline improvement; historical recovery duration remains unknown |
 
 ## Interfaces and requirements (#36/#41)
 
@@ -95,6 +95,15 @@ synthetic seeds do not establish distinct DB branches or roles. The current
 separation guard tests are implementation evidence, not private configuration
 evidence. No .env values, real email bodies or model weights are added here.
 
+Bounded [remote-history audit](evidence/2026-10-21-history-audit.json): all 298
+unique text blobs reachable from fetched origin refs were scanned; no binary or
+oversized blobs were skipped. No private .env path or recognized model-weight
+extension was found. Three credential-pattern matches were triaged: two synthetic
+test URLs targeting invalid/example hosts, and one bracketed password placeholder
+in a historical .env.example. Matching values were never logged. This pattern
+scan does not guarantee absence of every credential/private email and does not
+audit host-side secrets or unfetched/deleted remote history.
+
 ## Actual delivery evidence and limitations (#39/#40)
 
 [Main CI](https://github.com/kendshhh/PhishLens/actions/runs/39449001340) and
@@ -117,6 +126,11 @@ No new rollback is necessary for a CI/package-only PR. Reuse the October 14
 drill; see runbook/incidents. A rollback does not reverse schema or external writes.
 The current source has only 0001_initial_schema; private live revision remains a
 separate check. Unknown recovery/failed-deployment counts are not zero.
+
+PR #55 is now ready for review. Source head a316653 passed Backend checks,
+Extension checks and Staging integration in run 39454875889; Hosted staging is
+pending. Required staging environment approval and exact-head acceptance remain
+human gates. Latest-head checks after documentation updates remain authoritative.
 
 ## Human evidence still required (#41)
 
