@@ -153,3 +153,16 @@ test("popup keeps loading visible while the response body is pending", async t =
   assert.equal(dom.get("history-list").children.length, 1);
   assert.ok(dom.get("loading").classList.contains("hidden"));
 });
+
+test("popup displays a saved spam result without relabeling it", async t => {
+  const dom = await openPopup(t, {
+    ok: true,
+    json: async () => ({
+      items: [{ ...savedAnalysis, prediction: "spam", risk_level: "medium" }]
+    })
+  });
+  assert.equal(dom.get("history-list").children.length, 1);
+  assert.equal(dom.get("history-list").children[0].textContent,
+    "Subject: Synthetic account notice | Prediction: spam | Risk: medium | Confidence: 93%");
+  assert.ok(dom.get("error").classList.contains("hidden"));
+});

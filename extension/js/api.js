@@ -39,7 +39,7 @@ function isValidAnalysis(analysis) {
         return false;
     }
 
-    const predictions = ["phishing", "legitimate"];
+    const predictions = ["phishing", "legitimate", "spam"];
 
     if (
         analysis.prediction !== null &&
@@ -76,7 +76,8 @@ function isValidAnalysis(analysis) {
         if (
             !indicator ||
             typeof indicator.type !== "string" ||
-            typeof indicator.detail !== "string"
+            typeof indicator.detail !== "string" ||
+            (indicator.quote !== undefined && typeof indicator.quote !== "string")
         ) {
             return false;
         }
@@ -121,4 +122,79 @@ export async function getAnalyses(baseUrl) {
     }
 
     return data.items;
+}
+
+export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000 } = {}) {
+    if (!Number.isSafeInteger(createTimeoutMs) || createTimeoutMs < 1 || createTimeoutMs > 2147483647) {
+        throw new Error('Create timeout must be a positive integer in milliseconds');
+    }
+    const url = baseUrl.replace(/\/+$/, '') + '/api/analyses';
+
+    async function request(path, method, expectedStatus, body, timeoutMs = 10000) {
+        const options = { method, signal: AbortSignal.timeout(timeoutMs) };
+        if (body !== undefined) {
+            options.headers = { 'Content-Type': 'application/json' };
+            options.body = JSON.stringify(body);
+        }
+        const response = await fetchImpl(path, options);
+        if (!response.ok) {
+            let message = 'Request failed (HTTP ' + response.status + ')';
+            try {
+                const errorBody = await response.json();
+                if (typeof errorBody?.detail === 'string') message = errorBody.detail;
+            } catch {
+                // Some servers return an empty or non-JSON error body.
+            }
+            const error = new Error(message);
+            error.status = response.status;
+            throw error;
+        }
+        if (response.status !== expectedStatus) {
+            const error = new Error('Unexpected response status: ' + response.status);
+            error.status = response.status;
+            throw error;
+        }
+        if (expectedStatus === 204) return;
+        return response.json();
+    }
+
+    function recordUrl(id) {
+        if (!isValidUuid(id)) throw new Error('A valid analysis UUID is required');
+        return url + '/' + encodeURIComponent(id);
+    }
+
+    function checkRecord(record, detail = false) {
+        if (!isValidAnalysis(record)) throw new Error('Invalid analysis data');
+        if (detail && (
+            typeof record.body !== 'string' ||
+            !(record.notes === null || typeof record.notes === 'string') ||
+            ![null, 'none', 'false_positive', 'false_negative'].includes(record.feedback) ||
+            !['mock', 'real', 'unknown', null].includes(record.analysis_mode) ||
+            (record.analysis_provenance !== undefined && record.analysis_provenance !== null &&
+                (typeof record.analysis_provenance !== 'object' || Array.isArray(record.analysis_provenance)))
+        )) {
+            throw new Error('Invalid analysis detail');
+        }
+        return record;
+    }
+
+    return {
+        async listAnalyses() {
+            const data = await request(url, 'GET', 200);
+            if (!data || !Array.isArray(data.items)) throw new Error('Invalid history data');
+            return data.items.map(record => checkRecord(record));
+        },
+        async getAnalysis(id) {
+            return checkRecord(await request(recordUrl(id), 'GET', 200), true);
+        },
+        async createAnalysis(input) {
+            return checkRecord(await request(url, 'POST', 201, input, createTimeoutMs), true);
+        },
+        async updateAnalysis(id, patch) {
+            return checkRecord(await request(recordUrl(id), 'PATCH', 200, patch), true);
+        },
+        async deleteAnalysis(id) {
+            await request(recordUrl(id), 'DELETE', 204);
+        }
+    };
 }
