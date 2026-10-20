@@ -12,7 +12,6 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_DATABASE_TESTS = {
-    ("backend.tests.test_history_postgres", "test_intentional_missing_database_gate_drill"),
     ("backend.tests.test_seed_integrity", "test_seed_records_and_relationship"),
     ("backend.tests.test_history_postgres", "test_history_postgres_read_change_empty_and_isolation"),
 }
@@ -82,7 +81,9 @@ def main():
             sys.executable, "-m", "pytest", "backend/tests", "-q", "-p", "no:cacheprovider",
             f"--junitxml={report}",
         ], cwd=ROOT, check=False)
-        summary = {"commit": os.getenv("GITHUB_SHA", "local"), "pytest_exit_code": result.returncode,
+        summary = {"commit": os.getenv("GITHUB_SHA", "local"),
+                   "source_commit": os.getenv("SOURCE_COMMIT", "local"),
+                   "pytest_exit_code": result.returncode,
                    "database_target": "disposable local PostgreSQL", "ai_mode": "mock"}
         try:
             summary.update(verify_report(report))

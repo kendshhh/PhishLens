@@ -90,6 +90,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev
       RUN_DATABASE_TESTS: "1"
       AI_MODE: mock
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Check out repository
