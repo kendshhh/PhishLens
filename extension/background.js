@@ -152,10 +152,15 @@ async function requestAnalysis(selectedText, signal) {
       );
     }
 
+    const message = errorBody?.error?.message;
+    const legacyMessage = errorBody?.detail;
+
     throw new Error(
-      typeof errorBody.detail === "string"
-        ? errorBody.detail
-        : `Backend returned HTTP ${response.status}`
+      typeof message === "string" && message.trim()
+        ? message
+        : typeof legacyMessage === "string" && legacyMessage.trim()
+          ? legacyMessage
+          : `Backend returned HTTP ${response.status}`
     );
   }
 
