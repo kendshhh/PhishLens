@@ -1,5 +1,22 @@
 # Pipeline Metrics
 
+## October 21 review (UTC observations October 20)
+
+[Raw run/job timestamps and bounded sample](evidence/2026-10-21-ci-measurements.json).
+At collection, 119 CI workflow IDs were returned: 85 success, 15 failure,
+14 cancelled, three pending, one waiting and one in progress. This includes the
+invalid CI-definition run named `.github/workflows/ci.yml` as a real failure.
+Latest-outcome success rate excludes cancelled/pending/waiting/in-progress:
+85 / (85 + 15) = 85.00%. Intentional failures remain in the failure count.
+
+Five latest successful PR samples average 739.4 seconds including hosting/approval
+queues; five latest successful main-push samples average 101.2 seconds. These are
+different populations with changing coverage and cannot show an optimization gain.
+Production observer 39449283551 succeeded for main 149808e and published artifact
+12276999746. Deployment count, failed deploy count, merge-to-live and recovery
+duration have not been freshly extracted; retain prior values as historical,
+not zero. The comparative staging experiment is documented in optimizations.md.
+
 The [Secretary observer](secretary-verification.md) implements a new 28-day,
 latest-workflow-attempt calculation and produces downloadable evidence artifacts.
 It does not overwrite this historical log or push metrics commits. Its durations
