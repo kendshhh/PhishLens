@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_DATABASE_TESTS = {
+    ("backend.tests.test_history_postgres", "test_intentional_missing_database_gate_drill"),
     ("backend.tests.test_seed_integrity", "test_seed_records_and_relationship"),
     ("backend.tests.test_history_postgres", "test_history_postgres_read_change_empty_and_isolation"),
 }
