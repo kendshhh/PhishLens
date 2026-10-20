@@ -189,7 +189,7 @@ for (const [status, code, message] of [
     await settle();
     app.requests[0].resolve({
       ok: false, status,
-      json: async () => ({ error: { code, message }, detail: 'Older message' })
+      json: async () => ({ error: { code, message } })
     });
     await pending;
     assert.equal(app.state.analysis.status, 'error');
