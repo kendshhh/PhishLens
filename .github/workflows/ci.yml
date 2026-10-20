@@ -201,6 +201,8 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
+      # Retain waiting deployments while keeping the shared staging service serialized.
+      queue: max
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
     steps:
