@@ -56,13 +56,17 @@ jobs:
         run: npm run validate
 
       - name: Package extension
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run package
 
       - name: Upload extension package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: PhishLens-Extension
-          path: output/extension/PhishLens-Extension.zip
+          path: |
+            output/extension/PhishLens-Extension.zip
+            output/extension/evidence.json
           if-no-files-found: error
           retention-days: 7
 
