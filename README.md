@@ -167,8 +167,14 @@ private `.env`. The Google API key must never be added to the extension.
 Start the backend from the repository root:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --loop backend.core.event_loop:new_event_loop
 ```
+
+Use the explicit loop factory for saved-analysis persistence. On Windows it
+selects SelectorEventLoop, which Psycopg async connections require. It also
+works with `--reload`; reload is optional. On macOS/Linux, use
+`.venv/bin/python -m uvicorn backend.app.main:app --loop backend.core.event_loop:new_event_loop`.
+The staging startup script uses the same factory.
 
 Call the analysis endpoint directly (mock mode works without Gemini credentials):
 

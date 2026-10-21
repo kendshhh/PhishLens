@@ -25,7 +25,12 @@ def main():
     subprocess.run([sys.executable, "scripts/seed_demo.py"], check=True)
     import uvicorn
 
-    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))
+    uvicorn.run(
+        "backend.app.main:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "8000")),
+        loop="backend.core.event_loop:new_event_loop",
+    )
 
 
 if __name__ == "__main__":
