@@ -60,6 +60,15 @@ jobs:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run package
 
+      - name: Verify production package identity
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >-
+          python scripts/verify_extension_package.py
+          output/extension/PhishLens-Extension.zip
+          output/extension/evidence.json
+          --expected-source "$SOURCE_COMMIT"
+
       - name: Upload extension package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
