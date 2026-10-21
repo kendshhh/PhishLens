@@ -15,9 +15,11 @@ from backend.app.analysis_schemas import (
     UpdateSavedAnalysis,
 )
 from backend.app.analysis_serialization import saved_detail_from_record
+from backend.app.routers.saved_create import router as saved_create_router
 from backend.models import AnalyzedEmail, User
 
 router = APIRouter(prefix="/api", tags=["History"])
+router.include_router(saved_create_router)
 
 DEMO_USER_EMAIL = "demo@phishlens.test"
 HISTORY_UNAVAILABLE = "History temporarily unavailable"
