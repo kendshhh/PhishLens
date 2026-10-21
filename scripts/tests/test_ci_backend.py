@@ -43,8 +43,8 @@ class BackendGateTests(unittest.TestCase):
     def test_required_database_tests_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             result = verify_report(self.report(directory, self.cases()))
-        self.assertEqual(result["required_database_tests_passed"], 2)
-        self.assertIn("not established", result["crud_acceptance"])
+        self.assertEqual(result["required_database_tests_passed"], 11)
+        self.assertIn("hosted acceptance not established", result["crud_acceptance"])
 
     def test_missing_skipped_failed_or_client_only_tests_fail(self):
         for cases in ["", '<testcase classname="client" name="crud"/>',
@@ -53,6 +53,22 @@ class BackendGateTests(unittest.TestCase):
             with (self.subTest(cases=cases), tempfile.TemporaryDirectory() as directory,
                   self.assertRaises(ValueError)):
                 verify_report(self.report(directory, cases))
+
+    def test_each_required_case_must_pass(self):
+        # All other cases pass: losing even one CRUD parameter must fail closed.
+        for module, name in sorted(REQUIRED_DATABASE_TESTS):
+            for status in (None, '<skipped/>', '<failure/>', '<error/>'):
+                cases = "".join(
+                    f'<testcase classname="{other_module}" name="{other_name}"/>'
+                    for other_module, other_name in sorted(REQUIRED_DATABASE_TESTS)
+                    if (other_module, other_name) != (module, name)
+                )
+                if status is not None:
+                    cases += f'<testcase classname="{module}" name="{name}">{status}</testcase>'
+                with (self.subTest(module=module, name=name, status=status),
+                      tempfile.TemporaryDirectory() as directory,
+                      self.assertRaises(ValueError)):
+                    verify_report(self.report(directory, cases))
 
     def test_main_rejects_cloud_before_running_pytest(self):
         from scripts.ci_backend import main
