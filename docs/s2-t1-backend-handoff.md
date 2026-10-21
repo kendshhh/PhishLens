@@ -183,3 +183,40 @@ real-provider availability, hosted operation or connected frontend acceptance.
   database; no Neon migration or hosted write is claimed here.
 - Verify CRUD through the connected client against the identified deployed SHA.
 - Obtain teammate review and update issue #42, the sprint log and board.
+
+## Windows async persistence follow-up
+
+The supported Python 3.12 startup command explicitly selects the event-loop
+factory required by async Psycopg on Windows:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --loop backend.core.event_loop:new_event_loop
+```
+
+Optional `--reload` uses the same factory. The staging startup script also
+selects it explicitly. Bare Uvicorn startup without this option is not the
+documented Windows configuration.
+
+`backend/tests/conftest.py` selects WindowsSelectorEventLoopPolicy for the
+Windows pytest process, covering asyncio.run and TestClient-based tests.
+Mac and Linux retain their existing test policy.
+
+For an already migrated, disposable local database named
+phishlens_s2_t1_test, run:
+
+```powershell
+$env:DATABASE_URL = 'postgresql://127.0.0.1:5432/phishlens_s2_t1_test'
+$env:RUN_DATABASE_TESTS = '1'
+$env:AI_MODE = 'mock'
+.\.venv\Scripts\python.exe -m pytest backend/tests/test_saved_create_postgres.py -q -p no:cacheprovider
+```
+
+This uses real local PostgreSQL and synthetic mock inference. It is not a
+command for Neon or production. The separate full CI gate still requires
+its seeded disposable phishlens_dev target and all mandatory database cases.
+
+Mac verification of factory selection and focused tests does not establish
+Windows acceptance. Wilberr must verify the updated candidate on Windows,
+including actual saved create against disposable PostgreSQL and normal
+single-process API startup without reload. Record source SHA, Python/Uvicorn/
+Psycopg versions, commands, results and cleanup.
