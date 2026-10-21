@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.ai.errors import ModelUnavailableError
+from backend.ai.errors import AnalysisUnavailableError
 from backend.ai.gemini_provider import DailyQuotaExceeded, GeminiProvider
 from backend.ai.mock_provider import MockProvider
 from backend.ai.schemas import (
@@ -167,7 +167,7 @@ def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
             sender=request.sender,
             body=request.text,
         )
-    except ModelUnavailableError:
+    except AnalysisUnavailableError:
         return analysis_error(
             503,
             "analysis_unavailable",

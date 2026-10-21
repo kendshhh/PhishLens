@@ -45,8 +45,8 @@ Only `POST /analyses` uses this new error envelope:
     }
 
 - HTTP 422: `invalid_input`. The `fields` array gives safe field names and short codes. Implemented field codes are `blank`, `required`, `too_long`, `invalid_type`, `unknown_field`, `malformed_json`, and `invalid`.
-- HTTP 502: `inference_failed`. This includes invalid model output, unsupported evidence, and inference failures. The fixed message is `Analysis failed`.
-- HTTP 503: `analysis_unavailable`. This covers missing local model files, configuration failure, and recognized daily provider quota exhaustion. The fixed message is `Analysis temporarily unavailable`.
+- HTTP 502: `inference_failed`. This includes invalid model output, unsupported evidence, Gemini HTTP 500/502/504 failures, and transport failures including timeouts. The fixed message is `Analysis failed`.
+- HTTP 503: `analysis_unavailable`. This covers missing local models, configuration failure, recognized daily quota exhaustion, and Gemini HTTP 401/403/404/429/503 failures. Hosted availability failures use the shared `AnalysisUnavailableError` type. The fixed message is `Analysis temporarily unavailable`.
 
 The 502 and 503 responses contain `code` and `message`, without `fields`. Submitted email text, credentials, provider exception text, and private model paths are not returned.
 
@@ -59,13 +59,14 @@ Run from the repository root:
     ./.venv/bin/python -m ruff check backend
     env -u RUN_DATABASE_TESTS ./.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider
 
-Results on October 20, 2026: Ruff passed; 83 tests passed and 2 database tests skipped. Tests cover blank and oversized input, optional blank fields, safe errors, missing local model files, invalid labels and confidence, unsupported evidence, and no successful verdict after failure.
+Results on October 21, 2026: Ruff passed; 93 tests passed and 2 database tests skipped. Ten new endpoint regression cases exercise the actual Gemini provider and shared AI service with a mocked SDK client. They verify safe 503 responses for provider HTTP 401/403/404/429/503, and safe 502 responses for HTTP 500/502/504, transport timeouts, and connection failures. No network calls or model downloads are made by these tests.
 
 These mocked tests verify contract behavior. They do not prove successful real-model inference, a live PostgreSQL read, or deployed extension behavior.
 
 ## Coordination before integration
 
-- **Leyan / extension:** `extension/background.js` currently reads `errorBody.detail` for POST failures. Update it to read the new `error.message` and retain a safe fallback. Confirm that successful live results remain separate from history records. Do not change `GET /api/analyses`.
-- **Wilberr / AI:** Review the status and code choices, particularly unavailable hosted models versus general inference failure. Confirm a real-model smoke run through the shared service and record its result. Evidence and confidence display remain client integration work.
-- **Leyan and Wilberr:** Agree on compatible time limits. The extension currently stops waiting after 25 seconds, while the Gemini client is configured for 30 seconds and local cold inference has been observed taking longer. Decide whether a distinct provider timeout should return HTTP 504.
-- **Backend / DevOps:** Review this branch and applicable CI results before merging. Record any deployment verification separately. No hosted production behavior is claimed by the local test results.
+- **Leyan / extension:** PR #53 is merged and supports `error.message` with a safe legacy `detail` fallback. Final staging and installed Chrome verification remain pending.
+- **Wilberr / AI:** Re-review the typed availability mapping and new endpoint regression tests. Record real-model shared-service verification against the final integrated commit, including source SHA, model/revision, environment, synthetic cases, outputs, timings, and exit status.
+- **Leyan and Wilberr:** Confirm the accepted Week 1 runtime scope. The client deadline remains 25 seconds, Gemini's configured HTTP timeout remains 30 seconds, and local inference has no enforced wall-clock deadline. These changes do not implement a compatible end-to-end deadline. Cold/unbounded local inference has not demonstrated completion within the client deadline.
+- **Backend / DevOps:** Obtain successful required checks and staging HTTP verification for the final commit. Coordinate installed Chrome verification against that same deployed source and identified extension package before sign-off.
+- **Week 2 boundary:** The proposed 15-second inference budget, 20-second server-operation target, and persistent-endpoint `504 analysis_timeout` are separate work. They are not implemented by this Week 1 PR.
