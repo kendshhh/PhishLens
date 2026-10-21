@@ -45,21 +45,46 @@ with ZipFile(archive) as package:
 print(f"Package created: {archive}")
 print("Verified: manifest.json at ZIP root; tests excluded.")
 
+def checkout_identity() -> tuple[str | None, bool | None]:
+    """Trust Git metadata only for this checkout and its tracked build inputs."""
+    def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", *arguments], cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+
+    try:
+        top = git("rev-parse", "--show-toplevel")
+        if top.returncode or Path(top.stdout.strip()).resolve() != ROOT.resolve():
+            return None, None
+
+        revision = git("rev-parse", "--verify", "HEAD")
+        if revision.returncode:
+            return None, None
+        local_revision = revision.stdout.strip()
+        inputs = [f"extension/{asset}" for asset in assets] + [
+            "scripts/package_extension.py", "scripts/validate_extension.py",
+        ]
+        tracked = git("ls-files", "--error-unmatch", "--", *inputs)
+        if tracked.returncode:
+            return local_revision, None
+
+        dirty = git("diff", "--quiet", "HEAD", "--", *inputs)
+        if dirty.returncode not in (0, 1):
+            return local_revision, None
+        return local_revision, bool(dirty.returncode)
+    except OSError:
+        return None, None
+
+
 # Keep identity evidence alongside the ZIP, outside the installable package.
 # GITHUB_SHA is the tested merge revision on PRs; SOURCE_COMMIT is the PR head.
-revision = subprocess.run(
-    ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=False,
-)
-local_revision = revision.stdout.strip() if revision.returncode == 0 else None
-dirty = subprocess.run(
-    ["git", "diff", "--quiet", "HEAD", "--", "extension", "scripts/package_extension.py",
-     "scripts/validate_extension.py"], cwd=ROOT, capture_output=True, check=False,
-)
+# An enclosing repository or missing/untracked inputs cannot establish a clean build.
+local_revision, input_changes = checkout_identity()
 evidence = {
     "recorded_at": dt.datetime.now(dt.UTC).isoformat(),
     "source_commit": os.getenv("SOURCE_COMMIT") or local_revision,
     "tested_commit": os.getenv("GITHUB_SHA") or local_revision,
-    "runtime_or_packaging_changes": bool(dirty.returncode) if local_revision else None,
+    "runtime_or_packaging_changes": input_changes,
     "extension_version": json.loads((EXTENSION / "manifest.json").read_text())["version"],
     "environment": "production",
     "archive": archive.name,

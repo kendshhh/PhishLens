@@ -18,6 +18,14 @@ not independent authenticity of the publisher. Obtain both files from the truste
 Actions run. Source and tested merge commits can differ on pull requests.
 Passing integrity checks does not establish installed Chrome acceptance.
 
+The packager uses local Git identity only when its project root is the Git
+worktree root and every approved runtime/packaging input is tracked there.
+An exported copy nested inside another repository records unknown local
+identity/input status, even if CI identity variables are supplied; the verifier
+rejects that package. Staged or unstaged input changes are marked modified.
+Untracked required inputs have unknown status and cannot be labelled clean.
+Build verifiable packages from the intended clean checkout.
+
 ## Local continuation validation — October 21, 2026
 
 Fifteen synthetic regression tests cover a valid pair, stale source,
