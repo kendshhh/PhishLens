@@ -1,72 +1,50 @@
-"""Create saved analyses through the shared AI service."""
+"""Coordinate supervised inference and persistent analysis creation."""
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from asyncio import timeout, to_thread
 
-from backend.ai.service import AIService
-from backend.app.analysis_mapping import (
-    ProviderMode,
-    build_saved_analysis_fields,
+from backend.app.analysis_deadlines import (
+    AnalysisDeadline,
+    AnalysisTimeoutError,
 )
-from backend.app.analysis_schemas import CreateSavedAnalysis
-from backend.models import AnalyzedEmail, User
+from backend.app.analysis_execution import (
+    AnalysisInferenceError,
+    run_saved_inference,
+)
+from backend.app.analysis_mapping import ProviderMode
+from backend.app.analysis_persistence import persist_saved_analysis
+from backend.app.analysis_schemas import CreateSavedAnalysis, SavedAnalysisDetail
 
-DEMO_USER_EMAIL = "demo@phishlens.test"
 
-
-class DemoUserUnavailableError(RuntimeError):
-    """The server's synthetic demo account has not been prepared."""
-
-
-def create_saved_analysis(
-    session: Session,
+async def create_saved_analysis(
     request: CreateSavedAnalysis,
     *,
-    service: AIService,
     mode: ProviderMode,
-) -> AnalyzedEmail:
-    """Analyze an email, then commit one validated saved record."""
-
-    # No database query or write has happened yet.
-    result = service.analyze_email(
-        subject=request.subject or None,
-        sender=None,
-        body=request.body,
-    )
-    saved_fields = build_saved_analysis_fields(
-        result,
-        mode=mode,
-        subject=request.subject,
-        body=request.body,
-    )
-
+    api_key: str | None,
+    model: str | None,
+    deadline: AnalysisDeadline,
+) -> SavedAnalysisDetail:
+    """Run timely inference, then commit one validated saved analysis."""
     try:
-        # The browser never chooses the owner of a saved record.
-        user = session.scalar(
-            select(User).where(User.email == DEMO_USER_EMAIL)
-        )
-        if user is None:
-            raise DemoUserUnavailableError(
-                "Synthetic demo user is unavailable"
+        async with timeout(deadline.operation_remaining()):
+            async with timeout(deadline.inference_remaining()):
+                result = await to_thread(
+                    run_saved_inference,
+                    subject=request.subject,
+                    body=request.body,
+                    mode=mode,
+                    api_key=api_key,
+                    model=model,
+                    deadline=deadline,
+                )
+
+            deadline.inference_remaining()
+            return await persist_saved_analysis(
+                request,
+                result,
+                mode=mode,
+                deadline=deadline,
             )
-
-        record = AnalyzedEmail(
-            user_id=user.id,
-            subject=request.subject,
-            body=request.body,
-            **saved_fields,
-        )
-        session.add(record)
-
-        # Send the INSERT and fetch generated fields such as created_at.
-        session.flush()
-        session.refresh(record)
-
-        # Only a successful commit makes the saved record durable.
-        session.commit()
-        return record
-    except Exception:
-        # A failed query, INSERT, refresh, or commit must not leave an
-        # unfinished transaction in this session.
-        session.rollback()
-        raise
+    except TimeoutError:
+        raise AnalysisTimeoutError("Analysis deadline exceeded") from None
+    except (TypeError, ValueError):
+        raise AnalysisInferenceError("Invalid analysis result") from None
