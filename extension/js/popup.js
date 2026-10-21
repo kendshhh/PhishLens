@@ -1,42 +1,223 @@
-import { API_BASE_URL } from "./config.js";
-import { getAnalyses } from "./api.js";
+﻿import { API_BASE_URL } from "./config.js";
+import { createAnalysisClient } from "./api.js";
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const loading = document.getElementById("loading");
-  const error = document.getElementById("error");
-  const empty = document.getElementById("empty");
-  const list = document.getElementById("history-list");
+const feedbackLabels = new Map([
+  ["none", "No feedback"], ["false_positive", "False positive"],
+  ["false_negative", "False negative"]
+]);
+const provenanceLabels = new Map([
+  ["mock", "Mock AI analysis"], ["real", "Real AI analysis"],
+  ["unknown", "AI provenance unknown"]
+]);
 
-  try {
-    const data = await getAnalyses(API_BASE_URL);
-    
-    // Hide the loading state once the response is received
-    loading.classList.add("hidden");
+function node(doc, tag, className, text) {
+  const element = doc.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
+  return element;
+}
 
-    // Handle the empty state if there are no records in the database
-    if (data.length === 0) {
-      empty.classList.remove("hidden");
+function show(element, visible) {
+  element.classList.toggle("hidden", !visible);
+}
+
+export function createPopupController(client, doc = document) {
+  const $ = id => doc.getElementById(id);
+  const ui = {
+    status: $("crud-status"), list: $("history-list"), empty: $("empty"),
+    loading: $("loading"), createForm: $("create-form"), subject: $("create-subject"),
+    body: $("create-body"), detail: $("detail-panel"), detailContent: $("detail-content"),
+    editForm: $("edit-form"), notes: $("edit-notes"), feedback: $("edit-feedback"),
+    deleteConfirm: $("delete-confirm"), deleteSubject: $("delete-subject"),
+    deleteButton: $("confirm-delete"), cancelDelete: $("cancel-delete"),
+    cancelEdit: $("cancel-edit"), saveEdit: $("save-edit"), createButton: $("create-button")
+  };
+  let records = [];
+  let selected = null;
+  let busy = false;
+
+  function setStatus(message, kind = "info") {
+    ui.status.textContent = message;
+    ui.status.className = `status ${kind}`;
+    show(ui.status, Boolean(message));
+  }
+
+  function setBusy(value) {
+    busy = value;
+    for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete]) {
+      button.disabled = value;
+    }
+    ui.createButton.textContent = value ? "Saving…" : "Save analysis";
+    ui.saveEdit.textContent = value ? "Saving…" : "Save changes";
+    ui.deleteButton.textContent = value ? "Deleting…" : "Delete analysis";
+  }
+
+  function renderDetail(record) {
+    ui.detailContent.replaceChildren();
+    const values = [
+      ["Subject", record.subject || "Untitled analysis"], ["Email body", record.body],
+      ["Explanation", record.explanation || "No explanation available."],
+      ["Prediction", record.prediction || "Pending"], ["Risk", record.risk_level || "Unknown"],
+      ["Confidence", record.confidence == null ? "Not provided" : `${Math.round(record.confidence * 100)}%`],
+      ["Threat indicators", record.threat_indicators.length
+        ? record.threat_indicators.map(indicator => `${indicator.type}: ${indicator.detail}${indicator.quote ? ` (“${indicator.quote}”)` : ""}`).join("\n")
+        : "None reported"],
+      ["Notes", record.notes || "No notes"], ["Feedback", feedbackLabels.get(record.feedback) || "Feedback unavailable"],
+      ["AI provenance", provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"]
+    ];
+    for (const [label, value] of values) {
+      const section = node(doc, "div", "detail-field");
+      section.append(node(doc, "h4", "", label), node(doc, "p", "", value));
+      ui.detailContent.append(section);
+    }
+    const edit = node(doc, "button", "secondary", "Edit notes and feedback");
+    edit.type = "button";
+    edit.addEventListener("click", openEdit);
+    const remove = node(doc, "button", "danger", "Delete analysis");
+    remove.type = "button";
+    remove.addEventListener("click", openDelete);
+    ui.detailContent.append(edit, remove);
+    ui.notes.value = record.notes || "";
+    ui.feedback.value = record.feedback || "none";
+    show(ui.detail, true);
+  }
+
+  function renderList() {
+    ui.list.replaceChildren();
+    show(ui.empty, records.length === 0);
+    for (const record of records) {
+      const item = node(doc, "li", "history-item");
+      const title = node(doc, "strong", "", record.subject || "Untitled analysis");
+      const meta = node(doc, "p", "muted", `${record.prediction || "Pending"} · ${record.risk_level || "Risk unknown"}`);
+      const open = node(doc, "button", "link-button", "View details");
+      open.type = "button";
+      open.setAttribute("aria-label", `View ${record.subject || "untitled analysis"}`);
+      open.addEventListener("click", () => loadDetail(record.id));
+      item.append(title, meta, open);
+      ui.list.append(item);
+    }
+  }
+
+  async function refresh() {
+    show(ui.loading, true);
+    show(ui.empty, false);
+    try {
+      records = await client.listAnalyses();
+      renderList();
+      show(ui.loading, false);
+      setStatus(records.length ? "Saved analyses loaded." : "No saved analyses yet.", records.length ? "success" : "info");
+    } catch (error) {
+      show(ui.loading, false);
+      if (records.length) renderList();
+      else show(ui.empty, false);
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned malformed analysis data. Try again later."
+        : `Saved analyses are unavailable: ${error.message}`, "error");
+    }
+  }
+
+  async function loadDetail(id) {
+    if (busy) return;
+    try {
+      selected = await client.getAnalysis(id);
+      renderDetail(selected);
+      show(ui.editForm, false);
+      show(ui.deleteConfirm, false);
+      setStatus("Analysis details loaded.", "success");
+    } catch (error) {
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned malformed analysis details."
+        : `Unable to load details: ${error.message}`, "error");
+    }
+  }
+
+  function openEdit() {
+    ui.notes.value = selected.notes || "";
+    ui.feedback.value = selected.feedback || "none";
+    show(ui.editForm, true);
+    ui.notes.focus();
+  }
+  function openDelete() {
+    ui.deleteSubject.textContent = selected.subject || "Untitled analysis";
+    show(ui.deleteConfirm, true);
+    ui.cancelDelete.focus();
+  }
+
+  ui.createForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy) return;
+    const input = { subject: ui.subject.value.trim(), body: ui.body.value.trim() };
+    if (!input.body) {
+      setStatus("Enter the email body before saving.", "error");
+      ui.body.focus();
       return;
     }
+    setBusy(true);
+    let created;
+    try {
+      created = await client.createAnalysis(input);
+      records = [created, ...records.filter(record => record.id !== created.id)];
+      renderList();
+      ui.subject.value = "";
+      ui.body.value = "";
+      setStatus("Analysis saved successfully.", "success");
+      await refresh();
+    } catch (error) {
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned a malformed result. Your input is still here."
+        : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
+    } finally { setBusy(false); }
+    if (created) await loadDetail(created.id);
+  });
 
-    // STRICT REQUIREMENT: Render content safely as text to prevent XSS
-    data.forEach(item => {
-      const li = document.createElement("li");
-      const subject = item.subject || "Analyzed Email";
-      const risk = item.risk_level || "Unknown";
-      const prediction = item.prediction || "Pending";
-      const confidence = item.confidence == null
-        ? "N/A"
-        : `${Math.round(item.confidence * 100)}%`;
-      
-      li.textContent = `Subject: ${subject} | Prediction: ${prediction} | Risk: ${risk} | Confidence: ${confidence}`;
-      list.appendChild(li);
-    });
+  ui.editForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || !selected) return;
+    setBusy(true);
+    try {
+      selected = await client.updateAnalysis(selected.id, {
+        notes: ui.notes.value.trim() || null, feedback: ui.feedback.value
+      });
+      show(ui.editForm, false);
+      records = records.map(record => record.id === selected.id ? selected : record);
+      renderList();
+      renderDetail(selected);
+      await refresh();
+      setStatus("Changes saved successfully.", "success");
+    } catch (error) {
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned a malformed result. Your edits are still here."
+        : `Could not save changes: ${error.message}. Your edits are still here.`, "error");
+    } finally { setBusy(false); }
+  });
+  ui.cancelEdit.addEventListener("click", () => { show(ui.editForm, false); if (selected) renderDetail(selected); });
+  ui.cancelDelete.addEventListener("click", () => show(ui.deleteConfirm, false));
+  ui.deleteConfirm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || !selected) return;
+    setBusy(true);
+    try {
+      const deletedId = selected.id;
+      await client.deleteAnalysis(deletedId);
+      records = records.filter(record => record.id !== deletedId);
+      renderList();
+      selected = null;
+      show(ui.detail, false);
+      show(ui.deleteConfirm, false);
+      show(ui.editForm, false);
+      await refresh();
+      setStatus("Analysis deleted successfully.", "success");
+    } catch (error) {
+      setStatus(`Could not delete analysis: ${error.message}`, "error");
+    } finally { setBusy(false); }
+  });
 
-  } catch (err) {
-    // Handle failures gracefully without breaking the console
-    loading.classList.add("hidden");
-    error.textContent = `Connection failed: ${err.message}`;
-    error.classList.remove("hidden");
-  }
-});
+  return { refresh, loadDetail, get records() { return records; } };
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    const controller = createPopupController(createAnalysisClient(API_BASE_URL));
+    controller.refresh();
+  });
+}
