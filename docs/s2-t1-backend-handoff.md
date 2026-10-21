@@ -2,7 +2,8 @@
 
 - Issue: #42
 - Branch: `feat/42-persistent-crud`
-- Status: Implemented and tested locally; review, CI and deployed verification pending.
+- PR: [#58](https://github.com/kendshhh/PhishLens/pull/58)
+- Status: Local implementation and earlier-candidate CI/hosted mock verification recorded; final-candidate review and acceptance remain pending.
 
 ## Endpoint boundaries
 
@@ -143,7 +144,10 @@ A timeout during or after commit can leave a saved row. Idempotency and
 outcome reconciliation are not implemented; clients must not assume every
 timeout means no record exists.
 
-## Local verification
+## Original local verification: c162740
+
+The results in this section apply to source committed as
+`c162740d5aa4e9c87a697b395822cb36135ce744`.
 
 Ruff and `git diff --check` passed.
 
@@ -171,17 +175,104 @@ database lock timeout, and the unsaved live-analysis boundary.
 Evidence uses real local PostgreSQL with mock inference. It does not prove
 real-provider availability, hosted operation or connected frontend acceptance.
 
+## Kendra's CI and staging evidence: 9bb231a
+
+Kendra's supplied `pr58-completion.md` identifies candidate
+`9bb231a2cc1c701f6a8ce49d35bcdb7b81f56362`. The following summarizes her
+reported verification; it is not a claim that Trixia reran those operations.
+
+- [Seeded GitHub CI run](https://github.com/kendshhh/PhishLens/actions/runs/39618862893):
+  192 passed, zero skipped, with all eleven mandatory PostgreSQL cases passed.
+  This includes the two seeded checks excluded from the original local run.
+  Migration and seed repeat checks, Extension checks and Staging integration passed.
+- Isolated Neon branch `pr-58-staging` (`br-patient-thunder-b3oxgbb7`), database
+  `phishlens_dev`: migration `0002_analysis_provenance` applied and repeat upgrade
+  passed. Independent reads verified unchanged legacy data, nullable provenance
+  and the mode constraint. See the [CI/staging runbook](s2-t1-ci-staging-runbook.md)
+  for the recorded target and migration procedure.
+- [Manual Render deployment](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbcd1n4s728c73eoovl0):
+  candidate SHA matched, inference was mock, and independent Neon reads confirmed
+  writes reached the isolated branch. Create/list/detail, PATCH, clearing notes
+  without clearing feedback, invalid input, DELETE and subsequent 404 passed.
+  Temporary records were removed and the original row count restored.
+- The existing extension API-client hosted CRUD verifier passed at the same SHA
+  and cleaned up its record. This is not actual installed Chrome acceptance.
+- One hosted mock create took 10.547 seconds. This observation does not establish
+  a runtime bound or production performance guarantee.
+- Hosted staging was skipped in that draft workflow. Manual hosted evidence does
+  not satisfy the required Hosted staging workflow check.
+
+Trixia subsequently read `/version` and `/ready`: they reported this exact full
+SHA, `environment: staging`, and `database: connected`. Those reads establish
+identity/readiness at that observation, not permanent target identity or new CRUD
+acceptance. Recheck identity and the isolated target before further writes.
+
+During initial staging validation, the previous development database received
+the additive migration before a target mismatch was detected. Kendra reports
+that its test row was removed and the final isolated configuration was independently
+verified. Production was not deployed or configured. Any remaining development
+database follow-up requires the operator's acknowledgement.
+
+The supplied handoff references credential-free artifacts
+`pr58-ci-evidence.json`, `pr58-neon-migration.json` and `pr58-hosted-crud.json`.
+Accessible artifact links and the exact source SHA used to execute the migration
+remain to be supplied by Kendra. The handoff's candidate SHA alone does not
+establish the migration execution SHA. Do not publish connection strings or keys.
+
+The temporary Neon branch's recorded expiry is October 22, 2026 at 22:19:27
+Asia/Shanghai (the same local time in Manila). Availability beyond that time
+requires explicit confirmation or extension; do not silently switch to production.
+
+## Windows follow-up verification: ad47196
+
+Runtime configuration follow-up source:
+`ad4719691a2e2410edf7e712b7f920cd082fd904`.
+
+- `./.venv/bin/python -m ruff check backend scripts/start_staging.py` passed.
+- `env -u RUN_DATABASE_TESTS ./.venv/bin/python -m pytest backend/tests -q -p no:cacheprovider`
+  returned 184 passed, 12 skipped on macOS.
+- `DATABASE_URL='postgresql://127.0.0.1:5432/phishlens_s2_t1_test' RUN_DATABASE_TESTS=1 ./.venv/bin/python -m pytest backend/tests/test_saved_create_postgres.py -q -p no:cacheprovider`
+  returned 7 passed against disposable local PostgreSQL with mock inference.
+- Four regression cases verify Windows loop selection and Uvicorn factory
+  resolution with/without reload. Uvicorn factory inspection and whitespace
+  checks also passed.
+
+These are macOS checks, including simulated Windows selection; they do not
+establish actual Windows/PostgreSQL acceptance. Earlier `9bb231a` hosted evidence
+must not be represented as verification of `ad47196` or a later candidate.
+
+## Client compatibility review
+
+[Leyan's scoped review](https://github.com/kendshhh/PhishLens/pull/58#pullrequestreview-5602284448)
+was against `9bb231a`: 137 JavaScript tests and 51 scoped backend tests passed
+with database/inference substituted. Saved fields, nullable values,
+evidence/provenance, PATCH, empty DELETE and 504 status/message handling were
+compatible; no client code change was needed. This is not formal approval,
+real-provider verification or installed Chrome acceptance.
+
 ## Remaining before completion
 
-- Record the final source SHA and PR/CI links.
-- Reconcile current shared AI changes and review the final combined diff.
-- Publish and review the contract with Leyan and Wilberr, including 504 handling,
-  provenance keys, runtime limits and uncertain commit outcomes.
-- Coordinate mandatory PostgreSQL test registration with Kendra.
-- Pass required CI, including the seeded database tests.
-- Coordinate the forward migration and configuration on the approved hosted
-  database; no Neon migration or hosted write is claimed here.
-- Verify CRUD through the connected client against the identified deployed SHA.
+- Record the final candidate SHA and current CI/deployment/package links; pass
+  all required checks, including Hosted staging, for that head. Eleven mandatory
+  PostgreSQL cases are registered and earlier seeded CI passed; preserve the
+  passing final-head report rather than relying on earlier results.
+- Obtain Wilberr's actual Windows/PostgreSQL and normal single-process startup
+  verification, and re-review of the event-loop fix.
+- Obtain Kendra's accessible credential-free migration/hosted artifacts, exact
+  migration execution SHA, and acknowledgement of development-database follow-up.
+  The isolated Neon migration and earlier mock writes are already reported above;
+  do not repeat migrations simply to fill an evidence gap.
+- Coordinate the final deployed SHA and isolated database target with Kendra,
+  including staging availability/expiry, before acceptance writes.
+- Complete permitted real-provider/target-host verification with Wilberr and
+  Kendra. Local persistent create remains unavailable (503); no production
+  deadline guarantee is established.
+- Complete actual connected-client/installed Chrome acceptance with Leyan and
+  Andrei against the identified final deployed SHA and matching package.
+- Obtain client-owner acknowledgement of uncertain commit outcomes and track
+  idempotency/reconciliation separately if deferred. Do not blindly retry creates.
+- Reconcile shared AI changes from still-open PR #50 on the final integration
+  base and rerun relevant combined tests. PR #58 does not complete Week 1 acceptance.
 - Obtain teammate review and update issue #42, the sprint log and board.
 
 ## Windows async persistence follow-up
