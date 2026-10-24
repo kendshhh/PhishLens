@@ -241,6 +241,88 @@ These are macOS checks, including simulated Windows selection; they do not
 establish actual Windows/PostgreSQL acceptance. Earlier `9bb231a` hosted evidence
 must not be represented as verification of `ad47196` or a later candidate.
 
+[Wilberr's October 22 re-review](https://github.com/kendshhh/PhishLens/pull/58#pullrequestreview-5604121231)
+at `55470f58c1f204fd9dd728fd79ba375112f2e53b` confirms the Windows loop
+configuration defect and misleading migration wording are addressed. On Windows
+with Python 3.12.10, he reported 184 backend tests passed, 12 database cases skipped,
+Ruff passed, and normal single-process startup used `_WindowsSelectorEventLoop`.
+His probe deliberately used unavailable localhost PostgreSQL: valid create returned
+safe 504, so successful Windows persistence remains unverified. No additional
+loop change or database/provider replacement was requested.
+
+## Local API connected to Neon development: October 24, 2026
+
+Trixia supplied terminal output and screenshots from manual verification on
+October 24, 2026 (Asia/Manila). The local checkout was
+`55470f58c1f204fd9dd728fd79ba375112f2e53b`; this is the working source identity,
+not a Render deployment identity. No new migration was applied during this test.
+
+### Target and connection checks
+
+- Neon Console selected branch: `development`; database: `phishlens_dev`.
+- Configured direct endpoint:
+  `ep-divine-union-b3flltz0.c-4.ap-southeast-1.aws.neon.tech`.
+- Alembic `current` reported `0002_analysis_provenance (head)`.
+- `SELECT 1` returned 1. Schema inspection found all three expected tables
+  (`users`, `analyzed_emails`, `alembic_version`) and both provenance columns
+  (`analysis_mode`, `analysis_provenance`). This was a focused schema check,
+  not a complete model/schema drift comparison.
+- The configured SSL mode was `require`; Psycopg's client-side
+  `driver.pgconn.ssl_in_use` reported `True`. An earlier `pg_stat_ssl` query
+  returned `False`; that server-side observation was not used to determine
+  client-to-Neon TLS status through the proxy.
+- Credentials remained in the ignored local `.env`; no connection URL or
+  password is included in this evidence.
+
+The local API was started with:
+
+```bash
+env -u DATABASE_URL AI_MODE=mock ./.venv/bin/python -m uvicorn backend.app.main:app --loop backend.core.event_loop:new_event_loop --host 127.0.0.1 --port 8000
+```
+
+### Manual API results
+
+All requests used `http://127.0.0.1:8000`, backed by Neon development and mock
+inference. The existing synthetic seed record
+`29d80c39-ec0d-4db8-a6e5-87444ba2600c` remained the legacy-read fixture.
+
+| Check | Observed result |
+|---|---|
+| GET `/ready` | 200; `status: ready`, `database: connected` |
+| GET `/api/analyses` | 200; `items` included the existing synthetic seed |
+| GET seed detail | 200; body/notes returned, feedback/mode/provenance null |
+| POST `/api/analyses` | 201; new synthetic record, mode `mock`, provenance returned |
+| PATCH new record | 200; notes and feedback updated, analysis fields retained |
+| GET new record after PATCH | 200; updated notes and feedback persisted |
+| DELETE new record | 204; empty body |
+| GET new record after DELETE | 404; `{"detail":"Analysis not found"}` |
+
+The new record was `1e2ff02e-5fc6-48db-a102-ce5867f5ef82`, subject
+`Trixia Neon CRUD verification`, with synthetic body text only. PATCH set
+notes to `Verified synthetic CRUD against Neon development.` and feedback
+to `none`. The create result was mock `spam`, medium risk, null confidence,
+and an empty indicator array. Only this new record was targeted by PATCH
+and DELETE; the original seed was not modified. Cleanup was verified through
+the API's subsequent 404; no independent SQL read-back or post-cleanup row-count
+comparison was performed in this session.
+
+### Limits and public-host follow-up
+
+This establishes local API connectivity to cloud PostgreSQL and the observed
+synthetic mock CRUD behavior. It does not establish public Render availability,
+real-provider behavior, installed Chrome acceptance, Windows database acceptance,
+or the required Hosted staging workflow pass. The full CI suite was not rerun
+for this manual check. The shared `development` branch is not the earlier
+temporary `pr-58-staging` branch, and its identity does not establish Render's
+current database configuration.
+
+During Codex's separate read-only network checks, public staging `/version`
+and `/ready` each timed out after 45 seconds without response bytes. This does
+not identify a service-side cause or establish permanent unavailability. The
+deployed SHA, current Neon target and hosted readiness remain unverified;
+Kendra's service/log and configuration confirmation is needed before hosted
+acceptance writes.
+
 ## Client compatibility review
 
 [Leyan's scoped review](https://github.com/kendshhh/PhishLens/pull/58#pullrequestreview-5602284448)
@@ -256,8 +338,10 @@ real-provider verification or installed Chrome acceptance.
   all required checks, including Hosted staging, for that head. Eleven mandatory
   PostgreSQL cases are registered and earlier seeded CI passed; preserve the
   passing final-head report rather than relying on earlier results.
-- Obtain Wilberr's actual Windows/PostgreSQL and normal single-process startup
-  verification, and re-review of the event-loop fix.
+- Obtain successful Windows saved-create verification against disposable
+  PostgreSQL. Wilberr has re-reviewed the loop fix and verified normal
+  single-process startup; those completed checks need not be repeated unless
+  the applicable source changes.
 - Obtain Kendra's accessible credential-free migration/hosted artifacts, exact
   migration execution SHA, and acknowledgement of development-database follow-up.
   The isolated Neon migration and earlier mock writes are already reported above;
@@ -307,7 +391,7 @@ command for Neon or production. The separate full CI gate still requires
 its seeded disposable phishlens_dev target and all mandatory database cases.
 
 Mac verification of factory selection and focused tests does not establish
-Windows acceptance. Wilberr must verify the updated candidate on Windows,
-including actual saved create against disposable PostgreSQL and normal
-single-process API startup without reload. Record source SHA, Python/Uvicorn/
-Psycopg versions, commands, results and cleanup.
+Windows acceptance. Wilberr has verified normal single-process startup without
+reload at `55470f5`; successful saved create against disposable PostgreSQL remains
+pending. Record source SHA, Python/Uvicorn/Psycopg versions, commands, results and
+cleanup for that remaining verification.
