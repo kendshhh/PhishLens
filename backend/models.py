@@ -39,6 +39,10 @@ class AnalyzedEmail(Base):
     __tablename__ = "analyzed_emails"
     __table_args__ = (
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_analyzed_emails_confidence_range"),
+        CheckConstraint(
+            "analysis_mode IS NULL OR analysis_mode IN ('mock', 'real', 'unknown')",
+            name="ck_analyzed_emails_analysis_mode",
+        ),
         Index("ix_analyzed_emails_user_created_at", "user_id", "created_at"),
     )
 
@@ -55,6 +59,10 @@ class AnalyzedEmail(Base):
     explanation: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     feedback: Mapped[str | None] = mapped_column(Text)
+
+    analysis_mode: Mapped[str | None] = mapped_column(String(20))
+    analysis_provenance: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped[User] = relationship(back_populates="analyzed_emails")
