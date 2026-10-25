@@ -261,20 +261,21 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Deploy exact PR head using the trusted legacy script
+      - name: Deploy PR merge commit using the trusted legacy script
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
-          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
+          STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
         run: node scripts/staging_smoke.mjs
-      - name: Verify deployed identity and package exact PR assets
+      - name: Verify deployed merge identity and package staging assets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
+          STAGING_COMMIT: ${{ github.sha }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           STAGING_PR: ${{ github.event.pull_request.number }}
         run: |
           python - <<'PY'
@@ -288,22 +289,24 @@ jobs:
           config = json.loads(Path('.github/secretary.json').read_text())
           if os.environ['STAGING_BASE_URL'].rstrip('/') != config['staging_origin']:
               raise RuntimeError('Hosted smoke and extension must use the configured staging origin')
-          sha = os.environ['STAGING_COMMIT']
+          deploy_sha = os.environ['STAGING_COMMIT']
+          pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']
           number = int(os.environ['STAGING_PR'])
-          evidence = smoke(config['staging_origin'], sha)
+          evidence = smoke(config['staging_origin'], deploy_sha)
           api = GitHub()
           output = Path('output/hosted-staging')
-          package(api, sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          package(api, deploy_sha, number, config, output / 'PhishLens-Staging-Extension.zip')
           current = api.request(f'pulls/{number}')
-          if current['head']['sha'] != sha or current['state'] != 'open':
+          if current['head']['sha'] != pr_head_sha or current['state'] != 'open':
               raise RuntimeError('PR changed during deployment; rerun CI for the current head')
           evidence.update({
-              'pr': number, 'sha': sha, 'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
+              'pr': number, 'sha': pr_head_sha, 'deployed_commit': deploy_sha,
+              'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
               'chrome_manual_test': 'not performed',
           })
           (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Hosted staging verified for PR #{number}, exact head `{sha}`.\n\n')
+              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}`.\n\n')
               summary.write('Health, readiness, version, synthetic history and staging package passed. ')
               summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
           PY
