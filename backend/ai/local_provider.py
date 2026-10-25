@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from threading import Lock
 
+from backend.ai.errors import ModelUnavailableError
 from backend.ai.schemas import MAX_EVIDENCE_TEXT_LENGTH, AIAnalysisResult, EvidenceItem
 
 MODEL_ID = "dima806/phishing-email-detection"
@@ -74,7 +75,7 @@ class LocalProvider:
                 model.to("cpu").eval()
                 self.tokenizer, self.model = tokenizer, model
             except (ImportError, OSError) as exc:
-                raise RuntimeError(
+                raise ModelUnavailableError(
                     "Local AI is unavailable. Install backend/requirements-ai.txt and run "
                     "python scripts/ai_smoke.py --mode local --download-model."
                 ) from exc
