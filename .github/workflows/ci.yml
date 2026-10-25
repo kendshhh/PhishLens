@@ -202,37 +202,30 @@ jobs:
       - name: Test staging deployment guards
         run: python -m unittest discover -s scripts/tests -v
 
-  # Bootstrap bridge: preserve the current required check until the new controller
-  # is proven on main. It runs ONLY trusted default-branch scripts. Retire this
-  # after requiring Secretary staging; never bypass protection to install a bot.
-  hosted-staging:
-    name: Hosted staging
+  # Check before the protected environment so obsolete queued PR runs never ask
+  # for approval or enter the shared Render deployment queue.
+  hosted-staging-preflight:
+    name: Hosted staging preflight
     if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
     needs: [staging]
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    environment: staging
-    concurrency:
-      group: phishlens-hosted-staging
-      cancel-in-progress: false
-      # Retain waiting deployments while keeping the shared staging service serialized.
-      queue: max
-    env:
-      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      current: ${{ steps.staging-preflight.outputs.current }}
     steps:
       - name: Read trusted legacy controller only
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-        with:
-          node-version: '24'
-          package-manager-cache: false
-      - name: Check PR head before staging deployment
+      - name: Check PR head before requesting staging approval
         id: staging-preflight
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -254,21 +247,79 @@ jobs:
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f'Staging skipped: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
+                  summary.write(f'Staging skipped before approval: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
+          PY
+
+  # Bootstrap bridge: preserve the current required check until the new controller
+  # is proven on main. It runs ONLY trusted default-branch scripts. Retire this
+  # after requiring Secretary staging; never bypass protection to install a bot.
+  hosted-staging:
+    name: Hosted staging
+    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.outputs.current != 'false'
+    needs: [staging, hosted-staging-preflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: phishlens-hosted-staging
+      cancel-in-progress: false
+      # Retain waiting deployments while keeping the shared staging service serialized.
+      queue: max
+    env:
+      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+    steps:
+      - name: Read trusted legacy controller only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Recheck PR head after staging approval
+        id: staging-final-preflight
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import os
+          from scripts.secretary.github_api import GitHub
+
+          number = int(os.environ['STAGING_PR'])
+          expected = os.environ['STAGING_PR_HEAD_SHA']
+          current = GitHub().request(f'pulls/{number}')
+          is_current = current['state'] == 'open' and current['head']['sha'] == expected
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'current={str(is_current).lower()}\n')
+          if is_current:
+              print(f'PR #{number} is still at the approved head {expected}.')
+          else:
+              print(f'PR #{number} staging run is superseded; deployment skipped.')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write(f'Staging skipped after approval: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
           PY
       - name: Deploy PR merge commit using the trusted legacy script
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-preflight.outputs.current == 'true'
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
           STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-preflight.outputs.current == 'true'
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
       - name: Verify deployed merge identity and package staging assets
         id: verify-hosted-staging
-        if: steps.staging-preflight.outputs.current == 'true'
+        if: steps.staging-final-preflight.outputs.current == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STAGING_COMMIT: ${{ github.sha }}
