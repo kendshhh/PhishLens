@@ -3,11 +3,13 @@ import copy
 import io
 import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from scripts.secretary.preview import smoke
 
 SHA = "a" * 40
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class HostedIdentityTests(unittest.TestCase):
@@ -56,6 +58,30 @@ class HostedIdentityTests(unittest.TestCase):
                 values[index]["status"] = "unavailable"
                 with self.assertRaisesRegex(RuntimeError, "Staging smoke failed"):
                     self.verify(values)
+
+    def test_hosted_staging_guard_compares_pr_head_not_deployed_merge_sha(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        preflight_marker = "      - name: Check PR head before staging deployment"
+        preflight_start = workflow.index(preflight_marker)
+        deploy_start = workflow.index("      - name: Deploy PR merge commit using the trusted legacy script", preflight_start)
+        preflight = workflow[preflight_start:deploy_start]
+        marker = "      - name: Verify deployed merge identity and package staging assets"
+        start = workflow.index(marker)
+        end = workflow.index("      - name: Preserve hosted staging evidence and extension", start)
+        step = workflow[start:end]
+
+        self.assertIn("current['head']['sha'] == expected", preflight)
+        self.assertIn("steps.staging-preflight.outputs.current == 'true'", workflow[deploy_start:start])
+        self.assertIn("STAGING_COMMIT: ${{ github.sha }}", step)
+        self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
+        self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
+        self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
+        self.assertIn("current['head']['sha'] != pr_head_sha", step)
+        self.assertNotIn("current['head']['sha'] != deploy_sha", step)
+        self.assertIn("'deployed_commit': deploy_sha", step)
+        self.assertIn("result.write('current=false\\n')", step)
+        self.assertIn("raise SystemExit(0)", step)
+        self.assertIn("steps.verify-hosted-staging.outputs.current == 'true'", workflow[end:])
 
 
 if __name__ == "__main__":
