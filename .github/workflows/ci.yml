@@ -98,6 +98,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # Hosted staging deploys the PR head, while this job's default checkout is
+      # GitHub's synthetic merge ref. Validate the exact deploy target as well.
+      - name: Check out exact hosted staging source
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: staging-target
+          persist-credentials: false
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
@@ -123,6 +133,10 @@ jobs:
 
       - name: Verify disposable database configuration before migrations
         run: python scripts/ci_backend.py --check-environment
+
+      - name: Verify exact hosted staging migration history
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: python scripts/verify_migration_lineage.py --repo-root staging-target
 
       - name: Apply database migrations
         run: python -m alembic -c backend/alembic.ini upgrade head
