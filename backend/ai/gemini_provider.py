@@ -5,6 +5,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
+from backend.ai.errors import AnalysisUnavailableError
 from backend.ai.prompts import PROMPT_VERSION, SYSTEM_INSTRUCTION
 from backend.ai.schemas import AIAnalysisPayload, AIAnalysisResult
 
@@ -73,6 +74,10 @@ class GeminiProvider:
                 raise DailyQuotaExceeded(
                     "The AI provider's daily request quota is exhausted. "
                     "Check provider quota before retrying."
+                ) from exc
+            if exc.code in {401, 403, 404, 429, 503}:
+                raise AnalysisUnavailableError(
+                    f"The AI provider is unavailable (HTTP {exc.code})."
                 ) from exc
             if exc.code in {429, 500, 502, 503, 504}:
                 message = (
