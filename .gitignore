@@ -15,6 +15,7 @@ node_modules/
 dist/
 build/
 output/
+/chrome-extension/
 
 # Local model files and private datasets
 models/
