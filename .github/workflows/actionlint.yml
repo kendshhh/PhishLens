@@ -24,4 +24,4 @@ jobs:
         with:
           version: 1.7.9
           # GitHub supports queue: max; actionlint 1.7.9 does not know this schema key yet.
-          flags: -ignore 'unexpected key "queue" for "concurrency" section'
+          flags: -ignore unexpected\x20key\x20\x22queue\x22\x20for\x20\x22concurrency\x22\x20section
