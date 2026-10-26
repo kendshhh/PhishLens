@@ -1,0 +1,54 @@
+{
+  "local_date": "2026-10-21",
+  "workspace": "PhishLens",
+  "method": "read-only Render service/deploy API and authenticated dashboard; public browser response bodies",
+  "production": {
+    "service_id": "srv-db7eap25b2lc73fkelpg",
+    "branch": "main",
+    "auto_deploy": true,
+    "auto_deploy_trigger": "checksPass",
+    "deploy_id": "dep-dbbois67bikc73b06fpg",
+    "deploy_trigger": "new_commit",
+    "status": "live",
+    "commit": "149808e3f76d9182688b5438153f57bd3cc03774",
+    "merge_commit_created_at": "2026-10-20T15:30:13Z",
+    "deploy_finished_at": "2026-10-20T15:33:17.294784Z",
+    "merge_to_live_seconds": 184.294784,
+    "ci_run": "https://github.com/kendshhh/PhishLens/actions/runs/39449001340",
+    "observer_run": "https://github.com/kendshhh/PhishLens/actions/runs/39449283551",
+    "public_response_bodies": {
+      "version_matches_commit": true,
+      "environment": "production",
+      "health": "ok",
+      "readiness": "ready",
+      "database": "connected",
+      "history_contains_synthetic_record": true,
+      "http_status_captured": false
+    }
+  },
+  "staging": {
+    "service_id": "srv-db92irlg1s2s739404i0",
+    "branch": "ci/staging-validation",
+    "auto_deploy": false,
+    "deploy_id": "dep-dbbod23rjlhs73eukjtg",
+    "commit": "e538a1cb4109e7f9708e6d0722db8d55318a05dc",
+    "status": "live",
+    "trigger": "api"
+  },
+  "sanitized_database_comparison": {
+    "distinct_endpoints": true,
+    "distinct_role_names": false,
+    "production_tls_required": true,
+    "staging_tls_required": true,
+    "owner_named_runtime_role_present": true,
+    "least_privilege_verified": false,
+    "neon_branch_identity_verified": false
+  },
+  "limitations": [
+    "No database writes, environment changes, deploys or rollback initiated.",
+    "One connection value appeared in a browser tool snapshot; no connection values are included in repository or GitHub updates.",
+    "Endpoint separation does not prove role privileges or full Neon branch isolation.",
+    "Health, readiness and history do not demonstrate persistent CRUD delivery.",
+    "Single merge-to-live sample; not an optimization comparison or lifetime deployment count."
+  ]
+}

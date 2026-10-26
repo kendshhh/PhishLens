@@ -30,6 +30,8 @@ The first run may cost more time to save the cache.
 
 - Local backend lint and tests must pass before publishing.
 - Only a GitHub run can validate the upgraded Action runtime and cache behavior.
-- Expect four tests in isolated PostgreSQL CI, rather than a skipped database test.
+- Use the latest JUnit/JSON report, not a fixed historical test count. Required
+  PostgreSQL tests must pass without skipping in CI; backend and extension suites
+  grow as reviewed feature tests land.
 - Required Backend checks and teammate approval remain necessary before merge.
 - No changes to application features, hosting plan, secrets or branch protection.
