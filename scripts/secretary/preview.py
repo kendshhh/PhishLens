@@ -166,6 +166,16 @@ def completed_event(api, config, run):
     return bool(statuses and statuses[0]["state"] == "success")
 
 
+def mark_superseded(api, deployment_id, log_url, extension_path=None):
+    """Retire a deployment displaced by a newer PR head without failing its old run."""
+    message = "PR head changed during deployment; this preview was superseded. The newer CI run will verify the current head."
+    if extension_path is not None:
+        Path(extension_path).unlink(missing_ok=True)
+    api.request(f"deployments/{deployment_id}/statuses", {"state": "inactive", "log_url": log_url,
+        "description": "PR head changed during deployment; newer CI run owns staging", "auto_inactive": False})
+    return "action_required", message
+
+
 def main():
     api = GitHub()
     config = json.loads((ROOT / ".github/secretary.json").read_text())
@@ -206,8 +216,8 @@ def main():
         evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
         try:
             if action == "deploy":
-                if os.getenv("SECRETARY_PREVIEW_ENABLED") != "true":
-                    raise RuntimeError("Preview not enabled. Complete staging environment setup and isolation verification first")
+                if os.getenv("SECRETARY_PREVIEW_ENABLED", "").strip().lower() != "true":
+                    raise RuntimeError("Preview gate is off; staging variable SECRETARY_PREVIEW_ENABLED must resolve to true")
                 # No PR scripts execute with this token/key. Render runs the PR with approved staging-only runtime data.
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
@@ -233,13 +243,17 @@ def main():
                         raise RuntimeError("Render staging deployment timed out")
                     time.sleep(10)
                 evidence["smoke"] = smoke(config["staging_origin"], run["head_sha"])
-                package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
+                extension = ROOT / "output/secretary/Veriqo-Staging-Extension.zip"
+                package(api, run["head_sha"], pr["number"], config, extension)
                 current = api.request(f"pulls/{pr['number']}")
                 if current["head"]["sha"] != run["head_sha"] or current["state"] != "open":
-                    raise RuntimeError("PR changed during deployment; preview is stale")
-                api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
-                    "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
-                action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
+                    # A newer synchronize event owns the current preview. Keep this old
+                    # commit's check actionable instead of making its completed workflow red.
+                    action, message = mark_superseded(api, deployment["id"], log, extension)
+                else:
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
+                        "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
+                    action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
         except Exception as exc:  # noqa: BLE001 -- fail the exact-SHA check without exposing API bodies
             action = "failure"
             # Only controlled errors are exposed, not upstream exception bodies.
