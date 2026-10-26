@@ -1,5 +1,26 @@
 # Deployment and Recovery Runbook
 
+## Current verification and playbook handoff
+
+See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
+the corrected Week 2 instructions and remaining integration gates. Production
+evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
+not a claim that every later independent endpoint probe succeeded.
+
+For each deployment, retain main SHA, successful main CI, reviewer approval,
+Render deploy ID/trigger/live timestamp, and the live `/version`/health/readiness
+observations. Archive package `evidence.json` alongside the ZIP before expiry;
+compare its source/tested SHA and ZIP hash before installing. Packaging does not
+establish browser execution or database isolation.
+
+Before a rollback, record both app revisions and their expected schema revisions.
+Current source has migration `0001_initial_schema`; compare migration trees and
+coordinate with Trixia if either revision introduces schema changes. Do not run
+reverse migrations or a production failure drill to fill an evidence checkbox.
+Reuse the verified October 14 drill; its complete recovery time remains unknown.
+For the next necessary recovery, record incident start, action start, live result,
+independent restored `/version`/health/readiness time, and actual affected behavior.
+
 The [Secretary pilot operator guide](secretary.md) adds exact-SHA preview and
 production observation. Its observer produces `metrics.json` and, on failure, an
 incident draft under the Actions artifact `Veriqo-Production-Evidence`. Inspect
