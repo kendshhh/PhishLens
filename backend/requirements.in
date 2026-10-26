@@ -4,4 +4,4 @@ SQLAlchemy>=2.0.54,<2.2
 alembic>=1.19,<2
 python-dotenv>=1,<2
 psycopg[binary]>=3,<4
-google-genai>=1,<2
+google-genai>=2.33.0,<3
