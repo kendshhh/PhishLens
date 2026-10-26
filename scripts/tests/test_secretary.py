@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 from zipfile import ZipFile
 
 from scripts.secretary.core import MARKER, application_change, fingerprint, inspect, recommendation, render, safe
-from scripts.secretary.preview import completed_event, eligibility, invalidate_previous, package, verify_environment, verify_service
+from scripts.secretary.preview import completed_event, eligibility, invalidate_previous, mark_superseded, package, verify_environment, verify_service
 from scripts.secretary.production import deployment_metrics, log_categories, pipeline_metrics
 from scripts.secretary.report import bot_comment, explain, latest_jobs, preview_state, report, validate_ai
 
@@ -188,6 +188,23 @@ class PreviewTests(unittest.TestCase):
         api.request.side_effect = [[{"id": 9, "sha": SHA, "creator": {"login": "github-actions[bot]"},
             "payload": {"run_id": 7, "run_attempt": 2}}], [{"state": "success"}]]
         self.assertTrue(completed_event(api, CONFIG, {"id": 7, "head_sha": SHA, "run_attempt": 2}))
+
+    def test_mid_deployment_pr_update_is_superseded_not_failed(self):
+        api = Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            extension = Path(directory) / "stale-extension.zip"
+            extension.write_bytes(b"obsolete")
+            action, message = mark_superseded(
+                api,
+                42,
+                "https://github.com/kendshhh/PhishLens/actions/runs/1",
+                extension,
+            )
+            self.assertFalse(extension.exists())
+        self.assertEqual(action, "action_required")
+        self.assertIn("newer CI run", message)
+        self.assertEqual(api.request.call_args.args[0], "deployments/42/statuses")
+        self.assertEqual(api.request.call_args.args[1]["state"], "inactive")
 
     def test_eligibility_draft_fork_failure_docs_and_stale(self):
         s = fixture()
