@@ -203,6 +203,16 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(eligibility(s["pr"], [{"filename": "README.md"}], run, "kendshhh/PhishLens")[0], "success")
         self.assertEqual(eligibility(s["pr"], s["files"], {**run, "head_sha": "c" * 40}, "kendshhh/PhishLens")[0], "stale")
 
+    def test_preview_head_guard_rejects_only_superseded_or_closed_prs(self):
+        from scripts.secretary.preview import current_pr_head_matches
+
+        current = {"state": "open", "head": {"sha": SHA}}
+        self.assertTrue(current_pr_head_matches(current, SHA))
+        current["head"]["sha"] = "c" * 40
+        self.assertFalse(current_pr_head_matches(current, SHA))
+        current["state"] = "closed"
+        self.assertFalse(current_pr_head_matches(current, SHA))
+
     def test_database_isolation_guards(self):
         rows = [{"envVar": {"key": key, "value": value}} for key, value in {"DATABASE_URL": "postgresql://synthetic:synthetic@dev.invalid/phishlens_dev",
             "APP_ENV": "staging", "AI_MODE": "mock", "STAGING_DATABASE_HOST": "dev.invalid"}.items()]
