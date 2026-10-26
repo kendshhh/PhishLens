@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# A newer PR head replaces stale CI and approval requests for that same PR.
+concurrency:
+  group: phishlens-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   extension:
     name: Extension checks
@@ -234,12 +239,57 @@ jobs:
   # Bootstrap bridge: preserve the current required check until the new controller
   # is proven on main. It runs ONLY trusted default-branch scripts. Retire this
   # after requiring Secretary staging; never bypass protection to install a bot.
-  hosted-staging:
-    name: Hosted staging
+  hosted-staging-preflight:
+    name: Hosted staging preflight
     if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository
     needs: [staging]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      current: ${{ steps.staging-preflight.outputs.current }}
+    steps:
+      - name: Read trusted legacy controller only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Check PR head before requesting staging approval
+        id: staging-preflight
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import os
+          from scripts.secretary.github_api import GitHub
+
+          number = int(os.environ['STAGING_PR'])
+          expected_head = os.environ['STAGING_PR_HEAD_SHA']
+          current = GitHub().request(f'pulls/{number}')
+          is_current = current['state'] == 'open' and current['head']['sha'] == expected_head
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"current={str(is_current).lower()}\n")
+          if not is_current:
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write(f'Hosted staging for PR #{number} was skipped before approval because the PR closed or its head changed; no deployment was started.\n')
+          PY
+
+  hosted-staging:
+    name: Hosted staging
+    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true'
+    needs: [staging, hosted-staging-preflight]
+    runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
+      pull-requests: read
     environment: staging
     concurrency:
       group: phishlens-hosted-staging
@@ -261,17 +311,40 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Recheck PR head after staging approval
+        id: staging-final-preflight
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import os
+          from scripts.secretary.github_api import GitHub
+
+          number = int(os.environ['STAGING_PR'])
+          expected_head = os.environ['STAGING_PR_HEAD_SHA']
+          current = GitHub().request(f'pulls/{number}')
+          is_current = current['state'] == 'open' and current['head']['sha'] == expected_head
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"current={str(is_current).lower()}\n")
+          if not is_current:
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write(f'Hosted staging for PR #{number} was skipped because the PR closed or its head changed while approval was pending.\n')
+          PY
       - name: Deploy PR merge commit using the trusted legacy script
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+        if: steps.staging-final-preflight.outputs.current == 'true'
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
           STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+        if: steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
       - name: Verify deployed merge identity and package staging assets
+        id: staging-finalize
+        if: steps.staging-final-preflight.outputs.current == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STAGING_COMMIT: ${{ github.sha }}
@@ -292,28 +365,46 @@ jobs:
           deploy_sha = os.environ['STAGING_COMMIT']
           pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']
           number = int(os.environ['STAGING_PR'])
-          evidence = smoke(config['staging_origin'], deploy_sha)
           api = GitHub()
           output = Path('output/hosted-staging')
+
+          def superseded():
+              current = api.request(f'pulls/{number}')
+              if current['state'] == 'open' and current['head']['sha'] == pr_head_sha:
+                  return False
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
+                  result.write('current=false\n')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write(f'Hosted staging for PR #{number} was superseded during deployment because the PR closed or its head changed. No extension artifact was published.\n')
+              return True
+
+          if superseded():
+              raise SystemExit(0)
+          evidence = smoke(config['staging_origin'], deploy_sha)
+          if superseded():
+              raise SystemExit(0)
           package(api, deploy_sha, number, config, output / 'PhishLens-Staging-Extension.zip')
-          current = api.request(f'pulls/{number}')
-          if current['head']['sha'] != pr_head_sha or current['state'] != 'open':
-              raise RuntimeError('PR changed during deployment; rerun CI for the current head')
+          if superseded():
+              raise SystemExit(0)
           evidence.update({
               'pr': number, 'sha': pr_head_sha, 'deployed_commit': deploy_sha,
               'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
               'chrome_manual_test': 'not performed',
           })
           (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
+              result.write('current=true\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}`.\n\n')
               summary.write('Health, readiness, version, synthetic history and staging package passed. ')
               summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
           PY
       - name: Preserve hosted staging evidence and extension
+        if: steps.staging-finalize.outputs.current == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: PhishLens-Staging-Extension
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+
