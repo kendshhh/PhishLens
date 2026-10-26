@@ -214,8 +214,8 @@ def main():
         evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
         try:
             if action == "deploy":
-                if os.getenv("SECRETARY_PREVIEW_ENABLED") != "true":
-                    raise RuntimeError("Preview not enabled. Complete staging environment setup and isolation verification first")
+                if os.getenv("SECRETARY_PREVIEW_ENABLED", "").strip().lower() != "true":
+                    raise RuntimeError("Preview gate is off; staging variable SECRETARY_PREVIEW_ENABLED must resolve to true")
                 # No PR scripts execute with this token/key. Render runs the PR with approved staging-only runtime data.
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
