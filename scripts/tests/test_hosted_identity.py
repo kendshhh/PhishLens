@@ -62,14 +62,14 @@ class HostedIdentityTests(unittest.TestCase):
 
     def test_staging_preflight_runs_before_environment_approval(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        preflight_start = workflow.index("  hosted-staging-preflight:\\n")
-        hosted_start = workflow.index("  hosted-staging:\\n", preflight_start)
+        preflight_start = workflow.index("  hosted-staging-preflight:\n")
+        hosted_start = workflow.index("  hosted-staging:\n", preflight_start)
         preflight = workflow[preflight_start:hosted_start]
         hosted = workflow[hosted_start:]
 
         self.assertIn("Check PR head before requesting staging approval", preflight)
         self.assertNotIn("environment: staging", preflight)
-        hosted_header = hosted.split("    steps:\\n", 1)[0]
+        hosted_header = hosted.split("    steps:\n", 1)[0]
         self.assertIn("needs: [staging, hosted-staging-preflight]", hosted_header)
         self.assertIn("needs.staging.result == 'success'", hosted_header)
         self.assertIn("needs.hosted-staging-preflight.result == 'success'", hosted_header)
