@@ -62,7 +62,7 @@ class PopupAssets(HTMLParser):
 PopupAssets().feed(require_file(popup).read_text(encoding="utf-8"))
 
 permissions = manifest.get("host_permissions", [])
-if "https://phishlens-api-ocvt.onrender.com/*" not in permissions:
-    raise ValueError("Missing public API host permission")
+if permissions != ["https://phishlens-api-ocvt.onrender.com/*"]:
+    raise ValueError("Production package must grant only the public API host permission")
 
 print("Extension manifest and required files passed validation.")
