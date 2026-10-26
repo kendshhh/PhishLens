@@ -214,3 +214,6 @@ The instructor's guide is the main authority for requirements,
 workflow, deliverables, and grading:
 
 [Read the instructor guide](https://csp221a.vercel.app/)
+
+[Consultation 2 preparation and remaining requirements](docs/devops/consultation-2.md)
+records the demo agenda, evidence gaps and Sprint 3/4 handoff.
