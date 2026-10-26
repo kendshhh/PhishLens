@@ -13,7 +13,11 @@ def number(value, label):
         return "not measured"
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(f"{label} must be a nonnegative finite number or null")
-    if not math.isfinite(value) or value < 0:
+    try:
+        finite = math.isfinite(value)
+    except OverflowError as error:
+        raise ValueError(f"{label} is too large") from error
+    if not finite or value < 0:
         raise ValueError(f"{label} must be a nonnegative finite number or null")
     return f"{value:.2f}" if isinstance(value, float) else str(value)
 
@@ -99,3 +103,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

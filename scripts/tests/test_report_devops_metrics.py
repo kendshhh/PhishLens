@@ -1,8 +1,14 @@
 """Keep consultation evidence honest and avoid copying sensitive observer fields."""
 
+import io
+import json
+import tempfile
 import unittest
+from contextlib import redirect_stderr
+from pathlib import Path
+from unittest.mock import patch
 
-from scripts.report_devops_metrics import render
+from scripts.report_devops_metrics import main, render
 
 
 class ConsultationMetricsTests(unittest.TestCase):
@@ -55,3 +61,31 @@ class ConsultationMetricsTests(unittest.TestCase):
             render([])
         with self.assertRaises(TypeError):
             render({"pipeline": []})
+
+    def test_oversized_integer_is_a_validation_error(self):
+        for field in ("successes", "average_pr_pipeline_seconds"):
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "too large"):
+                render({"pipeline": {field: 10 ** 400}})
+
+    def test_cli_rejects_oversized_json_without_traceback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "metrics.json"
+            output = Path(directory) / "report.md"
+            for field in ("successes", "average_pr_pipeline_seconds"):
+                with self.subTest(field=field):
+                    source.write_text(json.dumps({"pipeline": {field: 10 ** 400}}), encoding="utf-8")
+                    stderr = io.StringIO()
+                    with (
+                        patch("sys.argv", ["report_devops_metrics.py", str(source), str(output)]),
+                        redirect_stderr(stderr),
+                        self.assertRaises(SystemExit) as error,
+                    ):
+                        main()
+                    self.assertEqual(error.exception.code, 1)
+                    self.assertEqual(
+                        stderr.getvalue(),
+                        "Invalid or unreadable metrics evidence; output could not be generated.\n",
+                    )
+                    self.assertNotIn("Traceback", stderr.getvalue())
+                    self.assertFalse(output.exists())
+
