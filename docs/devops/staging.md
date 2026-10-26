@@ -55,9 +55,17 @@ does not claim installed-Chrome acceptance; that remains a separate human test.
 
 Configure `DATABASE_URL` directly in this service's Render environment. It must
 refer to the separate Neon development branch and database `phishlens_dev`.
-The startup script refuses other database names before migrations or seed run.
-The name guard cannot distinguish Neon branches: verify the host/branch privately
-in Neon. Never reuse the production connection or put it in an extension.
+Set `APP_ENV=staging` and `STAGING_DATABASE_HOST` to the exact hostname in
+`DATABASE_URL`. Startup refuses other database names or a missing/mismatched host
+before migrations or seed run. The name guard cannot distinguish Neon branches:
+verify the host/branch privately in Neon. Never reuse the production connection
+or put it in an extension.
+
+The Render runtime must reach Neon over IPv4. A failed deploy showed Render had no
+route to the endpoint's IPv6 address. `start_staging.py` resolves the configured
+hostname's IPv4 addresses at startup and passes them to libpq while retaining the
+Neon hostname for TLS/SNI. Keep the hostname in `DATABASE_URL`; do not hard-code a
+resolved IP, since Neon may change its address records.
 
 Startup applies forward migrations and repeatable synthetic seed only to staging.
 The database role must permit migrations. Failed migrations fail startup; no
