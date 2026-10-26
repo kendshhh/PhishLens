@@ -378,9 +378,9 @@ jobs:
                       and not current.get('draft', False)):
                   return False
               with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
-                  result.write('current=false\\n')
+                  result.write('current=false\n')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f"Hosted staging for PR #{number} was superseded during deployment. The current head's CI run owns staging.\\n")
+                  summary.write(f"Hosted staging for PR #{number} was superseded during deployment. The current head's CI run owns staging.\n")
               return True
 
           # A newer PR head owns staging. Stop cleanly and never publish stale evidence.
@@ -399,11 +399,11 @@ jobs:
           })
           (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
           with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
-              result.write('current=true\\n')
+              result.write('current=true\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}`.\\n\\n')
+              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}`.\n\n')
               summary.write('Health, readiness, version, synthetic history and staging package passed. ')
-              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\\n')
+              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
           PY
       - name: Preserve hosted staging evidence and extension
         if: steps.staging-finalize.outputs.current == 'true'
