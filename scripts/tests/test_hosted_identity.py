@@ -71,11 +71,13 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("outputs:\n      current: ${{ steps.staging-preflight.outputs.current }}", preflight_job)
         self.assertNotIn("environment: staging", preflight_job)
         self.assertIn("current['head']['sha'] == expected", preflight_job)
+        self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", preflight_job)
         hosted_header = hosted_job.split("    steps:\n", 1)[0]
         self.assertIn("needs: [staging, hosted-staging-preflight]", hosted_header)
         self.assertIn("always()", hosted_header)
         self.assertIn("needs.staging.result == 'success'", hosted_header)
         self.assertIn("needs.hosted-staging-preflight.outputs.current != 'false'", hosted_header)
+        self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", hosted_header)
         self.assertIn("environment: staging", hosted_header)
 
     def test_hosted_staging_rechecks_current_head_after_approval(self):
