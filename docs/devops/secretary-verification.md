@@ -51,9 +51,18 @@ screenshots, automatic approvals, or production rollback claims in this log.
 - [ ] Owner requires `Secretary staging` after its first observed check, alongside existing checks.
 - [ ] Set repository variable `SECRETARY_REPLACES_LEGACY_STAGING=true` only after the new check is required and proven.
 - [ ] Retire the legacy bootstrap job in a separate reviewed PR; no direct protection bypass.
-- [ ] Verify main auto-deploy and observer evidence with the exact merged SHA.
+- [ ] Verify main auto-deploy and the exact merged SHA in Render.
+- [ ] After Render shows that SHA live, manually run **Production evidence** from
+  GitHub Actions on `main`; retain the artifact and confirm `/version`, `/health`
+  and `/ready` match the live deployment.
 - [ ] Download metrics before artifact expiry, record the reporting period and sources.
 - [ ] Perform an authorized rollback drill later, checking database compatibility first.
+
+The production observer is deliberately `workflow_dispatch`-only. A `workflow_run`
+trigger would create a separate GitHub check on the same main commit while the
+observer waits for Render to deploy it. With Render set to **After CI Checks Pass**,
+that check can prevent the deployment it is waiting to verify. Run the observer only
+after the expected commit is live; it is evidence collection, not a deployment gate.
 
 ## Consultation demonstration (about 3 minutes of DevOps segment)
 
