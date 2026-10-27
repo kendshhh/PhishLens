@@ -1,5 +1,16 @@
 # Scope Changes
 
+## October 21 verification follow-up
+
+The October 13 status below is historical: reviewed migrations, repeated seed,
+database-backed history and production readiness now have recorded CI/deployment
+evidence. Current main is 149808e; see the
+[playbook close-out](devops/playbook-closeout-2026-10-21.md). PostgreSQL/Neon remains
+the implementation decision; instructor notification/acceptance is still not
+established. Chrome remains the UI, with public extension demonstration acceptance
+pending the team/instructor. AI mock wiring is labeled; real model quality/hosting
+acceptance and persisted CRUD are not inferred from a working history view.
+
 ## 2026-10-13 — Database selection
 
 ### Original Plan

@@ -1,0 +1,26 @@
+{
+  "scope": "Remote-tracking origin refs only; excludes local stash/private ignored files",
+  "unique_blobs": 298,
+  "scanned_text_blobs": 298,
+  "binary_blobs_not_content_scanned": 0,
+  "oversized_blobs_not_content_scanned": 0,
+  "tracked_private_env_paths": [],
+  "tracked_model_weight_paths": [],
+  "credential_pattern_candidates": [
+    {
+      "blob": "27e4a3c9a0f3d36757a912a2d2a37192c6ef8e25",
+      "path_hint": "scripts/tests/test_secretary.py",
+      "category": "database_password",
+      "candidate_count": 2,
+      "triage": "Synthetic test fixtures targeting .invalid/example hosts; not live connection credentials"
+    },
+    {
+      "blob": "6737e4fbf24549d056a55b98ce73854db7ab872b",
+      "path_hint": ".env.example",
+      "category": "database_password",
+      "candidate_count": 1,
+      "triage": "Bracketed password placeholder and <neon-host> template in historical .env.example; no live value"
+    }
+  ],
+  "limitation": "Pattern scan, not a guarantee of no secrets/private emails; binary content and hosted secrets not audited. Synthetic/placeholder DB passwords excluded by explicit allowlist. Path hints identify one path per unique object."
+}
