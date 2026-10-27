@@ -275,6 +275,7 @@ def main():
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
             if action == "failure":
+                print("Preview failed: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
 
