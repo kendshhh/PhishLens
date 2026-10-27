@@ -1,3 +1,4 @@
+import asyncio
 import os
 from unittest.mock import Mock
 from uuid import UUID, uuid4
@@ -173,6 +174,60 @@ def test_create_idempotency_replays_one_committed_record(
     assert conflict.json()["code"] == "idempotency_conflict"
     inference.assert_called_once()
 
+
+def test_retry_after_commit_acknowledgement_timeout_replays_saved_record(
+    saved_postgres_context,
+    monkeypatch,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        return_value=AIAnalysisResult(classification="legitimate")
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+    monkeypatch.setattr(analysis_deadlines, "OPERATION_BUDGET_SECONDS", 5.0)
+    persist = analysis_service.persist_saved_analysis
+
+    async def commit_then_lose_acknowledgement(*args, **kwargs):
+        response = await persist(*args, **kwargs)
+        # The SQL transaction committed. Keep the application await pending so
+        # the request deadline cancels it before the result can be acknowledged.
+        await asyncio.Event().wait()
+        return response
+
+    monkeypatch.setattr(
+        analysis_service,
+        "persist_saved_analysis",
+        commit_then_lose_acknowledgement,
+    )
+    headers = {"Idempotency-Key": "commit-ack-timeout-001"}
+    payload = {"subject": "Synthetic acknowledgement test", "body": "Synthetic body"}
+
+    timed_out = client.post("/api/analyses", json=payload, headers=headers)
+
+    assert timed_out.status_code == 504
+    assert timed_out.json()["code"] == "analysis_timeout"
+    with Session(engine) as verification:
+        records = verification.scalars(
+            select(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)
+        ).all()
+        assert len(records) == 1
+        committed_id = records[0].id
+
+    # The caller's retry with the same key recovers the committed result and
+    # does not invoke inference or insert a second row.
+    monkeypatch.setattr(analysis_service, "persist_saved_analysis", persist)
+    retried = client.post("/api/analyses", json=payload, headers=headers)
+
+    assert retried.status_code == 201
+    assert retried.json()["id"] == str(committed_id)
+    inference.assert_called_once()
+    with Session(engine) as verification:
+        count = verification.scalar(
+            select(func.count())
+            .select_from(AnalyzedEmail)
+            .where(AnalyzedEmail.user_id == user_id)
+        )
+        assert count == 1
 
 @pytest.mark.parametrize(
     ("error_type", "expected_status", "expected_code", "expected_message"),
