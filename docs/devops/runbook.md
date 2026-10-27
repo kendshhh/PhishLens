@@ -88,8 +88,14 @@ and teammate approval. Missing staging settings must be fixed before merge.
 3. Merge into main.
 4. Confirm main CI passes.
 5. Confirm Render deploys that commit automatically.
-6. Verify /health and the behavior affected by the change.
-7. Record merge-to-live time and evidence.
+6. From GitHub Actions, manually run **Production evidence** on `main` after the
+   exact commit is live. Retain its metrics artifact and confirm the exact SHA.
+7. Verify /health and the behavior affected by the change.
+8. Record merge-to-live time and evidence.
+
+The observer is manual and post-deploy so Render's **After CI Checks Pass** gate
+does not wait on a check that itself waits for the deployment. It never deploys
+or rolls back production.
 
 For database-dependent changes, also request /ready and expect HTTP 200 with
 {"status":"ready","database":"connected"}. Keep /health as the process
