@@ -4,13 +4,14 @@
 
 Issue #43: prove saved-analysis CRUD persistence, validation, and failure behavior.
 
-Branch: `test/43-crud-persistence`
+Branch: `codex/issue-43-postgres-tests`
 
-Base commit: `edee25e1780d4fb28617fa04bf46d6e6624b6678`
+Base commit: `b3a7588811e77edc48b29b07763152f66172a331` (`origin/main`, including merged PR #58).
 
-The test results below were produced with four Issue #43 test files modified in
-the working tree on top of that base commit. They are not yet represented by a
-commit SHA. The WIP stash was restored, verified against its patch, and dropped.
+Test-change commit: `7ced698` (based on the current `main` commit above). The
+test changes were transplanted from the earlier local `test/43-crud-persistence`
+branch so this PR contains only the Issue #43 test and handoff files. The WIP
+stash was restored, verified against its patch, and dropped.
 
 The seeded-history test now creates its own synthetic users and records inside a
 rollback-only transaction and requires a local database whose name ends in
@@ -23,12 +24,12 @@ rollback-only transaction and requires a local database whose name ends in
 - Ruff on the four changed PostgreSQL test files: passed.
 - `git diff --check`: passed.
 - Targeted PostgreSQL tests against the disposable local database
-  `phishlens_s2_t1_test`: **33 passed, 1 skipped in 3.52s**. The skip is the
+  `phishlens_s2_t1_test`: **35 passed, 1 skipped in 8.62s**. The skip is the
   deliberately gated seed-integrity check.
 - Full backend suite with `RUN_DATABASE_TESTS=1` and the same disposable database:
-  **218 passed, 1 skipped in 6.43s**. The skip is the seed-integrity check.
+  **252 passed, 1 skipped in 11.77s**. The skip is the seed-integrity check.
 - Full backend suite with database-only tests disabled:
-  **184 passed, 35 skipped in 3.94s**.
+  **216 passed, 37 skipped in 3.84s**.
 
 ## Commands
 
@@ -45,6 +46,7 @@ env -u RUN_DATABASE_TESTS -u RUN_SEED_INTEGRITY_TESTS ./.venv/bin/python -m pyte
 The previous full PostgreSQL run failed because two legacy tests required seeded
 `phishlens_dev`. The history test is now independent of seed data; seed integrity
 remains separately gated and was intentionally skipped. Do not point it at a
-shared or hosted database to force a pass. The test changes and this handoff are
-uncommitted; no Issue #43 commit SHA, PR CI run, or teammate review is available
-yet. No Neon or hosted database was used, and this note contains no credentials.
+shared or hosted database to force a pass. These results were rerun on the
+current-main-based test commit `7ced698`; PR CI and teammate review are tracked
+separately. No Neon or hosted database was used, and this note contains no
+credentials.
