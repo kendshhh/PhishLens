@@ -99,12 +99,15 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
         self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
-        self.assertIn("current['head']['sha'] != pr_head_sha", step)
-        self.assertNotIn("current['head']['sha'] != deploy_sha", step)
+        self.assertIn("def superseded():", step)
+        self.assertIn("current['state'] == 'open'", step)
+        self.assertIn("current['head']['sha'] == pr_head_sha", step)
+        self.assertIn("not current.get('draft', False)", step)
+        self.assertEqual(step.count("if superseded():"), 3)
         self.assertIn("'deployed_commit': deploy_sha", step)
         self.assertIn("result.write('current=false\\n')", step)
         self.assertIn("raise SystemExit(0)", step)
-        self.assertIn("steps.verify-hosted-staging.outputs.current == 'true'", hosted_job[end:])
+        self.assertIn("steps.staging-finalize.outputs.current == 'true'", hosted_job[end:])
 
 
 if __name__ == "__main__":
