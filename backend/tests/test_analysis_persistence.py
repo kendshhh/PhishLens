@@ -102,13 +102,14 @@ def persistence_context(monkeypatch):
     )
 
 
-def _persist(context):
+def _persist(context, idempotency_key=None):
     return asyncio.run(
         analysis_persistence.persist_saved_analysis(
             context.request,
             context.result,
             mode="mock",
             deadline=context.deadline,
+            idempotency_key=idempotency_key,
         )
     )
 
@@ -237,7 +238,9 @@ def test_commit_failure_does_not_return_success(persistence_context):
     context.connection.commit.assert_awaited_once()
 
 
-def test_expired_budget_after_commit_is_reported(persistence_context):
+def test_expired_budget_after_confirmed_commit_returns_saved_record(
+    persistence_context,
+):
     context = persistence_context
 
     async def acknowledge_late():
@@ -245,7 +248,84 @@ def test_expired_budget_after_commit_is_reported(persistence_context):
 
     context.connection.commit.side_effect = acknowledge_late
 
-    with pytest.raises(AnalysisTimeoutError):
-        _persist(context)
+    response = _persist(context)
 
+    assert response.id == context.row["id"]
     context.connection.commit.assert_awaited_once()
+
+
+def test_idempotent_lookup_returns_prior_record(persistence_context):
+    context = persistence_context
+    cursor = SimpleNamespace(fetchone=AsyncMock(return_value=context.row))
+    context.connection.execute = AsyncMock(return_value=cursor)
+
+    response = asyncio.run(
+        analysis_persistence.find_idempotent_saved_analysis(
+            context.request,
+            "request-123",
+            deadline=context.deadline,
+        )
+    )
+
+    assert response.id == context.row["id"]
+    context.connection.execute.assert_awaited_once_with(
+        analysis_persistence._SELECT_IDEMPOTENT_ANALYSIS_FOR_DEMO_USER,
+        (analysis_persistence.DEMO_USER_EMAIL, "request-123"),
+    )
+
+
+def test_idempotent_lookup_rejects_different_payload(persistence_context):
+    context = persistence_context
+    cursor = SimpleNamespace(fetchone=AsyncMock(return_value=context.row))
+    context.connection.execute = AsyncMock(return_value=cursor)
+    request = CreateSavedAnalysis(body="Different synthetic body")
+
+    with pytest.raises(
+        analysis_persistence.AnalysisIdempotencyConflictError,
+    ):
+        asyncio.run(
+            analysis_persistence.find_idempotent_saved_analysis(
+                request,
+                "request-123",
+                deadline=context.deadline,
+            )
+        )
+
+
+def test_idempotent_insert_race_returns_prior_record(persistence_context):
+    context = persistence_context
+    context.insert_cursor.fetchone.return_value = None
+    replay_cursor = SimpleNamespace(
+        fetchone=AsyncMock(return_value=context.row)
+    )
+    context.connection.execute = AsyncMock(
+        side_effect=[context.user_cursor, context.insert_cursor, replay_cursor]
+    )
+
+    response = _persist(context, "request-123")
+
+    assert response.id == context.row["id"]
+    insert_call = context.connection.execute.await_args_list[1]
+    assert "ON CONFLICT (user_id, idempotency_key) DO NOTHING" in insert_call.args[0]
+    assert insert_call.args[1][-1] == "request-123"
+    context.connection.commit.assert_not_awaited()
+
+
+def test_idempotent_insert_race_rejects_different_payload(persistence_context):
+    context = persistence_context
+    context.insert_cursor.fetchone.return_value = None
+    replay_cursor = SimpleNamespace(
+        fetchone=AsyncMock(return_value=context.row)
+    )
+    context.connection.execute = AsyncMock(
+        side_effect=[context.user_cursor, context.insert_cursor, replay_cursor]
+    )
+    context.request = CreateSavedAnalysis(body="Different synthetic body")
+    context.result = AIAnalysisResult(classification="phishing")
+
+    with pytest.raises(
+        analysis_persistence.AnalysisIdempotencyConflictError,
+    ):
+        _persist(context, "request-123")
+
+    context.connection.commit.assert_not_awaited()

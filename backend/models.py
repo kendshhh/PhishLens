@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -44,6 +45,11 @@ class AnalyzedEmail(Base):
             name="ck_analyzed_emails_analysis_mode",
         ),
         Index("ix_analyzed_emails_user_created_at", "user_id", "created_at"),
+        UniqueConstraint(
+            "user_id",
+            "idempotency_key",
+            name="uq_analyzed_emails_user_idempotency_key",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -62,6 +68,7 @@ class AnalyzedEmail(Base):
 
     analysis_mode: Mapped[str | None] = mapped_column(String(20))
     analysis_provenance: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

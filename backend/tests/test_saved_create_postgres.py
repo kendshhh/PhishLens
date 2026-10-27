@@ -138,6 +138,42 @@ def test_complete_saved_crud_flow(saved_postgres_context):
         assert verification.get(AnalyzedEmail, record_id) is None
 
 
+def test_create_idempotency_replays_one_committed_record(
+    saved_postgres_context,
+    monkeypatch,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        return_value=AIAnalysisResult(classification="legitimate")
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+    headers = {"Idempotency-Key": "retry-safe-create-001"}
+    payload = {"subject": "Synthetic retry test", "body": "Synthetic body"}
+
+    first = client.post("/api/analyses", json=payload, headers=headers)
+    retry = client.post("/api/analyses", json=payload, headers=headers)
+
+    assert first.status_code == retry.status_code == 201
+    assert first.json()["id"] == retry.json()["id"]
+    inference.assert_called_once()
+
+    with Session(engine) as verification:
+        records = verification.scalars(
+            select(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)
+        ).all()
+        assert len(records) == 1
+        assert records[0].idempotency_key == headers["Idempotency-Key"]
+
+    conflict = client.post(
+        "/api/analyses",
+        json={**payload, "body": "Changed synthetic body"},
+        headers=headers,
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["code"] == "idempotency_conflict"
+    inference.assert_called_once()
+
+
 @pytest.mark.parametrize(
     ("error_type", "expected_status", "expected_code", "expected_message"),
     [

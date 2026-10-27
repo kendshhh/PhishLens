@@ -1,9 +1,10 @@
 """Persistent analysis creation with safe client-facing errors."""
 
+import re
 from collections.abc import Callable, Coroutine
 from typing import Any, Literal, cast
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Header, Request, Response
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
@@ -16,6 +17,10 @@ from backend.app.analysis_execution import (
     AnalysisUnavailableError,
 )
 from backend.app.analysis_mapping import ProviderMode
+from backend.app.analysis_persistence import (
+    AnalysisIdempotencyConflictError,
+    find_idempotent_saved_analysis,
+)
 from backend.app.analysis_schemas import CreateSavedAnalysis, SavedAnalysisDetail
 from backend.app.analysis_service import create_saved_analysis
 from backend.core.config import get_ai_config, get_database_url
@@ -26,8 +31,11 @@ SavedCreateErrorCode = Literal[
     "analysis_unavailable",
     "storage_unavailable",
     "analysis_timeout",
+    "idempotency_conflict",
     "internal_error",
 ]
+
+_IDEMPOTENCY_KEY_PATTERN = re.compile(r"[A-Za-z0-9_-]{1,255}")
 
 
 class SavedCreateError(BaseModel):
@@ -80,13 +88,63 @@ router = APIRouter(
     response_model=SavedAnalysisDetail,
     responses={
         status: {"model": SavedCreateError}
-        for status in (422, 500, 502, 503, 504)
+        for status in (409, 422, 500, 502, 503, 504)
     },
 )
 async def create_analysis(
     request: CreateSavedAnalysis,
+    idempotency_key: str | None = Header(
+        default=None,
+        alias="Idempotency-Key",
+        min_length=1,
+        max_length=255,
+    ),
 ) -> SavedAnalysisDetail | JSONResponse:
     deadline = AnalysisDeadline.start()
+
+    if idempotency_key is not None and not _IDEMPOTENCY_KEY_PATTERN.fullmatch(
+        idempotency_key
+    ):
+        return _error(422, "invalid_input", "Invalid Idempotency-Key")
+
+    try:
+        get_database_url()
+    except (RuntimeError, ValueError):
+        return _error(
+            503,
+            "storage_unavailable",
+            "Saved analysis storage is temporarily unavailable",
+        )
+
+    if idempotency_key is not None:
+        try:
+            existing = await find_idempotent_saved_analysis(
+                request,
+                idempotency_key,
+                deadline=deadline,
+            )
+        except AnalysisIdempotencyConflictError:
+            return _error(
+                409,
+                "idempotency_conflict",
+                "Idempotency-Key was already used for a different request",
+            )
+        except AnalysisTimeoutError:
+            return _error(504, "analysis_timeout", "Email analysis timed out")
+        except DatabaseError:
+            return _error(
+                503,
+                "storage_unavailable",
+                "Saved analysis storage is temporarily unavailable",
+            )
+        except Exception:  # noqa: BLE001
+            return _error(
+                500,
+                "internal_error",
+                "Unable to create saved analysis",
+            )
+        if existing is not None:
+            return existing
 
     try:
         mode, api_key, model = get_ai_config()
@@ -105,21 +163,19 @@ async def create_analysis(
         )
 
     try:
-        get_database_url()
-    except (RuntimeError, ValueError):
-        return _error(
-            503,
-            "storage_unavailable",
-            "Saved analysis storage is temporarily unavailable",
-        )
-
-    try:
         return await create_saved_analysis(
             request,
             mode=cast(ProviderMode, mode),
             api_key=api_key,
             model=model,
             deadline=deadline,
+            idempotency_key=idempotency_key,
+        )
+    except AnalysisIdempotencyConflictError:
+        return _error(
+            409,
+            "idempotency_conflict",
+            "Idempotency-Key was already used for a different request",
         )
     except AnalysisTimeoutError:
         return _error(504, "analysis_timeout", "Email analysis timed out")

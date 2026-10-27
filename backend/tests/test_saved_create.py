@@ -92,6 +92,7 @@ def test_create_returns_201_saved_detail(create_context, payload):
     assert call.args[0].body == "Synthetic email body"
     assert call.kwargs["mode"] == "mock"
     assert isinstance(call.kwargs["deadline"], AnalysisDeadline)
+    assert call.kwargs["idempotency_key"] is None
 
 
 @pytest.mark.parametrize(
@@ -200,7 +201,7 @@ def test_bad_ai_configuration_never_calls_service(create_context):
     assert response.status_code == 503
     assert response.json()["code"] == "analysis_unavailable"
     assert PRIVATE_TOKEN not in response.text
-    context.database_config.assert_not_called()
+    context.database_config.assert_called_once()
     context.service.assert_not_awaited()
 
 
@@ -215,7 +216,7 @@ def test_local_create_is_unavailable(create_context):
 
     assert response.status_code == 503
     assert response.json()["code"] == "analysis_unavailable"
-    context.database_config.assert_not_called()
+    context.database_config.assert_called_once()
     context.service.assert_not_awaited()
 
 
@@ -260,6 +261,86 @@ def test_create_openapi_documents_success_and_errors():
     success = responses["201"]["content"]["application/json"]["schema"]
     assert success["$ref"].endswith("/SavedAnalysisDetail")
 
-    for status in ("422", "500", "502", "503", "504"):
+    for status in ("409", "422", "500", "502", "503", "504"):
         schema = responses[status]["content"]["application/json"]["schema"]
         assert schema["$ref"].endswith("/SavedCreateError")
+
+
+def test_create_documents_optional_idempotency_header():
+    parameters = app.openapi()["paths"]["/api/analyses"]["post"]["parameters"]
+    assert any(
+        parameter["name"] == "Idempotency-Key"
+        and parameter["in"] == "header"
+        and parameter["required"] is False
+        for parameter in parameters
+    )
+
+
+def test_idempotency_replay_returns_saved_result_before_ai_configuration(
+    create_context,
+    monkeypatch,
+):
+    context = create_context
+    lookup = AsyncMock(return_value=context.saved)
+    monkeypatch.setattr(saved_create, "find_idempotent_saved_analysis", lookup)
+    context.ai_config.side_effect = RuntimeError(PRIVATE_TOKEN)
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Synthetic email body"},
+        headers={"Idempotency-Key": "retry-123"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] == str(context.saved.id)
+    lookup.assert_awaited_once()
+    assert lookup.await_args.args[0].body == "Synthetic email body"
+    assert lookup.await_args.args[1] == "retry-123"
+    context.ai_config.assert_not_called()
+    context.service.assert_not_awaited()
+
+
+def test_reusing_idempotency_key_with_different_input_returns_409(
+    create_context,
+    monkeypatch,
+):
+    context = create_context
+    lookup = AsyncMock(
+        side_effect=saved_create.AnalysisIdempotencyConflictError(
+            PRIVATE_TOKEN
+        )
+    )
+    monkeypatch.setattr(saved_create, "find_idempotent_saved_analysis", lookup)
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Different synthetic body"},
+        headers={"Idempotency-Key": "retry-123"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "Idempotency-Key was already used for a different request",
+        "code": "idempotency_conflict",
+    }
+    assert PRIVATE_TOKEN not in response.text
+    context.ai_config.assert_not_called()
+    context.service.assert_not_awaited()
+
+
+def test_invalid_idempotency_key_is_rejected(create_context):
+    context = create_context
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Synthetic email body"},
+        headers={"Idempotency-Key": "not a safe key"},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "Invalid Idempotency-Key",
+        "code": "invalid_input",
+    }
+    context.database_config.assert_not_called()
+    context.service.assert_not_awaited()

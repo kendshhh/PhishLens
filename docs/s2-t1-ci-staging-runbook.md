@@ -52,7 +52,8 @@ in GitHub CI remains pending until these local edits are committed and pushed.
    and loses their data; use the recovery point if rollback is required.
 4. Using the confirmed staging connection supplied through a secure environment,
    run `python -m alembic -c backend/alembic.ini current`, then `upgrade head` twice
-   and `current` again. Require 0002_analysis_provenance, unchanged legacy records,
+   and `current` again. Require 0003_saved_analysis_idempotency (with historical
+   0001 and 0002 revisions present), unchanged legacy records,
    NULL provenance on legacy rows, both columns, and the named mode constraint.
    Record duration and failures. Do not run the local CI runner/tests on Neon.
 5. Deploy the reviewed candidate SHA using the approved staging process. Configure

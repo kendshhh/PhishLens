@@ -102,6 +102,13 @@ A subsequent detail request returns:
 - Provenance preserves provider mode, model/revision, prompt version,
   explanation source, truncation and window metadata without invented values.
 - Migration `0002_analysis_provenance` adds nullable mode and JSONB provenance.
+- Migration `0003_saved_analysis_idempotency` adds a nullable key and a
+  per-user unique constraint. `POST /api/analyses` accepts an optional
+  `Idempotency-Key` header (1–255 ASCII letters, digits, `_`, or `-`). A retry
+  with the same key and identical subject/body returns the original saved
+  record without repeating inference; the same key with a different payload
+  returns `409 idempotency_conflict`. Clients must reuse the original key for
+  retries; requests without a key retain legacy non-idempotent behavior.
 - Legacy rows may retain null mode/provenance and nullable result fields.
   Existing indicators without quotes remain readable; absent quotes are omitted.
 
@@ -112,6 +119,7 @@ unsaved endpoint's structured `error` envelope.
 
 | HTTP | Code |
 |---|---|
+| 409 | idempotency_conflict |
 | 422 | invalid_input |
 | 502 | analysis_failed |
 | 503 | analysis_unavailable or storage_unavailable |
@@ -140,9 +148,10 @@ operation budget. A 201 response requires commit acknowledgement.
 
 Cancellation and process/database cleanup still require target-host testing;
 these settings do not establish a production wall-clock guarantee.
-A timeout during or after commit can leave a saved row. Idempotency and
-outcome reconciliation are not implemented; clients must not assume every
-timeout means no record exists.
+A timeout while commit acknowledgement is uncertain can leave a saved row.
+Clients that supplied an idempotency key can retry the same request with that
+same key to reconcile the outcome. A request without a key cannot safely be
+retried after an ambiguous timeout.
 
 ## Original local verification: c162740
 

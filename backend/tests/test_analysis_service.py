@@ -105,7 +105,25 @@ def test_create_reuses_one_deadline(service_context):
         context.result,
         mode="mock",
         deadline=context.deadline,
+        idempotency_key=None,
     )
+
+
+def test_create_forwards_idempotency_key(service_context):
+    context = service_context
+
+    asyncio.run(
+        analysis_service.create_saved_analysis(
+            context.request,
+            mode="mock",
+            api_key=None,
+            model=None,
+            deadline=context.deadline,
+            idempotency_key="retry-123",
+        )
+    )
+
+    assert context.persist.await_args.kwargs["idempotency_key"] == "retry-123"
 
 
 @pytest.mark.parametrize(
