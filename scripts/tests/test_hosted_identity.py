@@ -76,7 +76,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("needs: [staging, hosted-staging-preflight]", hosted_header)
         self.assertIn("always()", hosted_header)
         self.assertIn("needs.staging.result == 'success'", hosted_header)
-        self.assertIn("needs.hosted-staging-preflight.outputs.current != 'false'", hosted_header)
+        self.assertIn("needs.hosted-staging-preflight.outputs.current == 'true'", hosted_header)
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", hosted_header)
         self.assertIn("environment: staging", hosted_header)
 
@@ -99,7 +99,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
         self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
-        self.assertIn("current['head']['sha'] != pr_head_sha", step)
+        self.assertIn("current['head']['sha'] == pr_head_sha", step)
         self.assertNotIn("current['head']['sha'] != deploy_sha", step)
         self.assertIn("'deployed_commit': deploy_sha", step)
         self.assertIn("result.write('current=false\\n')", step)
