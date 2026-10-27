@@ -31,10 +31,7 @@ def saved_postgres_context(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database in {
-        "phishlens_s2_t1_test",
-        "phishlens_dev",
-    }
+    assert engine.url.database == "phishlens_s2_t1_test"
 
     user_id = uuid4()
     email = f"crud-http-{user_id}@phishlens.test"

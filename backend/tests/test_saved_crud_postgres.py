@@ -22,10 +22,7 @@ def postgres_context(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database in {
-        "phishlens_s2_t1_test",
-        "phishlens_dev",
-    }
+    assert engine.url.database == "phishlens_s2_t1_test"
 
     unexpected_ai = Mock(
         side_effect=AssertionError(
@@ -213,6 +210,12 @@ def test_invalid_ids_are_rejected_without_changing_postgres(
     monkeypatch,
 ):
     client, session, demo_user_id = postgres_context
+    statement = (
+        select(AnalyzedEmail.__table__)
+        .where(AnalyzedEmail.user_id == demo_user_id)
+        .order_by(AnalyzedEmail.id)
+    )
+    before = [dict(row) for row in session.execute(statement).mappings()]
     inference = Mock(
         side_effect=AssertionError("Invalid IDs must not trigger inference")
     )
@@ -229,8 +232,6 @@ def test_invalid_ids_are_rejected_without_changing_postgres(
 
     assert [response.status_code for response in responses] == [422, 422, 422]
     session.expire_all()
-    rows = session.scalars(
-        select(AnalyzedEmail).where(AnalyzedEmail.user_id == demo_user_id)
-    ).all()
-    assert rows == []
+    after = [dict(row) for row in session.execute(statement).mappings()]
+    assert after == before
     inference.assert_not_called()
