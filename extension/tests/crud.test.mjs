@@ -51,7 +51,84 @@ test('creates with POST JSON and accepts 201', async () => {
     assert.deepEqual(await client.createAnalysis(input), record);
     assert.equal(calls[0].method, 'POST');
     assert.equal(calls[0].headers['Content-Type'], 'application/json');
+    assert.match(calls[0].headers['Idempotency-Key'], /^[A-Za-z0-9_-]{1,255}$/);
     assert.deepEqual(JSON.parse(calls[0].body), input);
+});
+
+test('create retry reuses its idempotency key after an uncertain network failure', async () => {
+    const calls = [];
+    let attempt = 0;
+    const client = createAnalysisClient('https://example.test', async (url, options) => {
+        calls.push({ url, ...options });
+        if (attempt++ === 0) throw new TypeError('Connection lost after request');
+        return { ok: true, status: 201, json: async () => record };
+    });
+    const input = { subject: record.subject, body: record.body };
+
+    await assert.rejects(client.createAnalysis(input), error => {
+        assert.match(error.idempotencyKey, /^[A-Za-z0-9_-]{1,255}$/);
+        return true;
+    });
+    assert.deepEqual(await client.createAnalysis(input), record);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);
+});
+
+test('create retry reuses its idempotency key after an analysis timeout response', async () => {
+    const calls = [];
+    let attempt = 0;
+    const client = createAnalysisClient('https://example.test', async (url, options) => {
+        calls.push({ url, ...options });
+        if (attempt++ === 0) {
+            return {
+                ok: false,
+                status: 504,
+                json: async () => ({ detail: 'Email analysis timed out', code: 'analysis_timeout' })
+            };
+        }
+        return { ok: true, status: 201, json: async () => record };
+    });
+    const input = { subject: record.subject, body: record.body };
+
+    await assert.rejects(client.createAnalysis(input), error => error.status === 504);
+    await client.createAnalysis(input);
+
+    assert.equal(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);
+});
+
+test('explicit idempotency key supports retry after recreating the client', async () => {
+    const calls = [];
+    const fetchImpl = async (url, options) => {
+        calls.push({ url, ...options });
+        if (calls.length === 1) throw new TypeError('Connection lost after request');
+        return { ok: true, status: 201, json: async () => record };
+    };
+    const input = { subject: record.subject, body: record.body };
+    const client = createAnalysisClient('https://example.test', fetchImpl);
+
+    let retryKey;
+    await assert.rejects(client.createAnalysis(input), error => {
+        retryKey = error.idempotencyKey;
+        return true;
+    });
+    await createAnalysisClient('https://example.test', fetchImpl)
+        .createAnalysis(input, { idempotencyKey: retryKey });
+
+    assert.equal(calls[1].headers['Idempotency-Key'], retryKey);
+});
+
+test('a new intentional create after success receives a fresh idempotency key', async () => {
+    const calls = [];
+    const client = createAnalysisClient('https://example.test', async (url, options) => {
+        calls.push(options);
+        return { ok: true, status: 201, json: async () => record };
+    });
+    const input = { subject: record.subject, body: record.body };
+
+    await client.createAnalysis(input);
+    await client.createAnalysis(input);
+
+    assert.notEqual(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);
 });
 
 test('patches notes and feedback without adding omitted fields', async () => {
