@@ -81,7 +81,10 @@ class HostedStagingIpv4Tests(unittest.TestCase):
             self.assertEqual(deployed.host, f"{DATABASE_HOST},{DATABASE_HOST}")
             self.assertEqual(deployed.query["hostaddr"], "192.0.2.11,192.0.2.12")
             uvicorn_run.assert_called_once_with(
-                "backend.app.main:app", host="0.0.0.0", port=8123
+                "backend.app.main:app",
+                host="0.0.0.0",
+                port=8123,
+                loop="backend.core.event_loop:new_event_loop",
             )
 
 
