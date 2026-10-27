@@ -14,6 +14,42 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_DATABASE_TESTS = {
     ("backend.tests.test_seed_integrity", "test_seed_records_and_relationship"),
     ("backend.tests.test_history_postgres", "test_history_postgres_read_change_empty_and_isolation"),
+    (
+        "backend.tests.test_saved_crud_postgres",
+        "test_read_update_and_delete_with_postgres",
+    ),
+    (
+        "backend.tests.test_saved_crud_postgres",
+        "test_other_users_record_is_not_accessible",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_complete_saved_crud_flow",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_failed_inference_does_not_save[AnalysisInferenceError-502-analysis_failed-Email analysis failed]",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_failed_inference_does_not_save[AnalysisUnavailableError-503-analysis_unavailable-Email analysis is temporarily unavailable]",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_failed_inference_does_not_save[AnalysisTimeoutError-504-analysis_timeout-Email analysis timed out]",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_invalid_saved_response_rolls_back_insert",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_database_lock_timeout_does_not_save",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_live_analysis_does_not_save_history",
+    ),
 }
 
 
@@ -57,7 +93,7 @@ def verify_report(path, required=REQUIRED_DATABASE_TESTS):
     skipped = sum(case.find("skipped") is not None for case in cases)
     return {"tests": len(cases), "skipped": skipped,
             "required_database_tests_passed": len(required),
-            "crud_acceptance": "not established; register real CRUD tests after backend merge"}
+            "crud_acceptance": "verified against disposable local PostgreSQL with mock inference; hosted acceptance not established"}
 
 
 def main():
