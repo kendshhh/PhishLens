@@ -10,6 +10,7 @@ from alembic.script import ScriptDirectory
 REQUIRED_REVISIONS = (
     ("0001_initial_schema", None),
     ("0002_analysis_provenance", "0001_initial_schema"),
+    ("0003_saved_analysis_idempotency", "0002_analysis_provenance"),
 )
 
 
@@ -68,7 +69,8 @@ def main() -> int:
 
     print(
         "Migration preflight passed: "
-        "0001_initial_schema -> 0002_analysis_provenance; "
+        "0001_initial_schema -> 0002_analysis_provenance -> "
+        "0003_saved_analysis_idempotency; "
         f"Alembic head is {head}."
     )
     return 0
@@ -76,4 +78,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
