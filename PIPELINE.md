@@ -75,8 +75,10 @@ that call them pending are historical, not a claim about current CI coverage.
 
 Pre-merge staging is added in `.github/workflows/ci.yml`: component checks,
 isolated API/database/extension-client integration, then exact-commit Render
-staging verification. Hosted staging requires separately configured development
-database credentials and a GitHub deployment secret. See
+staging verification. Hosted staging requires credentials for the dedicated
+Neon `pr-58-staging` branch and database `phishlens_dev`, plus a GitHub deployment
+secret. Privately verify Render's Neon branch mapping before migrations or writes.
+See
 [staging setup and verification](docs/devops/staging.md) for configuration,
 required checks, Chrome verification, and current rollout status. Historical
 observations below do not establish that the new hosted staging gate has passed.

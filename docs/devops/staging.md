@@ -113,7 +113,12 @@ Configure two credentials in this service's Render environment:
   process removes it before seeding or launching Uvicorn.
 
 Both URLs must target Neon branch `pr-58-staging`, database `phishlens_dev`, and
-the same exact host in `STAGING_DATABASE_HOST`. Set
+the same exact host in `STAGING_DATABASE_HOST`. Keep `development` for local and
+shared development; `pr-58-staging` is a separate branch created from a
+development snapshot. The startup script checks database names and exact hosts,
+but cannot resolve a Neon branch name from the URL. Before migrations, seeding,
+or manual writes, privately confirm that Render's connection hostname maps to
+`pr-58-staging` in Neon. Set
 `STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging`.
 Startup rejects mismatched hosts, database names, or role identities before
 migrations or seed run. The trusted hosted-staging controller checks the
@@ -196,11 +201,35 @@ bypass. Existing PR branches need this workflow from current main after rollout.
 
 Node smoke checks verify API/client integration, not Chrome DOM rendering,
 extension permission enforcement, real email analysis, or AI inference. Those
-claims require separate evidence. Hosted staging currently covers saved-history
-read behavior; CRUD acceptance remains gated. The Neon Auth CRUD prototype is
-separate, local-only, and not yet exercised.
+claims require separate evidence. The current API supports persistent
+saved-analysis CRUD, and PR #58 records a successful synthetic API CRUD check on
+staging; broader CRUD acceptance remains gated. Installed-Chrome acceptance and
+real-provider/AI verification remain separate evidence items. The Neon Auth CRUD
+prototype is separate, local-only, and not yet exercised.
 
 ## Verification status
+
+### October 28, 2026 target reconciliation
+
+- The dedicated staging database target is Neon branch `pr-58-staging`, database
+  `phishlens_dev`. A read-only Neon check found Alembic revision
+  `0003_saved_analysis_idempotency` on that branch. The shared `development`
+  branch is at `0002_analysis_provenance`.
+- Render's staging service source branch is `ci/staging-validation`, with
+  auto-deploy off. That Git branch is separate from the Neon database branch.
+  Render `/version` reported deployed commit
+  `91b964d3bdb91b114a654065db184153a25403e0` in the staging environment.
+- The Render service metadata does not expose `DATABASE_URL`. Its current
+  branch-to-host mapping still requires private confirmation in Render and Neon
+  before another hosted write.
+- The `PhishLens-Staging-Extension` artifact from workflow run `40542904034` was
+  built from source commit `d15a5b109a6170599a943213f22219ee1069f100` (artifact
+  `12779275763`, expires November 3, 2026). The extension files are unchanged
+  between that source and the deployed commit above, so it can serve as the
+  current non-auth baseline. The artifact's successful Hosted staging run was
+  for its own source/deployment candidate; it is not an exact-SHA combined check
+  for the later `91b964d3` deployment. It does not verify a future Auth
+  implementation.
 
 ### October 19 follow-up
 
