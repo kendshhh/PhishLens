@@ -3,9 +3,25 @@
 October 20 Kendra implementation update: see the
 [work/evidence and interface audit](devops/sprint-2-work-2026-10-20.md).
 PR #52 is now merged through main; the CI guard and remote failure/repair drill
-are delivered. Backend CRUD test registration remains pending #42/#43.
-Actual PostgreSQL CRUD integration, exact-head staging checks and owner reviews
-remain delivery gates. Planning entries below do not claim those gates passed.
+are delivered. PR #58 has since merged the persistent CRUD backend, and its
+description records successful current-head Hosted staging and authorized
+synthetic API CRUD verification. Issue #43's PostgreSQL acceptance tests are
+now in a focused PR; local PostgreSQL evidence is recorded in
+[the S2-T2 test handoff](s2-t2-test-handoff.md). That PR's CI and teammate
+review remain pending. No issue, board card, or delivery gate is marked complete
+by local results alone.
+
+October 28 Trixia S2-T2 update: test changes are based on `main`
+`b3a7588811e77edc48b29b07763152f66172a331` and committed as
+`7ced6984ba5cdc962a756afd2ec642fbf274ec4d`. Against the disposable local
+PostgreSQL database, targeted CRUD tests passed (35 passed, 1 intentionally
+skipped), and the full DB-enabled backend suite passed (252 passed, 1 skipped).
+The ordinary backend suite passed (216 passed, 37 skipped); Ruff and whitespace
+checks passed. The skip is the separately gated seed-integrity test, which
+requires local `phishlens_dev`. These are local results, not the new PR's CI.
+Issue #43 remains open pending required review, CI, and checklist/board
+reconciliation. The test-only change has not been deployed; deployed API CRUD
+evidence is recorded separately under merged PR #58.
 
 October 21 continuation: [playbook close-out and remaining gates](devops/playbook-closeout-2026-10-21.md).
 PR #55 adds strict production-package permissions, reproducible artifact identity

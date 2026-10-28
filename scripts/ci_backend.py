@@ -12,7 +12,6 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_DATABASE_TESTS = {
-    ("backend.tests.test_seed_integrity", "test_seed_records_and_relationship"),
     ("backend.tests.test_history_postgres", "test_history_postgres_read_change_empty_and_isolation"),
     (
         "backend.tests.test_saved_crud_postgres",
@@ -61,7 +60,7 @@ def check_environment(env):
             url.scheme == "postgresql+psycopg"
             and url.hostname in {"localhost", "127.0.0.1"}
             and url.port == 5432
-            and url.path == "/phishlens_dev"
+            and url.path == "/phishlens_s2_t1_test"
             and url.username == "phishlens"
             and url.password == "ci-only-password"
             and not url.query and not url.fragment
@@ -69,7 +68,7 @@ def check_environment(env):
     except ValueError:
         valid = False
     if not valid:
-        raise ValueError("Backend CI requires the explicit disposable PostgreSQL service configuration.")
+        raise ValueError("Backend CI requires the explicit disposable PostgreSQL test database configuration.")
     if env.get("RUN_DATABASE_TESTS") != "1":
         raise ValueError("RUN_DATABASE_TESTS=1 is required; database skips cannot pass CI.")
     if env.get("AI_MODE") != "mock":
@@ -120,7 +119,7 @@ def main():
         summary = {"commit": os.getenv("GITHUB_SHA", "local"),
                    "source_commit": os.getenv("SOURCE_COMMIT", "local"),
                    "pytest_exit_code": result.returncode,
-                   "database_target": "disposable local PostgreSQL", "ai_mode": "mock"}
+                   "database_target": "phishlens_s2_t1_test", "ai_mode": "mock"}
         try:
             summary.update(verify_report(report))
         except (ValueError, OSError, ET.ParseError) as exc:
