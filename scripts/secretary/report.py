@@ -58,8 +58,8 @@ def snapshot(api, number, config):
         try:
             issue = api.request("issues/" + issue_number)
             issues[issue_number] = {"title": safe(issue["title"]), "acceptance_present": bool(re.search(r"acceptance|\[ \]|\[x\]", issue.get("body") or "", re.IGNORECASE))}
-        except APIError:
-            issues[issue_number] = {"available": False}
+        except APIError as error:
+            issues[issue_number] = {"available": False, "reason": safe(str(error), 160)}
     # Keep only bounded patches. Do not persist potentially sensitive raw PR descriptions in artifacts.
     clean_pr = {k: pr.get(k) for k in ("number", "title", "body", "draft", "state")}
     clean_pr.update({"head": {"sha": pr["head"]["sha"], "ref": pr["head"]["ref"], "repo": {"full_name": pr["head"]["repo"]["full_name"]}},
