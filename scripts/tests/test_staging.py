@@ -8,6 +8,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.tests.staging_fixtures import render_staging_environment_rows
+
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy_staging.py"
 ROOT = SCRIPT.parents[1]
 CONFIG = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
@@ -48,12 +50,7 @@ class DeploymentTests(unittest.TestCase):
                 },
             },
         }
-        env_vars = [
-            {"envVar": {"key": "DATABASE_URL", "value": "postgresql://synthetic:synthetic@staging.invalid/phishlens_dev"}},
-            {"envVar": {"key": "STAGING_DATABASE_HOST", "value": "staging.invalid"}},
-            {"envVar": {"key": "APP_ENV", "value": "staging"}},
-            {"envVar": {"key": "AI_MODE", "value": "mock"}},
-        ]
+        env_vars = render_staging_environment_rows()
         return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):
