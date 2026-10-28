@@ -35,7 +35,7 @@ The sample is small and ranged widely, so it is a smoke baseline only. It does n
 measure extension/API user-flow latency, throughput, or load behavior. Do not
 compare it with CI job/deploy durations or claim a performance improvement.
 
-## Current staging observation — October 28, 2026 17:07 UTC
+## Previous staging deployment observation — October 28, 2026 17:07 UTC
 
 PR #86 head `aa91511c7eb0c43b8d52eb3adc26ac607a537293` passed Hosted staging.
 Render deployment
@@ -54,6 +54,15 @@ verify this candidate. The runbook requires environment-owner privilege cleanup
 and a second read-only check before exact-SHA staging CRUD acceptance. Production
 persistence after refresh/redeploy, installed-Chrome behavior, recovery
 duration, and a comparable whole-pipeline gain remain unmeasured.
+
+## Current PR #86 gate status — October 28, 2026 17:31 UTC
+
+At this snapshot, PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` passed all
+automated checks except Hosted staging, pending at the protected `staging`
+environment; diagnostics returned no steps or reason. The Live deployment above
+belongs to the previous PR code head, so it is not current-head deployment
+proof. The mapped staging role still has excess grants, and no staging or
+production write was made.
 
 ## October 21 review (UTC observations October 20)
 

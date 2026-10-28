@@ -5,22 +5,25 @@ course playbooks, the sprint planning sheet, repository state, and live delivery
 evidence. It is a work plan and evidence update; it does not close issues or record
 team decisions that have not happened.
 
-## Latest refresh — October 28, 2026 17:07 UTC
+## Latest refresh — October 28, 2026 17:31 UTC
 
 See the [Kendra Week 1–4 closeout](kendra-week1-4-closeout-2026-10-28.md) for the
-current per-day Kendra task map. Since the earlier snapshots below, PR #86's
-Hosted staging check passed and its exact merge SHA
-`d46cc09ecf7258a6bd10475f00cc8da035ef5e9a` went Live on Render. Read-only
-`/version`, `/health`, and `/ready` GETs returned HTTP 200 at 17:07 UTC. The
-confirmed Neon branch is `pr-58-staging` / `phishlens_dev`, but a 17:05 UTC
-read-only check still found excess schema and table write grants on
-`phishlens_staging_app`; no staging or production CRUD write was made.
+per-day Kendra task map and dated evidence. At this snapshot, PR #86 head
+`dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` had all automated checks passed
+except Hosted staging, pending at the protected `staging` environment; the job
+diagnostics exposed no steps or reason. No deployment for this head is claimed.
+The previous code head's hosted candidate remains Live on exact merge SHA
+`d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`; its 17:07 UTC read-only health
+checks do not prove the current head. The confirmed Neon branch is
+`pr-58-staging` / `phishlens_dev`, and a 17:05 UTC read-only check still found
+excess schema/table write grants on `phishlens_staging_app`. No grants or data
+were changed and no staging or production CRUD write was made.
 
-The old PR #86 head had Dependency Review skipped because the job opted in only
-when `DEPENDENCY_REVIEW_ENABLED` was `true`. This branch changes the job to run
-by default unless the variable is explicitly `false`; the updated-head check
-has not yet run. PR #86 and Kendra's issues #36/#37/#39/#40/#41 remain open; #38
-is closed. The project board remains At risk for the open write, browser,
+The earlier PR #86 head skipped Dependency Review because the job required an
+opt-in variable. This branch runs it by default unless
+`DEPENDENCY_REVIEW_ENABLED` is explicitly `false`; the advisory check passed on
+both e1333dc and dcafd2f. PR #86 and Kendra's issues #36/#37/#39/#40/#41 remain
+open; #38 is closed. The board remains At risk for the open staging, browser,
 production-persistence, recovery/optimization, real-model, and event/sign-off
 gates. Week 4 is still proposed with no agreed dates or dedicated issue set.
 
@@ -45,11 +48,11 @@ snapshots as planning records, not fresh verification.
 | Area | Evidence | What it establishes |
 |---|---|---|
 | Main CI and production | Current main `6414914dfa8eb8322839597c4cd6912145a442a0`; [Main CI run 40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349) passed Backend and Extension, and [Workflow lint run 40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515) passed. Render deployment `dep-dbh18p6i0phs73d1mtag` is Live on that exact SHA. | At 2026-10-28 15:39 UTC, `/version`, `/health`, and `/ready` returned HTTP 200; `/version` matched this SHA and production, and `/ready` reported the database connected. The deployment ran 73.525 seconds from Render start to finish; this is deployment duration, not merge-to-live time. The 150.607-second merge-to-live sample belongs to the earlier `e4ea032` observation and is not a measurement for this SHA. |
-| Hosted staging | PR #86 Hosted staging passed. Render deployment `dep-dbh2cjnf3r2c73emoprg` is Live on exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`; read-only `/version`, `/health`, and `/ready` all returned 200 at 17:07 UTC. | This proves the hosted staging gate and connected database for that merge SHA, not mutation acceptance. The mapped Neon target is `pr-58-staging/phishlens_dev`; app-role grants are above minimum. |
+| Hosted staging | The previous PR code head passed Hosted staging; Render deployment `dep-dbh2cjnf3r2c73emoprg` is Live on exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`; read-only `/version`, `/health`, and `/ready` returned 200 at 17:07 UTC. | This proves the prior code head's hosted gate and connected database only. PR head `dcafd2f` has its Hosted staging job pending at the protected environment; no current-head deployment or mutation acceptance is claimed. The mapped Neon target is `pr-58-staging/phishlens_dev`; app-role grants remain above minimum. |
 | Staging CRUD | Historical guarded CRUD passed on PR #83 SHA `e3c6e37`; that deployment is deactivated. | No CRUD write was run against PR #86. Re-run the guarded verifier only after the environment owner removes the role's extra grants and a read-only least-privilege check passes. Chrome acceptance is also open. |
 | Existing CI cache | October 21 pip comparison was n=2 before/n=2 cached: install 9s to 7s, but whole staging job 40.5s to 44s. | No end-to-end pipeline speedup has been demonstrated. |
 | Extension npm-cache trial | No-cache runs [40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771) and [40635212213](https://github.com/kendshhh/PhishLens/actions/runs/40635212213) each took 11s. Cold candidate [40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) took 11s; warm candidate [40639539541](https://github.com/kendshhh/PhishLens/actions/runs/40639539541) took 18s. All passed; `npm ci` was 1–2s and did not get faster on the warm run. | No whole-job improvement was demonstrated in the one cold/one warm sample. The npm cache and instrumentation were removed; #40 remains open for a different comparable optimization and measured recovery. |
-| Dependency alerts | GitHub Security listed 18 open Python alerts: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the JavaScript lockfile. On old head `aa91511`, Dependency Review skipped because its enable flag was unset. This branch changes the advisory job to run by default unless explicitly disabled; updated-head CI remains pending. | PR #86 raises the certifi and filelock minima and refreshes locks to patched versions; they do not affect main until merge. Backend compatibility checks are not an advisory scan. Recheck GitHub Security after merge; alert counts can lag manifest changes. |
+| Dependency alerts | GitHub Security listed 18 open Python alerts: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the JavaScript lockfile. On old head `aa91511`, Dependency Review skipped because its enable flag was unset. This branch runs the advisory job by default unless explicitly disabled; it passed on code head e1333dc and current snapshot head dcafd2f. Hosted staging remains pending. | PR #86 raises the certifi and filelock minima and refreshes locks to patched versions; they do not affect main until merge. Backend compatibility checks are not an advisory scan. Recheck GitHub Security after merge; alert counts can lag manifest changes. |
 
 ## Priority map
 
@@ -67,7 +70,7 @@ flowchart TD
 | [#39 automatic main-to-production CRUD](https://github.com/kendshhh/PhishLens/issues/39) | P0 | Main CI, automatic production deploy, exact-SHA health/readiness, and guarded staging CRUD are verified. The issue's last narrative is stale and cites an older main SHA. No production CRUD write was made. | Refresh the issue's evidence after reviewing this audit. When the integrated UI and an approved synthetic production test target are ready, verify create/update/delete survives refresh or a safe redeploy. Record the exact main SHA and deployment. Do not use real user data. |
 | [#36 shared contract and Sprint 2 carryover](https://github.com/kendshhh/PhishLens/issues/36) | P0 | Contract proposals, current interface limits, examples, and carryover are documented. Owner acknowledgement, instructor scope acceptance, shared board update, and integrated product demonstration remain open. | Get the API/client owners to confirm the proposed contract; capture instructor scope decision and board/sprint-log updates; demonstrate the integrated workflow with the live product. Keep proposals labeled until owners accept them. |
 | [#41 Consultation 2 preparation](https://github.com/kendshhh/PhishLens/issues/41) | P0 | Requirements and evidence prep is documented. Actual standups, retrospective, whole-team rehearsal, attendance, instructor feedback, live board refresh, and integrated CRUD presentation are not evidenced. | Record real events only: two or three async standups, one retrospective, decisions/attendance, each member's technical explanation, instructor feedback, and resulting board/replan. Use the current production/staging evidence in the rehearsal. |
-| [#37 environment and package verification](https://github.com/kendshhh/PhishLens/issues/37) | P1 | Render mapping remains `pr-58-staging/phishlens_dev`, with `APP_ENV=staging` and mock AI mode. PR #86's exact merge SHA is Live and its read-only endpoints passed. At 17:05 UTC, `phishlens_staging_app` still had public schema CREATE and DELETE/INSERT/REFERENCES/SELECT/TRIGGER/TRUNCATE/UPDATE on `alembic_version`, `analyzed_emails`, and `users`, beyond the documented runtime minimum. Installed-Chrome acceptance remains open. Existing public Git history includes author metadata not in GitHub's noreply form; the owner must classify it against the privacy criterion; the address is intentionally not copied here. | Have the environment owner remove unnecessary runtime grants and repeat the same read-only check. After it passes, run the guarded synthetic staging CRUD and install the exact matching ZIP in Chrome; record SHA, behavior, errors, and permissions. Complete history/package classification without rewriting shared published history. |
+| [#37 environment and package verification](https://github.com/kendshhh/PhishLens/issues/37) | P1 | Render mapping remains `pr-58-staging/phishlens_dev`, with `APP_ENV=staging` and mock AI mode. The previous PR code head's merge SHA is Live and its read-only endpoints passed; current head dcafd2f awaits Hosted staging. At 17:05 UTC, `phishlens_staging_app` still had public schema CREATE and DELETE/INSERT/REFERENCES/SELECT/TRIGGER/TRUNCATE/UPDATE on `alembic_version`, `analyzed_emails`, and `users`, beyond the documented runtime minimum. Installed-Chrome acceptance remains open. Existing public Git history includes author metadata not in GitHub's noreply form; the owner must classify it against the privacy criterion; the address is intentionally not copied here. | Have the environment owner remove unnecessary runtime grants and repeat the same read-only check. After it passes, run the guarded synthetic staging CRUD and install the exact matching ZIP in Chrome; record SHA, behavior, errors, and permissions. Complete history/package classification without rewriting shared published history. |
 | [#40 optimization and recovery](https://github.com/kendshhh/PhishLens/issues/40) | P1 | The October 14 planned rollback drill restored the prior release in 35.7 seconds, but the restoration attempt timed out and the exact full recovery duration is unknown; see `incidents.md`. The separate October 21 staging migration failure was repaired in 9m09, not as a controlled drill. The October cache samples showed no whole-job gain and the extension cache was removed. | Measure a different comparable improvement with unchanged meaningful coverage. For the next necessary safe recovery, record full restoration time and known-good app/schema compatibility; do not run a production failure drill just to fill a metric. |
 | [#38 disposable PostgreSQL CI gate](https://github.com/kendshhh/PhishLens/issues/38) | P0, closed | Closed. Main pipeline runs disposable PostgreSQL migration, seed, and saved-CRUD checks. | No backlog action. Reopen only if the gate regresses or scope changes. |
 

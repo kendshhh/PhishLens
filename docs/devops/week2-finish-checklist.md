@@ -2,17 +2,19 @@
 
 Week 2 is October 16–22, 2026, per the retained professor report. Work after October 22 is carryover.
 
-## Latest carryover status — October 28, 2026 17:07 UTC
+## Latest carryover status — October 28, 2026 17:31 UTC
 
 The dated sections below preserve earlier Week 2 snapshots. The current Kendra
 Week 1–4 crosswalk is in [kendra-week1-4-closeout-2026-10-28.md](kendra-week1-4-closeout-2026-10-28.md).
-PR #86 Hosted staging is now passed, with the exact merge SHA live and read-only
-health/readiness checks successful. Staging CRUD remains gated because the app
-role still has excess grants. Dependency Review was skipped on the old head; PR
-#86 now changes the advisory workflow to run by default when its enable variable
-is unset, and new-head CI is still required. Existing status remains at risk;
-production persistence, Chrome, recovery/optimization, actual team events, and
-Week 4 dates/issue assignments are still open.
+The previous PR #86 code head passed Hosted staging and its exact merge SHA is
+still Live with successful read-only health/readiness checks. Current snapshot
+head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` passed all automated checks
+except Hosted staging, pending at the protected environment; no current-head
+deployment is claimed. Staging CRUD remains gated because the runtime role has
+excess grants. Dependency Review now runs by default unless explicitly disabled
+and passed on this head. Existing status remains At risk; production persistence,
+Chrome, recovery/optimization, actual team events, and Week 4 dates/issue
+assignments are still open.
 
 ## Verified October 21
 

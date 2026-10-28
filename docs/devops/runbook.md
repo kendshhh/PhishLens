@@ -7,7 +7,7 @@ the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
 
-## Current verification — October 28, 2026 17:07 UTC
+## Recorded production and prior staging verification — October 28, 2026 17:07 UTC
 
 Production service `phishlens-api` is configured on `main` with Render auto-deploy
 trigger `checksPass`. At 2026-10-28 15:39 UTC, main was
@@ -35,6 +35,16 @@ change or database write was made. The environment owner must remove the excess
 privileges and repeat the read-only check before synthetic CRUD is run. The
 historical guarded CRUD evidence on deactivated SHA `e3c6e37` does not verify this
 candidate.
+
+## Current PR #86 staging gate — October 28, 2026 17:31 UTC
+
+At this snapshot, current PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86`
+passed all automated checks except Hosted staging, pending at the protected
+`staging` environment; connected diagnostics returned no steps or reason. The
+Live staging candidate described above belongs to the previous PR code head and
+does not establish this head's deployment or acceptance. The runtime role still
+has excess grants, so staging CRUD remains blocked until the environment owner
+cleans them up and a read-only recheck passes.
 
 Production CRUD persistence across refresh/redeploy and installed-Chrome behavior
 remain unverified. Production probes establish live version, process health, and
