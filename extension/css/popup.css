@@ -40,3 +40,4 @@ button.link-button { margin: 0; padding: 0; min-height: auto; background: transp
 .subpanel { margin-top: 14px; padding: 12px; border: 1px solid #e0b7ba; border-radius: 8px; background: #fffafa; }
 .detail-field { margin: 10px 0; }
 .detail-field p { margin: 3px 0; white-space: pre-wrap; }
+.selected-text { max-height: 120px; overflow-y: auto; padding: 8px; border-radius: 6px; background: #f4f6fa; white-space: pre-wrap; overflow-wrap: anywhere; }

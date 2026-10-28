@@ -12,6 +12,21 @@
       <h1>PhishLens</h1>
       <p class="subtitle">Saved phishing analysis</p>
     </header>
+    <section class="panel" aria-labelledby="context-analysis-heading">
+      <h2 id="context-analysis-heading">Context-menu analysis</h2>
+      <div id="empty-state"><p>Select text on a page, then choose Analyze selection with PhishLens.</p></div>
+      <div id="loading-state" class="hidden" role="status">Analyzing selected text…</div>
+      <div id="error-state" class="hidden" role="alert"><p id="error-message"></p></div>
+      <div id="result-state" class="hidden">
+        <p><strong>Classification:</strong> <span id="classification"></span></p>
+        <p><strong>Risk:</strong> <span id="risk-level"></span></p>
+        <p id="analysis-mode" class="muted hidden">Mock response - configure Gemini for AI analysis.</p>
+        <h3>Selected text</h3><p id="selected-text" class="selected-text"></p>
+        <h3>Threat tactics</h3><ul id="tactics"></ul>
+        <h3>Recommendations</h3><ul id="recommendations"></ul>
+        <button id="clear-button" class="secondary" type="button">Clear result</button>
+      </div>
+    </section>
     <section class="panel" aria-labelledby="create-heading">
       <h2 id="create-heading">Save an analysis</h2>
       <form id="create-form">
