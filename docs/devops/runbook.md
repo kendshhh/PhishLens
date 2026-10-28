@@ -1,5 +1,26 @@
 # Deployment and Recovery Runbook
 
+## Current verification and playbook handoff
+
+See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
+the corrected Week 2 instructions and remaining integration gates. Production
+evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
+not a claim that every later independent endpoint probe succeeded.
+
+For each deployment, retain main SHA, successful main CI, reviewer approval,
+Render deploy ID/trigger/live timestamp, and the live `/version`/health/readiness
+observations. Archive package `evidence.json` alongside the ZIP before expiry;
+compare its source/tested SHA and ZIP hash before installing. Packaging does not
+establish browser execution or database isolation.
+
+Before a rollback, record both app revisions and their expected schema revisions.
+Current source has migration `0001_initial_schema`; compare migration trees and
+coordinate with Trixia if either revision introduces schema changes. Do not run
+reverse migrations or a production failure drill to fill an evidence checkbox.
+Reuse the verified October 14 drill; its complete recovery time remains unknown.
+For the next necessary recovery, record incident start, action start, live result,
+independent restored `/version`/health/readiness time, and actual affected behavior.
+
 The [Secretary pilot operator guide](secretary.md) adds exact-SHA preview and
 production observation. Its observer produces `metrics.json` and, on failure, an
 incident draft under the Actions artifact `Veriqo-Production-Evidence`. Inspect
@@ -67,8 +88,14 @@ and teammate approval. Missing staging settings must be fixed before merge.
 3. Merge into main.
 4. Confirm main CI passes.
 5. Confirm Render deploys that commit automatically.
-6. Verify /health and the behavior affected by the change.
-7. Record merge-to-live time and evidence.
+6. From GitHub Actions, manually run **Production evidence** on `main` after the
+   exact commit is live. Retain its metrics artifact and confirm the exact SHA.
+7. Verify /health and the behavior affected by the change.
+8. Record merge-to-live time and evidence.
+
+The observer is manual and post-deploy so Render's **After CI Checks Pass** gate
+does not wait on a check that itself waits for the deployment. It never deploys
+or rolls back production.
 
 For database-dependent changes, also request /ready and expect HTTP 200 with
 {"status":"ready","database":"connected"}. Keep /health as the process

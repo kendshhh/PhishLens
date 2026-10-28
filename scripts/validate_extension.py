@@ -1,6 +1,8 @@
 """Validate the current extension manifest and required runtime files."""
 
 import json
+from html.parser import HTMLParser
+from urllib.parse import unquote, urlsplit
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "extension"
@@ -40,8 +42,27 @@ for asset in (
 ):
     require_file(asset)
 
+class PopupAssets(HTMLParser):
+    """Verify references in the actual popup, including images and styles."""
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        attribute = {"script": "src", "img": "src", "link": "href"}.get(tag)
+        if attribute is None or attribute not in attrs:
+            return
+        reference = attrs[attribute]
+        if not reference:
+            raise ValueError(f"Empty popup asset reference: {tag}")
+        url = urlsplit(reference)
+        if url.scheme or url.netloc or not url.path:
+            raise ValueError(f"Expected packaged local popup asset: {reference}")
+        require_file(unquote(url.path))
+
+
+PopupAssets().feed(require_file(popup).read_text(encoding="utf-8"))
+
 permissions = manifest.get("host_permissions", [])
-if "https://phishlens-api-ocvt.onrender.com/*" not in permissions:
-    raise ValueError("Missing public API host permission")
+if permissions != ["https://phishlens-api-ocvt.onrender.com/*"]:
+    raise ValueError("Production package must grant only the public API host permission")
 
 print("Extension manifest and required files passed validation.")

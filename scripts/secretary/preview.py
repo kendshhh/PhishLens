@@ -124,7 +124,7 @@ def package(api, sha, number, config, output):
 
 
 def eligibility(pr, files, run, repo):
-    if pr["state"] != "open" or pr["head"]["sha"] != run["head_sha"]:
+    if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
     if pr["draft"]:
         return "action_required", "Draft: mark ready for review to request staging"
@@ -135,6 +135,14 @@ def eligibility(pr, files, run, repo):
     if run["conclusion"] != "success":
         return "failure", "CI did not succeed; staging not deployed"
     return "deploy", "CI passed; exact-head staging requested"
+
+
+def current_pr_head_matches(pr, expected_head_sha):
+    """Whether the open PR still matches the head captured by this CI run."""
+    return (
+        pr.get("state") == "open"
+        and pr.get("head", {}).get("sha") == expected_head_sha
+    )
 
 
 def invalidate_previous(api, config, sha):
@@ -181,7 +189,7 @@ def main():
             output.write("deploy=false\n")
     for candidate in candidates:
         pr = api.request(f"pulls/{candidate['number']}")
-        if pr["head"]["sha"] != run["head_sha"]:
+        if not current_pr_head_matches(pr, run["head_sha"]):
             continue
         files = api.pages(f"pulls/{pr['number']}/files")
         action, message = eligibility(pr, files, run, api.repo)
@@ -233,13 +241,19 @@ def main():
                         raise RuntimeError("Render staging deployment timed out")
                     time.sleep(10)
                 evidence["smoke"] = smoke(config["staging_origin"], run["head_sha"])
-                package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
                 current = api.request(f"pulls/{pr['number']}")
-                if current["head"]["sha"] != run["head_sha"] or current["state"] != "open":
-                    raise RuntimeError("PR changed during deployment; preview is stale")
-                api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
-                    "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
-                action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
+                if not current_pr_head_matches(current, run["head_sha"]):
+                    # The deployment worked, but it is no longer evidence for the current PR head.
+                    action = "action_required"
+                    message = "PR head advanced during staging; this run was superseded. The latest CI run must own staging."
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success",
+                        "description": "Deployment passed; PR head advanced, so this preview is superseded",
+                        "log_url": log, "auto_inactive": False})
+                else:
+                    package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
+                        "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
+                    action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
         except Exception as exc:  # noqa: BLE001 -- fail the exact-SHA check without exposing API bodies
             action = "failure"
             # Only controlled errors are exposed, not upstream exception bodies.

@@ -1,5 +1,32 @@
 # Pipeline optimization evidence
 
+## October 21 measured staging-cache experiment
+
+[Raw comparable job/step timestamps](evidence/2026-10-21-cache-comparison.json).
+Two no-cache samples: CI 39452635709 / 39453199728. Two cached samples:
+39453836118 / 39454875889. Each ran the same backend/client smoke and 52 deployment
+guard tests. Backend, extension and guard-test Git trees are identical; locks,
+Python 3.12.15 and ubuntu-26.04 image 20261012.163.1 are unchanged. The first
+cached run used a fallback cache and saved the exact runtime-lock key; the second
+restored that exact key. Installation and all checks still run.
+
+| Measure | Before (n=2) | Cached (n=2) |
+|---|---:|---:|
+| Runtime install | 9.0 s | 7.0 s |
+| Python setup + install + cleanup | 9.5 s | 9.0 s |
+| Whole staging job | 40.5 s | 44.0 s |
+
+Runtime installation averaged 2 seconds lower (22.2%), but the 0.5-second net
+dependency-path difference is within timestamp resolution/runner variation.
+Whole-job average increased 3.5 seconds. This is **not an established end-to-end
+pipeline improvement**; #40 remains open. The cache is a bounded download reuse
+change, not justification to skip checks. Collect further equivalent samples
+before claiming a total-job gain or removing/retuning it.
+
+An earlier combined backend-install candidate took 13 seconds versus the
+11-second baseline installation sum and was reverted. No dependency pins,
+migration coverage or tests were removed to manufacture a speed gain.
+
 ## Secretary pilot candidates — not measured improvements
 
 Duplicate-event fingerprints avoid repeated report writes and AI calls for

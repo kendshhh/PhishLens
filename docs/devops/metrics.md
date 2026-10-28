@@ -1,12 +1,29 @@
 # Pipeline Metrics
 
+## October 21 review (UTC observations October 20)
+
+[Raw run/job timestamps and bounded sample](evidence/2026-10-21-ci-measurements.json).
+At collection, 119 CI workflow IDs were returned: 85 success, 15 failure,
+14 cancelled, three pending, one waiting and one in progress. This includes the
+invalid CI-definition run named `.github/workflows/ci.yml` as a real failure.
+Latest-outcome success rate excludes cancelled/pending/waiting/in-progress:
+85 / (85 + 15) = 85.00%. Intentional failures remain in the failure count.
+
+Five latest successful PR samples average 739.4 seconds including hosting/approval
+queues; five latest successful main-push samples average 101.2 seconds. These are
+different populations with changing coverage and cannot show an optimization gain.
+Production observer 39449283551 succeeded for main 149808e and published artifact
+12276999746. Deployment count, failed deploy count, merge-to-live and recovery
+duration have not been freshly extracted; retain prior values as historical,
+not zero. The comparative staging experiment is documented in optimizations.md.
+
 The [Secretary observer](secretary-verification.md) implements a new 28-day,
 latest-workflow-attempt calculation and produces downloadable evidence artifacts.
 It does not overwrite this historical log or push metrics commits. Its durations
 include workflow queue/rerun delay; the older job-only averages below use a
 different method. Keep reporting periods/sample counts/sources with each entry.
-New automation is not yet deployed; no new production or optimization result is
-claimed from its implementation.
+The automation is now merged on main. See the October 19 Week 1 verification
+record for observed runs; no optimization gain is inferred from implementation.
 
 ## Secretary read-only baseline — October 19, 2026
 
@@ -148,3 +165,34 @@ Their difference alone does not prove an optimization.
 - Audit failed production deployments.
 - Collect restoration duration and attach rollback deployment links.
 - Measure future optimizations using comparable before-and-after runs.
+
+## October 21 hosted verification follow-up
+
+Read-only Render inspection now supplies a direct production deployment identity:
+[dep-dbbois67bikc73b06fpg](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbbois67bikc73b06fpg).
+Main `149808e` deployed automatically (`new_commit`, service configured for
+`checksPass`) and finished at 2026-10-20T15:33:17.294784Z. The merge commit timestamp
+is 15:30:13Z: **184.294784 seconds** merge-to-live for this single observation.
+Fresh browser response bodies matched version, health, readiness and synthetic
+history. No new deployment or write was initiated. Full CRUD and recovery duration
+remain unverified. [Sanitized source evidence](evidence/2026-10-21-hosted-verification.json).
+
+## Week 1 verification follow-up - October 19, 2026
+
+[Verified gate, frontend failure/repair, and timing evidence](week-1-verification-2026-10-19.md).
+Main CI 39185832544: one successful sample at d6e5998; workflow creation to last
+job completion was 98 seconds. Backend execution 49 seconds, extension 7 seconds,
+staging integration 44 seconds. Hosted staging skipped on main by design.
+This is one observation, not a comparable before/after optimization experiment.
+Production evidence run 39185962984 succeeded; its downloaded report is retained
+in [the source JSON](evidence/week1-production-2026-10-19.json).
+Reporting period: September 21 through October 19, 2026, approximately 01:34 UTC.
+66 workflows: 58 successful, 8 failed, zero cancelled/pending; latest-outcome
+success rate 87.88%. PR durations: 47 samples, 103.49 seconds average; main:
+18 samples, 51 seconds average. Coverage varies; no optimization gain is claimed.
+The bounded deployment snapshot reports one currently live and one failed deploy;
+these are not lifetime totals. One matched merge-to-Render-live sample is 172.56
+seconds. Recovery time is unavailable. The observer verified production SHA
+ d6e5998, health, and readiness at 01:35:35 UTC. Direct public read-only probes
+subsequently returned 200 for version, health, readiness, and synthetic history.
+

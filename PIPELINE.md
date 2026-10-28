@@ -1,5 +1,57 @@
 # PhishLens Pipeline
 
+## Current stage map — October 21, 2026
+
+The Secretary workflows and #52 PostgreSQL evidence gate are merged. Current
+baseline main is `149808e`; older pilot/source-presence statements below are dated
+history. See [playbook close-out](docs/devops/playbook-closeout-2026-10-21.md).
+
+PR/main CI installs locked dependencies, runs lint/compatibility and backend tests,
+requires disposable PostgreSQL migration/repeated-seed and known real DB test
+evidence, checks/packages the extension, then tests the actual backend/client
+integration and deployment guards. #55 adds package identity alongside the ZIP
+and a measured staging pip-download cache, without replacing installs or checks.
+
+```mermaid
+flowchart LR
+  PR[PR head] --> B[Backend checks and PostgreSQL evidence]
+  PR --> E[Extension checks and package identity]
+  B --> I[Isolated staging integration]
+  E --> I
+  I --> H[Hosted staging approval and exact head verification]
+  H --> R[Chrome acceptance and teammate review]
+  R --> M[Reviewed main merge]
+  M --> C[Main CI]
+  C --> D[Existing Render automatic deployment]
+  D --> O[Read-only production observer and retained evidence]
+```
+
+Draft PRs skip hosted deployment. Main pushes skip PR-only Hosted staging;
+production follows existing after-checks deployment. The shared staging queue is
+serialized and waiting requests are retained; environment approval still applies.
+Fresh package identity does not establish installed Chrome or real CRUD success.
+Register #42/#43's actual persistent CRUD test IDs after their reviewed merge.
+
+## Sprint 2 backend evidence gate (#38)
+
+Before migrations, `python scripts/ci_backend.py --check-environment` requires the
+explicit local disposable PostgreSQL service URL, `RUN_DATABASE_TESTS=1` and
+`AI_MODE=mock`. Missing configuration cannot fall back to a hosted `.env` target.
+Existing migration/repeated seed, lint/build, extension and AI mocked tests remain.
+
+`python scripts/ci_backend.py` runs the complete backend suite and retains fresh
+JUnit XML plus a SHA-labeled JSON summary as `Backend-Test-Evidence`, including
+when pytest fails. Missing, skipped or failed expected seed/relationship and
+HTTP/PostgreSQL tests fail the job. An unrelated passing client test cannot
+substitute for these tests. Missing reports fail the gate. Earlier job failures
+can produce no report; artifact upload warns in that case and cannot make CI pass.
+
+This guard currently requires the existing database-backed history/relationship
+checks. It does **not** establish full CRUD coverage. When #42/#43 merge, add their
+actual PostgreSQL API node IDs to `REQUIRED_DATABASE_TESTS` in the same integration
+change and replay the failure/repair check. Keep Hosted staging and teammate
+approval required; this change does not alter protection or approve deployments.
+
 ## Status
 
 ### DevOps Secretary pilot (review required)

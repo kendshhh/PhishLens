@@ -24,6 +24,20 @@ hosted staging tests the PR head. Require an up-to-date branch before merging.
 New commits require fresh checks and review. Another PR may later replace the
 shared staging deployment; confirm the live SHA before manual Chrome testing.
 
+### Required gate and deployment evidence
+
+Every eligible same-repository, non-draft PR runs the real `Hosted staging` job
+after isolated integration. Tooling-only changes are not an exemption. A green
+check requires Render to report the requested head live, the real extension
+client smoke to pass, and `/version` to report that same SHA in `staging`.
+Missing synthetic history, unhealthy/unready responses, changed PR heads, and
+failed deployments fail acceptance.
+
+The job packages extension assets read from that exact PR SHA using trusted
+default-branch controller code. The `PhishLens-Staging-Extension` artifact contains
+a staging-only ZIP with a visible PR/SHA banner and `evidence.json`. The artifact
+does not claim installed-Chrome acceptance; that remains a separate human test.
+
 ## Hosted service
 
 - Workspace: PhishLens.
@@ -41,9 +55,17 @@ shared staging deployment; confirm the live SHA before manual Chrome testing.
 
 Configure `DATABASE_URL` directly in this service's Render environment. It must
 refer to the separate Neon development branch and database `phishlens_dev`.
-The startup script refuses other database names before migrations or seed run.
-The name guard cannot distinguish Neon branches: verify the host/branch privately
-in Neon. Never reuse the production connection or put it in an extension.
+Set `APP_ENV=staging` and `STAGING_DATABASE_HOST` to the exact hostname in
+`DATABASE_URL`. Startup refuses other database names or a missing/mismatched host
+before migrations or seed run. The name guard cannot distinguish Neon branches:
+verify the host/branch privately in Neon. Never reuse the production connection
+or put it in an extension.
+
+The Render runtime must reach Neon over IPv4. A failed deploy showed Render had no
+route to the endpoint's IPv6 address. `start_staging.py` resolves the configured
+hostname's IPv4 addresses at startup and passes them to libpq while retaining the
+Neon hostname for TLS/SNI. Keep the hostname in `DATABASE_URL`; do not hard-code a
+resolved IP, since Neon may change its address records.
 
 Startup applies forward migrations and repeatable synthetic seed only to staging.
 The database role must permit migrations. Failed migrations fail startup; no
@@ -58,12 +80,26 @@ Repository Actions variables:
 | `RENDER_STAGING_SERVICE_ID` | `srv-db92irlg1s2s739404i0` |
 | `STAGING_BASE_URL` | `https://phishlens-staging.onrender.com` |
 
-Repository Actions secret: `RENDER_STAGING_API_KEY`, configured privately by the
-owner. This key is exposed only to the deploy step. Treat same-repository PRs that
-can edit workflows as trusted deployment code; review access accordingly. Fork PRs
+Protected `staging` environment secret: `RENDER_STAGING_API_KEY`, configured
+privately by the owner. This key is exposed only to the deploy step, after
+environment approval. Treat same-repository PRs that can edit workflows as trusted
+deployment code; review access accordingly. Fork PRs
 do not receive repository secrets and cannot pass hosted staging automatically.
 Bring reviewed fork changes into a trusted repository branch for staging. Never
 use `pull_request_target` to execute untrusted PR code with deployment credentials.
+
+GitHub evaluates deployment branch rules against the workflow's event ref, even
+when checkout reads `main`. A `pull_request` workflow uses `refs/pull/N/merge`.
+Allowing only `main` therefore rejects this job before any runner steps execute.
+The proposed staging branch allowlist is `main` plus `refs/pull/*/merge`; this
+setting requires explicit owner confirmation before it is applied. Keep required
+reviewer `xxTrixia`, prevent self-review, and disallow administrator bypass.
+The environment approval authorizes deployment and is separate from PR approval.
+Do not remove `environment: staging`, move its secret back to repository scope,
+or replace deployment with a successful not-applicable check to work around it.
+
+GitHub documents the PR merge-ref pattern in
+[deployment branch restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 
 Required checks on `main`: `Backend checks`, `Extension checks`,
 `Staging integration`, `Hosted staging`. Preserve teammate approval, stale-review

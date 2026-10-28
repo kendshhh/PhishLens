@@ -74,7 +74,46 @@ class AnalysisRequest(BaseModel):
             raise ValueError("Email text must not be blank")
         return value
 
+    @field_validator("subject", "sender")
+    @classmethod
+    def blank_optional_fields_are_omitted(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            return None
+        return value
+
 
 class AnalysisResponse(AIAnalysisResult):
     risk_level: Literal["low", "medium", "high"]
     mode: Literal["mock", "gemini", "local"]
+
+
+class AnalysisErrorField(BaseModel):
+    field: Literal["text", "subject", "sender", "body"]
+    code: Literal[
+        "blank",
+        "required",
+        "too_long",
+        "invalid_type",
+        "unknown_field",
+        "malformed_json",
+        "invalid",
+    ]
+
+
+class AnalysisValidationErrorBody(BaseModel):
+    code: Literal["invalid_input"]
+    message: str
+    fields: list[AnalysisErrorField] = Field(max_length=10)
+
+
+class AnalysisValidationErrorResponse(BaseModel):
+    error: AnalysisValidationErrorBody
+
+
+class AnalysisFailureBody(BaseModel):
+    code: Literal["inference_failed", "analysis_unavailable"]
+    message: str
+
+
+class AnalysisFailureResponse(BaseModel):
+    error: AnalysisFailureBody
