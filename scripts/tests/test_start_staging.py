@@ -8,7 +8,8 @@ from sqlalchemy.engine import make_url
 
 from scripts.start_staging import main, pin_ipv4_addresses
 
-DATABASE_URL = "postgresql+psycopg://staging:example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
 DATABASE_HOST = "ep-round-dew.c-4.ap-southeast-1.aws.neon.tech"
 
 
@@ -41,6 +42,32 @@ class HostedStagingIpv4Tests(unittest.TestCase):
         self.assertEqual(arguments["hostaddr"], "192.0.2.11,192.0.2.12")
         engine.dispose()
 
+    def test_hosted_urls_require_same_staging_target_and_separate_roles(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        validate_hosted_database_urls(
+            make_url(DATABASE_URL), make_url(MIGRATION_URL), DATABASE_HOST, "phishlens_staging_app"
+        )
+
+        with self.assertRaisesRegex(SystemExit, "phishlens_staging_app role"):
+            validate_hosted_database_urls(
+                make_url(MIGRATION_URL), make_url(MIGRATION_URL), DATABASE_HOST, "neondb_owner"
+            )
+        with self.assertRaisesRegex(SystemExit, "match the isolated STAGING_DATABASE_HOST"):
+            validate_hosted_database_urls(
+                make_url(DATABASE_URL),
+                make_url(MIGRATION_URL.replace(DATABASE_HOST, "production.invalid")),
+                DATABASE_HOST,
+                "phishlens_staging_app",
+            )
+        with self.assertRaisesRegex(SystemExit, "owner credential"):
+            validate_hosted_database_urls(
+                make_url(DATABASE_URL),
+                make_url(MIGRATION_URL.replace("neondb_owner:owner-example-password", "phishlens_staging_app:example-password")),
+                DATABASE_HOST,
+                "phishlens_staging_app",
+            )
+
     def test_fails_clearly_when_host_has_no_ipv4_address(self):
         with (
             patch("scripts.start_staging.socket.getaddrinfo", return_value=[]),
@@ -64,7 +91,9 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                     "RENDER": "true",
                     "APP_ENV": "staging",
                     "STAGING_DATABASE_HOST": DATABASE_HOST,
+                    "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
                     "DATABASE_URL": DATABASE_URL,
+                    "STAGING_MIGRATION_DATABASE_URL": MIGRATION_URL,
                     "PORT": "8123",
                 },
                 clear=True,
@@ -77,6 +106,17 @@ class HostedStagingIpv4Tests(unittest.TestCase):
             main()
 
             self.assertEqual(run.call_count, 2)
+            migration_environment = run.call_args_list[0].kwargs["env"]
+            runtime_environment = run.call_args_list[1].kwargs["env"]
+            migration_url = make_url(migration_environment["DATABASE_URL"])
+            runtime_url = make_url(runtime_environment["DATABASE_URL"])
+            self.assertEqual(migration_url.username, "neondb_owner")
+            self.assertEqual(runtime_url.username, "phishlens_staging_app")
+            self.assertNotIn("STAGING_MIGRATION_DATABASE_URL", migration_environment)
+            self.assertNotIn("STAGING_MIGRATION_DATABASE_URL", runtime_environment)
+            self.assertNotIn("STAGING_MIGRATION_DATABASE_URL", os.environ)
+            self.assertEqual(migration_url.query["hostaddr"], "192.0.2.11,192.0.2.12")
+            self.assertEqual(runtime_url.query["hostaddr"], "192.0.2.11,192.0.2.12")
             deployed = make_url(os.environ["DATABASE_URL"])
             self.assertEqual(deployed.host, f"{DATABASE_HOST},{DATABASE_HOST}")
             self.assertEqual(deployed.query["hostaddr"], "192.0.2.11,192.0.2.12")
