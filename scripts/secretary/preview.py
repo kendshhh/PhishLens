@@ -42,6 +42,12 @@ def verify_service(service, config):
         raise RuntimeError("Staging service origin mismatch")
     if service.get("autoDeploy") != "no":
         raise RuntimeError("Disable staging auto-deploy; only this serialized controller may deploy")
+    expected_branch = config.get("staging_branch")
+    if expected_branch and service.get("branch") != expected_branch:
+        raise RuntimeError(
+            f"Staging service must be linked to {expected_branch!r}; "
+            "the old bootstrap branch can deploy code without the stamped migration."
+        )
     if service.get("repo", "").rstrip("/") != "https://github.com/" + os.environ.get("GITHUB_REPOSITORY", "kendshhh/PhishLens"):
         raise RuntimeError("Staging repository mismatch")
     runtime = details.get("envSpecificDetails", {})

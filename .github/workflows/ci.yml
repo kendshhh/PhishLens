@@ -83,6 +83,8 @@ jobs:
     name: Backend checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      migration_revision: ${{ steps.migration-lineage.outputs.head }}
 
     services:
       postgres:
@@ -143,6 +145,10 @@ jobs:
         run: python -m ruff check backend
       - name: Lint trusted secretary code
         run: python -m ruff check scripts/secretary
+
+      - name: Verify exact merge commit migration lineage
+        id: migration-lineage
+        run: python scripts/verify_migration_lineage.py --repo-root .
 
       - name: Verify disposable database configuration before migrations
         run: python scripts/ci_backend.py --check-environment
@@ -285,7 +291,7 @@ jobs:
   hosted-staging:
     name: Hosted staging
     if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.outputs.current != 'false'
-    needs: [staging, hosted-staging-preflight]
+    needs: [staging, hosted-staging-preflight, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: staging
@@ -299,6 +305,7 @@ jobs:
       queue: max
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
     steps:
       - name: Read trusted legacy controller only
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -341,6 +348,8 @@ jobs:
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          SECRETARY_STAGING_DB_HOST: ${{ vars.SECRETARY_STAGING_DB_HOST }}
+          SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
           STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
@@ -354,6 +363,7 @@ jobs:
           STAGING_COMMIT: ${{ github.sha }}
           STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           STAGING_PR: ${{ github.event.pull_request.number }}
+          STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
         run: |
           python - <<'PY'
           import datetime as dt
@@ -394,6 +404,7 @@ jobs:
               raise SystemExit(0)
           evidence.update({
               'pr': number, 'sha': pr_head_sha, 'deployed_commit': deploy_sha,
+              'migration_revision': os.environ['STAGING_MIGRATION_REVISION'],
               'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
               'chrome_manual_test': 'not performed',
           })
@@ -401,7 +412,7 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
               result.write('current=true\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}`.\n\n')
+              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
               summary.write('Health, readiness, version, synthetic history and staging package passed. ')
               summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
           PY

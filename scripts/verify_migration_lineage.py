@@ -1,6 +1,7 @@
 """Verify the historical Alembic revisions required by hosted staging."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -73,6 +74,10 @@ def main() -> int:
         "0003_saved_analysis_idempotency; "
         f"Alembic head is {head}."
     )
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as output:
+            output.write(f"head={head}\n")
     return 0
 
 
