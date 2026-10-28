@@ -174,6 +174,11 @@ def completed_event(api, config, run):
     return bool(statuses and statuses[0]["state"] == "success")
 
 
+def preview_gate_enabled():
+    """Parse the opt-in flag robustly across GitHub Actions variable formatting."""
+    return os.getenv("SECRETARY_PREVIEW_ENABLED", "").strip().lower() == "true"
+
+
 def main():
     api = GitHub()
     config = json.loads((ROOT / ".github/secretary.json").read_text())
@@ -214,8 +219,8 @@ def main():
         evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
         try:
             if action == "deploy":
-                if os.getenv("SECRETARY_PREVIEW_ENABLED") != "true":
-                    raise RuntimeError("Preview not enabled. Complete staging environment setup and isolation verification first")
+                if not preview_gate_enabled():
+                    raise RuntimeError("Preview gate is off; SECRETARY_PREVIEW_ENABLED must resolve to true after trimming whitespace and case")
                 # No PR scripts execute with this token/key. Render runs the PR with approved staging-only runtime data.
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
@@ -270,6 +275,7 @@ def main():
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
             if action == "failure":
+                print("Preview failed: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
 

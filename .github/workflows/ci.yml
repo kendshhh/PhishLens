@@ -292,12 +292,19 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.github_api import APIError, GitHub
 
           number = int(os.environ['STAGING_PR'])
           expected = os.environ['STAGING_PR_HEAD_SHA']
-          current = GitHub().request(f'pulls/{number}')
-          is_current = current['state'] == 'open' and current['head']['sha'] == expected
+          skip_reason = None
+          try:
+              current = GitHub().request(f'pulls/{number}')
+              is_current = (current['state'] == 'open'
+                            and current['head']['sha'] == expected
+                            and not current.get('draft', False))
+          except APIError as error:
+              is_current = False
+              skip_reason = f'GitHub could not confirm the current PR head ({error}); no deployment was started.'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'current={str(is_current).lower()}\n')
           if is_current:
@@ -305,7 +312,10 @@ jobs:
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f'Staging skipped before approval: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
+                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
+                  summary.write(f'Staging skipped before approval: {reason} The latest PR run owns staging.\n')
+              if skip_reason:
+                  raise SystemExit(1)
           PY
 
   # Bootstrap bridge: preserve the current required check until the new controller
@@ -313,7 +323,7 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.outputs.current != 'false'
+    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true'
     needs: [staging, hosted-staging-preflight]
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -350,12 +360,19 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.github_api import APIError, GitHub
 
           number = int(os.environ['STAGING_PR'])
           expected = os.environ['STAGING_PR_HEAD_SHA']
-          current = GitHub().request(f'pulls/{number}')
-          is_current = current['state'] == 'open' and current['head']['sha'] == expected
+          skip_reason = None
+          try:
+              current = GitHub().request(f'pulls/{number}')
+              is_current = (current['state'] == 'open'
+                            and current['head']['sha'] == expected
+                            and not current.get('draft', False))
+          except APIError as error:
+              is_current = False
+              skip_reason = f'GitHub could not confirm the current PR head ({error}); deployment remains blocked.'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'current={str(is_current).lower()}\n')
           if is_current:
@@ -363,7 +380,10 @@ jobs:
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f'Staging skipped after approval: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
+                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
+                  summary.write(f'Staging skipped after approval: {reason} The latest PR run owns staging.\n')
+              if skip_reason:
+                  raise SystemExit(1)
           PY
       - name: Deploy PR merge commit using the trusted legacy script
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
@@ -389,7 +409,7 @@ jobs:
           import json
           import os
           from pathlib import Path
-          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.github_api import APIError, GitHub
           from scripts.secretary.preview import package, smoke
 
           config = json.loads(Path('.github/secretary.json').read_text())
@@ -400,25 +420,35 @@ jobs:
           number = int(os.environ['STAGING_PR'])
           api = GitHub()
           output = Path('output/hosted-staging')
-
-          def superseded():
-              current = api.request(f'pulls/{number}')
-              if (current['state'] == 'open' and current['head']['sha'] == pr_head_sha
-                      and not current.get('draft', False)):
-                  return False
+          def stop_without_artifact(reason):
               with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
                   result.write('current=false\n')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f"Hosted staging for PR #{number} was superseded during deployment. The current head's CI run owns staging.\n")
+                  summary.write(f'Hosted staging for PR #{number} stopped safely: {reason} No extension artifact was published.\n')
               return True
 
-          # A newer PR head owns staging. Stop cleanly and never publish stale evidence.
+          def superseded():
+              try:
+                  current = api.request(f'pulls/{number}')
+              except APIError as error:
+                  stop_without_artifact(f'GitHub could not confirm the current PR head ({error}).')
+                  raise SystemExit(1)
+              # github.sha may be the synthetic merge commit; only compare the live
+              # PR head with the PR head captured when this run was queued.
+              if (current['state'] == 'open' and current['head']['sha'] == pr_head_sha
+                      and not current.get('draft', False)):
+                  return False
+              return stop_without_artifact('The PR closed, became a draft, or its head changed during deployment.')
           if superseded():
               raise SystemExit(0)
           evidence = smoke(config['staging_origin'], deploy_sha)
           if superseded():
               raise SystemExit(0)
-          package(api, deploy_sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          try:
+              package(api, deploy_sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          except APIError as error:
+              stop_without_artifact(f'GitHub could not package the current PR source ({error}).')
+              raise SystemExit(1)
           if superseded():
               raise SystemExit(0)
           evidence.update({
