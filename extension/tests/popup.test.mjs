@@ -51,6 +51,9 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
     assert.match(html, new RegExp(`id="${control}"`));
   }
   assert.match(html, /role="status" aria-live="polite"/);
+  assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
+  assert.match(html, /Analyze selection with VeriQo/);
+  assert.doesNotMatch(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
@@ -99,6 +102,30 @@ test("late detail response cannot replace the most recently opened analysis", as
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "B");
 });
 
+test("older history response cannot erase a newly created analysis", async () => {
+  let resolveOldList;
+  let listCalls = 0;
+  const saved = record("created", "New analysis");
+  const client = {
+    ...createInMemoryAnalysisClient(),
+    listAnalyses() {
+      listCalls++;
+      if (listCalls === 1) return new Promise(resolve => { resolveOldList = resolve; });
+      return Promise.resolve([saved]);
+    },
+    async createAnalysis() { return saved; },
+    async getAnalysis() { return saved; }
+  };
+  const { ui, controller } = setup(client);
+  const oldRefresh = controller.refresh();
+  ui.get("create-body").value = "Synthetic email body";
+  await ui.get("create-form").fire("submit");
+  resolveOldList([]);
+  await oldRefresh;
+  assert.equal(ui.get("history-list").children.length, 1);
+  assert.equal(ui.get("history-list").children[0].children[0].textContent, "New analysis");
+});
+
 test("loads, views safe text, labels mock provenance, and starts empty after last deletion", async () => {
   const memory = createInMemoryAnalysisClient([record(id, "<img src=x>")]);
   const { ui, controller } = setup(memory);
@@ -145,6 +172,37 @@ test("edit cancel and delete cancel preserve the saved record", async () => {
   await deleteButton.fire("click");
   await ui.get("cancel-delete").fire("click");
   assert.equal((await memory.listAnalyses()).length, 1);
+});
+
+test("editing notes alone preserves null feedback", async () => {
+  const nullable = record(id);
+  nullable.feedback = null;
+  const memory = createInMemoryAnalysisClient([nullable]);
+  const { ui, controller } = setup(memory);
+  await controller.refresh();
+  await controller.loadDetail(id);
+  await ui.get("detail-content").children.at(-2).fire("click");
+  assert.equal(ui.get("edit-feedback").value, "null");
+  ui.get("edit-notes").value = "Notes only";
+  await ui.get("edit-form").fire("submit");
+  const updated = await memory.getAnalysis(id);
+  assert.equal(updated.notes, "Notes only");
+  assert.equal(updated.feedback, null);
+});
+
+test("failed post-create history refresh warning is not replaced by detail success", async () => {
+  const saved = record("created", "Saved but refresh unavailable");
+  const client = {
+    ...createInMemoryAnalysisClient(),
+    async createAnalysis() { return saved; },
+    async listAnalyses() { throw new Error("Server unavailable"); },
+    async getAnalysis() { return saved; }
+  };
+  const { ui } = setup(client);
+  ui.get("create-body").value = "Synthetic email body";
+  await ui.get("create-form").fire("submit");
+  assert.match(ui.get("crud-status").textContent, /Saved analyses are unavailable: Server unavailable/);
+  assert.doesNotMatch(ui.get("crud-status").textContent, /details loaded|saved successfully/i);
 });
 
 test("create and edit submit through the injected five-method client", async () => {

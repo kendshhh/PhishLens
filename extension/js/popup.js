@@ -36,6 +36,7 @@ export function createPopupController(client, doc = document) {
   let selected = null;
   let busy = false;
   let detailRequest = 0;
+  let listRequest = 0;
 
   function setStatus(message, kind = "info") {
     ui.status.textContent = message;
@@ -100,24 +101,30 @@ export function createPopupController(client, doc = document) {
   }
 
   async function refresh() {
+    const request = ++listRequest;
     show(ui.loading, true);
     show(ui.empty, false);
     try {
-      records = await client.listAnalyses();
+      const latestRecords = await client.listAnalyses();
+      if (request !== listRequest) return false;
+      records = latestRecords;
       renderList();
       show(ui.loading, false);
       setStatus(records.length ? "Saved analyses loaded." : "No saved analyses yet.", records.length ? "success" : "info");
+      return true;
     } catch (error) {
+      if (request !== listRequest) return false;
       show(ui.loading, false);
       if (records.length) renderList();
       else show(ui.empty, false);
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned malformed analysis data. Try again later."
         : `Saved analyses are unavailable: ${error.message}`, "error");
+      return false;
     }
   }
 
-  async function loadDetail(id) {
+  async function loadDetail(id, { announce = true } = {}) {
     if (busy) return;
     const request = ++detailRequest;
     try {
@@ -127,7 +134,7 @@ export function createPopupController(client, doc = document) {
       renderDetail(selected);
       show(ui.editForm, false);
       show(ui.deleteConfirm, false);
-      setStatus("Analysis details loaded.", "success");
+      if (announce) setStatus("Analysis details loaded.", "success");
     } catch (error) {
       if (request !== detailRequest) return;
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
@@ -138,7 +145,7 @@ export function createPopupController(client, doc = document) {
 
   function openEdit() {
     ui.notes.value = selected.notes || "";
-    ui.feedback.value = selected.feedback || "none";
+    ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
     show(ui.editForm, true);
     ui.notes.focus();
   }
@@ -165,14 +172,14 @@ export function createPopupController(client, doc = document) {
       renderList();
       ui.subject.value = "";
       ui.body.value = "";
-      setStatus("Analysis saved successfully.", "success");
-      await refresh();
+      const refreshed = await refresh();
+      if (refreshed) setStatus("Analysis saved successfully.", "success");
     } catch (error) {
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned a malformed result. Your input is still here."
         : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
     } finally { setBusy(false); }
-    if (created) await loadDetail(created.id);
+    if (created) await loadDetail(created.id, { announce: false });
   });
 
   ui.editForm.addEventListener("submit", async event => {
@@ -181,14 +188,15 @@ export function createPopupController(client, doc = document) {
     setBusy(true);
     try {
       selected = await client.updateAnalysis(selected.id, {
-        notes: ui.notes.value.trim() || null, feedback: ui.feedback.value
+        notes: ui.notes.value.trim() || null,
+        feedback: ui.feedback.value === "null" ? null : ui.feedback.value
       });
       show(ui.editForm, false);
       records = records.map(record => record.id === selected.id ? selected : record);
       renderList();
       renderDetail(selected);
-      await refresh();
-      setStatus("Changes saved successfully.", "success");
+      const refreshed = await refresh();
+      if (refreshed) setStatus("Changes saved successfully.", "success");
     } catch (error) {
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned a malformed result. Your edits are still here."
@@ -210,8 +218,8 @@ export function createPopupController(client, doc = document) {
       show(ui.detail, false);
       show(ui.deleteConfirm, false);
       show(ui.editForm, false);
-      await refresh();
-      setStatus("Analysis deleted successfully.", "success");
+      const refreshed = await refresh();
+      if (refreshed) setStatus("Analysis deleted successfully.", "success");
     } catch (error) {
       setStatus(`Could not delete analysis: ${error.message}`, "error");
     } finally { setBusy(false); }
