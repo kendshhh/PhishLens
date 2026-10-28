@@ -1,11 +1,32 @@
 # Deployment and Recovery Runbook
 
-## Current verification and playbook handoff
+## Historical October 21 playbook handoff
 
 See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
 the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
+
+## Current verification — October 28, 2026
+
+Production service `phishlens-api` is configured on `main` with Render auto-deploy
+trigger `checksPass`. PR #84 merged as `e4ea032615a6663d787a5b44714b5fc982fc6355`.
+Main CI run [40636853223](https://github.com/kendshhh/PhishLens/actions/runs/40636853223)
+passed. Render deployment `dep-dbgoa7i9lscs738tse0g` was triggered by `new_commit`
+and went live at 2026-10-28T05:17:17.607Z. The exact `/version` response reported
+the production environment and that SHA. `/health` returned `{"status":"ok","service":"phishlens-api"}`;
+`/ready` returned `{"status":"ready","database":"connected"}`. All probes
+returned HTTP 200. These observations are recorded in [metrics.md](metrics.md).
+
+Staging service `phishlens-staging` has auto-deploy off and the Render source branch
+set to `main`. It was live on exact merge SHA
+`e3c6e37fd6661aeb582bd000507ef8cac677c23f` during this audit. `/version` identified
+`staging`, `/ready` returned HTTP 200, and the guarded synthetic API CRUD verifier
+passed and cleaned up its test record. No production CRUD write was made.
+
+Production database CRUD persistence across refresh/redeploy and installed-Chrome
+behavior remain unverified. The production probes above establish live version,
+process health, and database readiness only.
 
 For each deployment, retain main SHA, successful main CI, reviewer approval,
 Render deploy ID/trigger/live timestamp, and the live `/version`/health/readiness
@@ -28,7 +49,7 @@ the exact failed deployment in Render before deciding recovery. The pilot never
 deploys production, changes secrets, applies production migrations, or executes
 rollback. The existing human recovery procedure below remains authoritative.
 
-## Current Status
+## Historical initial scaffold status
 
 The FastAPI backend scaffold is publicly deployed on Render.
 

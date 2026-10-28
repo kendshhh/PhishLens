@@ -22,8 +22,9 @@ setup-python caches pip downloads using both pinned dependency files. Changed
 pins invalidate the key. Runtime/development installation and every quality
 check still execute; a cache hit does not count as test success.
 
-No measured performance improvement is claimed yet. Compare cold and warm runs
-with the same database/test coverage, recording setup/install/job durations.
+The October 21 comparison found lower install time but no end-to-end staging-job
+improvement; see [optimization evidence](optimizations.md). Compare cold and warm
+runs with the same database/test coverage, recording setup/install/job durations.
 The first run may cost more time to save the cache.
 
 ## Validation and review

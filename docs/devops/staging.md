@@ -49,9 +49,8 @@ does not claim installed-Chrome acceptance; that remains a separate human test.
 - Build: `python -m pip install -r backend/requirements.txt`.
 - Start: `python scripts/start_staging.py`.
 - Auto-deploy: off; the PR workflow selects the exact commit.
-- Bootstrap branch: `ci/staging-validation`. After this PR merges, change the
-  service's connected branch to `main`, keeping auto-deploy off. Keep the bootstrap
-  branch until this setting has been updated.
+- Render source branch: `main`. The hosted workflow uses the Render API to deploy
+  the selected PR merge SHA while auto-deploy remains off.
 
 Configure two credentials in this service's Render environment:
 
@@ -146,21 +145,23 @@ separate evidence items.
   `phishlens_dev`. A read-only Neon check found Alembic revision
   `0003_saved_analysis_idempotency` on that branch. The shared `development`
   branch is at `0002_analysis_provenance`.
-- Render's staging service source branch is `ci/staging-validation`, with
-  auto-deploy off. That Git branch is separate from the Neon database branch.
-  Render `/version` reported deployed commit
-  `91b964d3bdb91b114a654065db184153a25403e0` in the staging environment.
-- The Render service metadata does not expose `DATABASE_URL`. Its current
-  branch-to-host mapping still requires private confirmation in Render and Neon
-  before another hosted write.
-- The `PhishLens-Staging-Extension` artifact from workflow run `40542904034` was
-  built from source commit `d15a5b109a6170599a943213f22219ee1069f100` (artifact
-  `12779275763`, expires November 3, 2026). The extension files are unchanged
-  between that source and the deployed commit above, so it can serve as the
-  current non-auth baseline. The artifact's successful Hosted staging run was
-  for its own source/deployment candidate; it is not an exact-SHA combined check
-  for the later `91b964d3` deployment. It does not verify a future Auth
-  implementation.
+- Render service metadata reports source branch `main`, auto-deploy off, and
+  service `phishlens-staging`. The live deployment is `dep-dbgo3v49v7es73b02igg`
+  at exact SHA `e3c6e37fd6661aeb582bd000507ef8cac677c23f`, the hosted merge commit
+  for PR #83. `/version` reported that SHA and `staging`; `/ready` returned HTTP
+  200 with database connected. The current deployment API record is live.
+- The exact-SHA guarded CRUD verifier passed against that staging origin. It
+  created a synthetic analysis, read/listed it, edited and cleared notes, then
+  deleted it and confirmed a 404. No production write was made. Command:
+  `node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha e3c6e37fd6661aeb582bd000507ef8cac677c23f --allow-writes`.
+- The `PhishLens-Staging-Extension` artifact and hosted smoke were produced by
+  PR #83 run [40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771).
+  Package identity and API integration passed. Installed-Chrome acceptance is
+  still pending. The older October 21 artifact record below is historical.
+- Production and staging branch names are distinct in Neon. The Render service
+  API does not expose database connection values, so the exact configured host
+  mapping and staging app-role privileges still require an owner-side check in
+  Render/Neon before claiming least privilege.
 
 ### October 19 follow-up
 

@@ -196,3 +196,26 @@ seconds. Recovery time is unavailable. The observer verified production SHA
  d6e5998, health, and readiness at 01:35:35 UTC. Direct public read-only probes
 subsequently returned 200 for version, health, readiness, and synthetic history.
 
+## October 28 current delivery sample
+
+PR #84 merged as `e4ea032615a6663d787a5b44714b5fc982fc6355` at
+2026-10-28T05:14:47Z. Main CI
+[40636853223](https://github.com/kendshhh/PhishLens/actions/runs/40636853223)
+passed Backend checks and Extension checks. Render production deployment
+[`dep-dbgoa7i9lscs738tse0g`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbgoa7i9lscs738tse0g)
+was triggered by `new_commit` and went live at 05:17:17.607Z. Merge-to-live for
+this single sample is **150.607 seconds**. Render deploy duration was 63.274
+seconds. The production `/version`, `/health`, and `/ready` endpoints each returned
+HTTP 200; the version matched the merged SHA and readiness reported a connected
+database. This is one measured delivery sample, not an optimization comparison.
+
+The staging service was live on exact SHA
+`e3c6e37fd6661aeb582bd000507ef8cac677c23f`; its `/version` identified `staging`
+and `/ready` returned HTTP 200. The guarded synthetic CRUD verifier passed against
+that staging SHA and removed the record it created. Production writes were not
+performed. Production record persistence across refresh/redeploy remains unknown.
+
+For the October 28 no-cache extension baseline and the pending npm-cache
+comparison, see [optimizations.md](optimizations.md). Retain sample counts and
+whole-job timings; do not infer improvement from the 1–2 second install step alone.
+
