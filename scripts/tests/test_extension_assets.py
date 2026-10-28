@@ -1,12 +1,14 @@
 """Exercise packaged popup references without modifying real extension assets."""
 
+import hashlib
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
+from zipfile import ZipFile
 
 
 class ExtensionAssetValidationTests(unittest.TestCase):
@@ -64,6 +66,39 @@ class ExtensionAssetValidationTests(unittest.TestCase):
         result = self.validate('<script src="%2e%2e/outside.js"></script>')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Asset escapes extension directory", result.stderr)
+
+    def test_extra_or_wildcard_hosts_fail(self):
+        manifest_path = self.extension / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        for extra in ["<all_urls>", "https://*/*", "http://localhost:8000/*",
+                      "https://phishlens-staging.onrender.com/*"]:
+            with self.subTest(extra=extra):
+                manifest["host_permissions"] = ["https://phishlens-api-ocvt.onrender.com/*", extra]
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                result = self.validate('<script src="js/popup.js"></script>')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("must grant only", result.stderr)
+
+    def test_package_identity_matches_archive_contents(self):
+        source = Path(__file__).resolve().parents[1] / "package_extension.py"
+        shutil.copyfile(source, self.root / "scripts/package_extension.py")
+        manifest_path = self.extension / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["version"] = "0.1.0"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        self.validate('<script src="js/popup.js"></script>')
+        result = subprocess.run([sys.executable, str(self.root / "scripts/package_extension.py")],
+                                capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        archive = self.root / "output/extension/PhishLens-Extension.zip"
+        evidence = json.loads(archive.with_name("evidence.json").read_text())
+        self.assertEqual(evidence["archive_sha256"], hashlib.sha256(archive.read_bytes()).hexdigest())
+        with ZipFile(archive) as package:
+            self.assertNotIn("evidence.json", package.namelist())
+            self.assertEqual(set(evidence["files_sha256"]), set(package.namelist()))
+            for name, digest in evidence["files_sha256"].items():
+                self.assertEqual(hashlib.sha256(package.read(name)).hexdigest(), digest)
+        self.assertEqual(evidence["chrome_acceptance"], "not performed by packaging")
 
 
 if __name__ == "__main__":

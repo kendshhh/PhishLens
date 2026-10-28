@@ -42,6 +42,12 @@ def verify_service(service, config):
         raise RuntimeError("Staging service origin mismatch")
     if service.get("autoDeploy") != "no":
         raise RuntimeError("Disable staging auto-deploy; only this serialized controller may deploy")
+    expected_branch = config.get("staging_branch")
+    if expected_branch and service.get("branch") != expected_branch:
+        raise RuntimeError(
+            f"Staging service must be linked to {expected_branch!r}; "
+            "the old bootstrap branch can deploy code without the stamped migration."
+        )
     if service.get("repo", "").rstrip("/") != "https://github.com/" + os.environ.get("GITHUB_REPOSITORY", "kendshhh/PhishLens"):
         raise RuntimeError("Staging repository mismatch")
     runtime = details.get("envSpecificDetails", {})
@@ -54,10 +60,18 @@ def verify_environment(rows):
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
     database = urlsplit(values.get("DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
+    migration = urlsplit(values.get("STAGING_MIGRATION_DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
+    app_role = values.get("STAGING_APP_DATABASE_ROLE", "")
     if not expected or not production or expected == production:
         raise RuntimeError("Declare distinct staging and production database hosts privately in environment variables")
     if database.hostname != expected or database.path != "/phishlens_dev" or values.get("STAGING_DATABASE_HOST") != expected:
         raise RuntimeError("Staging database host/name does not match the isolated allowlist")
+    if database.username != app_role or app_role != "phishlens_staging_app":
+        raise RuntimeError("Staging runtime must use the phishlens_staging_app role")
+    if migration.hostname != expected or migration.path != "/phishlens_dev" or migration.username != "neondb_owner":
+        raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
+    if migration.username == database.username:
+        raise RuntimeError("Staging migration and runtime credentials must use separate roles")
     if values.get("APP_ENV") != "staging" or values.get("AI_MODE", "mock") != "mock":
         raise RuntimeError("Pilot requires APP_ENV=staging and AI_MODE=mock; no live provider costs")
 
@@ -124,7 +138,7 @@ def package(api, sha, number, config, output):
 
 
 def eligibility(pr, files, run, repo):
-    if pr["state"] != "open" or pr["head"]["sha"] != run["head_sha"]:
+    if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
     if pr["draft"]:
         return "action_required", "Draft: mark ready for review to request staging"
@@ -135,6 +149,14 @@ def eligibility(pr, files, run, repo):
     if run["conclusion"] != "success":
         return "failure", "CI did not succeed; staging not deployed"
     return "deploy", "CI passed; exact-head staging requested"
+
+
+def current_pr_head_matches(pr, expected_head_sha):
+    """Whether the open PR still matches the head captured by this CI run."""
+    return (
+        pr.get("state") == "open"
+        and pr.get("head", {}).get("sha") == expected_head_sha
+    )
 
 
 def invalidate_previous(api, config, sha):
@@ -166,6 +188,11 @@ def completed_event(api, config, run):
     return bool(statuses and statuses[0]["state"] == "success")
 
 
+def preview_gate_enabled():
+    """Parse the opt-in flag robustly across GitHub Actions variable formatting."""
+    return os.getenv("SECRETARY_PREVIEW_ENABLED", "").strip().lower() == "true"
+
+
 def main():
     api = GitHub()
     config = json.loads((ROOT / ".github/secretary.json").read_text())
@@ -181,7 +208,7 @@ def main():
             output.write("deploy=false\n")
     for candidate in candidates:
         pr = api.request(f"pulls/{candidate['number']}")
-        if pr["head"]["sha"] != run["head_sha"]:
+        if not current_pr_head_matches(pr, run["head_sha"]):
             continue
         files = api.pages(f"pulls/{pr['number']}/files")
         action, message = eligibility(pr, files, run, api.repo)
@@ -206,8 +233,8 @@ def main():
         evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
         try:
             if action == "deploy":
-                if os.getenv("SECRETARY_PREVIEW_ENABLED") != "true":
-                    raise RuntimeError("Preview not enabled. Complete staging environment setup and isolation verification first")
+                if not preview_gate_enabled():
+                    raise RuntimeError("Preview gate is off; SECRETARY_PREVIEW_ENABLED must resolve to true after trimming whitespace and case")
                 # No PR scripts execute with this token/key. Render runs the PR with approved staging-only runtime data.
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
@@ -233,13 +260,19 @@ def main():
                         raise RuntimeError("Render staging deployment timed out")
                     time.sleep(10)
                 evidence["smoke"] = smoke(config["staging_origin"], run["head_sha"])
-                package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
                 current = api.request(f"pulls/{pr['number']}")
-                if current["head"]["sha"] != run["head_sha"] or current["state"] != "open":
-                    raise RuntimeError("PR changed during deployment; preview is stale")
-                api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
-                    "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
-                action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
+                if not current_pr_head_matches(current, run["head_sha"]):
+                    # The deployment worked, but it is no longer evidence for the current PR head.
+                    action = "action_required"
+                    message = "PR head advanced during staging; this run was superseded. The latest CI run must own staging."
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success",
+                        "description": "Deployment passed; PR head advanced, so this preview is superseded",
+                        "log_url": log, "auto_inactive": False})
+                else:
+                    package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
+                        "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
+                    action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
         except Exception as exc:  # noqa: BLE001 -- fail the exact-SHA check without exposing API bodies
             action = "failure"
             # Only controlled errors are exposed, not upstream exception bodies.
@@ -256,6 +289,7 @@ def main():
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
             if action == "failure":
+                print("Preview failed: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
 

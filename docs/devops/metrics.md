@@ -1,5 +1,22 @@
 # Pipeline Metrics
 
+## October 21 review (UTC observations October 20)
+
+[Raw run/job timestamps and bounded sample](evidence/2026-10-21-ci-measurements.json).
+At collection, 119 CI workflow IDs were returned: 85 success, 15 failure,
+14 cancelled, three pending, one waiting and one in progress. This includes the
+invalid CI-definition run named `.github/workflows/ci.yml` as a real failure.
+Latest-outcome success rate excludes cancelled/pending/waiting/in-progress:
+85 / (85 + 15) = 85.00%. Intentional failures remain in the failure count.
+
+Five latest successful PR samples average 739.4 seconds including hosting/approval
+queues; five latest successful main-push samples average 101.2 seconds. These are
+different populations with changing coverage and cannot show an optimization gain.
+Production observer 39449283551 succeeded for main 149808e and published artifact
+12276999746. Deployment count, failed deploy count, merge-to-live and recovery
+duration have not been freshly extracted; retain prior values as historical,
+not zero. The comparative staging experiment is documented in optimizations.md.
+
 The [Secretary observer](secretary-verification.md) implements a new 28-day,
 latest-workflow-attempt calculation and produces downloadable evidence artifacts.
 It does not overwrite this historical log or push metrics commits. Its durations
@@ -148,6 +165,17 @@ Their difference alone does not prove an optimization.
 - Audit failed production deployments.
 - Collect restoration duration and attach rollback deployment links.
 - Measure future optimizations using comparable before-and-after runs.
+
+## October 21 hosted verification follow-up
+
+Read-only Render inspection now supplies a direct production deployment identity:
+[dep-dbbois67bikc73b06fpg](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbbois67bikc73b06fpg).
+Main `149808e` deployed automatically (`new_commit`, service configured for
+`checksPass`) and finished at 2026-10-20T15:33:17.294784Z. The merge commit timestamp
+is 15:30:13Z: **184.294784 seconds** merge-to-live for this single observation.
+Fresh browser response bodies matched version, health, readiness and synthetic
+history. No new deployment or write was initiated. Full CRUD and recovery duration
+remain unverified. [Sanitized source evidence](evidence/2026-10-21-hosted-verification.json).
 
 ## Week 1 verification follow-up - October 19, 2026
 
