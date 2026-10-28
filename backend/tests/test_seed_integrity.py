@@ -4,10 +4,14 @@ import uuid
 import pytest
 
 RUN_DATABASE_TESTS = os.getenv("RUN_DATABASE_TESTS") == "1"
+RUN_SEED_INTEGRITY_TESTS = os.getenv("RUN_SEED_INTEGRITY_TESTS") == "1"
 
 pytestmark = pytest.mark.skipif(
-    not RUN_DATABASE_TESTS,
-    reason="Database integration tests require explicit opt-in.",
+    not RUN_DATABASE_TESTS or not RUN_SEED_INTEGRITY_TESTS,
+    reason=(
+        "Seed integrity requires RUN_DATABASE_TESTS=1 and "
+        "RUN_SEED_INTEGRITY_TESTS=1 against local phishlens_dev."
+    ),
 )
 
 
@@ -17,9 +21,11 @@ def test_seed_records_and_relationship():
     from backend.core.database import SessionLocal, engine
     from backend.models import AnalyzedEmail, User
 
-    assert engine.url.database == "phishlens_dev"
     assert engine.url.host in {"localhost", "127.0.0.1"}, (
-        "This test must use the isolated local CI database."
+        "This read-only seed check must use local PostgreSQL."
+    )
+    assert engine.url.database == "phishlens_dev", (
+        "This explicit seed-integrity test requires the local phishlens_dev database."
     )
 
     demo_analysis_id = uuid.UUID(

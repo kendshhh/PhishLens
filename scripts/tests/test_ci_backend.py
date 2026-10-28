@@ -7,10 +7,12 @@ from unittest.mock import patch
 
 from scripts.ci_backend import REQUIRED_DATABASE_TESTS, check_environment, verify_report
 
+ROOT = Path(__file__).resolve().parents[2]
+
 
 class BackendGateTests(unittest.TestCase):
     def environment(self):
-        return {"DATABASE_URL": "postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev",
+        return {"DATABASE_URL": "postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_s2_t1_test",
                 "RUN_DATABASE_TESTS": "1", "AI_MODE": "mock"}
 
     def test_explicit_disposable_target(self):
@@ -21,8 +23,9 @@ class BackendGateTests(unittest.TestCase):
             ("DATABASE_URL", ""),
             ("DATABASE_URL", self.environment()["DATABASE_URL"].replace("localhost", "db.neon.tech")),
             ("DATABASE_URL", self.environment()["DATABASE_URL"] + "?host=db.neon.tech"),
-            ("DATABASE_URL", self.environment()["DATABASE_URL"].replace("phishlens_dev", "production")),
-            ("DATABASE_URL", "postgresql://user:private@localhost:5432/phishlens_dev"),
+            ("DATABASE_URL", self.environment()["DATABASE_URL"].replace("phishlens_s2_t1_test", "phishlens_dev")),
+            ("DATABASE_URL", self.environment()["DATABASE_URL"].replace("phishlens_s2_t1_test", "production")),
+            ("DATABASE_URL", "postgresql://user:private@localhost:5432/phishlens_s2_t1_test"),
             ("DATABASE_URL", "postgresql+psycopg://[broken"),
             ("RUN_DATABASE_TESTS", "0"), ("AI_MODE", "gemini"), ("AI_MODE", "local"),
         ]:
@@ -43,8 +46,36 @@ class BackendGateTests(unittest.TestCase):
     def test_required_database_tests_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             result = verify_report(self.report(directory, self.cases()))
-        self.assertEqual(result["required_database_tests_passed"], 11)
+        self.assertEqual(result["required_database_tests_passed"], 10)
         self.assertIn("hosted acceptance not established", result["crud_acceptance"])
+
+    def test_seed_integrity_is_separate_from_disposable_database_gate(self):
+        self.assertNotIn(
+            ("backend.tests.test_seed_integrity", "test_seed_records_and_relationship"),
+            REQUIRED_DATABASE_TESTS,
+        )
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        backend_start = workflow.index("  backend:\n")
+        staging_start = workflow.index("  staging:\n", backend_start)
+        backend = workflow[backend_start:staging_start]
+
+        create_database = backend.index("CREATE DATABASE phishlens_s2_t1_test")
+        check_configuration = backend.index(
+            "name: Verify disposable database configuration before migrations"
+        )
+        seed_check = backend.index("name: Verify seeded database integrity")
+        test_migrations = backend.index(
+            "name: Apply database migrations to disposable test database"
+        )
+        api_tests = backend.index("name: Test API")
+
+        self.assertIn("DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev", backend)
+        self.assertIn("DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_s2_t1_test", backend)
+        self.assertIn('RUN_SEED_INTEGRITY_TESTS: "1"', backend)
+        self.assertLess(create_database, check_configuration)
+        self.assertLess(check_configuration, seed_check)
+        self.assertLess(seed_check, test_migrations)
+        self.assertLess(test_migrations, api_tests)
 
     def test_missing_skipped_failed_or_client_only_tests_fail(self):
         for cases in ["", '<testcase classname="client" name="crud"/>',

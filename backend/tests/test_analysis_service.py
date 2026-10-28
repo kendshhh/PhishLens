@@ -224,10 +224,7 @@ def test_valid_analysis_is_committed_for_demo_user(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database in {
-        "phishlens_s2_t1_test",
-        "phishlens_dev",
-    }
+    assert engine.url.database == "phishlens_s2_t1_test"
 
     user_id = uuid4()
     email = f"saved-service-{user_id}@phishlens.test"

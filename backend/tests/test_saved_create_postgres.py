@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from backend.ai.mock_provider import MockProvider
-from backend.ai.schemas import AIAnalysisResult
+from backend.ai.schemas import AIAnalysisResult, EvidenceItem
 from backend.ai.service import AIService
 from backend.app import analysis_deadlines, analysis_persistence, analysis_service, main
 from backend.app.analysis_deadlines import AnalysisTimeoutError
@@ -31,10 +31,7 @@ def saved_postgres_context(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database in {
-        "phishlens_s2_t1_test",
-        "phishlens_dev",
-    }
+    assert engine.url.database == "phishlens_s2_t1_test"
 
     user_id = uuid4()
     email = f"crud-http-{user_id}@phishlens.test"
@@ -230,6 +227,179 @@ def test_retry_after_commit_acknowledgement_timeout_replays_saved_record(
         assert count == 1
 
 @pytest.mark.parametrize(
+    "patch",
+    [
+        {"notes": "Synthetic reviewer notes"},
+        {"feedback": "false_positive"},
+    ],
+    ids=["notes-only", "feedback-only"],
+)
+def test_patch_preserves_analysis_and_inference_count(
+    saved_postgres_context,
+    monkeypatch,
+    patch,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        return_value=AIAnalysisResult(
+            classification="phishing",
+            confidence=0.91,
+        )
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+    created = client.post(
+        "/api/analyses",
+        json={"subject": "Synthetic notice", "body": "Synthetic email body"},
+    )
+    assert created.status_code == 201
+    record_id = UUID(created.json()["id"])
+    url = f"/api/analyses/{record_id}"
+    inference.assert_called_once()
+
+    protected_fields = (
+        "user_id", "subject", "body", "prediction", "confidence", "risk_level",
+        "indicators", "explanation", "analysis_mode", "analysis_provenance", "created_at",
+    )
+    with Session(engine) as verification:
+        original = verification.get(AnalyzedEmail, record_id)
+        assert original is not None
+        assert original.user_id == user_id
+        before = {name: getattr(original, name) for name in protected_fields}
+
+    updated = client.patch(url, json=patch)
+    assert updated.status_code == 200
+    inference.assert_called_once()
+
+    with Session(engine) as verification:
+        saved = verification.get(AnalyzedEmail, record_id)
+        assert saved is not None
+        assert {name: getattr(saved, name) for name in protected_fields} == before
+        assert saved.notes == patch.get("notes")
+        assert saved.feedback == patch.get("feedback")
+
+    reread = client.get(url)
+    assert reread.status_code == 200
+    assert reread.json()["notes"] == patch.get("notes")
+    assert reread.json()["feedback"] == patch.get("feedback")
+    assert reread.json()["prediction"] == "phishing"
+    assert reread.json()["confidence"] == 0.91
+    inference.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("method", "payload"),
+    [
+        ("post", {}),
+        ("post", {"body": " \n "}),
+        ("post", {"body": "x" * 30_001}),
+        ("post", {"subject": "x" * 321, "body": "Synthetic body"}),
+        ("post", {"body": {"unexpected": "object"}}),
+        ("post", {"body": "Synthetic body", "user_id": str(uuid4())}),
+        ("post", {"body": "Synthetic body", "prediction": "legitimate"}),
+        ("post", {"body": "Synthetic body", "analysis_mode": "real"}),
+        ("post", {"body": "Synthetic body", "unexpected": "field"}),
+        ("patch", {}),
+        ("patch", {"feedback": "unsupported"}),
+        ("patch", {"notes": "x" * 2001}),
+        ("patch", {"notes": {"unexpected": "object"}}),
+        ("patch", {"user_id": str(uuid4())}),
+        ("patch", {"prediction": "legitimate"}),
+        ("patch", {"unexpected": "field"}),
+    ],
+    ids=[
+        "create-missing-body", "create-blank-body", "create-oversized-body",
+        "create-oversized-subject", "create-wrong-body-type", "create-owner",
+        "create-verdict", "create-mode", "create-unknown-field", "patch-empty",
+        "patch-invalid-feedback", "patch-oversized-notes", "patch-wrong-notes-type",
+        "patch-owner", "patch-verdict", "patch-unknown-field",
+    ],
+)
+def test_rejected_request_leaves_postgres_unchanged(
+    saved_postgres_context,
+    monkeypatch,
+    method,
+    payload,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        return_value=AIAnalysisResult(classification="legitimate")
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+    created = client.post(
+        "/api/analyses",
+        json={"body": "Synthetic record that rejected requests must preserve"},
+    )
+    assert created.status_code == 201
+    record_id = UUID(created.json()["id"])
+
+    statement = select(AnalyzedEmail.__table__).where(
+        AnalyzedEmail.user_id == user_id
+    )
+    with engine.connect() as verification:
+        before = [dict(row) for row in verification.execute(statement).mappings()]
+    assert len(before) == 1
+
+    url = "/api/analyses" if method == "post" else f"/api/analyses/{record_id}"
+    response = client.request(method.upper(), url, json=payload)
+
+    assert response.status_code == 422
+    inference.assert_called_once()
+    with engine.connect() as verification:
+        after = [dict(row) for row in verification.execute(statement).mappings()]
+    assert after == before
+
+    reread = client.get(f"/api/analyses/{record_id}")
+    assert reread.status_code == 200
+    assert reread.json()["notes"] is None
+    assert reread.json()["feedback"] is None
+
+
+def test_malformed_json_does_not_write_and_next_create_succeeds(
+    saved_postgres_context,
+    monkeypatch,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        return_value=AIAnalysisResult(classification="legitimate")
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+
+    malformed = client.post(
+        "/api/analyses",
+        content='{"body": "synthetic-private-token"',
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert malformed.status_code == 422
+    assert malformed.json() == {
+        "detail": "Invalid analysis input",
+        "code": "invalid_input",
+    }
+    assert "synthetic-private-token" not in malformed.text
+    inference.assert_not_called()
+    with Session(engine) as verification:
+        assert verification.scalar(
+            select(func.count())
+            .select_from(AnalyzedEmail)
+            .where(AnalyzedEmail.user_id == user_id)
+        ) == 0
+
+    accepted = client.post(
+        "/api/analyses",
+        json={"body": "Synthetic healthy request after invalid JSON"},
+    )
+
+    assert accepted.status_code == 201
+    assert inference.call_count == 1
+    with Session(engine) as verification:
+        rows = verification.scalars(
+            select(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)
+        ).all()
+        assert len(rows) == 1
+        assert rows[0].body == "Synthetic healthy request after invalid JSON"
+
+
+@pytest.mark.parametrize(
     ("error_type", "expected_status", "expected_code", "expected_message"),
     [
         (
@@ -293,6 +463,61 @@ def test_failed_inference_does_not_save(
         assert count == 0
 
 
+def test_invalid_evidence_does_not_save_and_next_request_succeeds(
+    saved_postgres_context,
+    monkeypatch,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        side_effect=[
+            AIAnalysisResult(
+                classification="phishing",
+                evidence=[
+                    EvidenceItem(
+                        text="private phrase absent from the email",
+                        reason="Synthetic unsupported evidence",
+                    )
+                ],
+            ),
+            AIAnalysisResult(classification="legitimate"),
+        ]
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+    body = "Synthetic email with no evidence quote."
+
+    rejected = client.post("/api/analyses", json={"body": body})
+
+    assert rejected.status_code == 502
+    assert rejected.json() == {
+        "detail": "Email analysis failed",
+        "code": "analysis_failed",
+    }
+    assert "private phrase" not in rejected.text
+    inference.assert_called_once()
+    with Session(engine) as verification:
+        assert verification.scalar(
+            select(func.count())
+            .select_from(AnalyzedEmail)
+            .where(AnalyzedEmail.user_id == user_id)
+        ) == 0
+
+    accepted = client.post("/api/analyses", json={"body": body})
+
+    assert accepted.status_code == 201
+    record_id = UUID(accepted.json()["id"])
+    assert accepted.json()["prediction"] == "legitimate"
+    assert accepted.json()["threat_indicators"] == []
+    assert inference.call_count == 2
+    with Session(engine) as verification:
+        rows = verification.scalars(
+            select(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)
+        ).all()
+        assert len(rows) == 1
+        assert rows[0].id == record_id
+        assert rows[0].prediction == "legitimate"
+        assert rows[0].body == body
+
+
 def test_invalid_saved_response_rolls_back_insert(
     saved_postgres_context,
     monkeypatch,
@@ -337,6 +562,76 @@ def test_invalid_saved_response_rolls_back_insert(
             .where(AnalyzedEmail.user_id == user_id)
         )
         assert count == 0
+
+
+def test_create_recovers_after_database_constraint_failure(
+    saved_postgres_context,
+    monkeypatch,
+):
+    client, engine, user_id = saved_postgres_context
+    inference = Mock(
+        return_value=AIAnalysisResult(classification="legitimate")
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+    build_fields = analysis_persistence.build_saved_analysis_fields
+
+    def invalid_storage_fields(*args, **kwargs):
+        fields = build_fields(*args, **kwargs)
+        # Inject a persistence fault: real PostgreSQL must reject this INSERT.
+        fields["confidence"] = 2
+        return fields
+
+    with monkeypatch.context() as fault:
+        fault.setattr(
+            analysis_persistence,
+            "build_saved_analysis_fields",
+            invalid_storage_fields,
+        )
+        failed = client.post(
+            "/api/analyses",
+            json={"body": "Synthetic constraint failure body"},
+        )
+
+    assert failed.status_code == 503
+    assert failed.json() == {
+        "detail": "Saved analysis storage is temporarily unavailable",
+        "code": "storage_unavailable",
+    }
+    for private_detail in (
+        "Synthetic constraint failure body",
+        "ck_analyzed_emails_confidence_range",
+        "INSERT INTO",
+        "Traceback",
+    ):
+        assert private_detail not in failed.text
+
+    with Session(engine) as verification:
+        assert verification.scalar(
+            select(func.count())
+            .select_from(AnalyzedEmail)
+            .where(AnalyzedEmail.user_id == user_id)
+        ) == 0
+
+    healthy = client.post(
+        "/api/analyses",
+        json={"body": "Synthetic healthy request after rollback"},
+    )
+    assert healthy.status_code == 201
+    record_id = UUID(healthy.json()["id"])
+    assert inference.call_count == 2
+
+    with Session(engine) as verification:
+        rows = verification.scalars(
+            select(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)
+        ).all()
+        assert len(rows) == 1
+        assert rows[0].id == record_id
+        assert rows[0].body == "Synthetic healthy request after rollback"
+        assert rows[0].prediction == "legitimate"
+
+    reread = client.get(f"/api/analyses/{record_id}")
+    assert reread.status_code == 200
+    assert reread.json()["body"] == "Synthetic healthy request after rollback"
 
 
 def test_database_lock_timeout_does_not_save(
