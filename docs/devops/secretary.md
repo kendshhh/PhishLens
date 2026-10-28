@@ -144,17 +144,19 @@ already known from `git remote`; the placeholder in the request did not block wo
    The new workflow no longer executes a PR deployment script with a secret.
 3. In `staging` environment variables add:
    - `SECRETARY_PREVIEW_ENABLED` = `true`, **only after** steps 4–6 are verified.
-   - `SECRETARY_STAGING_DB_HOST` = the exact development Neon hostname.
+   - `SECRETARY_STAGING_DB_HOST` = the exact Neon hostname for branch
+     `pr-58-staging`.
    - `SECRETARY_PRODUCTION_DB_HOST` = the distinct production Neon hostname.
    These hostnames are configuration, not passwords; keep them in the environment
    UI, not public evidence. The controller compares hosts and the database name.
 4. Open [Render staging](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0)
-   → **Environment**. Privately confirm `DATABASE_URL` belongs to the separate Neon
-   development branch, with database `phishlens_dev` and a development-only role.
-   Production also uses that database name, so the name alone is unsafe.
-   Set `STAGING_DATABASE_HOST` to the same development hostname, `APP_ENV=staging`,
-   and `AI_MODE=mock`. Keep AI and production keys out of staging. These edits can
-   trigger a deployment; review the Render UI before applying them.
+   → **Environment**. Privately confirm `DATABASE_URL` belongs to Neon branch
+   `pr-58-staging`, database `phishlens_dev`, and a staging-only role. Production
+   and development can use the same database name, so the name alone is unsafe.
+   Set `STAGING_DATABASE_HOST` to the exact hostname for `pr-58-staging`,
+   `APP_ENV=staging`, and `AI_MODE=mock`. Keep AI and production keys out of
+   staging. These edits can trigger a deployment; review the Render UI before
+   applying them.
 5. In Render staging **Settings**, retain `Auto-Deploy = Off`, the existing Python
    build command, and `python scripts/start_staging.py` as start command.
    The controller validates these settings and the allowed origin before deploying.
@@ -307,7 +309,7 @@ Review this draft before creating or assigning an issue or editing the board.
 |---|---|
 | GitHub Actions | Existing hosted runners and artifacts. Public-repo standard-runner billing differs from private quotas; check your account billing. Six-hour reconciliation plus PR events uses runner time. |
 | Render | Reuses the existing free-plan staging/production services; no new paid resources are created. Free limits and sleep/cold starts apply; shared staging avoids a service per PR. |
-| Neon | Reuses a separate development branch/database; compute/storage/branch quotas still apply. Do not assume the free plan is unlimited. |
+| Neon | Reuses the dedicated `pr-58-staging` branch and `phishlens_dev` database; compute/storage/branch quotas still apply. Do not assume the free plan is unlimited. |
 | Gemini | Disabled by default, no live CI calls. Model/account quota, pricing and data terms apply when enabled. |
 
 Checked references: [GitHub billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions),

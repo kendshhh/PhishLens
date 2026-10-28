@@ -43,7 +43,7 @@ def main():
 
     database = make_url(get_database_url())
     if database.database != "phishlens_dev":
-        raise SystemExit("Staging requires a separate development database named phishlens_dev.")
+        raise SystemExit("Staging requires the isolated database named phishlens_dev.")
     # Local disposable PostgreSQL needs no cloud host declaration. Hosted staging does.
     if os.getenv("RENDER"):
         expected_host = os.getenv("STAGING_DATABASE_HOST", "")
