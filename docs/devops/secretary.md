@@ -144,7 +144,7 @@ already known from `git remote`; the placeholder in the request did not block wo
    The new workflow no longer executes a PR deployment script with a secret.
 3. In `staging` environment variables add:
    - `SECRETARY_PREVIEW_ENABLED` = `true`, **only after** steps 4–6 are verified.
-   - `SECRETARY_STAGING_DB_HOST` = the exact Neon hostname for branch
+   - `SECRETARY_STAGING_DB_HOST` = the exact Neon hostname mapped to branch
      `pr-58-staging`.
    - `SECRETARY_PRODUCTION_DB_HOST` = the distinct production Neon hostname.
    These hostnames are configuration, not passwords; keep them in the environment
@@ -309,7 +309,7 @@ Review this draft before creating or assigning an issue or editing the board.
 |---|---|
 | GitHub Actions | Existing hosted runners and artifacts. Public-repo standard-runner billing differs from private quotas; check your account billing. Six-hour reconciliation plus PR events uses runner time. |
 | Render | Reuses the existing free-plan staging/production services; no new paid resources are created. Free limits and sleep/cold starts apply; shared staging avoids a service per PR. |
-| Neon | Staging uses dedicated `pr-58-staging` and `phishlens_dev`; development and production remain separate. Compute/storage/branch quotas still apply. Do not assume the free plan is unlimited. |
+| Neon | Staging uses the dedicated `pr-58-staging` branch and `phishlens_dev` database, separate from development and production. Compute, storage, and branch quotas still apply; do not assume the free plan is unlimited. |
 | Gemini | Disabled by default, no live CI calls. Model/account quota, pricing and data terms apply when enabled. |
 
 Checked references: [GitHub billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions),

@@ -75,6 +75,37 @@ remain manual evidence items. See [staging.md](docs/devops/staging.md).
 The [October 28 backlog audit](docs/devops/backlog-audit-2026-10-28.md) maps the
 open assigned issues to implementation, evidence, and team-owned acceptance gates.
 
+The historical snapshots below predate these changes. In current source,
+extension packaging and mocked AI/provider tests already exist; statements below
+that call them pending are historical, not a claim about current CI coverage.
+
+Pre-merge staging is added in `.github/workflows/ci.yml`: component checks,
+isolated API/database/extension-client integration, then exact-commit Render
+staging verification. Hosted staging requires credentials for the dedicated
+Neon `pr-58-staging` branch and database `phishlens_dev`, plus a GitHub deployment
+secret. Privately verify Render's Neon branch mapping before migrations or writes.
+See
+[staging setup and verification](docs/devops/staging.md) for configuration,
+required checks, Chrome verification, and current rollout status. Historical
+observations below do not establish that the new hosted staging gate has passed.
+
+Historical baseline notes:
+
+Backend scaffold CI and automatic deployment are implemented and verified.
+
+GitHub Actions installs dependencies, checks compatibility,
+lints Python, tests /health, and checks Python compilation.
+
+Render deploys main automatically after CI checks pass.
+Automatic deployment was verified for commit 8a8634e,
+followed by a successful public /health check.
+
+PostgreSQL migration, repeatable seed, seed integrity and readiness-response tests
+are implemented. The extension and AI status in that historical snapshot is not
+the current CI status.
+Compilation is basic validation, not the
+complete application build stage.
+
 ## Delivery Flow
 
 Task branch → Pull request → Automated checks → Staging integration and hosted verification → Chrome verification and teammate approval

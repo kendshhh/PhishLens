@@ -114,7 +114,12 @@ Configure two credentials in this service's Render environment:
   process removes it before seeding or launching Uvicorn.
 
 Both URLs must target Neon branch `pr-58-staging`, database `phishlens_dev`, and
-the same exact host in `STAGING_DATABASE_HOST`. Set
+the same exact host in `STAGING_DATABASE_HOST`. Keep `development` for local and
+shared development; `pr-58-staging` is a separate branch created from a
+development snapshot. The startup script checks database names and exact hosts,
+but cannot resolve a Neon branch name from the URL. Before migrations, seeding,
+or manual writes, privately confirm that Render's connection hostname maps to
+`pr-58-staging` in Neon. Set
 `STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging`.
 Startup rejects mismatched hosts, database names, or role identities before
 migrations or seed run. The trusted hosted-staging controller checks the
@@ -198,12 +203,13 @@ bypass. Existing PR branches need this workflow from current main after rollout.
 Node smoke checks verify API/client integration, not Chrome DOM rendering,
 extension permission enforcement, real email analysis, or AI inference. Those
 claims require separate evidence. The API supports persistent saved-analysis
-CRUD. Hosted staging smoke checks saved-history reads; separate synthetic CRUD
-checks passed on staging for PR #58 and for PR #83's exact deployed merge SHA, as
-recorded below. Those results do not establish behavior for a later deployed SHA.
-Installed-Chrome acceptance and real-provider/AI verification remain separate
-evidence items. The Neon Auth CRUD prototype is separate, local-only, and not yet
-exercised.
+CRUD, and PR #58 records a successful synthetic API CRUD check on staging.
+Hosted staging smoke checks saved-history reads; separate synthetic CRUD checks
+passed on staging for PR #58 and for PR #83's exact deployed merge SHA, as
+recorded below. Those results do not establish behavior for a later deployed SHA,
+and broader CRUD acceptance remains gated. Installed-Chrome acceptance and
+real-provider/AI verification remain separate evidence items. The Neon Auth CRUD
+prototype is separate, local-only, and not yet exercised.
 
 ## Verification status
 
@@ -214,18 +220,29 @@ exercised.
   `0003_saved_analysis_idempotency` on that branch. The shared `development`
   branch is at `0002_analysis_provenance`.
 - Render service metadata reports source branch `main`, auto-deploy off, and
-  service `phishlens-staging`. The live deployment is `dep-dbgo3v49v7es73b02igg`
-  at exact SHA `e3c6e37fd6661aeb582bd000507ef8cac677c23f`, the hosted merge commit
-  for PR #83. `/version` reported that SHA and `staging`; `/ready` returned HTTP
-  200 with database connected. The current deployment API record is live.
-- The exact-SHA guarded CRUD verifier passed against that staging origin. It
-  created a synthetic analysis, read/listed it, edited and cleared notes, then
-  deleted it and confirmed a 404. No production write was made. Command:
+  service `phishlens-staging`. A read at 2026-10-28 14:59 UTC found the live
+  deployment `dep-dbh0qnugekts7391iqe0` at SHA
+  `ec6d58c60659da940771873bec5d389b372b1f45`, an API-triggered merge candidate
+  of `main` into `feat/87-saved-report-client`. This is the latest deployment
+  record, not an exact-head verification of PR #86.
+- PR #83's earlier deployment `dep-dbgo3v49v7es73b02igg` at SHA
+  `e3c6e37fd6661aeb582bd000507ef8cac677c23f` was subsequently deactivated.
+  At that SHA, `/version` reported the commit and `staging`; `/ready` returned
+  HTTP 200 with database connected. The exact-SHA guarded CRUD verifier passed
+  against that staging origin: it created a synthetic analysis, read/listed it,
+  edited and cleared notes, then deleted it and confirmed a 404. No production
+  write was made. Command:
   `node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha e3c6e37fd6661aeb582bd000507ef8cac677c23f --allow-writes`.
 - The `PhishLens-Staging-Extension` artifact and hosted smoke were produced by
   PR #83 run [40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771).
   Package identity and API integration passed. Installed-Chrome acceptance is
-  still pending. The older October 21 artifact record below is historical.
+  still pending.
+- An earlier staging snapshot identified source branch `ci/staging-validation`
+  and deployed SHA `91b964d3bdb91b114a654065db184153a25403e0`. Its artifact record
+  for workflow run `40542904034` points to source commit
+  `d15a5b109a6170599a943213f22219ee1069f100` (artifact `12779275763`, expires
+  November 3, 2026). That record describes its own deployment candidate; it does
+  not identify the current live deployment or verify the later candidate above.
 - Production and staging branch names are distinct in Neon. The Render service
   API does not expose database connection values, so the exact configured host
   mapping and staging app-role privileges still require an owner-side check in
