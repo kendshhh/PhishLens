@@ -83,6 +83,9 @@ jobs:
     name: Backend checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
 
     services:
       postgres:
@@ -111,16 +114,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Hosted staging deploys the PR head, while this job's default checkout is
-      # GitHub's synthetic merge ref. Validate the exact deploy target as well.
-      - name: Check out exact hosted staging source
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: staging-target
-          persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
@@ -129,6 +122,54 @@ jobs:
           cache-dependency-path: |
             backend/requirements.txt
             backend/requirements-dev.txt
+
+      # Old workflow reruns keep the PR head captured when the run was queued.
+      # Skip the historical staging check after the PR advances or closes.
+      - name: Check whether migration source is still the current PR head
+        id: migration-source
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MIGRATION_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MIGRATION_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import os
+          from scripts.secretary.github_api import APIError, GitHub
+
+          number = int(os.environ['MIGRATION_PR'])
+          expected = os.environ['MIGRATION_PR_HEAD_SHA']
+          skip_reason = None
+          try:
+              current = GitHub().request(f'pulls/{number}')
+              is_current = (current['state'] == 'open'
+                            and current['head']['sha'] == expected
+                            and not current.get('draft', False))
+          except APIError as error:
+              is_current = False
+              skip_reason = f'GitHub could not confirm the current PR head ({error}); migration validation is blocked.'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'current={str(is_current).lower()}\n')
+          if is_current:
+              print(f'PR #{number} is still at the migration source head {expected}.')
+          else:
+              print(f'PR #{number} migration source is superseded; exact-source validation skipped.')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
+                  summary.write(f'Exact-source migration validation skipped: {reason} The current PR head owns migration validation.\n')
+              if skip_reason:
+                  raise SystemExit(1)
+          PY
+
+      # Hosted staging deploys the PR head, while this job's default checkout is
+      # GitHub's synthetic merge ref. Validate the exact deploy target as well.
+      - name: Check out exact hosted staging source
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.migration-source.outputs.current == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: staging-target
+          persist-credentials: false
 
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt
@@ -148,7 +189,7 @@ jobs:
         run: python scripts/ci_backend.py --check-environment
 
       - name: Verify exact hosted staging migration history
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.migration-source.outputs.current == 'true'
         run: python scripts/verify_migration_lineage.py --repo-root staging-target
 
       - name: Apply database migrations
