@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { createPopupController } from "../js/popup.js";
+import { connectContextAnalysis, createPopupController, renderContextAnalysis } from "../js/popup.js";
 import { createInMemoryAnalysisClient } from "./in-memory-analysis-client.mjs";
 
 class Element {
@@ -29,7 +29,7 @@ class Element {
   }
 }
 
-const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button"];
+const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
 function setup(client) {
   const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status"].includes(id) ? "hidden" : "")]));
   const doc = { getElementById: id => elements.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
@@ -51,11 +51,53 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
     assert.match(html, new RegExp(`id="${control}"`));
   }
   assert.match(html, /role="status" aria-live="polite"/);
+  assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
+  for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
   assert.match(css, /overflow-y:\s*auto/);
   assert.match(popup, /createAnalysisClient\(API_BASE_URL\)/);
   assert.doesNotMatch(popup, /in-memory-analysis-client/);
+});
+
+test("context-menu result, error, and Clear remain available beside CRUD", async () => {
+  const { ui } = setup(createInMemoryAnalysisClient());
+  renderContextAnalysis({ status: "success", selectedText: "Selected message", result: {
+    classification: "phishing", risk_level: "high", mode: "mock", tactics: ["Urgency"], recommendations: ["Verify sender"]
+  } }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
+  assert.equal(ui.get("result-state").classList.contains("hidden"), false);
+  assert.equal(ui.get("classification").textContent, "phishing");
+  assert.equal(ui.get("selected-text").textContent, "Selected message");
+  assert.equal(ui.get("tactics").children[0].textContent, "Urgency");
+  renderContextAnalysis({ status: "error", error: "Backend unavailable" }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
+  assert.equal(ui.get("error-message").textContent, "Backend unavailable");
+
+  let cleared;
+  const doc = { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
+  const chromeApi = {
+    storage: { session: { get: async () => ({ veriqoAnalysis: null }) }, onChanged: { addListener() {} } },
+    runtime: { sendMessage: async message => { cleared = message; return { ok: true }; } }
+  };
+  connectContextAnalysis(chromeApi, doc);
+  await ui.get("clear-button").fire("click");
+  assert.deepEqual(cleared, { type: "phishlens-clear-analysis" });
+});
+
+test("late detail response cannot replace the most recently opened analysis", async () => {
+  let resolveA;
+  const first = record("first", "A");
+  const second = record("second", "B");
+  const client = { ...createInMemoryAnalysisClient(), getAnalysis(id) {
+    if (id === "first") return new Promise(resolve => { resolveA = resolve; });
+    return Promise.resolve(second);
+  } };
+  const { ui, controller } = setup(client);
+  const doc = { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
+  const openA = controller.loadDetail("first");
+  await controller.loadDetail("second");
+  resolveA(first);
+  await openA;
+  assert.equal(ui.get("detail-content").children[0].children[1].textContent, "B");
 });
 
 test("loads, views safe text, labels mock provenance, and starts empty after last deletion", async () => {
@@ -104,6 +146,22 @@ test("edit cancel and delete cancel preserve the saved record", async () => {
   await deleteButton.fire("click");
   await ui.get("cancel-delete").fire("click");
   assert.equal((await memory.listAnalyses()).length, 1);
+});
+
+test("editing notes preserves a null feedback value", async () => {
+  const nullable = record(id);
+  nullable.feedback = null;
+  const memory = createInMemoryAnalysisClient([nullable]);
+  const { ui, controller } = setup(memory);
+  await controller.loadDetail(id);
+  await ui.get("detail-content").children.at(-2).fire("click");
+  assert.equal(ui.get("edit-feedback").value, "null");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Unspecified");
+  ui.get("edit-notes").value = "Reviewed without feedback";
+  await ui.get("edit-form").fire("submit");
+  const saved = await memory.getAnalysis(id);
+  assert.equal(saved.notes, "Reviewed without feedback");
+  assert.equal(saved.feedback, null);
 });
 
 test("create and edit submit through the injected five-method client", async () => {

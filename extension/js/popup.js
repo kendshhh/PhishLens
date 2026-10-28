@@ -2,7 +2,7 @@
 import { createAnalysisClient } from "./api.js";
 
 const feedbackLabels = new Map([
-  ["none", "No feedback"], ["false_positive", "False positive"],
+  [null, "Unspecified"], ["none", "No feedback"], ["false_positive", "False positive"],
   ["false_negative", "False negative"]
 ]);
 const provenanceLabels = new Map([
@@ -35,6 +35,7 @@ export function createPopupController(client, doc = document) {
   let records = [];
   let selected = null;
   let busy = false;
+  let detailRequest = 0;
 
   function setStatus(message, kind = "info") {
     ui.status.textContent = message;
@@ -78,7 +79,7 @@ export function createPopupController(client, doc = document) {
     remove.addEventListener("click", openDelete);
     ui.detailContent.append(edit, remove);
     ui.notes.value = record.notes || "";
-    ui.feedback.value = record.feedback || "none";
+    ui.feedback.value = record.feedback === null ? "null" : record.feedback;
     show(ui.detail, true);
   }
 
@@ -118,13 +119,17 @@ export function createPopupController(client, doc = document) {
 
   async function loadDetail(id) {
     if (busy) return;
+    const request = ++detailRequest;
     try {
-      selected = await client.getAnalysis(id);
+      const result = await client.getAnalysis(id);
+      if (request !== detailRequest) return;
+      selected = result;
       renderDetail(selected);
       show(ui.editForm, false);
       show(ui.deleteConfirm, false);
       setStatus("Analysis details loaded.", "success");
     } catch (error) {
+      if (request !== detailRequest) return;
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned malformed analysis details."
         : `Unable to load details: ${error.message}`, "error");
@@ -133,7 +138,7 @@ export function createPopupController(client, doc = document) {
 
   function openEdit() {
     ui.notes.value = selected.notes || "";
-    ui.feedback.value = selected.feedback || "none";
+    ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
     show(ui.editForm, true);
     ui.notes.focus();
   }
@@ -176,7 +181,8 @@ export function createPopupController(client, doc = document) {
     setBusy(true);
     try {
       selected = await client.updateAnalysis(selected.id, {
-        notes: ui.notes.value.trim() || null, feedback: ui.feedback.value
+        notes: ui.notes.value.trim() || null,
+        feedback: ui.feedback.value === "null" ? null : ui.feedback.value
       });
       show(ui.editForm, false);
       records = records.map(record => record.id === selected.id ? selected : record);
@@ -215,8 +221,66 @@ export function createPopupController(client, doc = document) {
   return { refresh, loadDetail, get records() { return records; } };
 }
 
+const contextStateIds = ["empty-state", "loading-state", "error-state", "result-state"];
+
+export function renderContextAnalysis(state, doc = document) {
+  const get = id => doc.getElementById(id);
+  for (const id of contextStateIds) show(get(id), false);
+  if (!state) {
+    show(get("empty-state"), true);
+    return;
+  }
+  if (state.status === "loading") {
+    show(get("loading-state"), true);
+    return;
+  }
+  if (state.status === "error") {
+    get("error-message").textContent = state.error || "Unknown error";
+    show(get("error-state"), true);
+    return;
+  }
+  if (state.status !== "success" || !state.result) {
+    show(get("empty-state"), true);
+    return;
+  }
+  const result = state.result;
+  get("classification").textContent = result.classification ?? "Unknown";
+  get("risk-level").textContent = result.risk_level ?? "Unknown";
+  get("selected-text").textContent = state.selectedText ?? "";
+  show(get("analysis-mode"), result.mode === "mock");
+  for (const [id, values] of [["tactics", result.tactics], ["recommendations", result.recommendations]]) {
+    const list = get(id);
+    list.replaceChildren();
+    const items = Array.isArray(values) && values.length ? values : ["None"];
+    for (const value of items) list.append(node(doc, "li", "", value));
+  }
+  show(get("result-state"), true);
+}
+
+export function connectContextAnalysis(chromeApi, doc = document) {
+  const clearButton = doc.getElementById("clear-button");
+  const onChanged = (changes, areaName) => {
+    if (areaName === "session" && changes.veriqoAnalysis) {
+      renderContextAnalysis(changes.veriqoAnalysis.newValue, doc);
+    }
+  };
+  chromeApi.storage.session.get("veriqoAnalysis").then(data => renderContextAnalysis(data.veriqoAnalysis, doc));
+  chromeApi.storage.onChanged.addListener(onChanged);
+  clearButton.addEventListener("click", async () => {
+    const response = await chromeApi.runtime.sendMessage({ type: "phishlens-clear-analysis" });
+    if (!response?.ok) {
+      doc.getElementById("error-message").textContent = "Could not clear the analysis. Please try again.";
+      for (const id of contextStateIds) show(doc.getElementById(id), false);
+      show(doc.getElementById("error-state"), true);
+    }
+  });
+}
+
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", () => {
+    if (globalThis.chrome?.storage?.session && globalThis.chrome?.runtime) {
+      connectContextAnalysis(globalThis.chrome, document);
+    }
     const controller = createPopupController(createAnalysisClient(API_BASE_URL));
     controller.refresh();
   });
