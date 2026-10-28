@@ -57,7 +57,7 @@ class DeploymentTests(unittest.TestCase):
         return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):
-        with patch("scripts.deploy_staging.render_request", side_effect=[
+        with patch.object(deploy_staging, "render_request", side_effect=[
             *self.preflight_responses(),
             {"id": "dep-test"},
             {"status": "live", "commit": {"id": "a" * 40}},
@@ -68,7 +68,7 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(request.call_count, 4)
 
     def test_wrong_live_commit_fails(self):
-        with patch("scripts.deploy_staging.render_request", side_effect=[
+        with patch.object(deploy_staging, "render_request", side_effect=[
             *self.preflight_responses(),
             {"id": "dep-test"},
             {"status": "live", "commit": {"id": "b" * 40}},
@@ -76,7 +76,7 @@ class DeploymentTests(unittest.TestCase):
             deploy_staging.main()
 
     def test_failed_deployment_fails(self):
-        with patch("scripts.deploy_staging.render_request", side_effect=[
+        with patch.object(deploy_staging, "render_request", side_effect=[
             *self.preflight_responses(),
             {"id": "dep-test"},
             {"status": "build_failed"},
@@ -85,13 +85,13 @@ class DeploymentTests(unittest.TestCase):
 
     def test_missing_secret_fails_before_network_access(self):
         os.environ.pop("RENDER_STAGING_API_KEY")
-        with patch("scripts.deploy_staging.render_request") as request, self.assertRaises(SystemExit):
+        with patch.object(deploy_staging, "render_request") as request, self.assertRaises(SystemExit):
             deploy_staging.main()
         request.assert_not_called()
 
     def test_production_service_rejected_before_network_access(self):
         os.environ["RENDER_STAGING_SERVICE_ID"] = CONFIG["production_service"]
-        with patch("scripts.deploy_staging.render_request") as request, self.assertRaisesRegex(SystemExit, "production"):
+        with patch.object(deploy_staging, "render_request") as request, self.assertRaisesRegex(SystemExit, "production"):
             deploy_staging.main()
         request.assert_not_called()
 
