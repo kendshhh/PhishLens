@@ -27,6 +27,16 @@ improvement; see [optimization evidence](optimizations.md). Compare cold and war
 runs with the same database/test coverage, recording setup/install/job durations.
 The first run may cost more time to save the cache.
 
+## Dependency review
+
+The pull-request dependency review is advisory and runs by default. It has
+read-only repository and pull-request permissions, flags high-severity
+introduced vulnerabilities, and uses `warn-only: true`, so findings remain
+visible without blocking an otherwise valid delivery check. Set the repository
+variable `DEPENDENCY_REVIEW_ENABLED` to the string `false` only when the scan is
+intentionally disabled; leaving it unset keeps the review enabled. Check the
+Actions result on each PR rather than treating a skipped job as a clean scan.
+
 ## Validation and review
 
 - Local backend lint and tests must pass before publishing.

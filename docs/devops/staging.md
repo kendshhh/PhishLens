@@ -213,7 +213,25 @@ prototype is separate, local-only, and not yet exercised.
 
 ## Verification status
 
-### October 28, 2026 target reconciliation
+### Latest snapshot — October 28, 2026 17:07 UTC
+
+PR #86 Hosted staging passed. Render service `phishlens-staging` is Live on
+deployment [`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg),
+exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`. Read-only GETs at
+17:07 UTC returned HTTP 200 for `/version`, `/health`, and `/ready`; `/version`
+reported the exact SHA and `staging`, and `/ready` reported the database
+connected. The staging Neon mapping is `pr-58-staging/phishlens_dev`.
+
+A read-only grant check at 17:05 UTC still found `CREATE` on `public` and
+`INSERT`, `UPDATE`, and `DELETE` on `alembic_version`, `analyzed_emails`, and
+`users` for `phishlens_staging_app`. No role change or CRUD write was made.
+The environment owner must remove excess grants and repeat the read-only check
+before Kendra runs the already authorized guarded synthetic staging CRUD check.
+Production remains read-only. Current Chrome acceptance, production persistence,
+real-model evaluation, complete recovery timing, and event/sign-off evidence are
+still open. See the [Kendra Week 1–4 closeout](kendra-week1-4-closeout-2026-10-28.md).
+
+### Earlier October 28 snapshot — 15:43 UTC (superseded)
 
 - The dedicated staging database target is Neon branch `pr-58-staging`, database
   `phishlens_dev`. A read-only Neon check found Alembic revision

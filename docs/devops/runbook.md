@@ -7,7 +7,7 @@ the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
 
-## Current verification — October 28, 2026
+## Current verification — October 28, 2026 17:07 UTC
 
 Production service `phishlens-api` is configured on `main` with Render auto-deploy
 trigger `checksPass`. At 2026-10-28 15:39 UTC, main was
@@ -23,18 +23,23 @@ database connected. See [metrics.md](metrics.md) for the 73.525-second deploymen
 duration; merge-to-live time for this SHA is not measured.
 
 Staging service `phishlens-staging` is configured on `main` with auto-deploy off.
-At 15:43 UTC, its latest Live deployment was
-[`dep-dbh14vbl550s738ddfc0`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh14vbl550s738ddfc0)
-on SHA `57da457be77fcf7a132e3a5e2f0d704c676040d6`; `/version`, `/health`, and
-`/ready` returned HTTP 200 and identified staging/database readiness. That SHA
-diverges from current main and PR #86 head, so it is not exact-candidate evidence.
-The earlier guarded synthetic CRUD result was on deactivated SHA `e3c6e37`; no
-new staging or production CRUD write was made. The exact Neon host mapping and
-staging app-role grants still need private owner verification.
+PR #86 Hosted staging passed and deployment
+[`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg)
+is Live on exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`.
+Read-only `/version`, `/health`, and `/ready` GETs at 17:07 UTC returned HTTP
+200; version matched the candidate and readiness reported the database connected.
+The mapped Neon target is `pr-58-staging/phishlens_dev`. A read-only grant check
+at 17:05 UTC still found public-schema `CREATE` and `INSERT`, `UPDATE`, and
+`DELETE` on the migration and application tables for the runtime role. No grant
+change or database write was made. The environment owner must remove the excess
+privileges and repeat the read-only check before synthetic CRUD is run. The
+historical guarded CRUD evidence on deactivated SHA `e3c6e37` does not verify this
+candidate.
 
-Production CRUD persistence across refresh/redeploy, installed-Chrome behavior,
-and exact-current-candidate staging behavior remain unverified. The production
-probes establish live version, process health, and database readiness only.
+Production CRUD persistence across refresh/redeploy and installed-Chrome behavior
+remain unverified. Production probes establish live version, process health, and
+database readiness only. See [Kendra's Week 1–4 closeout](kendra-week1-4-closeout-2026-10-28.md)
+for her per-week status and remaining owner-dependent acceptance.
 
 For each deployment, retain main SHA, successful main CI, reviewer approval,
 Render deploy ID/trigger/live timestamp, and the live `/version`/health/readiness

@@ -35,18 +35,25 @@ The sample is small and ranged widely, so it is a smoke baseline only. It does n
 measure extension/API user-flow latency, throughput, or load behavior. Do not
 compare it with CI job/deploy durations or claim a performance improvement.
 
-## Current staging observation — October 28, 2026
+## Current staging observation — October 28, 2026 17:07 UTC
 
-At 15:43 UTC, the staging service's latest Live deployment was
-[`dep-dbh14vbl550s738ddfc0`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh14vbl550s738ddfc0)
-at SHA `57da457be77fcf7a132e3a5e2f0d704c676040d6`. Read-only `/version`,
-`/health`, and `/ready` probes all returned HTTP 200; the version identified
-`staging`, and readiness reported a connected database. Compared with current
-main `6414914dfa8eb8322839597c4cd6912145a442a0`, this SHA is divergent (13 ahead,
-one behind; merge base `79aef1a`), not the current main or PR #86 head. This is
-endpoint health evidence for that staging SHA only. The prior guarded CRUD result
-was on the now-deactivated `e3c6e37` SHA; no CRUD write was made against `57da457`.
-The exact Neon host mapping and app-role grants remain unverified.
+PR #86 head `aa91511c7eb0c43b8d52eb3adc26ac607a537293` passed Hosted staging.
+Render deployment
+[`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg)
+is Live on exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`.
+Read-only `/version`, `/health`, and `/ready` requests at 17:07 UTC returned
+HTTP 200; version identified the exact merge SHA and `staging`, and readiness
+reported a connected database. The target maps to Neon `pr-58-staging` /
+`phishlens_dev`.
+
+A 17:05 UTC read-only grant check still found `CREATE` on the public schema and
+`INSERT`, `UPDATE`, and `DELETE` on `alembic_version`, `analyzed_emails`, and
+`users` for `phishlens_staging_app`. No staging or production write was made.
+The prior guarded CRUD result belongs to deactivated SHA `e3c6e37`; it does not
+verify this candidate. The runbook requires environment-owner privilege cleanup
+and a second read-only check before exact-SHA staging CRUD acceptance. Production
+persistence after refresh/redeploy, installed-Chrome behavior, recovery
+duration, and a comparable whole-pipeline gain remain unmeasured.
 
 ## October 21 review (UTC observations October 20)
 

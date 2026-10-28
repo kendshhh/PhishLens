@@ -11,7 +11,10 @@ permissions:
 jobs:
   dependency-review:
     name: Dependency review (advisory)
-    if: vars.DEPENDENCY_REVIEW_ENABLED == 'true'
+    # Run the advisory review by default; set the repository variable to
+    # "false" only when dependency metadata is unavailable or the action is
+    # intentionally disabled for the repository.
+    if: vars.DEPENDENCY_REVIEW_ENABLED != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
