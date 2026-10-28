@@ -215,12 +215,16 @@ and `/ready` returned HTTP 200. The guarded synthetic CRUD verifier passed again
 that staging SHA and removed the record it created. Production writes were not
 performed. Production record persistence across refresh/redeploy remains unknown.
 
-For the October 28 no-cache extension baseline and the pending npm-cache
-comparison, see [optimizations.md](optimizations.md). Retain sample counts and
-whole-job timings; do not infer improvement from the 1–2 second install step alone.
+For the October 28 no-cache extension baseline and completed one-cold/one-warm
+npm-cache trial, see [optimizations.md](optimizations.md). No whole-job gain was
+demonstrated; the cache and instrumentation were removed. Retain sample counts
+and whole-job timings; do not infer improvement from the 1–2 second install step alone.
 
-The first cold npm-cache candidate sample passed Extension checks on PR #86 run
-[40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002):
-cache miss, `npm ci` 1 second, whole job 11 seconds. This matches the 11-second
-no-cache baseline at one-second resolution, so there is no demonstrated gain yet.
+The npm-cache trial passed Extension checks on PR #86 runs
+[40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002)
+(cold miss, `npm ci` 1 second, whole job 11 seconds) and
+[40639539541](https://github.com/kendshhh/PhishLens/actions/runs/40639539541)
+(warm hit, `npm ci` 1 second, whole job 18 seconds). No end-to-end gain was
+demonstrated; the cache and instrumentation were removed. This small sample does
+not establish that the cache caused the longer warm job.
 

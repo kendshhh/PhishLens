@@ -29,9 +29,8 @@ snapshots as planning records, not fresh verification.
 | Hosted staging | Deployment `dep-dbgo3v49v7es73b02igg` ran exact SHA `e3c6e37` for PR #83. `/version` identified staging; `/ready` returned HTTP 200. | The staging service is live on the intended deployment SHA. |
 | Staging CRUD | `scripts/verify_crud.mjs` passed with staging identity and expected-SHA guards. It created, read/listed, updated, cleared, and deleted one synthetic record and confirmed 404 after deletion. | The staging API and database support the guarded saved-analysis CRUD flow. No production write was made. This is not installed-Chrome or production persistence evidence. |
 | Existing CI cache | October 21 pip comparison was n=2 before/n=2 cached: install 9s to 7s, but whole staging job 40.5s to 44s. | No end-to-end pipeline speedup has been demonstrated. |
-| Extension cache baseline | [PR #83 run 40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771) and [PR #84 run 40635212213](https://github.com/kendshhh/PhishLens/actions/runs/40635212213) each took 11s for Extension checks; `npm ci` took 1s and 2s at one-second timestamp resolution. Neither used npm cache. | Small, noisy no-cache baseline only. The candidate cache change needs comparable cold and warm runs before it can be called an improvement. |
-| Cold npm-cache candidate | [PR #86 run 40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) passed Extension checks: cache miss, `npm ci` 1s, full job 11s. | Matches the baseline; no improvement is established. Warm sample is still required. |
-| Dependency alerts | GitHub's push response reported 18 alerts on default branch: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the current JavaScript lockfile. | Alert details were not exposed by the connected GitHub read tool. Check each alert in GitHub Security before changing dependency pins; do not infer that npm's result covers other ecosystems. |
+| Extension npm-cache trial | No-cache runs [40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771) and [40635212213](https://github.com/kendshhh/PhishLens/actions/runs/40635212213) each took 11s. Cold candidate [40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) took 11s; warm candidate [40639539541](https://github.com/kendshhh/PhishLens/actions/runs/40639539541) took 18s. All passed; `npm ci` was 1–2s and did not get faster on the warm run. | No whole-job improvement was demonstrated in the one cold/one warm sample. The npm cache and instrumentation were removed; #40 remains open for a different comparable optimization and measured recovery. |
+| Dependency alerts | GitHub Security listed 18 open Python alerts: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the current JavaScript lockfile. The current pins already exceed fixes for the Transformers, PyTorch, and setuptools alerts; several are stale relative to `main`. | The active critical `certifi` and high `filelock` findings matched current pins. Inputs now require patched versions and generated locks are being refreshed. Recheck GitHub Security after merge; alert count can lag changed manifests. |
 
 ## Priority map
 
@@ -41,7 +40,7 @@ flowchart TD
   I39 --> I36["#36 · Confirm shared contract and scope; present integrated behavior"]
   I36 --> I41["#41 · Refresh board and complete actual consultation records and rehearsal"]
   P1["P1 · Supporting evidence"] --> I37["#37 · Verify isolated targets, least privilege, history hygiene, and Chrome"]
-  P1 --> I40["#40 · Measure cache candidate and complete a timed recovery record"]
+  P1 --> I40["#40 · Measure another comparable improvement and complete a timed recovery record"]
 ```
 
 | Issue | Sheet/GitHub priority | State at this audit | Next action and completion evidence |
@@ -50,7 +49,7 @@ flowchart TD
 | [#36 shared contract and Sprint 2 carryover](https://github.com/kendshhh/PhishLens/issues/36) | P0 | Contract proposals, current interface limits, examples, and carryover are documented. Owner acknowledgement, instructor scope acceptance, shared board update, and integrated product demonstration remain open. | Get the API/client owners to confirm the proposed contract; capture instructor scope decision and board/sprint-log updates; demonstrate the integrated workflow with the live product. Keep proposals labeled until owners accept them. |
 | [#41 Consultation 2 preparation](https://github.com/kendshhh/PhishLens/issues/41) | P0 | Requirements and evidence prep is documented. Actual standups, retrospective, whole-team rehearsal, attendance, instructor feedback, live board refresh, and integrated CRUD presentation are not evidenced. | Record real events only: two or three async standups, one retrospective, decisions/attendance, each member's technical explanation, instructor feedback, and resulting board/replan. Use the current production/staging evidence in the rehearsal. |
 | [#37 environment and package verification](https://github.com/kendshhh/PhishLens/issues/37) | P1 | Production and staging are separate Neon branches; staging package identity and exact-SHA API smoke are checked. `.env.example` now lists local app settings and hosted secret names only. The configured database host-to-branch mapping and app-role grants could not be read through the connected Neon inspection tools. Installed-Chrome acceptance remains open. Existing public Git history includes commit author metadata that is not in GitHub's noreply form; the owner must classify it against the no-private-email criterion. Its address is intentionally not copied into this report. | Have the environment owner verify staging host-to-branch mapping and least-privilege grants in Neon/Render without sharing credential values. Complete a comprehensive history/package scan and decide the privacy remediation without rewriting shared published history. Install the exact staging ZIP in Chrome and record the SHA, visible workflow, errors, and permissions. |
-| [#40 optimization and recovery](https://github.com/kendshhh/PhishLens/issues/40) | P1 | A setup-node npm download-cache candidate and cache-hit summary are on this branch; the prior pip cache had no end-to-end gain. Existing rollback exercise is documented, but full restoration duration remains unknown. | Capture a cold CI run and a warm rerun with unchanged checks, lockfile, and runner; compare full Extension job and `npm ci` duration. Keep the cache only if the whole job improves beyond timing noise. Record full safe recovery/restoration time and compatibility evidence; do not run a production failure drill just to fill a metric. |
+| [#40 optimization and recovery](https://github.com/kendshhh/PhishLens/issues/40) | P1 | One cold and one warm npm-cache run completed; the trial was removed because no whole-job gain was demonstrated. Existing rollback procedure is documented, but full restoration duration remains unknown. | Measure a different comparable improvement with unchanged meaningful coverage. Record full safe recovery/restoration time and known-good app/schema compatibility; do not run a production failure drill just to fill a metric. |
 | [#38 disposable PostgreSQL CI gate](https://github.com/kendshhh/PhishLens/issues/38) | P0, closed | Closed. Main pipeline runs disposable PostgreSQL migration, seed, and saved-CRUD checks. | No backlog action. Reopen only if the gate regresses or scope changes. |
 
 ## Official rubric crosswalk
@@ -62,7 +61,7 @@ evidence status, not a grade claim.
 |---|---:|---|
 | Pipeline design | 15 | Current stage map, CI, hosted staging, main deployment, and runbook are documented. A read-only GitHub branch-protection request returned 403 (`Resource not accessible by integration`), so current rule enforcement still needs an owner-side check. |
 | Automation and quality gates | 10 | Disposable PostgreSQL CRUD, extension checks/package identity, integration, and hosted staging gates exist. Current main CI passed. |
-| Measured optimization | 20 | Pip cache comparison shows no end-to-end improvement. Npm cache candidate requires cold/warm full-job samples. |
+| Measured optimization | 20 | Pip cache comparison shows no end-to-end improvement. The npm-cache trial also showed no whole-job gain and was removed. A different comparable optimization remains open. |
 | Environment and secrets | 10 | Local, staging, and production boundaries are documented; values were not read. Exact staging target mapping and app-role least privilege remain owner verification items; history hygiene needs a complete current audit. |
 | AI pipeline | 10 | Mock-provider checks are suitable for ordinary CI. Real-provider evaluation and scheduled smoke evidence remain separate work. |
 | Release and rollback | 10 | Checked-main automatic delivery and a safe recovery procedure are documented. Full restoration duration and current schema/app compatibility evidence remain incomplete. |
@@ -77,13 +76,19 @@ evidence status, not a grade claim.
   and real-AI acceptance.
 - Reduced `.env.example` to local application settings plus hosted secret names;
   did not read or copy hosted values.
-- Added npm cache-hit instrumentation to CI while preserving `npm ci` and all
-  extension checks. The change remains a candidate until comparable full-job
-  measurements exist.
+- Compared cold and warm npm-cache runs against the no-cache baseline. No
+  whole-job gain was demonstrated, so the cache and instrumentation were removed
+  while preserving `npm ci` and every extension check.
 - Preserved and included the existing Secretary workflow/report edits that
   repair the workflow-contract failures observed on the first PR run.
-- Recorded the aggregate default-branch Dependabot count separately from the
-  clean JavaScript lockfile audit; alert-level triage remains open.
+- Raised the direct certifi minimum to the safe release floor and the AI-only
+  filelock minimum to its patched floor. Generated locks resolve to certifi
+  2026.10.23 and filelock 4.2.4. See the advisory links below and recheck the
+  dependency graph after merge.
+- Confirmed the other open AI package advisories refer to versions below current
+  main pins; keep the 18-alert aggregate visible until GitHub recomputes status.
+
+Security sources: [certifi advisory GHSA-6q48-6c7w-9gw2](https://github.com/advisories/GHSA-6q48-6c7w-9gw2), [filelock advisory GHSA-v4x8-3wr5-3wq8](https://github.com/advisories/GHSA-v4x8-3wr5-3wq8), [certifi 2026.10.23 on PyPI](https://pypi.org/project/certifi/2026.10.23/), and [filelock 4.2.4 on PyPI](https://pypi.org/project/filelock/4.2.4/).
 - Updated pipeline, staging, metrics, optimization, runbook, and CI-maintenance
   evidence with October 28 live results and corrected stale statuses.
 - Did not modify shared Sheets, GitHub issues, protected environment settings,

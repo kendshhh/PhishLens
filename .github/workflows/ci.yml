@@ -22,13 +22,10 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        id: node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "24"
           package-manager-cache: false
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
@@ -37,12 +34,6 @@ jobs:
 
       - name: Install extension checking dependencies
         run: npm ci
-
-      - name: Record npm cache state
-        env:
-          NPM_CACHE_HIT: ${{ steps.node.outputs.cache-hit }}
-        run: |
-          echo "npm cache hit: ${NPM_CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check JavaScript syntax
         shell: bash

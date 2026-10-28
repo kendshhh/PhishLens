@@ -27,7 +27,7 @@ An earlier combined backend-install candidate took 13 seconds versus the
 11-second baseline installation sum and was reverted. No dependency pins,
 migration coverage or tests were removed to manufacture a speed gain.
 
-## October 28 Extension checks baseline
+## October 28 Extension checks cache trial
 
 The no-cache comparison uses the two latest comparable PR runs before the npm
 cache change. Both used `ubuntu-latest`, the same `package-lock.json`, the same
@@ -40,19 +40,21 @@ Extension checks steps, and passed.
 
 The observed baseline is 11 seconds per job and 1.5 seconds for `npm ci` at
 one-second timestamp resolution. It is a small, noisy target. This is not an
-optimization result. The current CI branch enables the official setup-node npm
-download cache while retaining `npm ci` and every check. Record cold and warm
-post-change samples below before deciding whether to keep the change. Revert it
-if the full job does not improve without weakening coverage.
+optimization result. A one-cold/one-warm cache trial retained `npm ci` and every
+check, then the cache and instrumentation were removed when no whole-job gain
+was demonstrated.
 
 | Sample | Commit/run | Cache hit | `npm ci` | Extension job |
 |---|---|---|---:|---:|
 | Cold | [`2606588`, run 40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) | No | 1 s | 11 s |
-| Warm | Pending rerun | Pending | Pending | Pending |
+| Warm | [`6c9f82e`, run 40639539541](https://github.com/kendshhh/PhishLens/actions/runs/40639539541) | Yes | 1 s | 18 s |
 
-The cold run passed every Extension checks step, including lint, tests, manifest
-validation, packaging, and package identity. It matches the 11-second no-cache
-baseline; this sample does not demonstrate an improvement. The PR's first
+Both cache trial runs passed every Extension checks step, including lint, tests,
+manifest validation, packaging, and package identity. The warm sample had a
+cache hit but did not shorten `npm ci` and the job took 18 seconds. With one
+run per state and substantial timing noise at this duration, the comparison
+does not establish a gain; the cache and its instrumentation were removed.
+The PR's first
 Staging integration attempt also exposed workflow-contract mismatches in the
 Secretary/dependency-review files; the follow-up commit includes the corresponding
 deployment-lock, event-scope, and reporting adjustments. Do not attribute that fix

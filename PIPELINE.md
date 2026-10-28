@@ -131,7 +131,8 @@ to produce a misleading successful run.
 - Install and render the exact staging package in Chrome.
 - Verify production saved-record persistence across refresh or a safe redeploy.
 - Run the planned real-provider evaluation and scheduled smoke separately from mock CI.
-- Measure whether the npm download cache improves the full Extension checks job.
+- Select and measure another safe whole-job optimization; the npm download-cache
+  trial did not improve Extension checks and was removed.
 
 Regular AI tests should use mocked inference without model downloads.
 Successful actual-model calls must be recorded separately.
