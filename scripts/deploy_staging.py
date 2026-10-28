@@ -1,40 +1,80 @@
-"""Deploy a PR's exact commit and wait for Render to report it live."""
+"""Deploy the exact PR merge commit after validating source and Render targets."""
+
 import json
 import os
+import re
+import sys
 import time
-import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.secretary.preview import (  # noqa: E402
+    render_request,
+    verify_environment,
+    verify_service,
+)
 
 
-def main():
+def main() -> None:
     key = os.environ.get("RENDER_STAGING_API_KEY")
-    service = os.environ.get("RENDER_STAGING_SERVICE_ID")
-    commit = os.environ["STAGING_COMMIT"]
-    if not key or not service:
-        raise SystemExit("Configure RENDER_STAGING_API_KEY secret and RENDER_STAGING_SERVICE_ID variable before merging.")
-    if service == "srv-db7eap25b2lc73fkelpg":
-        raise SystemExit("Refusing to deploy staging changes to the production service.")
+    service_id = os.environ.get("RENDER_STAGING_SERVICE_ID")
+    commit = os.environ.get("STAGING_COMMIT", "").strip()
+    expected_commit = os.environ.get("GITHUB_SHA", "").strip()
+    migration_revision = os.environ.get("STAGING_MIGRATION_REVISION", "").strip()
 
-    def request(path, body=None):
-        req = urllib.request.Request(
-            "https://api.render.com/v1/" + path,
-            data=json.dumps(body).encode() if body is not None else None,
-            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+    if not key or not service_id:
+        raise SystemExit(
+            "Configure the protected Render staging key and staging service ID."
         )
-        with urllib.request.urlopen(req, timeout=30) as response:
-            return json.load(response)
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise SystemExit("Refusing deployment without a full Git commit SHA.")
+    if expected_commit and commit != expected_commit:
+        raise SystemExit("Refusing deployment: requested SHA differs from this workflow run.")
+    if not migration_revision:
+        raise SystemExit(
+            "Refusing deployment: migration lineage was not verified for this source."
+        )
 
-    deploy = request(f"services/{service}/deploys", {"commitId": commit})
+    config = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
+    if service_id != config["staging_service"] or service_id == config["production_service"]:
+        raise SystemExit("Refusing deployment to an unapproved or production service.")
+    if os.environ.get("STAGING_BASE_URL", "").rstrip("/") != config["staging_origin"]:
+        raise SystemExit("Refusing deployment: staging origin does not match the allowlist.")
+
+    service = render_request(f"services/{service_id}")
+    verify_service(service, config)
+    variables = render_request(f"services/{service_id}/env-vars?limit=100")
+    verify_environment(variables)
+    print(
+        "Staging preflight passed: exact source SHA, migration head, service, "
+        "and private database target are validated.",
+        flush=True,
+    )
+
+    deploy = render_request(
+        f"services/{service_id}/deploys",
+        {"commitId": commit},
+    )
     deploy_id = deploy["id"]
     print(f"Waiting for staging deployment {deploy_id} of {commit}", flush=True)
     deadline = time.monotonic() + 900
     while time.monotonic() < deadline:
-        status = request(f"services/{service}/deploys/{deploy_id}")
+        status = render_request(f"services/{service_id}/deploys/{deploy_id}")
         if status["status"] == "live":
             if status.get("commit", {}).get("id") != commit:
-                raise SystemExit("Render live commit does not match the requested PR commit.")
-            print("Exact PR commit is live on staging.")
+                raise SystemExit("Render live commit does not match the requested PR SHA.")
+            print("Exact PR merge commit is live on staging.")
             return
-        if status["status"] in {"build_failed", "update_failed", "pre_deploy_failed", "canceled", "deactivated"}:
+        if status["status"] in {
+            "build_failed",
+            "update_failed",
+            "pre_deploy_failed",
+            "canceled",
+            "deactivated",
+        }:
             raise SystemExit("Staging deployment failed: " + status["status"])
         time.sleep(10)
     raise SystemExit("Staging deployment timed out.")
