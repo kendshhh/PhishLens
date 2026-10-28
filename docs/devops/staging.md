@@ -213,7 +213,16 @@ prototype is separate, local-only, and not yet exercised.
 
 ## Verification status
 
-### Latest snapshot — October 28, 2026 17:07 UTC
+### Current PR #86 gate — October 28, 2026 17:31 UTC
+
+At this snapshot, PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` passed all
+automated checks except Hosted staging, which is pending at the protected
+`staging` environment; diagnostics returned no steps or reason. No deployment
+for this head is claimed. The Live deployment below is from the previous code
+head and is historical current-service evidence only. The Neon mapping and
+excess runtime grants remain as recorded below; no grant change or write was made.
+
+### Previous live candidate snapshot — October 28, 2026 17:07 UTC
 
 PR #86 Hosted staging passed. Render service `phishlens-staging` is Live on
 deployment [`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg),
