@@ -42,6 +42,12 @@ def verify_service(service, config):
         raise RuntimeError("Staging service origin mismatch")
     if service.get("autoDeploy") != "no":
         raise RuntimeError("Disable staging auto-deploy; only this serialized controller may deploy")
+    expected_branch = config.get("staging_branch")
+    if expected_branch and service.get("branch") != expected_branch:
+        raise RuntimeError(
+            f"Staging service must be linked to {expected_branch!r}; "
+            "the old bootstrap branch can deploy code without the stamped migration."
+        )
     if service.get("repo", "").rstrip("/") != "https://github.com/" + os.environ.get("GITHUB_REPOSITORY", "kendshhh/PhishLens"):
         raise RuntimeError("Staging repository mismatch")
     runtime = details.get("envSpecificDetails", {})
@@ -54,10 +60,18 @@ def verify_environment(rows):
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
     database = urlsplit(values.get("DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
+    migration = urlsplit(values.get("STAGING_MIGRATION_DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
+    app_role = values.get("STAGING_APP_DATABASE_ROLE", "")
     if not expected or not production or expected == production:
         raise RuntimeError("Declare distinct staging and production database hosts privately in environment variables")
     if database.hostname != expected or database.path != "/phishlens_dev" or values.get("STAGING_DATABASE_HOST") != expected:
         raise RuntimeError("Staging database host/name does not match the isolated allowlist")
+    if database.username != app_role or app_role != "phishlens_staging_app":
+        raise RuntimeError("Staging runtime must use the phishlens_staging_app role")
+    if migration.hostname != expected or migration.path != "/phishlens_dev" or migration.username != "neondb_owner":
+        raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
+    if migration.username == database.username:
+        raise RuntimeError("Staging migration and runtime credentials must use separate roles")
     if values.get("APP_ENV") != "staging" or values.get("AI_MODE", "mock") != "mock":
         raise RuntimeError("Pilot requires APP_ENV=staging and AI_MODE=mock; no live provider costs")
 
@@ -174,6 +188,11 @@ def completed_event(api, config, run):
     return bool(statuses and statuses[0]["state"] == "success")
 
 
+def preview_gate_enabled():
+    """Parse the opt-in flag robustly across GitHub Actions variable formatting."""
+    return os.getenv("SECRETARY_PREVIEW_ENABLED", "").strip().lower() == "true"
+
+
 def main():
     api = GitHub()
     config = json.loads((ROOT / ".github/secretary.json").read_text())
@@ -214,8 +233,8 @@ def main():
         evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
         try:
             if action == "deploy":
-                if os.getenv("SECRETARY_PREVIEW_ENABLED") != "true":
-                    raise RuntimeError("Preview not enabled. Complete staging environment setup and isolation verification first")
+                if not preview_gate_enabled():
+                    raise RuntimeError("Preview gate is off; SECRETARY_PREVIEW_ENABLED must resolve to true after trimming whitespace and case")
                 # No PR scripts execute with this token/key. Render runs the PR with approved staging-only runtime data.
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
@@ -270,6 +289,7 @@ def main():
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
             if action == "failure":
+                print("Preview failed: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
 

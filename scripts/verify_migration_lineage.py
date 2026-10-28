@@ -1,6 +1,7 @@
 """Verify the historical Alembic revisions required by hosted staging."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from alembic.script import ScriptDirectory
 REQUIRED_REVISIONS = (
     ("0001_initial_schema", None),
     ("0002_analysis_provenance", "0001_initial_schema"),
+    ("0003_saved_analysis_idempotency", "0002_analysis_provenance"),
 )
 
 
@@ -68,12 +70,16 @@ def main() -> int:
 
     print(
         "Migration preflight passed: "
-        "0001_initial_schema -> 0002_analysis_provenance; "
+        "0001_initial_schema -> 0002_analysis_provenance -> "
+        "0003_saved_analysis_idempotency; "
         f"Alembic head is {head}."
     )
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as output:
+            output.write(f"head={head}\n")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

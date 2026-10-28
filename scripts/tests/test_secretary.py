@@ -10,10 +10,43 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 from zipfile import ZipFile
 
-from scripts.secretary.core import MARKER, application_change, fingerprint, inspect, recommendation, render, safe
-from scripts.secretary.preview import completed_event, eligibility, invalidate_previous, package, verify_environment, verify_service
-from scripts.secretary.production import deployment_metrics, log_categories, pipeline_metrics
-from scripts.secretary.report import bot_comment, explain, latest_jobs, preview_state, report, validate_ai
+from scripts.secretary.core import (
+    MARKER,
+    application_change,
+    fingerprint,
+    inspect,
+    recommendation,
+    render,
+    safe,
+)
+from scripts.secretary.preview import (
+    completed_event,
+    eligibility,
+    invalidate_previous,
+    package,
+    preview_gate_enabled,
+    verify_environment,
+    verify_service,
+)
+from scripts.secretary.production import (
+    deployment_metrics,
+    log_categories,
+    pipeline_metrics,
+)
+from scripts.secretary.report import (
+    bot_comment,
+    explain,
+    latest_jobs,
+    preview_state,
+    report,
+    validate_ai,
+)
+from scripts.tests.staging_fixtures import (
+    PRODUCTION_HOST,
+    STAGING_HOST,
+    render_staging_environment_rows,
+    set_render_environment_value,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = json.loads((ROOT / ".github/secretary.json").read_text())
@@ -183,6 +216,16 @@ class ReportTests(unittest.TestCase):
 
 
 class PreviewTests(unittest.TestCase):
+    def test_preview_gate_normalizes_case_and_whitespace(self):
+        with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": "  TRUE \t"}):
+            self.assertTrue(preview_gate_enabled())
+        with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": " true "}):
+            self.assertTrue(preview_gate_enabled())
+        with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": "yes"}):
+            self.assertFalse(preview_gate_enabled())
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(preview_gate_enabled())
+
     def test_duplicate_ci_completion_does_not_redeploy(self):
         api = Mock()
         api.request.side_effect = [[{"id": 9, "sha": SHA, "creator": {"login": "github-actions[bot]"},
@@ -214,12 +257,43 @@ class PreviewTests(unittest.TestCase):
         self.assertFalse(current_pr_head_matches(current, SHA))
 
     def test_database_isolation_guards(self):
-        rows = [{"envVar": {"key": key, "value": value}} for key, value in {"DATABASE_URL": "postgresql://synthetic:synthetic@dev.invalid/phishlens_dev",
-            "APP_ENV": "staging", "AI_MODE": "mock", "STAGING_DATABASE_HOST": "dev.invalid"}.items()]
-        with patch.dict(os.environ, {"SECRETARY_STAGING_DB_HOST": "dev.invalid", "SECRETARY_PRODUCTION_DB_HOST": "prod.invalid"}):
+        rows = render_staging_environment_rows()
+        with patch.dict(os.environ, {
+            "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
+            "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+        }):
             verify_environment(rows)
-            rows[0]["envVar"]["value"] = "postgresql://synthetic:synthetic@prod.invalid/phishlens_dev"
+            set_render_environment_value(
+                rows, "DATABASE_URL",
+                f"postgresql://phishlens_staging_app:synthetic@{PRODUCTION_HOST}/phishlens_dev",
+            )
             with self.assertRaises(RuntimeError):
+                verify_environment(rows)
+
+            set_render_environment_value(
+                rows, "DATABASE_URL",
+                f"postgresql://neondb_owner:synthetic@{STAGING_HOST}/phishlens_dev",
+            )
+            with self.assertRaisesRegex(RuntimeError, "phishlens_staging_app role"):
+                verify_environment(rows)
+
+            set_render_environment_value(
+                rows, "DATABASE_URL",
+                f"postgresql://phishlens_staging_app:synthetic@{STAGING_HOST}/phishlens_dev",
+            )
+            set_render_environment_value(
+                rows, "STAGING_MIGRATION_DATABASE_URL",
+                f"postgresql://neondb_owner:synthetic@{PRODUCTION_HOST}/phishlens_dev",
+            )
+            with self.assertRaisesRegex(RuntimeError, "isolated branch"):
+                verify_environment(rows)
+
+            rows = render_staging_environment_rows()
+            rows = [
+                row for row in rows
+                if row["envVar"]["key"] != "STAGING_MIGRATION_DATABASE_URL"
+            ]
+            with self.assertRaisesRegex(RuntimeError, "migration credential"):
                 verify_environment(rows)
 
     def test_production_service_rejected(self):

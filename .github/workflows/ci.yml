@@ -28,7 +28,7 @@ jobs:
           package-manager-cache: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 
@@ -70,7 +70,7 @@ jobs:
           --expected-source "$SOURCE_COMMIT"
 
       - name: Upload extension package
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: PhishLens-Extension
           path: |
@@ -79,10 +79,76 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  migration-source-preflight:
+    name: Migration source preflight
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      current: ${{ steps.migration-source.outputs.current }}
+    steps:
+      # The lookup uses a trusted default-branch script, never the PR checkout.
+      - name: Check out trusted migration preflight controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+
+      # Old workflow reruns keep the PR head captured when the run was queued.
+      # Skip the historical staging check after the PR advances or closes.
+      - name: Check whether migration source is still the current PR head
+        id: migration-source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MIGRATION_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MIGRATION_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import os
+          from scripts.secretary.github_api import APIError, GitHub
+
+          number = int(os.environ['MIGRATION_PR'])
+          expected = os.environ['MIGRATION_PR_HEAD_SHA']
+          skip_reason = None
+          try:
+              current = GitHub().request(f'pulls/{number}')
+              is_current = (current['state'] == 'open'
+                            and current['head']['sha'] == expected
+                            and not current.get('draft', False))
+          except APIError as error:
+              is_current = False
+              skip_reason = f'GitHub could not confirm the current PR head ({error}); migration validation is blocked.'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'current={str(is_current).lower()}\n')
+          if is_current:
+              print(f'PR #{number} is still at the migration source head {expected}.')
+          else:
+              print(f'PR #{number} migration source is superseded; exact-source validation skipped.')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
+                  summary.write(f'Exact-source migration validation skipped: {reason} The current PR head owns migration validation.\n')
+              if skip_reason:
+                  raise SystemExit(1)
+          PY
+
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      migration_revision: ${{ steps.migration-lineage.outputs.head }}
+    needs: migration-source-preflight
+    if: always() && !cancelled()
+    permissions:
+      contents: read
 
     services:
       postgres:
@@ -106,6 +172,12 @@ jobs:
       SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
+      - name: Fail if migration-source preflight failed
+        if: always() && needs.migration-source-preflight.result == 'failure'
+        run: |
+          echo "Migration source could not be verified; backend checks cannot continue safely."
+          exit 1
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -114,7 +186,7 @@ jobs:
       # Hosted staging deploys the PR head, while this job's default checkout is
       # GitHub's synthetic merge ref. Validate the exact deploy target as well.
       - name: Check out exact hosted staging source
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.migration-source-preflight.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -122,7 +194,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
           cache: pip
@@ -132,6 +204,19 @@ jobs:
 
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt
+
+      - name: Create disposable PostgreSQL test database
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+
+          url = os.environ["DATABASE_URL"].replace(
+              "postgresql+psycopg://", "postgresql://", 1
+          )
+          with psycopg.connect(url, autocommit=True) as connection:
+              connection.execute("CREATE DATABASE phishlens_s2_t1_test")
+          PY
 
       - name: Install development dependencies
         run: python -m pip install -r backend/requirements-dev.txt
@@ -144,11 +229,17 @@ jobs:
       - name: Lint trusted secretary code
         run: python -m ruff check scripts/secretary
 
+      - name: Verify exact merge commit migration lineage
+        id: migration-lineage
+        run: python scripts/verify_migration_lineage.py --repo-root .
+
       - name: Verify disposable database configuration before migrations
+        env:
+          DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_s2_t1_test
         run: python scripts/ci_backend.py --check-environment
 
       - name: Verify exact hosted staging migration history
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.migration-source-preflight.outputs.current == 'true'
         run: python scripts/verify_migration_lineage.py --repo-root staging-target
 
       - name: Apply database migrations
@@ -163,12 +254,26 @@ jobs:
       - name: Verify repeated seed execution
         run: python scripts/seed_demo.py
 
+      - name: Verify seeded database integrity
+        env:
+          RUN_SEED_INTEGRITY_TESTS: "1"
+        run: python -m pytest backend/tests/test_seed_integrity.py -q -p no:cacheprovider
+
+      - name: Apply database migrations to disposable test database
+        env:
+          DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_s2_t1_test
+        run: |
+          python -m alembic -c backend/alembic.ini upgrade head
+          python -m alembic -c backend/alembic.ini upgrade head
+
       - name: Test API
+        env:
+          DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_s2_t1_test
         run: python scripts/ci_backend.py
 
       - name: Preserve backend API and PostgreSQL test evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Backend-Test-Evidence
           path: output/backend-ci/
@@ -205,7 +310,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
           cache: pip
@@ -251,7 +356,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.12'
       - name: Check PR head before requesting staging approval
@@ -263,12 +368,19 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.github_api import APIError, GitHub
 
           number = int(os.environ['STAGING_PR'])
           expected = os.environ['STAGING_PR_HEAD_SHA']
-          current = GitHub().request(f'pulls/{number}')
-          is_current = current['state'] == 'open' and current['head']['sha'] == expected
+          skip_reason = None
+          try:
+              current = GitHub().request(f'pulls/{number}')
+              is_current = (current['state'] == 'open'
+                            and current['head']['sha'] == expected
+                            and not current.get('draft', False))
+          except APIError as error:
+              is_current = False
+              skip_reason = f'GitHub could not confirm the current PR head ({error}); no deployment was started.'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'current={str(is_current).lower()}\n')
           if is_current:
@@ -276,7 +388,10 @@ jobs:
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f'Staging skipped before approval: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
+                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
+                  summary.write(f'Staging skipped before approval: {reason} The latest PR run owns staging.\n')
+              if skip_reason:
+                  raise SystemExit(1)
           PY
 
   # Bootstrap bridge: preserve the current required check until the new controller
@@ -284,8 +399,8 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.outputs.current != 'false'
-    needs: [staging, hosted-staging-preflight]
+    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
+    needs: [staging, hosted-staging-preflight, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: staging
@@ -299,13 +414,14 @@ jobs:
       queue: max
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
     steps:
       - name: Read trusted legacy controller only
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.12'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -321,12 +437,19 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.github_api import APIError, GitHub
 
           number = int(os.environ['STAGING_PR'])
           expected = os.environ['STAGING_PR_HEAD_SHA']
-          current = GitHub().request(f'pulls/{number}')
-          is_current = current['state'] == 'open' and current['head']['sha'] == expected
+          skip_reason = None
+          try:
+              current = GitHub().request(f'pulls/{number}')
+              is_current = (current['state'] == 'open'
+                            and current['head']['sha'] == expected
+                            and not current.get('draft', False))
+          except APIError as error:
+              is_current = False
+              skip_reason = f'GitHub could not confirm the current PR head ({error}); deployment remains blocked.'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'current={str(is_current).lower()}\n')
           if is_current:
@@ -334,33 +457,39 @@ jobs:
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f'Staging skipped after approval: PR #{number} is closed or has a newer head than `{expected}`. The latest PR run owns staging.\n')
+                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
+                  summary.write(f'Staging skipped after approval: {reason} The latest PR run owns staging.\n')
+              if skip_reason:
+                  raise SystemExit(1)
           PY
       - name: Deploy PR merge commit using the trusted legacy script
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          SECRETARY_STAGING_DB_HOST: ${{ vars.SECRETARY_STAGING_DB_HOST }}
+          SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
           STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
       - name: Verify deployed merge identity and package staging assets
-        id: verify-hosted-staging
+        id: staging-finalize
         if: steps.staging-final-preflight.outputs.current == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STAGING_COMMIT: ${{ github.sha }}
           STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           STAGING_PR: ${{ github.event.pull_request.number }}
+          STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
         run: |
           python - <<'PY'
           import datetime as dt
           import json
           import os
           from pathlib import Path
-          from scripts.secretary.github_api import GitHub
+          from scripts.secretary.github_api import APIError, GitHub
           from scripts.secretary.preview import package, smoke
 
           config = json.loads(Path('.github/secretary.json').read_text())
@@ -369,35 +498,56 @@ jobs:
           deploy_sha = os.environ['STAGING_COMMIT']
           pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']
           number = int(os.environ['STAGING_PR'])
-          evidence = smoke(config['staging_origin'], deploy_sha)
           api = GitHub()
           output = Path('output/hosted-staging')
-          current = api.request(f'pulls/{number}')
-          # github.sha may be the synthetic merge commit; only compare the live
-          # PR head with the PR head captured when this run was queued.
-          if current['head']['sha'] != pr_head_sha or current['state'] != 'open':
+          def stop_without_artifact(reason):
               with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
                   result.write('current=false\n')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  summary.write(f'Staging run superseded: PR #{number} advanced from `{pr_head_sha}` while deployment was running. The newer head must complete its own staging run.\n')
+                  summary.write(f'Hosted staging for PR #{number} stopped safely: {reason} No extension artifact was published.\n')
+              return True
+
+          def superseded():
+              try:
+                  current = api.request(f'pulls/{number}')
+              except APIError as error:
+                  stop_without_artifact(f'GitHub could not confirm the current PR head ({error}).')
+                  raise SystemExit(1)
+              # github.sha may be the synthetic merge commit; only compare the live
+              # PR head with the PR head captured when this run was queued.
+              if (current['state'] == 'open' and current['head']['sha'] == pr_head_sha
+                      and not current.get('draft', False)):
+                  return False
+              return stop_without_artifact('The PR closed, became a draft, or its head changed during deployment.')
+          if superseded():
               raise SystemExit(0)
-          package(api, deploy_sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          evidence = smoke(config['staging_origin'], deploy_sha)
+          if superseded():
+              raise SystemExit(0)
+          try:
+              package(api, deploy_sha, number, config, output / 'PhishLens-Staging-Extension.zip')
+          except APIError as error:
+              stop_without_artifact(f'GitHub could not package the current PR source ({error}).')
+              raise SystemExit(1)
+          if superseded():
+              raise SystemExit(0)
           evidence.update({
               'pr': number, 'sha': pr_head_sha, 'deployed_commit': deploy_sha,
+              'migration_revision': os.environ['STAGING_MIGRATION_REVISION'],
               'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
               'chrome_manual_test': 'not performed',
           })
           (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}`.\n\n')
-              summary.write('Health, readiness, version, synthetic history and staging package passed. ')
-              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
               result.write('current=true\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
+              summary.write('Health, readiness, version, synthetic history and staging package passed. ')
+              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
           PY
       - name: Preserve hosted staging evidence and extension
-        if: steps.verify-hosted-staging.outputs.current == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.staging-finalize.outputs.current == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: PhishLens-Staging-Extension
           path: output/hosted-staging/

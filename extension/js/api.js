@@ -129,11 +129,12 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
         throw new Error('Create timeout must be a positive integer in milliseconds');
     }
     const url = baseUrl.replace(/\/+$/, '') + '/api/analyses';
+    const pendingCreateKeys = new Map();
 
-    async function request(path, method, expectedStatus, body, timeoutMs = 10000) {
+    async function request(path, method, expectedStatus, body, timeoutMs = 10000, headers = {}) {
         const options = { method, signal: AbortSignal.timeout(timeoutMs) };
         if (body !== undefined) {
-            options.headers = { 'Content-Type': 'application/json' };
+            options.headers = { 'Content-Type': 'application/json', ...headers };
             options.body = JSON.stringify(body);
         }
         const response = await fetchImpl(path, options);
@@ -187,8 +188,37 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
         async getAnalysis(id) {
             return checkRecord(await request(recordUrl(id), 'GET', 200), true);
         },
-        async createAnalysis(input) {
-            return checkRecord(await request(url, 'POST', 201, input, createTimeoutMs), true);
+        async createAnalysis(input, { idempotencyKey } = {}) {
+            const fingerprint = JSON.stringify([input?.subject ?? '', input?.body]);
+            const automaticKey = idempotencyKey === undefined;
+            const key = idempotencyKey ?? pendingCreateKeys.get(fingerprint) ?? globalThis.crypto.randomUUID();
+            if (automaticKey) pendingCreateKeys.set(fingerprint, key);
+
+            try {
+                const created = checkRecord(
+                    await request(
+                        url,
+                        'POST',
+                        201,
+                        input,
+                        createTimeoutMs,
+                        { 'Idempotency-Key': key }
+                    ),
+                    true
+                );
+                if (pendingCreateKeys.get(fingerprint) === key) pendingCreateKeys.delete(fingerprint);
+                return created;
+            } catch (error) {
+                if (automaticKey && error?.status >= 400 && error.status < 500 &&
+                    ![408, 409, 425, 429].includes(error.status) &&
+                    pendingCreateKeys.get(fingerprint) === key) {
+                    pendingCreateKeys.delete(fingerprint);
+                }
+                if (error && typeof error === 'object') {
+                    error.idempotencyKey = key;
+                }
+                throw error;
+            }
         },
         async updateAnalysis(id, patch) {
             return checkRecord(await request(recordUrl(id), 'PATCH', 200, patch), true);

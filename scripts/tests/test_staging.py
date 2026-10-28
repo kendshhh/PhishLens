@@ -8,7 +8,11 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+from scripts.tests.staging_fixtures import render_staging_environment_rows
+
 SCRIPT = Path(__file__).resolve().parents[1] / "deploy_staging.py"
+ROOT = SCRIPT.parents[1]
+CONFIG = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
 spec = importlib.util.spec_from_file_location("deploy_staging", SCRIPT)
 deploy_staging = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(deploy_staging)
@@ -18,8 +22,14 @@ class DeploymentTests(unittest.TestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
             "RENDER_STAGING_API_KEY": "test-only-key",
-            "RENDER_STAGING_SERVICE_ID": "srv-test-staging",
+            "RENDER_STAGING_SERVICE_ID": CONFIG["staging_service"],
             "STAGING_COMMIT": "a" * 40,
+            "GITHUB_SHA": "a" * 40,
+            "STAGING_BASE_URL": CONFIG["staging_origin"],
+            "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
+            "SECRETARY_STAGING_DB_HOST": "staging.invalid",
+            "SECRETARY_PRODUCTION_DB_HOST": "production.invalid",
+            "GITHUB_REPOSITORY": "kendshhh/PhishLens",
         }, clear=True)
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -27,39 +37,58 @@ class DeploymentTests(unittest.TestCase):
         self.output.__enter__()
         self.addCleanup(self.output.__exit__, None, None, None)
 
-    def responses(self, *payloads):
-        return [io.BytesIO(json.dumps(payload).encode()) for payload in payloads]
+    def preflight_responses(self):
+        service = {
+            "id": CONFIG["staging_service"],
+            "autoDeploy": "no",
+            "branch": "main",
+            "repo": "https://github.com/kendshhh/PhishLens",
+            "serviceDetails": {
+                "url": CONFIG["staging_origin"],
+                "envSpecificDetails": {
+                    "startCommand": "python scripts/start_staging.py",
+                },
+            },
+        }
+        env_vars = render_staging_environment_rows()
+        return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):
-        with patch("urllib.request.urlopen", side_effect=self.responses(
-            {"id": "dep-test"}, {"status": "live", "commit": {"id": "a" * 40}},
-        )) as request:
+        with patch.object(deploy_staging, "render_request", side_effect=[
+            *self.preflight_responses(),
+            {"id": "dep-test"},
+            {"status": "live", "commit": {"id": "a" * 40}},
+        ]) as request:
             deploy_staging.main()
-        body = json.loads(request.call_args_list[0].args[0].data)
+        body = request.call_args_list[2].args[1]
         self.assertEqual(body, {"commitId": "a" * 40})
-        self.assertEqual(request.call_count, 2)
+        self.assertEqual(request.call_count, 4)
 
     def test_wrong_live_commit_fails(self):
-        with patch("urllib.request.urlopen", side_effect=self.responses(
-            {"id": "dep-test"}, {"status": "live", "commit": {"id": "b" * 40}},
-        )), self.assertRaisesRegex(SystemExit, "does not match"):
+        with patch.object(deploy_staging, "render_request", side_effect=[
+            *self.preflight_responses(),
+            {"id": "dep-test"},
+            {"status": "live", "commit": {"id": "b" * 40}},
+        ]), self.assertRaisesRegex(SystemExit, "does not match"):
             deploy_staging.main()
 
     def test_failed_deployment_fails(self):
-        with patch("urllib.request.urlopen", side_effect=self.responses(
-            {"id": "dep-test"}, {"status": "build_failed"},
-        )), self.assertRaisesRegex(SystemExit, "failed"):
+        with patch.object(deploy_staging, "render_request", side_effect=[
+            *self.preflight_responses(),
+            {"id": "dep-test"},
+            {"status": "build_failed"},
+        ]), self.assertRaisesRegex(SystemExit, "failed"):
             deploy_staging.main()
 
     def test_missing_secret_fails_before_network_access(self):
         os.environ.pop("RENDER_STAGING_API_KEY")
-        with patch("urllib.request.urlopen") as request, self.assertRaises(SystemExit):
+        with patch.object(deploy_staging, "render_request") as request, self.assertRaises(SystemExit):
             deploy_staging.main()
         request.assert_not_called()
 
     def test_production_service_rejected_before_network_access(self):
-        os.environ["RENDER_STAGING_SERVICE_ID"] = "srv-db7eap25b2lc73fkelpg"
-        with patch("urllib.request.urlopen") as request, self.assertRaisesRegex(SystemExit, "production"):
+        os.environ["RENDER_STAGING_SERVICE_ID"] = CONFIG["production_service"]
+        with patch.object(deploy_staging, "render_request") as request, self.assertRaisesRegex(SystemExit, "production"):
             deploy_staging.main()
         request.assert_not_called()
 
