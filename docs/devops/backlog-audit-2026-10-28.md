@@ -27,10 +27,10 @@ snapshots as planning records, not fresh verification.
 |---|---|---|
 | Main CI and production | Current main `6414914dfa8eb8322839597c4cd6912145a442a0`; [Main CI run 40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349) passed Backend and Extension, and [Workflow lint run 40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515) passed. Render deployment `dep-dbh18p6i0phs73d1mtag` is Live on that exact SHA. | At 2026-10-28 15:39 UTC, `/version`, `/health`, and `/ready` returned HTTP 200; `/version` matched this SHA and production, and `/ready` reported the database connected. The deployment ran 73.525 seconds from Render start to finish; this is deployment duration, not merge-to-live time. The 150.607-second merge-to-live sample belongs to the earlier `e4ea032` observation and is not a measurement for this SHA. |
 | Hosted staging | Latest live deployment at 15:43 UTC was `dep-dbh14vbl550s738ddfc0`, SHA `57da457be77fcf7a132e3a5e2f0d704c676040d6`; `/version`, `/health`, and `/ready` returned 200, with staging identity and database connected. | The latest SHA is divergent from current main (13 ahead, one behind) and is not PR #86 head. Earlier exact-SHA CRUD evidence at `e3c6e37` is deactivated and does not verify this deployment. PR #86 Hosted staging remains pending; staging host-to-Neon mapping and role grants need private owner verification. |
-| Staging CRUD | `scripts/verify_crud.mjs` passed with staging identity and expected-SHA guards. It created, read/listed, updated, cleared, and deleted one synthetic record and confirmed 404 after deletion. | The staging API and database support the guarded saved-analysis CRUD flow. No production write was made. This is not installed-Chrome or production persistence evidence. |
+| Staging CRUD | `scripts/verify_crud.mjs` passed with staging identity and expected-SHA guards on PR #83 SHA `e3c6e37`; that deployment is now deactivated. | The guarded saved-analysis CRUD flow worked on that specific prior build. The current staging SHA `57da457` and PR #86 head have not passed the same CRUD verification. No production write was made; installed-Chrome and production persistence remain unverified. |
 | Existing CI cache | October 21 pip comparison was n=2 before/n=2 cached: install 9s to 7s, but whole staging job 40.5s to 44s. | No end-to-end pipeline speedup has been demonstrated. |
 | Extension npm-cache trial | No-cache runs [40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771) and [40635212213](https://github.com/kendshhh/PhishLens/actions/runs/40635212213) each took 11s. Cold candidate [40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) took 11s; warm candidate [40639539541](https://github.com/kendshhh/PhishLens/actions/runs/40639539541) took 18s. All passed; `npm ci` was 1–2s and did not get faster on the warm run. | No whole-job improvement was demonstrated in the one cold/one warm sample. The npm cache and instrumentation were removed; #40 remains open for a different comparable optimization and measured recovery. |
-| Dependency alerts | GitHub Security listed 18 open Python alerts: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the current JavaScript lockfile. The current pins already exceed fixes for the Transformers, PyTorch, and setuptools alerts; several are stale relative to `main`. PR #86's optional Dependency Review workflow was skipped because `DEPENDENCY_REVIEW_ENABLED` was unset, so that action did not scan this PR's changes. | The active critical `certifi` and high `filelock` findings matched current pins. Inputs now require patched versions and generated locks are being refreshed. Backend compatibility checks are not an advisory scan. Recheck GitHub Security after merge; alert count can lag changed manifests. |
+| Dependency alerts | GitHub Security listed 18 open Python alerts: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the JavaScript lockfile. Several AI-package alerts appeared stale against the candidate branch pins. PR #86's optional Dependency Review workflow was skipped because `DEPENDENCY_REVIEW_ENABLED` was unset, so that action did not scan this PR's changes. | The active critical `certifi` and high `filelock` findings match the vulnerable main-branch pins at the current source snapshot. PR #86 raises the minima and refreshes locks to patched versions; these changes are not effective on main until merge. Backend compatibility checks are not an advisory scan. Recheck GitHub Security after merge; alert count can lag changed manifests. |
 
 ## Priority map
 
@@ -66,8 +66,8 @@ evidence status, not a grade claim.
 | AI pipeline | 10 | Mock-provider checks are suitable for ordinary CI. Real-provider evaluation and scheduled smoke evidence remain separate work. |
 | Release and rollback | 10 | Checked-main automatic delivery and a safe recovery procedure are documented. Full restoration duration and current schema/app compatibility evidence remain incomplete. |
 | Incident handling | 10 | Existing incident evidence is retained; no new incident was invented. Keep the incident record factual and add a postmortem only for a real event. |
-| Metrics and documentation | 10 | October 28 merge-to-live, deploy, endpoint, staging CRUD, and cache baseline evidence is recorded in `metrics.md` and `optimizations.md`. |
-| Live performance | 5 | Health/readiness and delivery timing are not a user-facing latency/load evaluation. Run the planned live performance check and record sample method and results. |
+| Metrics and documentation | 10 | October 28 current main deploy, endpoint status/timing, staging identity drift, historical CRUD scope, and cache trial evidence is recorded in `metrics.md`, `staging.md`, and `optimizations.md`. |
+| Live performance | 5 | A read-only `n=5` client-round-trip timing sample for `/health` and `/ready` is recorded in `metrics.md`; all returned 200. It is a smoke baseline, not user-flow latency, server processing time, throughput, or load evidence. |
 
 ## Work completed in this audit branch
 
@@ -81,10 +81,10 @@ evidence status, not a grade claim.
   while preserving `npm ci` and every extension check.
 - Preserved and included the existing Secretary workflow/report edits that
   repair the workflow-contract failures observed on the first PR run.
-- Raised the direct certifi minimum to the safe release floor and the AI-only
-  filelock minimum to its patched floor. Generated locks resolve to certifi
-  2026.10.23 and filelock 4.2.4. See the advisory links below and recheck the
-  dependency graph after merge.
+- In this PR branch, raised the direct certifi minimum to the safe release floor
+  and the AI-only filelock minimum to its patched floor. Generated locks resolve
+  to certifi 2026.10.23 and filelock 4.2.4. These fixes are not on main until
+  merge; recheck the dependency graph afterward.
 - Confirmed the other open AI package advisories refer to versions below current
   main pins; keep the 18-alert aggregate visible until GitHub recomputes status.
 

@@ -18,6 +18,23 @@ must not be attributed to this deployment. Production CRUD persistence after
 refresh/redeploy, user-facing latency, a controlled recovery duration, and a
 comparable optimization gain remain unmeasured. No production write was made.
 
+## Read-only production endpoint timing — October 28, 2026 15:50 UTC
+
+Five sequential GET requests per route were timed from this Windows PowerShell
+client with `Invoke-WebRequest`; no saved-analysis route or production data was
+read. All 10 requests returned HTTP 200.
+
+| Route | Samples (ms, request order) | n | Min | Median | Max |
+|---|---|---:|---:|---:|---:|
+| `/health` | 835.5, 183.2, 414.3, 179.2, 227.7 | 5 | 179.2 | 227.7 | 835.5 |
+| `/ready` | 868.6, 99.3, 185.4, 496.9, 243.7 | 5 | 99.3 | 243.7 | 868.6 |
+
+These are client round-trip times, including local network/TLS/Render routing and
+any runner or service startup variance; they are not server processing times.
+The sample is small and ranged widely, so it is a smoke baseline only. It does not
+measure extension/API user-flow latency, throughput, or load behavior. Do not
+compare it with CI job/deploy durations or claim a performance improvement.
+
 ## Current staging observation — October 28, 2026
 
 At 15:43 UTC, the staging service's latest Live deployment was
