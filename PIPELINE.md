@@ -1,14 +1,21 @@
 # PhishLens Pipeline
 
-## Current stage map — October 28, 2026
+## Main and stage observation — October 28, 2026
 
-Current `main` is `e4ea032615a6663d787a5b44714b5fc982fc6355`. Its CI run
-[40636853223](https://github.com/kendshhh/PhishLens/actions/runs/40636853223)
-passed Backend checks and Extension checks. Render production deployment
-`dep-dbgoa7i9lscs738tse0g` is live on that exact SHA; `/version`, `/health`, and
-`/ready` returned HTTP 200. The staging service has auto-deploy off and is selected
-by exact commit from the hosted workflow. Current staging SHA and CRUD evidence are
-recorded in [staging.md](docs/devops/staging.md).
+Observed at 2026-10-28 15:39 UTC: GitHub `main` pointed to
+[`6414914dfa8eb8322839597c4cd6912145a442a0`](https://github.com/kendshhh/PhishLens/commit/6414914dfa8eb8322839597c4cd6912145a442a0).
+Main CI run [40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
+passed Backend and Extension checks; [Workflow lint run 40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515)
+also passed. Render production deployment `dep-dbh18p6i0phs73d1mtag` was live on
+that exact SHA. Read-only GET requests to `/version`, `/health`, and `/ready` each
+returned HTTP 200; `/version` reported that SHA and `production`, `/health`
+reported `ok`, and `/ready` reported the database connected. This is a dated
+observation, not a claim about later `main` commits.
+
+The staging service has auto-deploy off and is selected by exact commit from the
+hosted workflow. Staging deployment and guarded CRUD records in
+[staging.md](docs/devops/staging.md) are commit-specific; verify the recorded SHA
+before reusing them as current evidence.
 
 PR CI installs locked dependencies, runs backend and extension quality gates,
 requires disposable PostgreSQL CRUD tests, performs isolated API/client integration,
@@ -257,7 +264,9 @@ persistence or Chrome behavior.
 
 ## Verified Evidence
 
-- [October 28 main CI run](https://github.com/kendshhh/PhishLens/actions/runs/40636853223)
+- [October 28 main CI run](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
+- [October 28 Workflow lint run](https://github.com/kendshhh/PhishLens/actions/runs/40715810515)
+- Main SHA `6414914dfa8eb8322839597c4cd6912145a442a0` live in Render deployment `dep-dbh18p6i0phs73d1mtag`; `/version`, `/health`, and `/ready` returned HTTP 200 at 2026-10-28 15:39 UTC.
 - [October 28 backlog audit](docs/devops/backlog-audit-2026-10-28.md)
 
 - [Backend scaffold PR #11](https://github.com/kendshhh/PhishLens/pull/11)
