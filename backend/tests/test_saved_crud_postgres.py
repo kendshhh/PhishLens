@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app import main
+from backend.app import analysis_service, main
 from backend.app.routers.history import DEMO_USER_EMAIL, get_db
 from backend.models import AnalyzedEmail, User
 
@@ -22,10 +22,7 @@ def postgres_context(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database in {
-        "phishlens_s2_t1_test",
-        "phishlens_dev",
-    }
+    assert engine.url.database == "phishlens_s2_t1_test"
 
     unexpected_ai = Mock(
         side_effect=AssertionError(
@@ -171,3 +168,70 @@ def test_other_users_record_is_not_accessible(postgres_context):
         item["id"] != str(record_id)
         for item in history.json()["items"]
     )
+
+
+def test_legacy_record_with_null_provenance_is_readable(postgres_context):
+    client, session, demo_user_id = postgres_context
+    record = AnalyzedEmail(
+        user_id=demo_user_id,
+        subject="Legacy synthetic record",
+        body="Synthetic legacy email from before provenance fields existed",
+        prediction="legitimate",
+        confidence=None,
+        risk_level="low",
+        indicators=[],
+        explanation=None,
+        analysis_mode=None,
+        analysis_provenance=None,
+    )
+    session.add(record)
+    session.flush()
+
+    record_id = record.id
+    listed = client.get("/api/analyses")
+    assert listed.status_code == 200
+    summaries = {
+        item["id"]: item for item in listed.json()["items"]
+    }
+    assert str(record_id) in summaries
+    assert summaries[str(record_id)]["confidence"] is None
+    assert "analysis_mode" not in summaries[str(record_id)]
+    assert "analysis_provenance" not in summaries[str(record_id)]
+
+    detail = client.get(f"/api/analyses/{record_id}")
+    assert detail.status_code == 200
+    assert detail.json()["body"] == record.body
+    assert detail.json()["analysis_mode"] is None
+    assert detail.json()["analysis_provenance"] is None
+
+
+def test_invalid_ids_are_rejected_without_changing_postgres(
+    postgres_context,
+    monkeypatch,
+):
+    client, session, demo_user_id = postgres_context
+    statement = (
+        select(AnalyzedEmail.__table__)
+        .where(AnalyzedEmail.user_id == demo_user_id)
+        .order_by(AnalyzedEmail.id)
+    )
+    before = [dict(row) for row in session.execute(statement).mappings()]
+    inference = Mock(
+        side_effect=AssertionError("Invalid IDs must not trigger inference")
+    )
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inference)
+
+    responses = [
+        client.get("/api/analyses/not-a-uuid"),
+        client.patch(
+            "/api/analyses/not-a-uuid",
+            json={"notes": "Must not be saved"},
+        ),
+        client.delete("/api/analyses/not-a-uuid"),
+    ]
+
+    assert [response.status_code for response in responses] == [422, 422, 422]
+    session.expire_all()
+    after = [dict(row) for row in session.execute(statement).mappings()]
+    assert after == before
+    inference.assert_not_called()
