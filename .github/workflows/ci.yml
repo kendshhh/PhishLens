@@ -41,7 +41,8 @@ jobs:
       - name: Record npm cache state
         env:
           NPM_CACHE_HIT: ${{ steps.node.outputs.cache-hit }}
-        run: echo "npm cache hit: ${NPM_CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "npm cache hit: ${NPM_CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check JavaScript syntax
         shell: bash
