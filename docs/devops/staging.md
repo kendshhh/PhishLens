@@ -219,6 +219,15 @@ prototype is separate, local-only, and not yet exercised.
   `phishlens_dev`. A read-only Neon check found Alembic revision
   `0003_saved_analysis_idempotency` on that branch. The shared `development`
   branch is at `0002_analysis_provenance`.
+- At 2026-10-28 16:08 UTC, a read-only Neon check on `pr-58-staging/phishlens_dev`
+  found the `phishlens_staging_app` role. It can log in, is not superuser, and
+  cannot create databases or roles. However, it has `CREATE` on the `public`
+  schema and `DELETE`, `INSERT`, `REFERENCES`, `SELECT`, `TRIGGER`, `TRUNCATE`,
+  and `UPDATE` on `alembic_version`, `analyzed_emails`, and `users`. The schema
+  and table grants exceed the documented minimum app role. No privilege change
+  was made. The environment owner should remove unnecessary grants, confirm the
+  migration table is not writable by the runtime role, and repeat this read-only
+  inspection before staging CRUD acceptance.
 - Render service metadata reports source branch `main`, auto-deploy off, and
   service `phishlens-staging`. A later read at 2026-10-28 15:43 UTC found the
   live deployment `dep-dbh14vbl550s738ddfc0`, API-triggered at 15:19:25 UTC and
@@ -257,7 +266,8 @@ prototype is separate, local-only, and not yet exercised.
   `e3c6e37`; it does not establish CRUD behavior for current staging SHA
   `57da457` or current PR #86 head. PR #86's Hosted staging job is pending its
   protected gate. Do not run a new staging write until the approved target and
-  exact candidate SHA are confirmed.
+  exact candidate SHA are confirmed and the runtime role's excess grants are
+  reviewed.
 
 ### October 19 follow-up
 
