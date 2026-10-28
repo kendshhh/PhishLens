@@ -41,6 +41,12 @@ from scripts.secretary.report import (
     report,
     validate_ai,
 )
+from scripts.tests.staging_fixtures import (
+    PRODUCTION_HOST,
+    STAGING_HOST,
+    render_staging_environment_rows,
+    set_render_environment_value,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = json.loads((ROOT / ".github/secretary.json").read_text())
@@ -251,24 +257,43 @@ class PreviewTests(unittest.TestCase):
         self.assertFalse(current_pr_head_matches(current, SHA))
 
     def test_database_isolation_guards(self):
-        rows = [{"envVar": {"key": key, "value": value}} for key, value in {
-            "DATABASE_URL": "postgresql://phishlens_staging_app:synthetic@app.invalid/phishlens_dev",
-            "STAGING_MIGRATION_DATABASE_URL": "postgresql://neondb_owner:synthetic@app.invalid/phishlens_dev",
-            "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
-            "APP_ENV": "staging", "AI_MODE": "mock", "STAGING_DATABASE_HOST": "app.invalid"}.items()]
-        with patch.dict(os.environ, {"SECRETARY_STAGING_DB_HOST": "app.invalid", "SECRETARY_PRODUCTION_DB_HOST": "prod.invalid"}):
+        rows = render_staging_environment_rows()
+        with patch.dict(os.environ, {
+            "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
+            "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+        }):
             verify_environment(rows)
-            rows[0]["envVar"]["value"] = "postgresql://phishlens_staging_app:synthetic@prod.invalid/phishlens_dev"
+            set_render_environment_value(
+                rows, "DATABASE_URL",
+                f"postgresql://phishlens_staging_app:synthetic@{PRODUCTION_HOST}/phishlens_dev",
+            )
             with self.assertRaises(RuntimeError):
                 verify_environment(rows)
 
-            rows[0]["envVar"]["value"] = "postgresql://neondb_owner:synthetic@app.invalid/phishlens_dev"
+            set_render_environment_value(
+                rows, "DATABASE_URL",
+                f"postgresql://neondb_owner:synthetic@{STAGING_HOST}/phishlens_dev",
+            )
             with self.assertRaisesRegex(RuntimeError, "phishlens_staging_app role"):
                 verify_environment(rows)
 
-            rows[0]["envVar"]["value"] = "postgresql://phishlens_staging_app:synthetic@app.invalid/phishlens_dev"
-            rows[1]["envVar"]["value"] = "postgresql://neondb_owner:synthetic@prod.invalid/phishlens_dev"
+            set_render_environment_value(
+                rows, "DATABASE_URL",
+                f"postgresql://phishlens_staging_app:synthetic@{STAGING_HOST}/phishlens_dev",
+            )
+            set_render_environment_value(
+                rows, "STAGING_MIGRATION_DATABASE_URL",
+                f"postgresql://neondb_owner:synthetic@{PRODUCTION_HOST}/phishlens_dev",
+            )
             with self.assertRaisesRegex(RuntimeError, "isolated branch"):
+                verify_environment(rows)
+
+            rows = render_staging_environment_rows()
+            rows = [
+                row for row in rows
+                if row["envVar"]["key"] != "STAGING_MIGRATION_DATABASE_URL"
+            ]
+            with self.assertRaisesRegex(RuntimeError, "migration credential"):
                 verify_environment(rows)
 
     def test_production_service_rejected(self):
