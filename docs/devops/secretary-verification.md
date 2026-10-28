@@ -42,7 +42,7 @@ screenshots, automatic approvals, or production rollback claims in this log.
 - [ ] Review source and trust boundaries with a teammate.
 - [ ] Create protected `staging` and `production-observer` environments.
 - [ ] Move/rotate the repository deployment secret into staging; remove the old repository secret.
-- [ ] Verify separate Neon development host/role and mock-only staging config.
+- [ ] Privately verify the `pr-58-staging` Neon host, staging-only role, and mock-only staging config.
 - [ ] Let the trusted legacy bootstrap run verify the pilot PR before merge; retain existing protection.
 - [ ] Human approval and authorized merge install trusted workflows on main.
 - [ ] Set preview enabled and run the first exact-SHA test PR.

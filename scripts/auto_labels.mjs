@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export function classify(item, files = [], linked = []) {
@@ -57,41 +57,64 @@ export function linkedNumbers(body, repo) {
   return [...numbers].slice(0, 20);
 }
 
-async function main() {
-  const repo = process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
+export async function runLabeler({ env = process.env, fetchImpl = fetch } = {}) {
+  const repo = env.GITHUB_REPOSITORY;
+  const token = env.GITHUB_TOKEN;
   async function api(path, method = 'GET', data) {
-    const response = await fetch('https://api.github.com/repos/' + repo + '/' + path, {
+    const url = 'https://api.github.com/repos/' + repo + '/' + path;
+    const options = {
       method, headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
       ...(data ? { body: JSON.stringify(data) } : {}),
       signal: AbortSignal.timeout(30000)
-    });
-    if (!response.ok) throw new Error('GitHub HTTP ' + response.status);
+    };
+    let response = await fetchImpl(url, options);
+    if (!response.ok && response.status === 403 && method === 'GET' && data === undefined) {
+      const publicOptions = { ...options, headers: { ...options.headers } };
+      delete publicOptions.headers.Authorization;
+      response = await fetchImpl(url, publicOptions);
+    }
+    if (!response.ok) {
+      const error = new Error('GitHub HTTP ' + response.status);
+      error.status = response.status;
+      throw error;
+    }
     return response.json();
   }
-  async function pages(path) {
-    const rows = [];
-    for (let page = 1; page <= 30; page++) {
-      const result = await api(path + (path.includes('?') ? '&' : '?') + 'per_page=100&page=' + page);
-      rows.push(...result);
-      if (result.length < 100) return rows;
+  try {
+    async function pages(path) {
+      const rows = [];
+      for (let page = 1; page <= 30; page++) {
+        const result = await api(path + (path.includes('?') ? '&' : '?') + 'per_page=100&page=' + page);
+        rows.push(...result);
+        if (result.length < 100) return rows;
+      }
+      throw new Error('Pagination limit reached');
     }
-    throw new Error('Pagination limit reached');
+    const event = JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8'));
+    const number = event.issue?.number || event.pull_request?.number;
+    if (!number) throw new Error('Missing issue or PR number');
+    // Use the webhook snapshot for item data; pull_request_target already receives the
+    // base-repository event payload and this avoids an unnecessary issue lookup.
+    const item = event.issue || event.pull_request;
+    const isPullRequest = Boolean(event.pull_request);
+    const files = isPullRequest ? (await pages('pulls/' + number + '/files')).map(x => x.filename) : [];
+    const linked = [];
+    if (isPullRequest) for (const n of linkedNumbers(item.body, repo)) {
+      try { linked.push(await api('issues/' + n)); }
+      catch (error) { if (!error.message.endsWith('404')) throw error; }
+    }
+    const available = new Set((await pages('labels')).map(x => x.name));
+    const current = new Set(item.labels.map(x => x.name));
+    const additions = classify(item, files, linked).filter(x => available.has(x) && !current.has(x));
+    if (additions.length) await api('issues/' + number + '/labels', 'POST', { labels: additions });
+    console.log('Item #' + number + ': added ' + (additions.join(', ') || 'no labels'));
+    return { skipped: false, additions };
+  } catch (error) {
+    if (error.status !== 403) throw error;
+    const warning = 'Automatic labeling skipped because GitHub denied API access (HTTP 403); no labels were changed. Check repository or organization Actions token restrictions. CI continues.';
+    console.warn('::warning::' + warning);
+    if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, warning + '\n');
+    return { skipped: true, reason: 'github-api-forbidden' };
   }
-  const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-  const number = event.issue?.number || event.pull_request?.number;
-  if (!number) throw new Error('Missing issue or PR number');
-  const item = await api('issues/' + number);
-  const files = item.pull_request ? (await pages('pulls/' + number + '/files')).map(x => x.filename) : [];
-  const linked = [];
-  if (item.pull_request) for (const n of linkedNumbers(item.body, repo)) {
-    try { linked.push(await api('issues/' + n)); }
-    catch (error) { if (!error.message.endsWith('404')) throw error; }
-  }
-  const available = new Set((await pages('labels')).map(x => x.name));
-  const current = new Set(item.labels.map(x => x.name));
-  const additions = classify(item, files, linked).filter(x => available.has(x) && !current.has(x));
-  if (additions.length) await api('issues/' + number + '/labels', 'POST', { labels: additions });
-  console.log('Item #' + number + ': added ' + (additions.join(', ') || 'no labels'));
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await runLabeler();
