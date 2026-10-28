@@ -140,7 +140,16 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("not current.get('draft', False)", preflight_job)
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", preflight_job)
         hosted_header = hosted_job.split("    steps:\n", 1)[0]
-        self.assertIn("needs: [staging, hosted-staging-preflight]", hosted_header)
+        needs_line = next(
+            line.strip()
+            for line in hosted_header.splitlines()
+            if line.strip().startswith("needs:")
+        )
+        needs = {
+            dependency.strip()
+            for dependency in needs_line.partition(":")[2].strip().strip("[]").split(",")
+        }
+        self.assertEqual(needs, {"staging", "hosted-staging-preflight", "backend"})
         self.assertIn("always()", hosted_header)
         self.assertIn("needs.staging.result == 'success'", hosted_header)
         self.assertIn("needs.hosted-staging-preflight.result == 'success'", hosted_header)
