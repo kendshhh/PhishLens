@@ -53,13 +53,23 @@ does not claim installed-Chrome acceptance; that remains a separate human test.
   service's connected branch to `main`, keeping auto-deploy off. Keep the bootstrap
   branch until this setting has been updated.
 
-Configure `DATABASE_URL` directly in this service's Render environment. It must
-refer to the separate Neon development branch and database `phishlens_dev`.
-Set `APP_ENV=staging` and `STAGING_DATABASE_HOST` to the exact hostname in
-`DATABASE_URL`. Startup refuses other database names or a missing/mismatched host
-before migrations or seed run. The name guard cannot distinguish Neon branches:
-verify the host/branch privately in Neon. Never reuse the production connection
-or put it in an extension.
+Configure two credentials in this service's Render environment:
+
+- `DATABASE_URL` uses the branch-scoped `phishlens_staging_app` role for API
+  requests and synthetic seeding. This role must not create databases or roles,
+  replicate, or bypass row-level security. Grant only `CONNECT`, schema `USAGE`,
+  and the table/sequence operations the API requires.
+- `STAGING_MIGRATION_DATABASE_URL` uses the `neondb_owner` role on this staging
+  branch and is consumed only by the startup migration subprocess. The startup
+  process removes it before seeding or launching Uvicorn.
+
+Both URLs must target Neon branch `pr-58-staging`, database `phishlens_dev`, and
+the same exact host in `STAGING_DATABASE_HOST`. Set
+`STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging`.
+Startup rejects mismatched hosts, database names, or role identities before
+migrations. The trusted hosted-staging controller checks the environment
+variables without logging their values. Never reuse the production connection
+or put either credential in an extension.
 
 The Render runtime must reach Neon over IPv4. A failed deploy showed Render had no
 route to the endpoint's IPv6 address. `start_staging.py` resolves the configured
@@ -67,9 +77,9 @@ hostname's IPv4 addresses at startup and passes them to libpq while retaining th
 Neon hostname for TLS/SNI. Keep the hostname in `DATABASE_URL`; do not hard-code a
 resolved IP, since Neon may change its address records.
 
-Startup applies forward migrations and repeatable synthetic seed only to staging.
-The database role must permit migrations. Failed migrations fail startup; no
-rollback or production migration is performed by this workflow.
+Startup applies forward migrations through the staging-only migration URL and
+repeatable synthetic seed through the restricted app URL. Failed migrations fail
+startup; no rollback or production migration is performed by this workflow.
 
 ## GitHub configuration
 
