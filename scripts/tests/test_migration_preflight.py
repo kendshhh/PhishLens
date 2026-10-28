@@ -85,15 +85,37 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertIn("current=false", result["output"])
         self.assertIn("migration validation is blocked", result["summary"])
 
+    def test_api_token_is_used_only_after_trusted_default_branch_checkout(self):
+        workflow = self.workflow()
+        preflight_start = workflow.index("  migration-source-preflight:\n")
+        backend_start = workflow.index("  backend:\n", preflight_start)
+        staging_start = workflow.index("  staging:\n", backend_start)
+        preflight = workflow[preflight_start:backend_start]
+        backend = workflow[backend_start:staging_start]
+
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", preflight)
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", preflight)
+        self.assertIn("needs: migration-source-preflight", backend)
+        self.assertIn("if: always()", backend)
+        self.assertIn(
+            "if: always() && needs.migration-source-preflight.result == 'failure'",
+            backend,
+        )
+        backend_header = backend.split("    steps:\n", 1)[0]
+        self.assertNotIn("pull-requests: read", backend_header)
+        self.assertNotIn("GITHUB_TOKEN", backend)
+
     def test_only_current_pr_heads_reach_exact_source_checkout_and_validation(self):
         workflow = self.workflow()
         checkout_start = workflow.index("      - name: Check out exact hosted staging source")
         checkout_end = workflow.index("\n      - name:", checkout_start + 1)
         migration_start = workflow.index("      - name: Verify exact hosted staging migration history")
         migration_end = workflow.index("\n      - name:", migration_start + 1)
-        self.assertIn("steps.migration-source.outputs.current == 'true'", workflow[checkout_start:checkout_end])
-        self.assertIn("steps.migration-source.outputs.current == 'true'", workflow[migration_start:migration_end])
+        output = "needs.migration-source-preflight.outputs.current == 'true'"
+        self.assertIn(output, workflow[checkout_start:checkout_end])
+        self.assertIn(output, workflow[migration_start:migration_end])
 
 
 if __name__ == "__main__":
     unittest.main()
+

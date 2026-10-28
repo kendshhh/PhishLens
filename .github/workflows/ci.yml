@@ -79,55 +79,33 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  backend:
-    name: Backend checks
+  migration-source-preflight:
+    name: Migration source preflight
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: read
-
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: phishlens
-          POSTGRES_PASSWORD: ci-only-password
-          POSTGRES_DB: phishlens_dev
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U phishlens -d phishlens_dev"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev
-      RUN_DATABASE_TESTS: "1"
-      AI_MODE: mock
-      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
-
+    outputs:
+      current: ${{ steps.migration-source.outputs.current }}
     steps:
-      - name: Check out repository
+      # The lookup uses a trusted default-branch script, never the PR checkout.
+      - name: Check out trusted migration preflight controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            backend/requirements.txt
-            backend/requirements-dev.txt
 
       # Old workflow reruns keep the PR head captured when the run was queued.
       # Skip the historical staging check after the PR advances or closes.
       - name: Check whether migration source is still the current PR head
         id: migration-source
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MIGRATION_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -161,10 +139,61 @@ jobs:
                   raise SystemExit(1)
           PY
 
+  backend:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: migration-source-preflight
+    if: always() && !cancelled()
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: phishlens
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: phishlens_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U phishlens -d phishlens_dev"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_dev
+      RUN_DATABASE_TESTS: "1"
+      AI_MODE: mock
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Fail if migration-source preflight failed
+        if: always() && needs.migration-source-preflight.result == 'failure'
+        run: |
+          echo "Migration source could not be verified; backend checks cannot continue safely."
+          exit 1
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
       # Hosted staging deploys the PR head, while this job's default checkout is
       # GitHub's synthetic merge ref. Validate the exact deploy target as well.
       - name: Check out exact hosted staging source
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.migration-source.outputs.current == 'true'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.migration-source-preflight.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -189,7 +218,7 @@ jobs:
         run: python scripts/ci_backend.py --check-environment
 
       - name: Verify exact hosted staging migration history
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.migration-source.outputs.current == 'true'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.migration-source-preflight.outputs.current == 'true'
         run: python scripts/verify_migration_lineage.py --repo-root staging-target
 
       - name: Apply database migrations
@@ -484,3 +513,4 @@ jobs:
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+
