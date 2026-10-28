@@ -220,11 +220,17 @@ prototype is separate, local-only, and not yet exercised.
   `0003_saved_analysis_idempotency` on that branch. The shared `development`
   branch is at `0002_analysis_provenance`.
 - Render service metadata reports source branch `main`, auto-deploy off, and
-  service `phishlens-staging`. A read at 2026-10-28 14:59 UTC found the live
-  deployment `dep-dbh0qnugekts7391iqe0` at SHA
-  `ec6d58c60659da940771873bec5d389b372b1f45`, an API-triggered merge candidate
-  of `main` into `feat/87-saved-report-client`. This is the latest deployment
-  record, not an exact-head verification of PR #86.
+  service `phishlens-staging`. A later read at 2026-10-28 15:43 UTC found the
+  live deployment `dep-dbh14vbl550s738ddfc0`, API-triggered at 15:19:25 UTC and
+  finished at 15:20:52 UTC, on SHA
+  `57da457be77fcf7a132e3a5e2f0d704c676040d6`. `/version`, `/health`, and `/ready`
+  all returned HTTP 200; version identified `staging` and readiness reported a
+  connected database. A GitHub comparison with current main
+  `6414914dfa8eb8322839597c4cd6912145a442a0` found this deployment diverged from
+  main (13 commits ahead, one behind; merge base `79aef1a`). It is not current
+  main or PR #86 head `3fa617c1f53a44dcddd68de4468e6f3b6acc705f`, so its healthy
+  endpoints do not verify either exact candidate. The 14:59 observation at
+  `ec6d58c60659da940771873bec5d389b372b1f45` was superseded as the latest deploy.
 - PR #83's earlier deployment `dep-dbgo3v49v7es73b02igg` at SHA
   `e3c6e37fd6661aeb582bd000507ef8cac677c23f` was subsequently deactivated.
   At that SHA, `/version` reported the commit and `staging`; `/ready` returned
@@ -247,6 +253,11 @@ prototype is separate, local-only, and not yet exercised.
   API does not expose database connection values, so the exact configured host
   mapping and staging app-role privileges still require an owner-side check in
   Render/Neon before claiming least privilege.
+- The exact-SHA synthetic CRUD run above belongs to the deactivated PR #83 SHA
+  `e3c6e37`; it does not establish CRUD behavior for current staging SHA
+  `57da457` or current PR #86 head. PR #86's Hosted staging job is pending its
+  protected gate. Do not run a new staging write until the approved target and
+  exact candidate SHA are confirmed.
 
 ### October 19 follow-up
 

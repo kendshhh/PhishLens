@@ -15,7 +15,11 @@ observation, not a claim about later `main` commits.
 The staging service has auto-deploy off and is selected by exact commit from the
 hosted workflow. Staging deployment and guarded CRUD records in
 [staging.md](docs/devops/staging.md) are commit-specific; verify the recorded SHA
-before reusing them as current evidence.
+before reusing them as current evidence. The 2026-10-28 15:43 UTC read found
+staging live on `57da457be77fcf7a132e3a5e2f0d704c676040d6`; its endpoints were
+healthy, but that SHA diverges from current main and PR #86 head. The last exact
+staging CRUD result is from a deactivated earlier SHA, so current candidate CRUD
+acceptance remains pending.
 
 PR CI installs locked dependencies, runs backend and extension quality gates,
 requires disposable PostgreSQL CRUD tests, performs isolated API/client integration,

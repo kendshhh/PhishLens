@@ -10,23 +10,31 @@ not a claim that every later independent endpoint probe succeeded.
 ## Current verification — October 28, 2026
 
 Production service `phishlens-api` is configured on `main` with Render auto-deploy
-trigger `checksPass`. PR #84 merged as `e4ea032615a6663d787a5b44714b5fc982fc6355`.
-Main CI run [40636853223](https://github.com/kendshhh/PhishLens/actions/runs/40636853223)
-passed. Render deployment `dep-dbgoa7i9lscs738tse0g` was triggered by `new_commit`
-and went live at 2026-10-28T05:17:17.607Z. The exact `/version` response reported
-the production environment and that SHA. `/health` returned `{"status":"ok","service":"phishlens-api"}`;
-`/ready` returned `{"status":"ready","database":"connected"}`. All probes
-returned HTTP 200. These observations are recorded in [metrics.md](metrics.md).
+trigger `checksPass`. At 2026-10-28 15:39 UTC, main was
+`6414914dfa8eb8322839597c4cd6912145a442a0`. Main CI run
+[40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
+passed Backend and Extension; Workflow lint
+[40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515)
+passed. Render deployment
+[`dep-dbh18p6i0phs73d1mtag`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbh18p6i0phs73d1mtag)
+is Live on that exact SHA. `/version`, `/health`, and `/ready` returned HTTP 200;
+version reported production and the matching SHA, and readiness reported the
+database connected. See [metrics.md](metrics.md) for the 73.525-second deployment
+duration; merge-to-live time for this SHA is not measured.
 
-Staging service `phishlens-staging` has auto-deploy off and the Render source branch
-set to `main`. It was live on exact merge SHA
-`e3c6e37fd6661aeb582bd000507ef8cac677c23f` during this audit. `/version` identified
-`staging`, `/ready` returned HTTP 200, and the guarded synthetic API CRUD verifier
-passed and cleaned up its test record. No production CRUD write was made.
+Staging service `phishlens-staging` is configured on `main` with auto-deploy off.
+At 15:43 UTC, its latest Live deployment was
+[`dep-dbh14vbl550s738ddfc0`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh14vbl550s738ddfc0)
+on SHA `57da457be77fcf7a132e3a5e2f0d704c676040d6`; `/version`, `/health`, and
+`/ready` returned HTTP 200 and identified staging/database readiness. That SHA
+diverges from current main and PR #86 head, so it is not exact-candidate evidence.
+The earlier guarded synthetic CRUD result was on deactivated SHA `e3c6e37`; no
+new staging or production CRUD write was made. The exact Neon host mapping and
+staging app-role grants still need private owner verification.
 
-Production database CRUD persistence across refresh/redeploy and installed-Chrome
-behavior remain unverified. The production probes above establish live version,
-process health, and database readiness only.
+Production CRUD persistence across refresh/redeploy, installed-Chrome behavior,
+and exact-current-candidate staging behavior remain unverified. The production
+probes establish live version, process health, and database readiness only.
 
 For each deployment, retain main SHA, successful main CI, reviewer approval,
 Render deploy ID/trigger/live timestamp, and the live `/version`/health/readiness

@@ -1,5 +1,36 @@
 # Pipeline Metrics
 
+## Current main deployment observation — October 28, 2026
+
+At 2026-10-28 15:39 UTC, main was `6414914dfa8eb8322839597c4cd6912145a442a0`.
+[Main CI run 40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
+passed Backend and Extension; [Workflow lint run 40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515)
+passed. Render production deployment
+[`dep-dbh18p6i0phs73d1mtag`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbh18p6i0phs73d1mtag)
+was Live on that exact SHA. `/version`, `/health`, and `/ready` all returned
+HTTP 200; `/version` identified production and the same SHA, and `/ready`
+reported `database: connected`.
+
+Render reported a 73.525-second deployment duration from `startedAt` to
+`finishedAt`. This is one deployment observation, not merge-to-live lead time.
+The earlier 150.607-second merge-to-live observation refers to `e4ea032` and
+must not be attributed to this deployment. Production CRUD persistence after
+refresh/redeploy, user-facing latency, a controlled recovery duration, and a
+comparable optimization gain remain unmeasured. No production write was made.
+
+## Current staging observation — October 28, 2026
+
+At 15:43 UTC, the staging service's latest Live deployment was
+[`dep-dbh14vbl550s738ddfc0`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh14vbl550s738ddfc0)
+at SHA `57da457be77fcf7a132e3a5e2f0d704c676040d6`. Read-only `/version`,
+`/health`, and `/ready` probes all returned HTTP 200; the version identified
+`staging`, and readiness reported a connected database. Compared with current
+main `6414914dfa8eb8322839597c4cd6912145a442a0`, this SHA is divergent (13 ahead,
+one behind; merge base `79aef1a`), not the current main or PR #86 head. This is
+endpoint health evidence for that staging SHA only. The prior guarded CRUD result
+was on the now-deactivated `e3c6e37` SHA; no CRUD write was made against `57da457`.
+The exact Neon host mapping and app-role grants remain unverified.
+
 ## October 21 review (UTC observations October 20)
 
 [Raw run/job timestamps and bounded sample](evidence/2026-10-21-ci-measurements.json).
