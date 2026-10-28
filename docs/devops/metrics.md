@@ -219,3 +219,8 @@ For the October 28 no-cache extension baseline and the pending npm-cache
 comparison, see [optimizations.md](optimizations.md). Retain sample counts and
 whole-job timings; do not infer improvement from the 1–2 second install step alone.
 
+The first cold npm-cache candidate sample passed Extension checks on PR #86 run
+[40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002):
+cache miss, `npm ci` 1 second, whole job 11 seconds. This matches the 11-second
+no-cache baseline at one-second resolution, so there is no demonstrated gain yet.
+

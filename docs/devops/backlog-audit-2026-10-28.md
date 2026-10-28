@@ -30,6 +30,8 @@ snapshots as planning records, not fresh verification.
 | Staging CRUD | `scripts/verify_crud.mjs` passed with staging identity and expected-SHA guards. It created, read/listed, updated, cleared, and deleted one synthetic record and confirmed 404 after deletion. | The staging API and database support the guarded saved-analysis CRUD flow. No production write was made. This is not installed-Chrome or production persistence evidence. |
 | Existing CI cache | October 21 pip comparison was n=2 before/n=2 cached: install 9s to 7s, but whole staging job 40.5s to 44s. | No end-to-end pipeline speedup has been demonstrated. |
 | Extension cache baseline | [PR #83 run 40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771) and [PR #84 run 40635212213](https://github.com/kendshhh/PhishLens/actions/runs/40635212213) each took 11s for Extension checks; `npm ci` took 1s and 2s at one-second timestamp resolution. Neither used npm cache. | Small, noisy no-cache baseline only. The candidate cache change needs comparable cold and warm runs before it can be called an improvement. |
+| Cold npm-cache candidate | [PR #86 run 40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) passed Extension checks: cache miss, `npm ci` 1s, full job 11s. | Matches the baseline; no improvement is established. Warm sample is still required. |
+| Dependency alerts | GitHub's push response reported 18 alerts on default branch: 4 critical, 5 high, 4 moderate, 5 low. Local `npm audit --json` found 0 advisories in the current JavaScript lockfile. | Alert details were not exposed by the connected GitHub read tool. Check each alert in GitHub Security before changing dependency pins; do not infer that npm's result covers other ecosystems. |
 
 ## Priority map
 
@@ -78,6 +80,10 @@ evidence status, not a grade claim.
 - Added npm cache-hit instrumentation to CI while preserving `npm ci` and all
   extension checks. The change remains a candidate until comparable full-job
   measurements exist.
+- Preserved and included the existing Secretary workflow/report edits that
+  repair the workflow-contract failures observed on the first PR run.
+- Recorded the aggregate default-branch Dependabot count separately from the
+  clean JavaScript lockfile audit; alert-level triage remains open.
 - Updated pipeline, staging, metrics, optimization, runbook, and CI-maintenance
   evidence with October 28 live results and corrected stale statuses.
 - Did not modify shared Sheets, GitHub issues, protected environment settings,

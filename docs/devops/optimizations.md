@@ -47,8 +47,16 @@ if the full job does not improve without weakening coverage.
 
 | Sample | Commit/run | Cache hit | `npm ci` | Extension job |
 |---|---|---|---:|---:|
-| Cold | Pending PR run | Pending | Pending | Pending |
+| Cold | [`2606588`, run 40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002) | No | 1 s | 11 s |
 | Warm | Pending rerun | Pending | Pending | Pending |
+
+The cold run passed every Extension checks step, including lint, tests, manifest
+validation, packaging, and package identity. It matches the 11-second no-cache
+baseline; this sample does not demonstrate an improvement. The PR's first
+Staging integration attempt also exposed workflow-contract mismatches in the
+Secretary/dependency-review files; the follow-up commit includes the corresponding
+deployment-lock, event-scope, and reporting adjustments. Do not attribute that fix
+to npm caching.
 
 ## Secretary pilot candidates — not measured improvements
 
