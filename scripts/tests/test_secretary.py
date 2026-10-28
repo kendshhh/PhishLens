@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 from zipfile import ZipFile
 
 from scripts.secretary.core import MARKER, application_change, fingerprint, inspect, recommendation, render, safe
-from scripts.secretary.preview import completed_event, eligibility, invalidate_previous, package, verify_environment, verify_service
+from scripts.secretary.preview import completed_event, eligibility, invalidate_previous, package, preview_gate_enabled, verify_environment, verify_service
 from scripts.secretary.production import deployment_metrics, log_categories, pipeline_metrics
 from scripts.secretary.report import bot_comment, explain, latest_jobs, preview_state, report, validate_ai
 
@@ -183,6 +183,16 @@ class ReportTests(unittest.TestCase):
 
 
 class PreviewTests(unittest.TestCase):
+    def test_preview_gate_normalizes_case_and_whitespace(self):
+        with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": "  TRUE \t"}):
+            self.assertTrue(preview_gate_enabled())
+        with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": " true "}):
+            self.assertTrue(preview_gate_enabled())
+        with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": "yes"}):
+            self.assertFalse(preview_gate_enabled())
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(preview_gate_enabled())
+
     def test_duplicate_ci_completion_does_not_redeploy(self):
         api = Mock()
         api.request.side_effect = [[{"id": 9, "sha": SHA, "creator": {"login": "github-actions[bot]"},
