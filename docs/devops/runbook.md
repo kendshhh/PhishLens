@@ -7,6 +7,21 @@ the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
 
+## Current post-merge verification — October 29, 2026 00:31 UTC
+
+PR #86 merged as `1344fcb061272bac93ced5911f1ab8fbb3b6785d`; production deploy
+`dep-dbh8v6ivcj2c73fql7c0` is Live on that commit. Read-only `/version`,
+`/health`, and `/ready` requests returned HTTP 200, with the expected production
+identity and connected database. Staging deploy `dep-dbh8s8942hec73bo7bt0` is
+Live on candidate `fc7db9bf5441af4cd68ec2efbcbc7ac8efdc20a2`; the same read-only
+checks returned HTTP 200 and connected readiness.
+
+The guarded synthetic CRUD verifier passed against that exact staging SHA after
+the protected staging gate and the Neon `phishlens_staging_app` least-privilege
+check passed. It cleaned up its synthetic record. Production remains read-only;
+production persistence, installed-Chrome behavior, a comparable pipeline gain,
+and complete recovery duration remain unverified.
+
 ## Recorded production and prior staging verification — October 28, 2026 17:07 UTC
 
 Production service `phishlens-api` is configured on `main` with Render auto-deploy
@@ -36,7 +51,7 @@ privileges and repeat the read-only check before synthetic CRUD is run. The
 historical guarded CRUD evidence on deactivated SHA `e3c6e37` does not verify this
 candidate.
 
-## Current PR #86 staging gate — October 28, 2026 17:31 UTC
+## Historical PR #86 staging gate — October 28, 2026 17:31 UTC
 
 At this snapshot, current PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86`
 passed all automated checks except Hosted staging, pending at the protected
