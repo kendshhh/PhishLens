@@ -4,17 +4,15 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
-## Current Status
+## Current Status — October 28, 2026
 
-The project is in Sprint 1: foundation and walking skeleton.
-
-Backend CI and Render automatic deployment are implemented. PostgreSQL migration,
-repeatable seed, and seed integrity checks run in isolated CI. Public /health and
-/ready respond successfully; readiness performs a real database query.
-The Chrome extension is implemented and packaged. Analysis and history share the
-backend origin in `extension/js/config.js`; staging packaging replaces that origin
-for both features. AI adapters and history reads are implemented. Saving new
-assessments, full CRUD, and hosted AI/Chrome acceptance remain outstanding.
+Sprint 2 is in integration and acceptance. Backend and extension checks run in CI;
+disposable PostgreSQL gates migrations, seed, and saved-analysis CRUD. Render
+production auto-deploys checked `main`, and the staging service has passed exact-SHA
+health, readiness, and guarded synthetic CRUD verification. Saved-analysis API
+CRUD is implemented. Production record persistence across refresh or redeploy,
+installed-Chrome acceptance, and real-provider AI evaluation still need separate
+evidence. See the [current DevOps backlog audit](docs/devops/backlog-audit-2026-10-28.md).
 
 ## Planned Features
 
@@ -63,7 +61,7 @@ communicated to the instructor at Consultation 1.
 Members coordinate before editing shared files or another
 member's components.
 
-## Sprint 1 Goals
+## Original Sprint 1 Goals (Historical)
 
 - Establish the repository and collaboration workflow.
 - Create a backlog covering the instructor's requirements.
@@ -95,9 +93,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commands and team ownership.
 
 ### Automation Status
 
-Backend CI/CD is configured and verified. Extension checks and full application
-acceptance remain pending. Extension tests, validation, packaging, and isolated and
-hosted staging jobs are configured. See [PIPELINE.md](PIPELINE.md) for implemented checks,
+Backend CI/CD is configured and verified. Extension tests, validation, packaging,
+isolated API integration, and hosted staging checks are configured. Full application
+acceptance remains pending for installed Chrome, production persistence, and real AI.
+See [PIPELINE.md](PIPELINE.md) for implemented checks,
 [metrics](docs/devops/metrics.md) for the measured snapshot, and the
 [runbook](docs/devops/runbook.md) for deployment and recovery.
 
@@ -150,7 +149,10 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
 is safe to run more than once. Each teammate needs their own private `.env`; Git does
 not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
-the deletion policy.
+the deletion policy. `.env.example` contains only settings read by the local app.
+Hosted staging credentials and GitHub environment secrets are listed by name in
+[the staging runbook](docs/devops/staging.md); configure them only in their protected
+stores.
 
 ### Run AI analysis locally
 

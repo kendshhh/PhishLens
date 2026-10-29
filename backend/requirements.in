@@ -3,5 +3,6 @@ uvicorn
 SQLAlchemy>=2.1.6,<2.2
 alembic>=1.19,<2
 python-dotenv>=1,<2
+certifi>=2026.10.19
 psycopg[binary]>=3,<4
 google-genai>=2.33.0,<3
