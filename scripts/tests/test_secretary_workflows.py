@@ -22,7 +22,8 @@ class SecretaryWorkflowTests(unittest.TestCase):
         permissions = workflow.split("jobs:", 1)[0]
 
         self.assertIn("pull_request:", workflow)
-        self.assertIn("if: vars.DEPENDENCY_REVIEW_ENABLED == 'true'", workflow)
+        self.assertIn("if: vars.DEPENDENCY_REVIEW_ENABLED != 'false'", workflow)
+        self.assertIn("advisory review by default", workflow)
         self.assertIn("contents: read", permissions)
         self.assertIn("pull-requests: read", permissions)
         self.assertIn("warn-only: true", workflow)
