@@ -66,6 +66,7 @@ claim installed-Chrome acceptance; that remains a separate human test.
   Render service settings were changed from stale bootstrap branch
   `ci/staging-validation` to `main`. Build and start commands remain unchanged.
   The change updates the service source setting; it does not deploy a new commit.
+  The hosted workflow uses the Render API to deploy the selected PR merge SHA.
 
 The selected staging target is Neon branch `pr-58-staging`, database
 `phishlens_dev`. Keep development on the `development` branch and production on
@@ -97,10 +98,10 @@ staging database host/name before it requests a deployment. It then deploys the
 same merge SHA and records the migration head with the staging evidence.
 
 The previous PR #68 staging artifact was built from `520779…`, while the live
-backend was `2ce4051…`; those were not a paired client/backend check. After this
-guard change merges, rerun the protected workflow and use its newly generated
-artifact only after `/version`, its artifact source SHA, the Neon branch and
-database, and the Alembic revision are recorded together.
+backend was `2ce4051…`; those were not a paired client/backend check. For later
+PRs, use the protected workflow's newly generated artifact only after `/version`,
+its artifact source SHA, the Neon branch and database, and the Alembic revision
+are recorded together.
 
 Configure two credentials in this service's Render environment:
 
@@ -125,8 +126,8 @@ migrations or seed run. The trusted hosted-staging controller checks the
 environment variables without logging their values. The name check cannot
 distinguish Neon branches, so verify the host and branch privately in Neon.
 Never reuse the production connection or put either credential in an extension.
-Until a current protected deployment is live and its commit and migration
-revision are recorded, do not perform hosted staging CRUD acceptance.
+Before any new hosted CRUD acceptance, confirm the protected deployment SHA and
+migration revision; the recorded exact-SHA result is below.
 
 The Render runtime must reach Neon over IPv4. A failed deploy showed Render had no
 route to the endpoint's IPv6 address. `start_staging.py` resolves the configured
@@ -201,35 +202,99 @@ bypass. Existing PR branches need this workflow from current main after rollout.
 
 Node smoke checks verify API/client integration, not Chrome DOM rendering,
 extension permission enforcement, real email analysis, or AI inference. Those
-claims require separate evidence. The current API supports persistent
-saved-analysis CRUD, and PR #58 records a successful synthetic API CRUD check on
-staging; broader CRUD acceptance remains gated. Installed-Chrome acceptance and
+claims require separate evidence. The API supports persistent saved-analysis
+CRUD, and PR #58 records a successful synthetic API CRUD check on staging.
+Hosted staging smoke checks saved-history reads; separate synthetic CRUD checks
+passed on staging for PR #58 and for PR #83's exact deployed merge SHA, as
+recorded below. Those results do not establish behavior for a later deployed SHA,
+and broader CRUD acceptance remains gated. Installed-Chrome acceptance and
 real-provider/AI verification remain separate evidence items. The Neon Auth CRUD
 prototype is separate, local-only, and not yet exercised.
 
 ## Verification status
 
-### October 28, 2026 target reconciliation
+### Current PR #86 gate — October 28, 2026 17:31 UTC
+
+At this snapshot, PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` passed all
+automated checks except Hosted staging, which is pending at the protected
+`staging` environment; diagnostics returned no steps or reason. No deployment
+for this head is claimed. The Live deployment below is from the previous code
+head and is historical current-service evidence only. The Neon mapping and
+excess runtime grants remain as recorded below; no grant change or write was made.
+
+### Previous live candidate snapshot — October 28, 2026 17:07 UTC
+
+PR #86 Hosted staging passed. Render service `phishlens-staging` is Live on
+deployment [`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg),
+exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`. Read-only GETs at
+17:07 UTC returned HTTP 200 for `/version`, `/health`, and `/ready`; `/version`
+reported the exact SHA and `staging`, and `/ready` reported the database
+connected. The staging Neon mapping is `pr-58-staging/phishlens_dev`.
+
+A read-only grant check at 17:05 UTC still found `CREATE` on `public` and
+`INSERT`, `UPDATE`, and `DELETE` on `alembic_version`, `analyzed_emails`, and
+`users` for `phishlens_staging_app`. No role change or CRUD write was made.
+The environment owner must remove excess grants and repeat the read-only check
+before Kendra runs the already authorized guarded synthetic staging CRUD check.
+Production remains read-only. Current Chrome acceptance, production persistence,
+real-model evaluation, complete recovery timing, and event/sign-off evidence are
+still open. See the [Kendra Week 1–4 closeout](kendra-week1-4-closeout-2026-10-28.md).
+
+### Earlier October 28 snapshot — 15:43 UTC (superseded)
 
 - The dedicated staging database target is Neon branch `pr-58-staging`, database
   `phishlens_dev`. A read-only Neon check found Alembic revision
   `0003_saved_analysis_idempotency` on that branch. The shared `development`
   branch is at `0002_analysis_provenance`.
-- Render's staging service source branch is `ci/staging-validation`, with
-  auto-deploy off. That Git branch is separate from the Neon database branch.
-  Render `/version` reported deployed commit
-  `91b964d3bdb91b114a654065db184153a25403e0` in the staging environment.
-- The Render service metadata does not expose `DATABASE_URL`. Its current
-  branch-to-host mapping still requires private confirmation in Render and Neon
-  before another hosted write.
-- The `PhishLens-Staging-Extension` artifact from workflow run `40542904034` was
-  built from source commit `d15a5b109a6170599a943213f22219ee1069f100` (artifact
-  `12779275763`, expires November 3, 2026). The extension files are unchanged
-  between that source and the deployed commit above, so it can serve as the
-  current non-auth baseline. The artifact's successful Hosted staging run was
-  for its own source/deployment candidate; it is not an exact-SHA combined check
-  for the later `91b964d3` deployment. It does not verify a future Auth
-  implementation.
+- At 2026-10-28 16:08 UTC, a read-only Neon check on `pr-58-staging/phishlens_dev`
+  found the `phishlens_staging_app` role. It can log in, is not superuser, and
+  cannot create databases or roles. However, it has `CREATE` on the `public`
+  schema and `DELETE`, `INSERT`, `REFERENCES`, `SELECT`, `TRIGGER`, `TRUNCATE`,
+  and `UPDATE` on `alembic_version`, `analyzed_emails`, and `users`. The schema
+  and table grants exceed the documented minimum app role. No privilege change
+  was made. The environment owner should remove unnecessary grants, confirm the
+  migration table is not writable by the runtime role, and repeat this read-only
+  inspection before staging CRUD acceptance.
+- Render service metadata reports source branch `main`, auto-deploy off, and
+  service `phishlens-staging`. A later read at 2026-10-28 15:43 UTC found the
+  live deployment `dep-dbh14vbl550s738ddfc0`, API-triggered at 15:19:25 UTC and
+  finished at 15:20:52 UTC, on SHA
+  `57da457be77fcf7a132e3a5e2f0d704c676040d6`. `/version`, `/health`, and `/ready`
+  all returned HTTP 200; version identified `staging` and readiness reported a
+  connected database. A GitHub comparison with current main
+  `6414914dfa8eb8322839597c4cd6912145a442a0` found this deployment diverged from
+  main (13 commits ahead, one behind; merge base `79aef1a`). It is not current
+  main or PR #86 head `3fa617c1f53a44dcddd68de4468e6f3b6acc705f`, so its healthy
+  endpoints do not verify either exact candidate. The 14:59 observation at
+  `ec6d58c60659da940771873bec5d389b372b1f45` was superseded as the latest deploy.
+- PR #83's earlier deployment `dep-dbgo3v49v7es73b02igg` at SHA
+  `e3c6e37fd6661aeb582bd000507ef8cac677c23f` was subsequently deactivated.
+  At that SHA, `/version` reported the commit and `staging`; `/ready` returned
+  HTTP 200 with database connected. The exact-SHA guarded CRUD verifier passed
+  against that staging origin: it created a synthetic analysis, read/listed it,
+  edited and cleared notes, then deleted it and confirmed a 404. No production
+  write was made. Command:
+  `node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha e3c6e37fd6661aeb582bd000507ef8cac677c23f --allow-writes`.
+- The `PhishLens-Staging-Extension` artifact and hosted smoke were produced by
+  PR #83 run [40635217771](https://github.com/kendshhh/PhishLens/actions/runs/40635217771).
+  Package identity and API integration passed. Installed-Chrome acceptance is
+  still pending.
+- An earlier staging snapshot identified source branch `ci/staging-validation`
+  and deployed SHA `91b964d3bdb91b114a654065db184153a25403e0`. Its artifact record
+  for workflow run `40542904034` points to source commit
+  `d15a5b109a6170599a943213f22219ee1069f100` (artifact `12779275763`, expires
+  November 3, 2026). That record describes its own deployment candidate; it does
+  not identify the current live deployment or verify the later candidate above.
+- Production and staging branch names are distinct in Neon. The Render service
+  API does not expose database connection values, so the exact configured host
+  mapping and staging app-role privileges still require an owner-side check in
+  Render/Neon before claiming least privilege.
+- The exact-SHA synthetic CRUD run above belongs to the deactivated PR #83 SHA
+  `e3c6e37`; it does not establish CRUD behavior for current staging SHA
+  `57da457` or current PR #86 head. PR #86's Hosted staging job is pending its
+  protected gate. Do not run a new staging write until the approved target and
+  exact candidate SHA are confirmed and the runtime role's excess grants are
+  reviewed.
 
 ### October 19 follow-up
 

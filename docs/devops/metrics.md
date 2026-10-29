@@ -1,5 +1,69 @@
 # Pipeline Metrics
 
+## Current main deployment observation — October 28, 2026
+
+At 2026-10-28 15:39 UTC, main was `6414914dfa8eb8322839597c4cd6912145a442a0`.
+[Main CI run 40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
+passed Backend and Extension; [Workflow lint run 40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515)
+passed. Render production deployment
+[`dep-dbh18p6i0phs73d1mtag`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbh18p6i0phs73d1mtag)
+was Live on that exact SHA. `/version`, `/health`, and `/ready` all returned
+HTTP 200; `/version` identified production and the same SHA, and `/ready`
+reported `database: connected`.
+
+Render reported a 73.525-second deployment duration from `startedAt` to
+`finishedAt`. This is one deployment observation, not merge-to-live lead time.
+The earlier 150.607-second merge-to-live observation refers to `e4ea032` and
+must not be attributed to this deployment. Production CRUD persistence after
+refresh/redeploy, user-facing latency, a controlled recovery duration, and a
+comparable optimization gain remain unmeasured. No production write was made.
+
+## Read-only production endpoint timing — October 28, 2026 15:50 UTC
+
+Five sequential GET requests per route were timed from this Windows PowerShell
+client with `Invoke-WebRequest`; no saved-analysis route or production data was
+read. All 10 requests returned HTTP 200.
+
+| Route | Samples (ms, request order) | n | Min | Median | Max |
+|---|---|---:|---:|---:|---:|
+| `/health` | 835.5, 183.2, 414.3, 179.2, 227.7 | 5 | 179.2 | 227.7 | 835.5 |
+| `/ready` | 868.6, 99.3, 185.4, 496.9, 243.7 | 5 | 99.3 | 243.7 | 868.6 |
+
+These are client round-trip times, including local network/TLS/Render routing and
+any runner or service startup variance; they are not server processing times.
+The sample is small and ranged widely, so it is a smoke baseline only. It does not
+measure extension/API user-flow latency, throughput, or load behavior. Do not
+compare it with CI job/deploy durations or claim a performance improvement.
+
+## Previous staging deployment observation — October 28, 2026 17:07 UTC
+
+PR #86 head `aa91511c7eb0c43b8d52eb3adc26ac607a537293` passed Hosted staging.
+Render deployment
+[`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg)
+is Live on exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`.
+Read-only `/version`, `/health`, and `/ready` requests at 17:07 UTC returned
+HTTP 200; version identified the exact merge SHA and `staging`, and readiness
+reported a connected database. The target maps to Neon `pr-58-staging` /
+`phishlens_dev`.
+
+A 17:05 UTC read-only grant check still found `CREATE` on the public schema and
+`INSERT`, `UPDATE`, and `DELETE` on `alembic_version`, `analyzed_emails`, and
+`users` for `phishlens_staging_app`. No staging or production write was made.
+The prior guarded CRUD result belongs to deactivated SHA `e3c6e37`; it does not
+verify this candidate. The runbook requires environment-owner privilege cleanup
+and a second read-only check before exact-SHA staging CRUD acceptance. Production
+persistence after refresh/redeploy, installed-Chrome behavior, recovery
+duration, and a comparable whole-pipeline gain remain unmeasured.
+
+## Current PR #86 gate status — October 28, 2026 17:31 UTC
+
+At this snapshot, PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` passed all
+automated checks except Hosted staging, pending at the protected `staging`
+environment; diagnostics returned no steps or reason. The Live deployment above
+belongs to the previous PR code head, so it is not current-head deployment
+proof. The mapped staging role still has excess grants, and no staging or
+production write was made.
+
 ## October 21 review (UTC observations October 20)
 
 [Raw run/job timestamps and bounded sample](evidence/2026-10-21-ci-measurements.json).
@@ -195,4 +259,36 @@ these are not lifetime totals. One matched merge-to-Render-live sample is 172.56
 seconds. Recovery time is unavailable. The observer verified production SHA
  d6e5998, health, and readiness at 01:35:35 UTC. Direct public read-only probes
 subsequently returned 200 for version, health, readiness, and synthetic history.
+
+## October 28 current delivery sample
+
+PR #84 merged as `e4ea032615a6663d787a5b44714b5fc982fc6355` at
+2026-10-28T05:14:47Z. Main CI
+[40636853223](https://github.com/kendshhh/PhishLens/actions/runs/40636853223)
+passed Backend checks and Extension checks. Render production deployment
+[`dep-dbgoa7i9lscs738tse0g`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbgoa7i9lscs738tse0g)
+was triggered by `new_commit` and went live at 05:17:17.607Z. Merge-to-live for
+this single sample is **150.607 seconds**. Render deploy duration was 63.274
+seconds. The production `/version`, `/health`, and `/ready` endpoints each returned
+HTTP 200; the version matched the merged SHA and readiness reported a connected
+database. This is one measured delivery sample, not an optimization comparison.
+
+The staging service was live on exact SHA
+`e3c6e37fd6661aeb582bd000507ef8cac677c23f`; its `/version` identified `staging`
+and `/ready` returned HTTP 200. The guarded synthetic CRUD verifier passed against
+that staging SHA and removed the record it created. Production writes were not
+performed. Production record persistence across refresh/redeploy remains unknown.
+
+For the October 28 no-cache extension baseline and completed one-cold/one-warm
+npm-cache trial, see [optimizations.md](optimizations.md). No whole-job gain was
+demonstrated; the cache and instrumentation were removed. Retain sample counts
+and whole-job timings; do not infer improvement from the 1–2 second install step alone.
+
+The npm-cache trial passed Extension checks on PR #86 runs
+[40638816002](https://github.com/kendshhh/PhishLens/actions/runs/40638816002)
+(cold miss, `npm ci` 1 second, whole job 11 seconds) and
+[40639539541](https://github.com/kendshhh/PhishLens/actions/runs/40639539541)
+(warm hit, `npm ci` 1 second, whole job 18 seconds). No end-to-end gain was
+demonstrated; the cache and instrumentation were removed. This small sample does
+not establish that the cache caused the longer warm job.
 

@@ -1,11 +1,55 @@
 # Deployment and Recovery Runbook
 
-## Current verification and playbook handoff
+## Historical October 21 playbook handoff
 
 See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
 the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
+
+## Recorded production and prior staging verification — October 28, 2026 17:07 UTC
+
+Production service `phishlens-api` is configured on `main` with Render auto-deploy
+trigger `checksPass`. At 2026-10-28 15:39 UTC, main was
+`6414914dfa8eb8322839597c4cd6912145a442a0`. Main CI run
+[40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
+passed Backend and Extension; Workflow lint
+[40715810515](https://github.com/kendshhh/PhishLens/actions/runs/40715810515)
+passed. Render deployment
+[`dep-dbh18p6i0phs73d1mtag`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbh18p6i0phs73d1mtag)
+is Live on that exact SHA. `/version`, `/health`, and `/ready` returned HTTP 200;
+version reported production and the matching SHA, and readiness reported the
+database connected. See [metrics.md](metrics.md) for the 73.525-second deployment
+duration; merge-to-live time for this SHA is not measured.
+
+Staging service `phishlens-staging` is configured on `main` with auto-deploy off.
+PR #86 Hosted staging passed and deployment
+[`dep-dbh2cjnf3r2c73emoprg`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh2cjnf3r2c73emoprg)
+is Live on exact merge SHA `d46cc09ecf7258a6bd10475f00cc8da035ef5e9a`.
+Read-only `/version`, `/health`, and `/ready` GETs at 17:07 UTC returned HTTP
+200; version matched the candidate and readiness reported the database connected.
+The mapped Neon target is `pr-58-staging/phishlens_dev`. A read-only grant check
+at 17:05 UTC still found public-schema `CREATE` and `INSERT`, `UPDATE`, and
+`DELETE` on the migration and application tables for the runtime role. No grant
+change or database write was made. The environment owner must remove the excess
+privileges and repeat the read-only check before synthetic CRUD is run. The
+historical guarded CRUD evidence on deactivated SHA `e3c6e37` does not verify this
+candidate.
+
+## Current PR #86 staging gate — October 28, 2026 17:31 UTC
+
+At this snapshot, current PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86`
+passed all automated checks except Hosted staging, pending at the protected
+`staging` environment; connected diagnostics returned no steps or reason. The
+Live staging candidate described above belongs to the previous PR code head and
+does not establish this head's deployment or acceptance. The runtime role still
+has excess grants, so staging CRUD remains blocked until the environment owner
+cleans them up and a read-only recheck passes.
+
+Production CRUD persistence across refresh/redeploy and installed-Chrome behavior
+remain unverified. Production probes establish live version, process health, and
+database readiness only. See [Kendra's Week 1–4 closeout](kendra-week1-4-closeout-2026-10-28.md)
+for her per-week status and remaining owner-dependent acceptance.
 
 For each deployment, retain main SHA, successful main CI, reviewer approval,
 Render deploy ID/trigger/live timestamp, and the live `/version`/health/readiness
@@ -28,7 +72,7 @@ the exact failed deployment in Render before deciding recovery. The pilot never
 deploys production, changes secrets, applies production migrations, or executes
 rollback. The existing human recovery procedure below remains authoritative.
 
-## Current Status
+## Historical initial scaffold status
 
 The FastAPI backend scaffold is publicly deployed on Render.
 

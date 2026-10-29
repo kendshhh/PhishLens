@@ -309,7 +309,7 @@ Review this draft before creating or assigning an issue or editing the board.
 |---|---|
 | GitHub Actions | Existing hosted runners and artifacts. Public-repo standard-runner billing differs from private quotas; check your account billing. Six-hour reconciliation plus PR events uses runner time. |
 | Render | Reuses the existing free-plan staging/production services; no new paid resources are created. Free limits and sleep/cold starts apply; shared staging avoids a service per PR. |
-| Neon | Reuses dedicated branch `pr-58-staging` and database `phishlens_dev`, separate from development and production; compute/storage/branch quotas still apply. Do not assume the free plan is unlimited. |
+| Neon | Staging uses the dedicated `pr-58-staging` branch and `phishlens_dev` database, separate from development and production. Compute, storage, and branch quotas still apply; do not assume the free plan is unlimited. |
 | Gemini | Disabled by default, no live CI calls. Model/account quota, pricing and data terms apply when enabled. |
 
 Checked references: [GitHub billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions),
