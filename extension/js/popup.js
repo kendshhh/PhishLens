@@ -46,6 +46,8 @@ export function createPopupController(client, doc = document) {
 
   function setBusy(value) {
     busy = value;
+    ui.subject.disabled = value;
+    ui.body.disabled = value;
     for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete]) {
       button.disabled = value;
     }

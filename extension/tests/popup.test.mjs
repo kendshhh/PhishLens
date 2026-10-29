@@ -191,6 +191,35 @@ test("editing notes alone preserves null feedback", async () => {
   assert.equal(updated.feedback, null);
 });
 
+test("unknown feedback is labeled unavailable", async () => {
+  const invalid = record(id);
+  invalid.feedback = "unrecognized";
+  const { ui, controller } = setup(createInMemoryAnalysisClient([invalid]));
+  await controller.loadDetail(id);
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Feedback unavailable");
+});
+
+test("create subject and body stay disabled until save settles", async () => {
+  let resolveCreate;
+  const saved = record("created", "New draft");
+  const client = {
+    ...createInMemoryAnalysisClient(),
+    createAnalysis() { return new Promise(resolve => { resolveCreate = resolve; }); },
+    async listAnalyses() { return [saved]; },
+    async getAnalysis() { return saved; }
+  };
+  const { ui } = setup(client);
+  ui.get("create-subject").value = "New draft";
+  ui.get("create-body").value = "Synthetic body";
+  const saving = ui.get("create-form").fire("submit");
+  assert.equal(ui.get("create-subject").disabled, true);
+  assert.equal(ui.get("create-body").disabled, true);
+  resolveCreate(saved);
+  await saving;
+  assert.equal(ui.get("create-subject").disabled, false);
+  assert.equal(ui.get("create-body").disabled, false);
+});
+
 test("failed post-create history refresh warning is not replaced by detail success", async () => {
   const saved = record("created", "Saved but refresh unavailable");
   const client = {
@@ -241,11 +270,17 @@ test("failed create preserves input and duplicate pending submit is ignored", as
   ui.get("create-body").value = "Keep this body";
   await ui.get("create-form").fire("submit");
   assert.equal(ui.get("create-body").value, "Keep this body");
+  assert.equal(ui.get("create-subject").disabled, false);
+  assert.equal(ui.get("create-body").disabled, false);
   const first = ui.get("create-form").fire("submit");
   const second = ui.get("create-form").fire("submit");
   await Promise.resolve();
   assert.equal(creates, 2);
+  assert.equal(ui.get("create-subject").disabled, true);
+  assert.equal(ui.get("create-body").disabled, true);
   release(); await Promise.all([first, second]);
+  assert.equal(ui.get("create-subject").disabled, false);
+  assert.equal(ui.get("create-body").disabled, false);
 });
 
 test("empty body validation focuses the field and never calls create", async () => {
