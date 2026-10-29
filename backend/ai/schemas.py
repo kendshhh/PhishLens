@@ -58,6 +58,11 @@ class AIAnalysisResult(AIAnalysisPayload):
     explanation_source: Literal["model", "rules", "mock"] | None = None
     input_truncated: bool | None = None
     windows_processed: int | None = Field(default=None, ge=1)
+    phishing_score: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    raw_margin: float | None = Field(default=None, allow_inf_nan=False)
+    alert_threshold_score: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    model_alert: bool | None = None
+    assessment: str | None = Field(default=None, max_length=1000)
 
 
 class AnalysisRequest(BaseModel):
@@ -84,7 +89,7 @@ class AnalysisRequest(BaseModel):
 
 class AnalysisResponse(AIAnalysisResult):
     risk_level: Literal["low", "medium", "high"]
-    mode: Literal["mock", "gemini", "local"]
+    mode: Literal["mock", "gemini", "local", "tfidf"]
 
 
 class AnalysisErrorField(BaseModel):

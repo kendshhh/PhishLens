@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="864pt" height="734.4pt" viewBox="0 0 864 734.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-27T21:46:42.687219</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 734.4 
+L 864 734.4 
+L 864 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="line2d_1">
+    <path d="M 155.088 142.749 
+L 155.088 652.698 
+" clip-path="url(#p91a67a738c)" style="fill: none; stroke: #e4eaf0; stroke-width: 3; stroke-linecap: square"/>
+   </g>
+   <g id="PathCollection_1">
+    <defs>
+     <path id="mdf4614645f" d="M 0 4.609772 
+C 1.222526 4.609772 2.395145 4.124058 3.259601 3.259601 
+C 4.124058 2.395145 4.609772 1.222526 4.609772 0 
+C 4.609772 -1.222526 4.124058 -2.395145 3.259601 -3.259601 
+C 2.395145 -4.124058 1.222526 -4.609772 0 -4.609772 
+C -1.222526 -4.609772 -2.395145 -4.124058 -3.259601 -3.259601 
+C -4.124058 -2.395145 -4.609772 -1.222526 -4.609772 0 
+C -4.609772 1.222526 -4.124058 2.395145 -3.259601 3.259601 
+C -2.395145 4.124058 -1.222526 4.609772 0 4.609772 
+z
+" style="stroke: #087f78"/>
+    </defs>
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#mdf4614645f" x="155.088" y="147.798" style="fill: #087f78; stroke: #087f78"/>
+    </g>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="150.915188" transform="rotate(-0 118.9296 150.915188)">18 Oct</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="143.097061" transform="rotate(-0 187.2288 143.097061)">First saved screen</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="159.239152" transform="rotate(-0 187.2288 159.239152)">40 synthetic development cases; an early diagnostic.</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #087f78" x="822.0096" y="142.057491" transform="rotate(-0 822.0096 142.057491)">MILESTONE</text>
+   </g>
+   <g id="PathCollection_2">
+    <defs>
+     <path id="ma571ccd9b8" d="M 0 4.609772 
+C 1.222526 4.609772 2.395145 4.124058 3.259601 3.259601 
+C 4.124058 2.395145 4.609772 1.222526 4.609772 0 
+C 4.609772 -1.222526 4.124058 -2.395145 3.259601 -3.259601 
+C 2.395145 -4.124058 1.222526 -4.609772 0 -4.609772 
+C -1.222526 -4.609772 -2.395145 -4.124058 -3.259601 -3.259601 
+C -4.124058 -2.395145 -4.609772 -1.222526 -4.609772 0 
+C -4.609772 1.222526 -4.124058 2.395145 -3.259601 3.259601 
+C -2.395145 4.124058 -1.222526 4.609772 0 4.609772 
+z
+" style="stroke: #b56b0c"/>
+    </defs>
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#ma571ccd9b8" x="155.088" y="198.288" style="fill: #b56b0c; stroke: #b56b0c"/>
+    </g>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="201.405188" transform="rotate(-0 118.9296 201.405188)">22 Oct</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="193.587061" transform="rotate(-0 187.2288 193.587061)">Hosted quota stopped a run</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="209.729152" transform="rotate(-0 187.2288 209.729152)">Incomplete hosted output cannot stand in for a completed suite.</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #b56b0c" x="822.0096" y="192.547491" transform="rotate(-0 822.0096 192.547491)">SETBACK</text>
+   </g>
+   <g id="PathCollection_3">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#ma571ccd9b8" x="155.088" y="248.778" style="fill: #b56b0c; stroke: #b56b0c"/>
+    </g>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="251.895188" transform="rotate(-0 118.9296 251.895188)">23 Oct</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="244.077061" transform="rotate(-0 187.2288 244.077061)">Leakage preflight stopped training</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="260.219152" transform="rotate(-0 187.2288 260.219152)">Overlap and a URL-only adversarial archive blocked email claims.</text>
+   </g>
+   <g id="text_12">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #b56b0c" x="822.0096" y="243.037491" transform="rotate(-0 822.0096 243.037491)">SETBACK</text>
+   </g>
+   <g id="PathCollection_4">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#mdf4614645f" x="155.088" y="299.268" style="fill: #087f78; stroke: #087f78"/>
+    </g>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="302.385187" transform="rotate(-0 118.9296 302.385187)">23 Oct</text>
+   </g>
+   <g id="text_14">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="294.567061" transform="rotate(-0 187.2288 294.567061)">Smaller academic pilot completed</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="310.709152" transform="rotate(-0 187.2288 310.709152)">Three models, frozen 2% validation target and browser timing.</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #087f78" x="822.0096" y="293.527491" transform="rotate(-0 822.0096 293.527491)">MILESTONE</text>
+   </g>
+   <g id="PathCollection_5">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#ma571ccd9b8" x="155.088" y="349.758" style="fill: #b56b0c; stroke: #b56b0c"/>
+    </g>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="352.875187" transform="rotate(-0 118.9296 352.875187)">23 Oct</text>
+   </g>
+   <g id="text_18">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="345.057061" transform="rotate(-0 187.2288 345.057061)">Language limited human review</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="361.199152" transform="rotate(-0 187.2288 361.199152)">Spanish email content could not be assessed by the reviewer.</text>
+   </g>
+   <g id="text_20">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #b56b0c" x="822.0096" y="344.017491" transform="rotate(-0 822.0096 344.017491)">SETBACK</text>
+   </g>
+   <g id="PathCollection_6">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#ma571ccd9b8" x="155.088" y="400.248" style="fill: #b56b0c; stroke: #b56b0c"/>
+    </g>
+   </g>
+   <g id="text_21">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="403.365187" transform="rotate(-0 118.9296 403.365187)">24 Oct</text>
+   </g>
+   <g id="text_22">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="395.547061" transform="rotate(-0 187.2288 395.547061)">Checkpoint training overlap found</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="411.689152" transform="rotate(-0 187.2288 411.689152)">The English revision halted before new test scoring.</text>
+   </g>
+   <g id="text_24">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #b56b0c" x="822.0096" y="394.507491" transform="rotate(-0 822.0096 394.507491)">SETBACK</text>
+   </g>
+   <g id="PathCollection_7">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#mdf4614645f" x="155.088" y="450.738" style="fill: #087f78; stroke: #087f78"/>
+    </g>
+   </g>
+   <g id="text_25">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="453.855187" transform="rotate(-0 118.9296 453.855187)">24 Oct</text>
+   </g>
+   <g id="text_26">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="446.037061" transform="rotate(-0 187.2288 446.037061)">Cleaned English run completed</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="462.179152" transform="rotate(-0 187.2288 462.179152)">1,000 ID emails; separate 100-message positive-only challenge.</text>
+   </g>
+   <g id="text_28">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #087f78" x="822.0096" y="444.997491" transform="rotate(-0 822.0096 444.997491)">MILESTONE</text>
+   </g>
+   <g id="PathCollection_8">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#ma571ccd9b8" x="155.088" y="501.228" style="fill: #b56b0c; stroke: #b56b0c"/>
+    </g>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="504.345187" transform="rotate(-0 118.9296 504.345187)">25 Oct</text>
+   </g>
+   <g id="text_30">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="496.527061" transform="rotate(-0 187.2288 496.527061)">Bank supplement exposed false alarms</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="512.669152" transform="rotate(-0 187.2288 512.669152)">Synthetic negative-only controls did not fill authentic-data gates.</text>
+   </g>
+   <g id="text_32">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #b56b0c" x="822.0096" y="495.487491" transform="rotate(-0 822.0096 495.487491)">SETBACK</text>
+   </g>
+   <g id="PathCollection_9">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#mdf4614645f" x="155.088" y="551.718" style="fill: #087f78; stroke: #087f78"/>
+    </g>
+   </g>
+   <g id="text_33">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="554.835187" transform="rotate(-0 118.9296 554.835187)">25 Oct</text>
+   </g>
+   <g id="text_34">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="547.017061" transform="rotate(-0 187.2288 547.017061)">Functional explanations added</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="563.159152" transform="rotate(-0 187.2288 563.159152)">303 constructed inputs; complete evidence/advice; new review pending.</text>
+   </g>
+   <g id="text_36">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #087f78" x="822.0096" y="545.977491" transform="rotate(-0 822.0096 545.977491)">MILESTONE</text>
+   </g>
+   <g id="PathCollection_10">
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#ma571ccd9b8" x="155.088" y="602.208" style="fill: #b56b0c; stroke: #b56b0c"/>
+    </g>
+   </g>
+   <g id="text_37">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="605.325187" transform="rotate(-0 118.9296 605.325187)">25 Oct</text>
+   </g>
+   <g id="text_38">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="597.507061" transform="rotate(-0 187.2288 597.507061)">Confounded timing cells excluded</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="613.649152" transform="rotate(-0 187.2288 613.649152)">Two DistilBERT timings repeated; predictions were not repeated.</text>
+   </g>
+   <g id="text_40">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #b56b0c" x="822.0096" y="596.467491" transform="rotate(-0 822.0096 596.467491)">SETBACK</text>
+   </g>
+   <g id="PathCollection_11">
+    <defs>
+     <path id="m2049b61705" d="M 0 4.609772 
+C 1.222526 4.609772 2.395145 4.124058 3.259601 3.259601 
+C 4.124058 2.395145 4.609772 1.222526 4.609772 0 
+C 4.609772 -1.222526 4.124058 -2.395145 3.259601 -3.259601 
+C 2.395145 -4.124058 1.222526 -4.609772 0 -4.609772 
+C -1.222526 -4.609772 -2.395145 -4.124058 -3.259601 -3.259601 
+C -4.124058 -2.395145 -4.609772 -1.222526 -4.609772 0 
+C -4.609772 1.222526 -4.124058 2.395145 -3.259601 3.259601 
+C -2.395145 4.124058 -1.222526 4.609772 0 4.609772 
+z
+" style="stroke: #3157a1"/>
+    </defs>
+    <g clip-path="url(#p91a67a738c)">
+     <use xlink:href="#m2049b61705" x="155.088" y="652.698" style="fill: #3157a1; stroke: #3157a1"/>
+    </g>
+   </g>
+   <g id="text_41">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="118.9296" y="655.815187" transform="rotate(-0 118.9296 655.815187)">27 Oct</text>
+   </g>
+   <g id="text_42">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="187.2288" y="647.997061" transform="rotate(-0 187.2288 647.997061)">TF-IDF + Logistic Regression chosen</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="187.2288" y="664.139152" transform="rotate(-0 187.2288 664.139152)">Project choice recorded; full original qualification still incomplete.</text>
+   </g>
+   <g id="text_44">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #3157a1" x="822.0096" y="646.957491" transform="rotate(-0 822.0096 646.957491)">DECISION</text>
+   </g>
+  </g>
+  <g id="text_45">
+   <text style="font-weight: 700; font-size: 21px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="34.56" y="41.660719" transform="rotate(-0 34.56 41.660719)">How the benchmark reached the TF-IDF decision</text>
+  </g>
+  <g id="text_46">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="34.56" y="69.313481" transform="rotate(-0 34.56 69.313481)">Selected milestones and setbacks · 18–27 Oct 2026 · Manila dates from saved records</text>
+  </g>
+  <g id="text_47">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; fill: #5a6d7d" transform="translate(34.56 700.633945)">Events are displayed by recorded Manila date; vertical spacing is categorical, not elapsed time.</text>
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; fill: #5a6d7d" transform="translate(34.56 712.63668)">Different protocols used different samples and models. No continuous accuracy trend is implied.</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p91a67a738c">
+   <rect x="34.56" y="117.504" width="803.52" height="565.488"/>
+  </clipPath>
+ </defs>
+</svg>

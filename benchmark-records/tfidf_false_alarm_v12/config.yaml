@@ -1,0 +1,64 @@
+protocol: tfidf-false-alarm-reduction-v12
+run_id: tfidf-20261028-001
+seed: 42
+synthetic_primary_allowed: false
+approval: Approve all stages, conditional on data admission
+scope: general English text screening; scoped source-pair confirmation is not original full qualification
+preprocessing:
+  shared_implementation: ../local_email/scripts/prepare.py
+  head_characters: 2000
+  tail_characters: 300
+  unicode: preserve_confusables_zero_width_and_bidi
+data:
+  candidate_inventory: ../english_real_v4/data/prepared/inventory.audit.jsonl
+  fresh_final_minimum: {0: 1000, 1: 200}
+  fresh_final_group_minimum: {0: 100, 1: 100}
+  calibration_minimum: {0: 500, 1: 100}
+  cutoff_minimum: {0: 1000, 1: 100}
+  source_pool_fractions: [0.70, 0.15, 0.15]
+  near_jaccard: 0.90
+  shared_passage_words: 30
+  english_probability_minimum: 0.95
+  english_runner_up_margin_minimum: 0.20
+  short_unknown_english: quarantine_not_translate
+  trec06_mirror: not_admitted_original_terms_and_labels_unresolved
+development:
+  feature_families: [word_only, word_plus_char_wb]
+  C_values: [0.5, 1.0, 2.0]
+  word_ngrams: [1, 2]
+  word_max_features: 18000
+  char_ngrams: [3, 5]
+  char_max_features: 12000
+  min_df: 2
+  sublinear_tf: true
+  outer_folds: 5
+  inner_cutoff_fraction: 0.20
+  max_iter: 1000
+  pooled_outer_fpr_max: 0.03
+  exposed_control_outer_fpr_max: 0.15
+  weighting: preserve_label_mass_equal_sources_equal_families_equal_rows
+evaluation:
+  primary_validation_fpr_target: 0.02
+  secondary_validation_fpr_target: 0.005
+  bootstrap_replicates: 2000
+  ece_bins: 10
+  confidence: 0.95
+  final_scoring_passes: 1
+  invalid_output: safe_score_zero_and_invalid
+gates:
+  test_id_fpr_max: 0.03
+  test_id_recall_min: 0.90
+  test_ood_fpr_max: 0.15
+  test_adv_fpr_max: 0.15
+  test_ood_recall_min: 0.70
+  ece_max: 0.10
+  valid_rate_min: 1.0
+  p95_ms_max: 100
+  cold_start_ms_max: 1000
+  size_bytes_max: 5000000
+browser:
+  actual_backend: javascript_cpu
+  warmup_runs: 10
+  timed_emails: 100
+  cold_trials: 3
+  cpu_throttling: [1, 4]

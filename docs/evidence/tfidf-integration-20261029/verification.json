@@ -1,0 +1,27 @@
+{
+  "recorded_at_utc": "2026-10-29T07:51:34.285566+00:00",
+  "integration_base": "1344fcb061272bac93ced5911f1ab8fbb3b6785d",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "libraries": {
+    "pytest": "9.1.1",
+    "fastapi": "0.143.0",
+    "pydantic": "2.14.1",
+    "psycopg": "3.3.6",
+    "sqlalchemy": "2.1.4"
+  },
+  "python_tests": {
+    "cases": 386,
+    "skipped": 37,
+    "failed": 0
+  },
+  "javascript_tests": {
+    "cases": 133,
+    "failed": 0
+  },
+  "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+  "database_access": "disabled; unavailable local test URL",
+  "live_api_access": false,
+  "new_accuracy_benchmark": false,
+  "eslint": "passed"
+}

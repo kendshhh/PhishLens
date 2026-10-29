@@ -1,0 +1,53 @@
+protocol: real-email-operational-readiness-v10
+seed: 42
+authorization: latest_direct_user_request_to_execute_without_further_supplied_data
+models:
+- tfidf_lr
+- distilbert
+- llm
+backends:
+  tfidf_lr: javascript_cpu
+  distilbert: wasm
+  llm: webgpu
+frozen_reference: english_real_v4_checkpoint_clean
+threshold_target: 0.02
+new_training_allowed: false
+test_calibration_allowed: false
+synthetic_primary_allowed: false
+test_selection: all_unused_eligible_2025_publisher_positive_groups_after_actual_role_leakage_audit
+negative_selection: all_body_unique_collector_attested_controls
+bootstrap_replicates: 2000
+confidence: 0.95
+llm_consistency_items: 30
+llm_repeats: 5
+browser_observational_latency_is_full_gate_matrix: false
+original_gates:
+  common:
+    test_id_fpr_max: 0.03
+    test_id_recall_min: 0.9
+    test_ood_fpr_max: 0.15
+    test_adv_fpr_max: 0.15
+    test_ood_recall_min: 0.7
+    ece_max: 0.1
+  tfidf_lr:
+    p95_ms_max: 100
+    cold_start_ms_max: 1000
+    size_bytes_max: 5000000
+    valid_rate_min: 1.0
+  distilbert:
+    p95_ms_max: 500
+    cold_start_ms_max: 3000
+    size_bytes_max: 100000000
+    valid_rate_min: 1.0
+  llm:
+    p95_ms_max: 5000
+    cold_start_ms_max: 15000
+    size_bytes_max: 1500000000
+    valid_rate_min: 0.99
+    consistency_min: 0.95
+original_weights:
+  recall: 0.3
+  robustness: 0.25
+  latency: 0.2
+  reliability: 0.15
+  size: 0.1

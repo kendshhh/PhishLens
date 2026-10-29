@@ -3,7 +3,7 @@
 }
 
 body {
-  width: 360px;
+  width: 400px;
   margin: 0;
 
   font-family:
@@ -12,6 +12,8 @@ body {
 
   background: #f5f5f5;
   color: #202124;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .container {
@@ -71,3 +73,13 @@ button {
 
   cursor: pointer;
 }
+/* Local advisory scan and explicit shared-history controls. */
+label { display: block; margin: 12px 0; }
+input:not([type=checkbox]), textarea, select { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; }
+input[type=checkbox] { width: auto; }
+button { cursor: pointer; margin: 6px 4px 6px 0; white-space: normal; }
+button:disabled { cursor: wait; opacity: .6; }
+li { margin-bottom: 12px; overflow-wrap: anywhere; }
+pre, #analysis-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+mark { background: #fff0b3; color: #182536; }
+.muted, footer { color: #4c596e; font-size: 12px; }

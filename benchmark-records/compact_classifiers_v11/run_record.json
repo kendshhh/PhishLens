@@ -1,0 +1,286 @@
+{
+  "started_at_utc": "2026-10-28T09:58:15.752222+00:00",
+  "exact_commands": [
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/fetch_assets.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/fetch_dima_corpus.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/export_models.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/prepare.py",
+    ".venv/Scripts/python.exe -m unittest discover -s benchmarks/compact_classifiers_v11/tests -v",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/parity.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/orchestrate.py development",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/orchestrate.py diagnostics",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/orchestrate.py validation",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/check_development.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/freeze.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/orchestrate.py test",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/orchestrate.py timing",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/report.py",
+    "bundled node benchmarks/compact_classifiers_v11/artifact_work/export_results.mjs",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/plot_report.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/write_summary.py",
+    "bundled node benchmarks/compact_classifiers_v11/scripts/check_report.mjs",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/verify_results.py"
+  ],
+  "updated_at_utc": "2026-10-28T11:55:21.002987+00:00",
+  "python": "3.12.10",
+  "windows": "Windows-11-10.0.26300-SP0",
+  "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+  "logical_processors": 16,
+  "ram_bytes": 34049417216,
+  "power": {
+    "plugged": true,
+    "percent": 98
+  },
+  "config_sha256": "edd9cc021625f22c7aa1ba1f4e3611908858fa697ae4725192f257e903932ff2",
+  "protocol_sha256": "02c1a5323bdd967c8a034b3eea763bf151c479d5bc679fc8dcf3c980a227a6d2",
+  "git_head": "00d0bf60deb4f90544435e2af24563b3a5b376fe",
+  "git_worktree_had_uncommitted_changes": true,
+  "model_specs": {
+    "bert_small": {
+      "id": "onnx-community/bert-small-phishing-ONNX",
+      "revision": "cfe22cf93103a4ed9c6cf18fc4d2d0b6aa734dc0",
+      "artifact": "onnx/model_quantized.onnx",
+      "export_required": false
+    },
+    "mobilebert": {
+      "id": "Perth0603/phishing-email-mobilebert",
+      "revision": "fe209c2e2a345c184b828d67c5e589344dbe8a58",
+      "artifact": "onnx/model_quantized.onnx",
+      "export_required": true
+    },
+    "dima_distilbert": {
+      "id": "dima806/phishing-email-detection",
+      "revision": "310a5602280486e01dd60e37230980cfcc327b41",
+      "artifact": "onnx/model_quantized.onnx",
+      "export_required": true
+    }
+  },
+  "seed": 42,
+  "generated_output_tokens": 0,
+  "prompt_text": null,
+  "truncation": {
+    "reference": "english_real_v4_checkpoint_clean_shared_cleaner",
+    "max_characters": 2300,
+    "head_characters": 2000,
+    "tail_characters": 300,
+    "encoder_positions": 512,
+    "content_window_tokens": 510,
+    "window_aggregation": "maximum_phishing_probability",
+    "extra_token_truncation": false
+  },
+  "hardware_scope": "This Windows laptop only; no Mac evaluation",
+  "study_scope": "Exploratory frozen three-candidate comparison; known checkpoint corpus exclusions; existing operational challenge reused",
+  "python_packages": {
+    "torch": "2.9.1+cpu",
+    "transformers": "4.57.1",
+    "numpy": "2.5.4",
+    "safetensors": "0.8.0",
+    "huggingface-hub": "0.36.2"
+  },
+  "isolated_export_libraries": {
+    "onnx": "1.19.1",
+    "onnxruntime": "1.31.0",
+    "ml_dtypes": "0.5.3"
+  },
+  "datasets": {
+    "status": "PASS_COMMON_ROLE_AUDIT",
+    "at_utc": "2026-10-28T09:56:33.830593+00:00",
+    "counts": {
+      "development": {
+        "1": 8,
+        "0": 8
+      },
+      "calibration": {
+        "1": 500,
+        "0": 500
+      },
+      "threshold": {
+        "0": 1000,
+        "1": 1000
+      },
+      "test_id": {
+        "0": 503,
+        "1": 500
+      },
+      "operational": {
+        "0": 41,
+        "1": 249
+      }
+    },
+    "groups": {
+      "development": 12,
+      "calibration": 828,
+      "threshold": 1547,
+      "test_id": 792,
+      "operational": 228
+    },
+    "char_truncated": {
+      "development": 2,
+      "calibration": 122,
+      "threshold": 258,
+      "test_id": 161,
+      "operational": 0
+    },
+    "partition": "New seeded stratified group 70/15/15 source split for new downloaded models; unused train not fitted; validation split into calibration and cutoff roles",
+    "label_definition": {
+      "0": "inherited ham/legitimate source label; security controls collector-attested received/redacted",
+      "1": "broad ID spam/fraud/phishing inherited label; operational Nazario publisher hand-classified phishing"
+    },
+    "operational_previously_scored": true,
+    "synthetic_primary_rows": 0,
+    "training_updates": 0,
+    "source_attribution": "Kaggle Phish No More, Al-Subaiey et al. (2024); Nazario original collected 2025; collector-attested control batch",
+    "hashes": {
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\data\\prepared\\checkpoint_clean_pool.audit.jsonl": "e11b9d882513ce1064ffb6d4542d3c821b0a495cb8d4a0725168a1624eff83b3",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\raw\\known_checkpoint\\dataset.json": "74a3341e32fdb76264ccd072a802e422d0e3b993e3bf415bf1775be796c24605",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\raw\\known_checkpoint\\dima_Phishing_Email.csv": "18ef4fff1acb8986f0ab01e83ede6025420c829656af5a377560fce17e153b97",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\data\\prepared\\test.private.jsonl": "0287e3b980c4b1d1f09e72bfabd2f9ea99f312f4fc2c50c5b73f5c6541199bcb",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\config.yaml": "edd9cc021625f22c7aa1ba1f4e3611908858fa697ae4725192f257e903932ff2",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\protocol.md": "02c1a5323bdd967c8a034b3eea763bf151c479d5bc679fc8dcf3c980a227a6d2",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\leakage_audit.json": "3dc1b4b4007deb2bba274f4e01bfd397314cc0a434d71899e75194b6dbf3cbe1",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\prepared\\calibration.jsonl": "49ab12c69fa08041f3daded7bb6cef5c36afe14ac7357ab17c59790a6a146d77",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\prepared\\development.jsonl": "511ab8fcac51dc90c274f5a53e9c903dfc37379ad2f1a9f3d9da7597f3cd6f02",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\prepared\\operational.jsonl": "4cf0fb04b51a0fe5314e083c4e96278f5f9c2c70f39cf97923a1926b232fadb2",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\prepared\\test_id.jsonl": "ab863704c1e768d203e7f5ef906a27f2c14e16ee5c87c0e87a6962c17d5ac2c0",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\prepared\\threshold.jsonl": "df920ccd0af331a369bc61716e7850a4a138d85544331bdf09cefc7bcf91350d",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\data\\prepared\\timing_ids.json": "a3661ae20c085cf4f48f17c57ce4bd134a6a5e9029a58b31efd5848e956867a5"
+    }
+  },
+  "asset_manifest_sha256": "8eecc94d8266a4100e049134d6bba04f74a053e9638cf570c52a7b8ad13d5dbc",
+  "actual_scientific_modules": {
+    "numpy": {
+      "version": "2.5.4",
+      "path": "D:\\Phishlens\\PhishLens\\benchmarks\\local_email\\vendor\\numpy\\__init__.py"
+    },
+    "scipy": {
+      "version": "1.18.1",
+      "path": "D:\\Phishlens\\PhishLens\\benchmarks\\local_email\\vendor\\scipy\\__init__.py"
+    },
+    "scikit-learn": {
+      "version": "1.9.1",
+      "path": "D:\\Phishlens\\PhishLens\\benchmarks\\local_email\\vendor\\sklearn\\__init__.py"
+    }
+  },
+  "hardware_inventory": {
+    "gpu": [
+      {
+        "Name": "Meta Virtual Monitor",
+        "DriverVersion": "5.3.57.114"
+      },
+      {
+        "Name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+        "DriverVersion": "32.0.16.1088"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics",
+        "DriverVersion": "32.0.101.5972"
+      }
+    ],
+    "collected_at_utc": "2026-10-28T10:20:57.8218114Z",
+    "cpu": [
+      {
+        "Name": "Intel(R) Core(TM) i5-14450HX",
+        "NumberOfCores": 10,
+        "NumberOfLogicalProcessors": 16
+      }
+    ]
+  },
+  "onnxruntime_web_package": "1.31.0-dev.20260914-8d85527a0",
+  "transformers_js_package": "4.3.1",
+  "scoring_lock_sha256": "6533da614192596aad6ad98f421a09ef78b6b806bebcd5504ba0f07868500ff9",
+  "finished_at_utc": "2026-10-28T12:01:24.062077+00:00",
+  "verification": {
+    "status": "RECONCILED_MEASURED_COMPARISON_NOT_ORIGINAL_FULL_QUALIFICATION",
+    "at_utc": "2026-10-28T12:01:24.029559+00:00",
+    "primary_test_prediction_records": 3879,
+    "validation_prediction_records": 9000,
+    "csv_rows": 5810,
+    "csv_numeric_cells_reconciled": 31582,
+    "software_contract_tests_passed": 5,
+    "source_export_and_real_development_checks_passed": true,
+    "external_email_requests": 0,
+    "raw_mail_and_weights_git_ignored": true,
+    "historical_files_unchanged": 9,
+    "original_qualified_winner": null,
+    "diagnostic_point_estimate_leader": "dima_distilbert",
+    "engineering_development_preference": "bert_small_wasm",
+    "precision_corrected_operational_point_leader": "mobilebert",
+    "correction_is_fresh_confirmatory_test": false,
+    "correction_additional_model_inferences": 0,
+    "all_12_timing_cells_complete": true,
+    "timed_observations": 1200,
+    "discarded_warmups": 120,
+    "cold_trials": 36,
+    "original_gates_and_weights_unchanged": true,
+    "original_test_predictions_after_cutoff_freeze": true,
+    "original_validation_saved_prefixes_byte_identical": true
+  },
+  "precision_followup_sha256": "656f2fb269e75d044f3572a7ca39995a816947d5f36d7f1be441e05da16aa2d3",
+  "precision_javascript_replay": {
+    "cached_score_rows_verified": 12879,
+    "largest_risk_score_difference": 2.220446049250313e-16,
+    "all_raw_threshold_decisions_identical": true,
+    "new_model_inferences": 0,
+    "scope": "JavaScript arithmetic replay, not a new end-to-end Chrome or confirmatory test"
+  },
+  "truncation_audit": {
+    "rule": {
+      "reference": "english_real_v4_checkpoint_clean_shared_cleaner",
+      "max_characters": 2300,
+      "head_characters": 2000,
+      "tail_characters": 300,
+      "encoder_positions": 512,
+      "content_window_tokens": 510,
+      "window_aggregation": "maximum_phishing_probability",
+      "extra_token_truncation": false
+    },
+    "roles": {
+      "development": {
+        "n": 16,
+        "character_cut_count": 2,
+        "linked_full_source_rows": 16,
+        "unresolved_full_source_rows": 0,
+        "prepared_input_max_characters": 2300
+      },
+      "calibration": {
+        "n": 1000,
+        "character_cut_count": 122,
+        "linked_full_source_rows": 1000,
+        "unresolved_full_source_rows": 0,
+        "prepared_input_max_characters": 2300
+      },
+      "threshold": {
+        "n": 2000,
+        "character_cut_count": 258,
+        "linked_full_source_rows": 2000,
+        "unresolved_full_source_rows": 0,
+        "prepared_input_max_characters": 2300
+      },
+      "test_id": {
+        "n": 1003,
+        "character_cut_count": 161,
+        "linked_full_source_rows": 1003,
+        "unresolved_full_source_rows": 0,
+        "prepared_input_max_characters": 2300
+      },
+      "operational": {
+        "n": 290,
+        "character_cut_count": 34,
+        "linked_full_source_rows": 249,
+        "unresolved_full_source_rows": 0,
+        "prepared_input_max_characters": 2300
+      }
+    },
+    "extra_encoder_truncation": 0,
+    "encoder_handling": "All content retained through 510-token windows; max aggregation; window counts per model saved in predictions",
+    "operational_manifest_flag_caveat": "Earlier operational copy did not carry _truncated; this audit links original full-source rows instead of treating missing metadata as false"
+  },
+  "additional_analysis_commands": [
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/precision_followup.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/append_precision_graph.py",
+    "bundled node benchmarks/compact_classifiers_v11/scripts/check_precision.mjs",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/select_errors.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/truncation_audit.py",
+    ".venv/Scripts/python.exe benchmarks/compact_classifiers_v11/scripts/decision_report.py"
+  ]
+}

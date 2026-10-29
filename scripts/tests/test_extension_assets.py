@@ -26,6 +26,9 @@ class ExtensionAssetValidationTests(unittest.TestCase):
         for asset in (
             "popup.html", "css/popup.css", "js/popup.js", "js/config.js",
             "js/api.js", "js/history.js", "background.js", "popup.js", "popup.css",
+            "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
+            "ai/local-analyzer.mjs", "ai/core.mjs", "ai/observations.mjs",
+            "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md",
         ):
             target = self.extension / asset
             target.parent.mkdir(parents=True, exist_ok=True)

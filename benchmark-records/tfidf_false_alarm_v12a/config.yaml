@@ -1,0 +1,44 @@
+protocol: tfidf-v12a-conservative-policy-followup
+authorized_local_date: '2026-10-29'
+approval: Approve the v12a follow-up
+seed: 42
+base: ../tfidf_false_alarm_v12
+base_manifest_sha256: 36bb3f69bb33f4d1289f9d751c275eba67dbf456a760f1354555db7023c1927a
+fresh_cohort_sha256: 005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de
+new_classifier_weight_fits_allowed: false
+synthetic_primary_allowed: false
+policy:
+  raw_margin_floor: 0.0
+  primary_validation_fpr_ceiling: 0.02
+  development_recall_min: 0.90
+  development_general_fpr_max: 0.03
+  development_control_fpr_max: 0.15
+  candidate_selection: lowest_control_fpr_then_highest_mean_recall_then_size_then_simplicity
+calibration:
+  grouped_oof_folds: 5
+  selection: lowest_grouped_oof_log_loss_identity_or_nondecreasing_sigmoid_on_margin
+evaluation:
+  systems: [reference_frozen, reference_recalibrated, tfidf_v12a]
+  fresh_scoring_passes: 1
+  bootstrap_replicates: 2000
+  ece_bins: 10
+  confidence: 0.95
+gates:
+  recall_min: 0.90
+  fpr_max: 0.03
+  ece_max: 0.10
+  valid_rate_min: 1.0
+  p95_ms_max: 100
+  cold_start_ms_max: 1000
+  required_assets_bytes_max: 5000000
+original_unassessed_gates:
+  independent_ood_recall_min: 0.70
+  independent_ood_fpr_max: 0.15
+  natural_adversarial_fpr_max: 0.15
+browser:
+  backend: javascript_cpu
+  warmups: 10
+  timed_emails: 100
+  cold_trials: 3
+  cpu_throttling: [1, 4]
+scope: source-pair English text-screening confirmation; original independent OOD/adversarial and fresh security controls remain unassessed

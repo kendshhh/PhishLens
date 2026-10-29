@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-10-28T16:36:18.691760+00:00",
+  "status": "FROZEN_BEFORE_FRESH_SCORING",
+  "hashes": {
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\config.yaml": "fb069aefd7eec46ebbf3b51f4e3468cb4a63843bdabbc48b07958472b6d26290",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\protocol.md": "27e0538f4d41c59486adc8758d69bd7d086bd6c35846c19391f0cca655d8a14f",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\approval.json": "78522ecf2ddc140817953d887667fe2a070c7d38fb4d342738d94daf943fa6de",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\development\\selection.json": "cf426e7062a02feb19f9ce016d4f9b6f759f7d0aa20a467304540bb4a4bedf9f",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\calibration\\systems.json": "16c7ef68ec782cd079a0d53a361a082a76f892de44dd7cc9acc39c3eaa8c18a8",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\parity_verification.json": "c6c25330dd9b29d5e1903552a2e17c0514454d4137ee84baaa5b403585b674da",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\manifest.json": "36bb3f69bb33f4d1289f9d751c275eba67dbf456a760f1354555db7023c1927a",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\browser\\core.mjs": "fbef6d86cc179c960b38307b6e9d72462c454ccdbdad688f7e353193f8b0b447",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\browser\\index.html": "49e37fc60e672f25268269011f6885fdea76f6568ad1e37558a39e88816fd6d0",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\browser\\observations.mjs": "7c85b25df39e78495824a0c95e633c5dcb22f623246a1689119e05375048e705",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\browser\\worker.mjs": "752af84514056c60f1e6781acb759f523ce9fee3a58b41771dffe93202fdaa04",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\scripts\\policy_common.py": "af786570667b08e5f0adcd3be91e901e003f3ff938e43b95923d534af11d9e05",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\scripts\\server.py": "b89be675191894f2dccd670b469670e6de2a104c05a78734be65cee0ee2240df",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\scripts\\run_browser.mjs": "2fe3a217e30155d0fdc919e28f5efc545ad48b010c8870f1790c15a0924f17b6",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\scripts\\calibrate_policy.py": "b1770b4a51927968714915e5f19838dbef652488abc5385149238dbd8e7383b8",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\scripts\\select_policy.py": "3fc7b5b10a5dbc3085644b43aa0c6f1550aa0c1218217634bb3d0727f1873937",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\scripts\\tfidf12_common.py": "ef9c6de91b4defb9e3e77abe001632c63e429aa93c6cc7aecd43f85ef7809ac5",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\scripts\\linear_model.py": "8f4f656e94ba0d2e7f838ae80774d179369be392bdd0ae3aedc46586958fd3e9",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\scripts\\calibrate.py": "12c886206ec43def974de755b9afb809d7677ebded82fb3912eb4e205fb004ae",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\models\\tfidf_lr\\model.json": "4e8eedf9d25c3149d0a797c1bcb2b0f2c0091c3fa8db1fb4f74f5d297e873ade",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\models\\development\\word_plus_char_wb_C1p0.json": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\prepared\\fresh_source_pair.private.jsonl": "005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\prepared\\unused_id_reserved.private.jsonl": "3cd4bc0c2c6aefaadbc3d19cfe82078958e4234ef625f3a5e24f42ffd2dde46e",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\prepared\\calibration.private.jsonl": "85f15e190cd976954704b18885df73dd11d5ca2a335f55367858969258f6d1fa",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\prepared\\threshold.private.jsonl": "3f73e753bb0259e5004b10d20a8b889f8e33dc094aecf4534aa9589033e3f8cc",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\prepared\\train_development.private.jsonl": "08128dea211ad7428776577cda33101b5ae5beba035934112d9e3c0b835f0903",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\data\\prepared\\unused_validation.private.jsonl": "6aabc6fd744cbcf8664fdad47b82d273eb39063c51c99d1a4c7caa1a2a87252a",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\local_email\\scripts\\prepare.py": "c49ac82ed2d20a866279b59743d1bbfe461cfff0da6118b1f63f411e7ee2160d",
+    "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_public_qualification_v7\\scripts\\admission_common.py": "b4f651ee3c71ef9259a6affbc2cac4ac2e29737b075635928616db0b65eb84c7"
+  },
+  "timing_hashes": {
+    "browser_latency.json": "bfd36990d913cf47a0451caa5cb369913ad4e4b351db927943955494282ed91f",
+    "browser_main_thread_latency.json": "dd487660cef4bcfb1c48cb30cdb0afea310ff292d6e7c7172d3147bafdb06e3c"
+  },
+  "required_static_bytes": {
+    "reference_frozen": 1357377,
+    "reference_recalibrated": 1357377,
+    "tfidf_v12a": 2579649
+  },
+  "required_assets_include": "model + HTML + core + worker + observation module + served system metadata; unique runtime assets, uncompressed local transfer",
+  "fresh_test_predictions_before_lock": 0,
+  "fresh_source_pair_sha256": "005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de",
+  "original_v12_failure_preserved": true,
+  "control_source_limit": "No new independent security controls; 41 exposed notices are development only",
+  "throttle_scope": "Worker cells use page-target CDP CPU throttle; direct-main-thread cells additionally measure the same algorithm on the directly throttled thread. No assertion of whole-machine or worker-thread 4x emulation."
+}

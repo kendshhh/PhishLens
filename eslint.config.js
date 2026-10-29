@@ -1,6 +1,6 @@
 export default [
   {
-    files: ["extension/js/**/*.js"],
+    files: ["extension/js/**/*.js", "extension/*.js", "extension/ai/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
@@ -9,7 +9,9 @@ export default [
         console: "readonly",
         fetch: "readonly",
         AbortSignal: "readonly",
-        setTimeout: "readonly"
+        setTimeout: "readonly",
+        clearTimeout: "readonly", chrome: "readonly", crypto: "readonly",
+        URL: "readonly", TextDecoder: "readonly", performance: "readonly"
       }
     },
     rules: {
@@ -20,5 +22,11 @@ export default [
       "valid-typeof": "error",
       "eqeqeq": ["error", "always", { null: "ignore" }]
     }
+  },
+  {
+    // Preserve the byte-identical benchmark explanation module. Its destructuring
+    // intentionally omits priority from the public result.
+    files: ["extension/ai/observations.mjs"],
+    rules: { "no-unused-vars": ["error", { "varsIgnorePattern": "^priority$", "argsIgnorePattern": "^priority$" }] }
   }
 ];

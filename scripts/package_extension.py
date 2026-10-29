@@ -22,10 +22,18 @@ assets = (
     "js/api.js",
     "js/config.js",
     "js/history.js",
+    "js/report-client.js",
+    "js/report-workflow.js",
     "js/popup.js",
     "background.js",
     "popup.js",
     "popup.css",
+    "ai/contract.json",
+    "ai/local-analyzer.mjs",
+    "ai/core.mjs",
+    "ai/observations.mjs",
+    "ai/tfidf_v12a.json",
+    "ai/ATTRIBUTION.md",
 )
 
 output = ROOT / "output" / "extension"

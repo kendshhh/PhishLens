@@ -225,3 +225,20 @@ workflow, deliverables, and grading:
 
 [Consultation 2 preparation and remaining requirements](docs/devops/consultation-2.md)
 records the demo agenda, evidence gaps and Sprint 3/4 handoff.
+
+## Selected TF-IDF integration pilot
+
+The branch `codex/tfidf-v12a-workflow-20261029` connects the frozen v12a model
+to local Chrome selection scanning and the contributors' optional saved-report
+workflow. See [setup and debugging](docs/TFIDF_DEBUGGING.md),
+[the integration plan](docs/tfidf-integration-plan.md), and
+[preserved benchmark evidence](benchmark-records/index.html).
+
+Quick developer checks: `npm run doctor`, `npm test`, `npm run lint`, and
+`npm run phishlens -- records-check`. Load `extension/` unpacked in Chrome.
+Scanning stays local. Saving requires explicit upload consent and a matching
+`AI_MODE=tfidf` backend. Hosted configuration and databases are managed separately.
+
+The selected candidate passed eight measured scoped benchmark checks; the
+original independent OOD/adversarial and fresh authenticated bank coverage remain
+incomplete. Integration checks do not replace those measurements.

@@ -1,0 +1,147 @@
+protocol: real_email_v3
+authorized_at_local_date: '2026-10-23'
+seed: 42
+synthetic_data_allowed: false
+historical_pilot: ../academic_pilot_v2/results/pilot-20261023-001
+data:
+  candidate_doi: 10.17632/hz2d6gz7pc.5
+  candidate_language: Spanish
+  origin: collected_real_email_publisher_anonymized
+  sample_targets:
+    0: 100
+    1: 100
+  minimum_val_legitimate: 1000
+  source_label_mapping:
+    pending_schema_verification: true
+  near_jaccard: 0.9
+  shared_passage_window: 30
+  leakage: stop_before_new_inference
+  real_adversarial: require_verified_source_labels_and_technique_evidence
+  source_labels_and_annotations_not_model_inputs: true
+preprocessing:
+  html: visible_text_and_link_targets_no_execution
+  whitespace: collapse
+  unicode: preserve_confusables_zero_width_and_bidi
+  max_characters: 2300
+  head_characters: 2000
+  tail_characters: 300
+  character_unit: unicode_code_points
+models:
+  tfidf_lr:
+    kind: tfidf_lr
+    word_ngram_range:
+    - 1
+    - 2
+    max_features: 18000
+    min_df: 2
+    sublinear_tf: true
+    C: 1.0
+    max_iter: 1000
+    class_weight: null
+  distilbert:
+    kind: onnx_classifier
+    model_id: onnx-community/phishing-email-detection-distilbert_v2.4.1-ONNX
+    revision: d2a92d9e2830eddb1c4600adc3c04f8b577e6597
+    artifact: onnx/model_quantized.onnx
+    phishing_indices:
+    - 1
+    - 3
+    legitimate_indices:
+    - 0
+    - 2
+    label_evidence: https://huggingface.co/cybersectony/phishing-email-detection-distilbert_v2.4.1
+    max_tokens: 512
+    chunk_aggregation: maximum_phishing_probability_over_nonoverlapping_content_windows
+  llm:
+    kind: onnx_causal_lm
+    model_id: onnx-community/Llama-3.2-1B-Instruct-ONNX
+    revision: 14007543b6dc92de88daf96a9aa85d2f95ace6ef
+    artifact: onnx/model_q4f16.onnx
+    temperature: 0
+    runtime_seed: 42
+    repeats: 5
+    max_new_tokens: 128
+    confidence_semantics: probability_of_phishing_not_certainty_of_predicted_label
+    local_directory: llama
+evaluation:
+  primary_validation_fpr_target: 0.02
+  likely_phishing_validation_fpr_target: 0.005
+  threshold_rule: lowest_threshold_with_empirical_fpr_at_or_below_target_predictions_use_greater_or_equal
+  invalid_output:
+    verdict: safe
+    probability: 0.0
+    valid: false
+  test_scoring_passes: 1
+  bootstrap:
+    replicates: 2000
+    confidence: 0.95
+    sampling: stratified_by_class_and_duplicate_group
+  ece:
+    bins: 10
+    binning: equal_width
+    probability: phishing
+  pr_auc: average_precision
+  consistency: fraction_of_items_with_valid_identical_labels_across_all_five_repeats
+  mcnemar:
+    method: exact_binomial_two_sided
+    alpha: 0.05
+    correction: holm
+  gate_statistic: point_estimate_with_confidence_intervals_reported
+browser:
+  backends:
+  - wasm
+  - webgpu
+  cpu_throttling_rates:
+  - 1
+  - 4
+  warmup_runs: 10
+  timed_emails: 100
+  cold_start_trials: 3
+  load_timeout_seconds: 90
+  probe_timeout_seconds: 30
+  unsupported_backend: reported_not_pass
+  gate_aggregation: all_supported_required_cells_must_pass_missing_evidence_not_pass
+gates:
+  common:
+    test_id_fpr_max: 0.03
+    test_id_recall_min: 0.9
+    test_ood_fpr_max: 0.15
+    test_adv_fpr_max: 0.15
+    test_ood_recall_min: 0.7
+    ece_max: 0.1
+  tfidf_lr:
+    p95_ms_max: 100
+    cold_start_ms_max: 1000
+    size_bytes_max: 5000000
+    valid_rate_min: 1.0
+  distilbert:
+    p95_ms_max: 500
+    cold_start_ms_max: 3000
+    size_bytes_max: 100000000
+    valid_rate_min: 1.0
+  llm:
+    p95_ms_max: 5000
+    cold_start_ms_max: 15000
+    size_bytes_max: 1500000000
+    valid_rate_min: 0.99
+    consistency_min: 0.95
+ranking:
+  weights:
+    recall: 0.3
+    robustness: 0.25
+    latency: 0.2
+    reliability: 0.15
+    size: 0.1
+  robustness: mean_balanced_accuracy_on_test_ood_and_test_adv
+  latency: one_minus_p95_divided_by_model_limit
+  reliability: mean_valid_rate_consistency_one_minus_ece
+  classifier_consistency_for_ranking: 1.0
+  size: one_minus_download_bytes_divided_by_model_limit
+  sensitivity:
+    weight_shift: 0.1
+    other_weights: proportional_renormalization
+  tie_break:
+  - latency
+  - simplicity
+prompt_policy: reuse_original_frozen_prompt_without_tuning
+human_review: real_only_new_form_no_AI_ratings_no_transfer_of_synthetic_sample_ratings

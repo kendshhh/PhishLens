@@ -1,0 +1,48 @@
+{
+  "at_utc": "2026-10-23T19:09:31.423645+00:00",
+  "status": "passed_automated_artifact_audit",
+  "checks": [
+    "Historical v3 reports/predictions/ratings preserved.",
+    "tfidf_lr: full ID/validation IDs, invalid handling, frozen map, cutoffs and metric cells reproduced.",
+    "distilbert: full ID/validation IDs, invalid handling, frozen map, cutoffs and metric cells reproduced.",
+    "llm: full ID/validation IDs, invalid handling, frozen map, cutoffs and metric cells reproduced.",
+    "Collected 2025 phishing recall uses actual once-scored outputs; no missing legitimate denominator becomes a zero FPR.",
+    "All 10 required browser outcomes and 8 complete 100-message distributions reproduce timing/size cells; timeouts never acquire fabricated percentiles.",
+    "Five-repeat consistency reproduces the actual fixed 50-message records; consistently invalid output cannot pass.",
+    "All six qualitative error selections are fingerprinted separately from independent human ratings and truth labels.",
+    "No unadmitted OOD/adversarial results, synthetic messages, AI labels or AI human ratings.",
+    "Frozen original numeric gates/weights/2% target remain unchanged; missing evidence cannot pass."
+  ],
+  "Graph_rows": 7358,
+  "human_review": "independent_actual_scores_pending_or_preserved_from_this_run_only",
+  "full_benchmark_qualification": "not_achieved_missing_external_truth_and_controls",
+  "model_inference_in_this_audit": 0,
+  "postprocessing_code_hashes": {
+    "scripts\\report_english.py": "b8eac8e2a6490e3aeeab5437d8132e8a32ce453e9963319c36ce8551d433c111",
+    "scripts\\challenge_report.py": "5ed01c78dd8f06e58002e446ff7d701c097efc692b389325a945c751a9bce5d3",
+    "scripts\\output_diagnostics.py": "97eb18fb668a5fb69d7f014200115203065a20526ea2fd94ef4dc3a2e0806c41",
+    "scripts\\audit_english.py": "432a2eb5e4e60652acae8b200562d8005faecd600ad6733a9f834f5f713c8eb0"
+  },
+  "artifact_hashes": {
+    "results\\summary.md": "83931a19aed946640136afe939141246f8a9ac7e22790c53c45cd4120f31a3b8",
+    "results\\Graph.csv": "d18212416978d6e65eef99ee8010b9437a900a9a632eb6357d1e59826ee76804",
+    "results\\metrics.json": "fe434c2671d74f16cfced3138f6e23479118a5135d77bad3e1544ccb7f7f69cb",
+    "results\\decision.json": "4245677c2a594b9342f9059a89e66425dc5abdb6088212b9529f3a622c468c8a",
+    "results\\comparisons.json": "544bf57f82913f10fa0f5bb3a3877df17c22a8187ca6d2734aba5dcdb6aa9da7",
+    "results\\browser_latency.json": "f15f3771ab2046182513745d33ae359c35c3c89dc5f17019f8c364c8f077ad87",
+    "results\\run_record.json": "02247f3647f8b583dff69525f33176a9cc32defa8f764069ee2bbcfc4182e797",
+    "results\\output_contract_diagnostics.json": "8221ae05cb5bff8bc9685c8c723331c3aa3048c435e82a8659fbbb2d9b190e1f",
+    "results\\interpretation_guide.md": "016248a44393cf64d8f4e966704ed9beac6c0a12990baf525367b051d7211e2f",
+    "results\\error_analysis\\reading_record.json": "0c26e75473197045f582cc389d92859b2a75f285b0dbc0aadfc85e2d759762f3",
+    "results\\error_analysis\\observations.md": "b4465f8818b085c49a7a153ac593cfa51c58457ae58f28ef15f5268482026df8",
+    "results\\human_review\\status.json": "980ea527d2945e8dbfc35abe1f64394dadb807be283ebbf4565512bb89e92983",
+    "results\\human_review\\samples.private.jsonl": "b2c8ea79d2841fa794683721370fb6140f3061153d46be5d6eb930482d4d4565",
+    "results\\charts\\accuracy_vs_speed.png": "0a3c58eab836ba9f3f3fdf5c8403d34079e1ecc4f8110a27497185ce66d1de4c",
+    "results\\charts\\confusion_matrices.png": "d30806d56588de0c97e5e24c8f001355fc73c07aeaa965ccc324e7341b1c2706",
+    "results\\charts\\id_and_collected_phishing_recall.png": "e612ace7678a31b44af9e555a85fdec6218778b15bee89fd4542a1de85fad680",
+    "results\\charts\\id_to_ood_drop.png": "5600a2b862585056fe8766a19737e9b540f02e059fa3d8b6f41b303119bf9c05",
+    "results\\charts\\latency_boxplots.png": "cff2576abe3529d04744b69f2940b3fdaeb8c25e807cbfbe91b8e19ec9d47282",
+    "results\\charts\\risk_calibration.png": "f607402219c72f716544e6ce097e983bb5bc517c59a1393b8d434555ab5b6b11",
+    "results\\charts\\roc_pr_curves.png": "86817f7ec303344985f273ee463a7fbfea8679d111ad279a9e6c3fb5b66d745e"
+  }
+}

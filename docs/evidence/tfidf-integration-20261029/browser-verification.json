@@ -1,0 +1,25 @@
+{
+  "scope": "installed-extension software smoke; intercepted API, no database",
+  "recorded_at": "2026-10-29T07:48:00.692Z",
+  "platform": "win32",
+  "os_release": "10.0.26300",
+  "checks": [
+    "Actual unpacked extension loaded in isolated Chrome profile",
+    "Popup opens without API or text-upload requests",
+    "Actual service worker scans locally and popup displays verified English insights",
+    "Save requires explicit upload consent",
+    "Save, fresh detail reread and history refresh use the contributors API contract (intercepted)",
+    "Notes and feedback update without changing model weights",
+    "Explicit delete and empty history rendering work",
+    "Simulated model failure shows Unable to assess with no released verdict",
+    "Retry and Clear work in the installed extension",
+    "No popup JavaScript errors observed"
+  ],
+  "accuracy_test": false,
+  "database_persistence_tested": false,
+  "chrome": "156.0.8078.73",
+  "api_requests_intercepted": 7,
+  "installed_extension": true,
+  "success": true,
+  "temporary_profile_removed": true
+}

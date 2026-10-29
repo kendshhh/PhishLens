@@ -1,0 +1,5 @@
+# Integrity-pinned benchmark artifacts must retain bytes on every OS/clone.
+/extension/ai/tfidf_v12a.json -text
+/extension/ai/core.mjs -text
+/extension/ai/observations.mjs -text
+/benchmark-records/** -text

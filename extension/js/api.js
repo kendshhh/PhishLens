@@ -124,7 +124,7 @@ export async function getAnalyses(baseUrl) {
     return data.items;
 }
 
-export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000 } = {}) {
+export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel } = {}) {
     if (!Number.isSafeInteger(createTimeoutMs) || createTimeoutMs < 1 || createTimeoutMs > 2147483647) {
         throw new Error('Create timeout must be a positive integer in milliseconds');
     }
@@ -202,7 +202,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                         201,
                         input,
                         createTimeoutMs,
-                        { 'Idempotency-Key': key }
+                        { 'Idempotency-Key': key, ...(requiredModel ? { 'X-PhishLens-Model': requiredModel } : {}) }
                     ),
                     true
                 );

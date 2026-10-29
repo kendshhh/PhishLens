@@ -1,168 +1,70 @@
-import { API_BASE_URL } from "./js/config.js";
+import { analyzeLocal } from './ai/local-analyzer.mjs';
 
-const MENU_ID = "phishlens-analyze-selection";
-// Leave time to save an error before Chrome's 30-second fetch deadline.
-const ANALYSIS_TIMEOUT_MS = 25_000;
-
+const MENU_ID = 'phishlens-analyze-selection';
 let analysisGeneration = 0;
 let stateUpdates = Promise.resolve();
 
-// Serialize storage and badge writes so Clear and newer requests always win.
+// Serialize writes so Clear and the newest scan win, including slow model loads.
 function updateAnalysis(generation, state, badge) {
   const update = stateUpdates.catch(() => {}).then(async () => {
-    if (generation !== analysisGeneration) {
-      return;
-    }
-    if (state === null) {
-      await chrome.storage.session.remove("veriqoAnalysis");
-    } else {
-      await chrome.storage.session.set({ veriqoAnalysis: state });
-    }
-    if (generation === analysisGeneration) {
-      await chrome.action.setBadgeText({ text: badge });
-    }
+    if (generation !== analysisGeneration) return;
+    if (state === null) await chrome.storage.session.remove('veriqoAnalysis');
+    else await chrome.storage.session.set({ veriqoAnalysis: state });
+    if (generation === analysisGeneration) await chrome.action.setBadgeText({ text: badge });
   });
   stateUpdates = update;
   return update;
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "phishlens-clear-analysis") {
-    return;
-  }
-  const generation = ++analysisGeneration;
-  updateAnalysis(generation, null, "").then(
-    () => sendResponse({ ok: true }),
-    () => sendResponse({ ok: false })
-  );
-  return true;
-});
-
-
-// ---------------------------------------------------------
-// Create the context-menu item when extension is installed
-// ---------------------------------------------------------
-
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({
-      id: MENU_ID,
-      title: "Analyze selection with VeriQo",
-      contexts: ["selection"]
+  chrome.contextMenus.removeAll(() => chrome.contextMenus.create({
+    id: MENU_ID, title: 'Analyze selection with PhishLens', contexts: ['selection']
+  }));
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id) return;
+  if (message?.type === 'phishlens-clear-analysis') {
+    updateAnalysis(++analysisGeneration, null, '').then(
+      () => sendResponse({ ok: true }), () => sendResponse({ ok: false })
+    );
+    return true;
+  }
+  if (message?.type === 'phishlens-analyze-text' && typeof message.text === 'string') {
+    analyzeSelectedText(message.text).then(
+      () => sendResponse({ ok: true }), () => sendResponse({ ok: false })
+    );
+    return true;
+  }
+});
+
+chrome.contextMenus.onClicked.addListener(info => {
+  if (info.menuItemId === MENU_ID && typeof info.selectionText === 'string') {
+    analyzeSelectedText(info.selectionText).catch(() => {
+      console.error('PhishLens could not save the local scan state.');
     });
-  });
-});
-
-
-// ---------------------------------------------------------
-// Handle right-click context-menu action
-// ---------------------------------------------------------
-
-chrome.contextMenus.onClicked.addListener((info) => {
-  if (info.menuItemId !== MENU_ID) {
-    return;
   }
-
-  const selectedText = info.selectionText?.trim();
-
-  if (!selectedText) {
-    return;
-  }
-
-  analyzeSelectedText(selectedText);
 });
-
-
-// ---------------------------------------------------------
-// Send selected text to FastAPI
-// ---------------------------------------------------------
 
 async function analyzeSelectedText(selectedText) {
   const generation = ++analysisGeneration;
-  // Save loading state for popup
-  await updateAnalysis(generation, {
-    status: "loading",
-    selectedText,
-    result: null,
-    error: null
-  }, "...");
-  if (generation !== analysisGeneration) {
-    return;
-  }
-
-  const controller = new AbortController();
-  let timeout;
+  await updateAnalysis(generation, { status: 'loading', selectedText, result: null, error: null }, '...');
+  if (generation !== analysisGeneration) return;
   try {
-    const result = await Promise.race([
-      requestAnalysis(selectedText, controller.signal),
-      new Promise((_, reject) => {
-        timeout = setTimeout(() => {
-          reject(new Error("Analysis timed out. Please try again; the backend may still be starting."));
-          controller.abort();
-        }, ANALYSIS_TIMEOUT_MS);
-      })
-    ]);
-
+    const debug = await chrome.storage.session.get('phishlensDebugFailNext');
+    if (debug.phishlensDebugFailNext) {
+      await chrome.storage.session.remove('phishlensDebugFailNext');
+      throw Error('Simulated local-model failure. Scan again to retry.');
+    }
+    const result = await analyzeLocal(selectedText);
     await updateAnalysis(generation, {
-      status: "success",
-      selectedText,
-      result,
-      error: null
-    }, "✓");
+      status: 'success', selectedText, result, error: null,
+      scanId: crypto.randomUUID(), recordedAt: new Date().toISOString()
+    }, result.alert ? '!' : '·');
   } catch (error) {
-    if (generation !== analysisGeneration) {
-      return;
-    }
-    console.error("PhishLens analysis failed:", error);
     await updateAnalysis(generation, {
-      status: "error",
-      selectedText,
-      result: null,
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, "!");
-  } finally {
-    clearTimeout(timeout);
+      status: 'error', selectedText, result: null,
+      error: error instanceof Error ? error.message : 'Unable to assess. Reload the extension and retry.'
+    }, '?');
   }
-}
-
-async function requestAnalysis(selectedText, signal) {
-  const response = await fetch(
-    `${API_BASE_URL}/analyses`,
-    {
-      method: "POST",
-      signal,
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify({
-        text: selectedText
-      })
-    }
-  );
-
-  if (!response.ok) {
-    let errorBody;
-    try {
-      errorBody = await response.json();
-    } catch {
-      throw new Error(
-        `Backend returned HTTP ${response.status} with an invalid error response.`
-      );
-    }
-
-    const message = errorBody?.error?.message;
-    const legacyMessage = errorBody?.detail;
-
-    throw new Error(
-      typeof message === "string" && message.trim()
-        ? message
-        : typeof legacyMessage === "string" && legacyMessage.trim()
-          ? legacyMessage
-          : `Backend returned HTTP ${response.status}`
-    );
-  }
-
-  return response.json();
 }

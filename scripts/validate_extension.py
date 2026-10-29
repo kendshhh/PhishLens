@@ -36,9 +36,17 @@ for asset in (
     "js/config.js",
     "js/api.js",
     "js/history.js",
+    "js/report-client.js",
+    "js/report-workflow.js",
     "background.js",
     "popup.js",
     "popup.css",
+    "ai/contract.json",
+    "ai/local-analyzer.mjs",
+    "ai/core.mjs",
+    "ai/observations.mjs",
+    "ai/tfidf_v12a.json",
+    "ai/ATTRIBUTION.md",
 ):
     require_file(asset)
 

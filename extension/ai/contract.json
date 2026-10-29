@@ -1,0 +1,12 @@
+{
+  "system": "tfidf_v12a",
+  "model_id": "word_plus_char_wb_C1p0",
+  "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+  "mapping": {
+    "kind": "margin_sigmoid",
+    "slope": 1.6158795082744162,
+    "intercept": 2.0617153419475205
+  },
+  "alert_mode": "raw_margin",
+  "alert_threshold": 0.0
+}

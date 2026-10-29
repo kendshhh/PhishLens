@@ -1,6 +1,7 @@
 """Offline adversarial/control-plane scenarios; no GitHub, Render or paid AI calls."""
 import base64
 import copy
+import hashlib
 import io
 import json
 import os
@@ -323,6 +324,41 @@ class PreviewTests(unittest.TestCase):
                 self.assertIn(SHA.encode(), archive.read("popup.html"))
                 self.assertNotIn(b"127.0.0.1", archive.read("background.js"))
                 self.assertEqual(json.loads(archive.read("manifest.json"))["host_permissions"], [CONFIG["staging_origin"] + "/*"])
+
+    def test_large_model_uses_exact_repository_blob_without_external_download(self):
+        api = Mock()
+        model = (ROOT / "extension/ai/tfidf_v12a.json").read_bytes()
+        digest = hashlib.sha1(f"blob {len(model)}\0".encode() + model).hexdigest()
+        def read(path):
+            if path == "git/blobs/" + digest:
+                return {"encoding": "base64", "sha": digest, "size": len(model),
+                        "content": base64.b64encode(model).decode()}
+            relative = path.split("contents/extension/", 1)[1].split("?", 1)[0]
+            data = (ROOT / "extension" / relative).read_bytes()
+            if relative == "ai/tfidf_v12a.json":
+                return {"encoding": "none", "sha": digest, "size": len(model)}
+            return {"encoding": "base64", "size": len(data), "content": base64.b64encode(data).decode()}
+        api.request.side_effect = read
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "test.zip"
+            package(api, SHA, 123, CONFIG, output)
+            with ZipFile(output) as archive:
+                self.assertEqual(archive.read("ai/tfidf_v12a.json"), model)
+                self.assertIn("js/report-client.js", archive.namelist())
+
+    def test_large_model_with_mismatched_blob_is_rejected(self):
+        api = Mock()
+        def read(path):
+            if path.startswith("git/blobs/"):
+                return {"encoding": "base64", "sha": "b" * 40, "size": 1, "content": "eA=="}
+            relative = path.split("contents/extension/", 1)[1].split("?", 1)[0]
+            data = (ROOT / "extension" / relative).read_bytes()
+            if relative == "ai/tfidf_v12a.json":
+                return {"encoding": "none", "sha": "a" * 40, "size": len(data)}
+            return {"encoding": "base64", "size": len(data), "content": base64.b64encode(data).decode()}
+        api.request.side_effect = read
+        with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(RuntimeError, "identity"):
+            package(api, SHA, 123, CONFIG, Path(directory) / "test.zip")
 
 
 class MetricsTests(unittest.TestCase):
