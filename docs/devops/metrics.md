@@ -55,7 +55,18 @@ and a second read-only check before exact-SHA staging CRUD acceptance. Productio
 persistence after refresh/redeploy, installed-Chrome behavior, recovery
 duration, and a comparable whole-pipeline gain remain unmeasured.
 
-## Current PR #86 gate status — October 28, 2026 17:31 UTC
+## Current post-merge staging acceptance — October 29, 2026 00:31 UTC
+
+PR #86 merged at 00:11 UTC. Production is Live on merge commit
+`1344fcb061272bac93ced5911f1ab8fbb3b6785d`; staging is Live on candidate SHA
+`fc7db9bf5441af4cd68ec2efbcbc7ac8efdc20a2`. Read-only version, health, and
+readiness checks returned HTTP 200 for both. The authorized exact-SHA staging
+CRUD verifier passed and removed its synthetic record. No production write was
+made. These are delivery/acceptance checks, not a new performance sample; the
+cache comparison still shows no whole-pipeline improvement, and recovery
+duration remains unknown.
+
+## Historical PR #86 gate snapshot — October 28, 2026 17:31 UTC
 
 At this snapshot, PR head `dcafd2f539a3dafdc6a3c50e62cc35ae71c24d86` passed all
 automated checks except Hosted staging, pending at the protected `staging`

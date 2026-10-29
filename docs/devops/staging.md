@@ -192,9 +192,12 @@ bypass. Existing PR branches need this workflow from current main after rollout.
 1. Confirm all four checks passed for the latest PR commit and verify its live
    SHA in the staging Render dashboard.
 2. Download `PhishLens-Staging-Extension` from that PR's workflow artifacts.
-3. Extract and load the folder as an unpacked extension in Chrome. Its display
-   name is `PhishLens Staging`; its configuration and host permission point only
-   to staging. The production source configuration remains unchanged.
+3. Extract and load the folder as an unpacked extension in Chrome. The PR #86
+   artifact produced by run 40736903885 has manifest name `Veriqo STAGING PR 86`,
+   version `0.1.0`, `contextMenus` and `storage` permissions, and only the
+   `https://phishlens-staging.onrender.com/*` host permission. Verify those
+   values in Chrome before testing. The production source configuration remains
+   unchanged.
 4. Open history and verify the synthetic account notice, phishing prediction,
    high risk, and 93% confidence. Check popup/error behavior affected by the PR.
 5. Record the PR SHA, deployment link, browser result, and evidence in the PR.
@@ -206,12 +209,53 @@ claims require separate evidence. The API supports persistent saved-analysis
 CRUD, and PR #58 records a successful synthetic API CRUD check on staging.
 Hosted staging smoke checks saved-history reads; separate synthetic CRUD checks
 passed on staging for PR #58 and for PR #83's exact deployed merge SHA, as
-recorded below. Those results do not establish behavior for a later deployed SHA,
-and broader CRUD acceptance remains gated. Installed-Chrome acceptance and
-real-provider/AI verification remain separate evidence items. The Neon Auth CRUD
+recorded below. The PR #86 exact-SHA guarded CRUD verifier also passed against
+its live staging candidate, as recorded in the current verification section.
+Production persistence and installed-Chrome acceptance remain separate evidence
+items. Real-provider/AI verification remains separate. The Neon Auth CRUD
 prototype is separate, local-only, and not yet exercised.
 
 ## Verification status
+
+### Post-merge staging and CRUD verification — October 29, 2026 00:31 UTC
+
+PR [#86](https://github.com/kendshhh/PhishLens/pull/86) merged at 00:11 UTC
+with merge commit `1344fcb061272bac93ced5911f1ab8fbb3b6785d`. Render staging
+deployment [`dep-dbh8s8942hec73bo7bt0`](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dbh8s8942hec73bo7bt0)
+is Live on candidate SHA `fc7db9bf5441af4cd68ec2efbcbc7ac8efdc20a2`. At 00:31 UTC,
+read-only `/version`, `/health`, and `/ready` requests returned HTTP 200;
+`/version` matched that SHA and `staging`, and `/ready` reported the database
+connected.
+
+On Neon branch `pr-58-staging` (`br-delicate-paper-b381z98i`), database
+`phishlens_dev`, table ownership was transferred from `phishlens_staging_app`
+to the migration owner `neondb_owner`. The runtime role has `CONNECT`, schema
+`USAGE`, and only `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on `users` and
+`analyzed_emails`. It has no schema `CREATE`, no privileges on `alembic_version`,
+and no `TRUNCATE`, `REFERENCES`, `TRIGGER`, or `MAINTAIN` access. No sequences
+exist in `public`. The role cannot create roles or databases, replicate, or
+bypass RLS. PostgreSQL's database default still gives `TEMPORARY` to `PUBLIC`;
+that default was not changed because it applies to every login role in this
+staging database, and no temporary tables were present.
+
+The already authorized guarded verifier passed against the exact live candidate:
+
+```text
+node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha fc7db9bf5441af4cd68ec2efbcbc7ac8efdc20a2 --allow-writes
+```
+
+It created, read, listed, edited, cleared, and deleted one synthetic record
+(`9dceae92-cd9e-4046-b0fa-f667b3b87d1d`); the final absent-record check passed.
+The verifier removes its created row in cleanup. No production write was made.
+Installed-Chrome acceptance remains separate.
+
+The PR #86 workflow artifact ID is `12861842602`, created from head
+`3abad4309b2976e7390937c8f8f54e60aee8f6dc`. Its outer ZIP SHA-256 is
+`c718b8a19fbbce2f5a823513330836ee34098fffd6c0e056bd6aba6fbbbaed15`; embedded
+evidence identifies deployed candidate `fc7db9bf5441af4cd68ec2efbcbc7ac8efdc20a2`,
+migration revision `0003_saved_analysis_idempotency`, and reports
+`chrome_manual_test: not performed`. The extension artifact's manifest and
+host permission were inspected; actual installed-Chrome behavior remains open.
 
 ### Current PR #86 gate — October 28, 2026 17:31 UTC
 
