@@ -2,6 +2,10 @@
 
 Closes #ISSUE_NUMBER
 
+## Related Pull Requests
+
+List related open or closed PRs, or write "None".
+
 ## What Changed
 
 Describe the resulting behavior and why this change is needed.
@@ -18,7 +22,8 @@ Write "None" if there are none.
 
 ## Author Checklist
 
-- [ ] Changes address the linked issue's acceptance criteria.
+- [ ] Changes address the linked issue's acceptance criteria and account for related PR work.
+- [ ] I checked related PRs and noted whether each is open, merged, or closed without merge.
 - [ ] I checked the changes for credentials and private data.
 - [ ] I coordinated changes to shared files with their owners.
 - [ ] I updated relevant documentation.

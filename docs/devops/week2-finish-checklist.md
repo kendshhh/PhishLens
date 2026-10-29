@@ -2,7 +2,45 @@
 
 Week 2 is October 16–22, 2026, per the retained professor report. Work after October 22 is carryover.
 
-## Latest carryover status — October 28, 2026 17:31 UTC
+## Current issue-to-PR checklist — October 29, 2026
+
+Live GitHub review found 61 repository pull requests: 2 open and 59 closed.
+The two open PRs are [#59](https://github.com/kendshhh/PhishLens/pull/59)
+(closes issue #46) and [#61](https://github.com/kendshhh/PhishLens/pull/61)
+(closes issue #47). [PR #86](https://github.com/kendshhh/PhishLens/pull/86)
+merged at 00:11 UTC on October 29. The table tracks linked PR state alongside
+the issue state; a merged PR does not automatically satisfy every issue criterion.
+Earlier dated sections below remain historical snapshots.
+
+| Sprint 2 issue | Linked PRs and current state | Issue state |
+|---|---|---|
+| [#36](https://github.com/kendshhh/PhishLens/issues/36) planning/contract | [#52](https://github.com/kendshhh/PhishLens/pull/52), [#55](https://github.com/kendshhh/PhishLens/pull/55), [#86](https://github.com/kendshhh/PhishLens/pull/86) — merged | Open |
+| [#37](https://github.com/kendshhh/PhishLens/issues/37) environment/package | [#52](https://github.com/kendshhh/PhishLens/pull/52), [#55](https://github.com/kendshhh/PhishLens/pull/55), [#81](https://github.com/kendshhh/PhishLens/pull/81), [#83](https://github.com/kendshhh/PhishLens/pull/83), [#85](https://github.com/kendshhh/PhishLens/pull/85), [#86](https://github.com/kendshhh/PhishLens/pull/86) — merged | Open |
+| [#38](https://github.com/kendshhh/PhishLens/issues/38) PostgreSQL CI | [#52](https://github.com/kendshhh/PhishLens/pull/52), [#55](https://github.com/kendshhh/PhishLens/pull/55) — merged | Closed |
+| [#39](https://github.com/kendshhh/PhishLens/issues/39) production delivery | [#55](https://github.com/kendshhh/PhishLens/pull/55), [#83](https://github.com/kendshhh/PhishLens/pull/83), [#86](https://github.com/kendshhh/PhishLens/pull/86) — merged | Open |
+| [#40](https://github.com/kendshhh/PhishLens/issues/40) metrics/recovery | [#55](https://github.com/kendshhh/PhishLens/pull/55), [#57](https://github.com/kendshhh/PhishLens/pull/57), [#86](https://github.com/kendshhh/PhishLens/pull/86) — merged | Open |
+| [#41](https://github.com/kendshhh/PhishLens/issues/41) consultation | [#55](https://github.com/kendshhh/PhishLens/pull/55), [#56](https://github.com/kendshhh/PhishLens/pull/56), [#57](https://github.com/kendshhh/PhishLens/pull/57), [#85](https://github.com/kendshhh/PhishLens/pull/85), [#86](https://github.com/kendshhh/PhishLens/pull/86) — merged | Open |
+| [#42](https://github.com/kendshhh/PhishLens/issues/42) persistent CRUD | [#51](https://github.com/kendshhh/PhishLens/pull/51), [#52](https://github.com/kendshhh/PhishLens/pull/52), [#55](https://github.com/kendshhh/PhishLens/pull/55), [#58](https://github.com/kendshhh/PhishLens/pull/58) — merged | Open |
+| [#43](https://github.com/kendshhh/PhishLens/issues/43) CRUD acceptance tests | [#52](https://github.com/kendshhh/PhishLens/pull/52), [#55](https://github.com/kendshhh/PhishLens/pull/55), [#80](https://github.com/kendshhh/PhishLens/pull/80) — merged | Open |
+| [#44](https://github.com/kendshhh/PhishLens/issues/44) CRUD API client | [#51](https://github.com/kendshhh/PhishLens/pull/51) — merged | Open |
+| [#45](https://github.com/kendshhh/PhishLens/issues/45) HTTP/client acceptance | [#51](https://github.com/kendshhh/PhishLens/pull/51) — merged | Open |
+| [#46](https://github.com/kendshhh/PhishLens/issues/46) CRUD screens | [#59](https://github.com/kendshhh/PhishLens/pull/59) — open | Open |
+| [#47](https://github.com/kendshhh/PhishLens/issues/47) browser acceptance | [#61](https://github.com/kendshhh/PhishLens/pull/61) — open | Open |
+| [#48](https://github.com/kendshhh/PhishLens/issues/48) AI/CRUD compatibility | No PR referencing this issue was found in the current PR index | Open |
+| [#49](https://github.com/kendshhh/PhishLens/issues/49) model suitability/evaluation plan | No PR referencing this issue was found in the current PR index | Open |
+
+The PR inventory and issue states were queried on October 29. Recheck GitHub
+before using this as a later status report.
+
+Post-merge verification on October 29: PR #86 is merged; production is Live on
+`1344fcb`, staging is Live on exact candidate `fc7db9b`, and the protected
+staging deployment plus fresh least-privilege check and guarded synthetic CRUD
+all passed. Production remains read-only and its saved-record persistence is
+unverified. Issues #36, #37, #39, #40 and #41 remain open for their outstanding
+contract, browser/privacy, production, recovery/optimization, and real-event
+acceptance. The Sprint 2 board remains At risk.
+
+## Historical carryover snapshot — October 28, 2026 17:31 UTC
 
 The dated sections below preserve earlier Week 2 snapshots. The current Kendra
 Week 1–4 crosswalk is in [kendra-week1-4-closeout-2026-10-28.md](kendra-week1-4-closeout-2026-10-28.md).
