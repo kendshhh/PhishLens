@@ -45,6 +45,8 @@ export function createPopupController(client, doc = document) {
 
   function setBusy(value) {
     busy = value;
+    ui.subject.disabled = value;
+    ui.body.disabled = value;
     for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete]) {
       button.disabled = value;
     }
@@ -178,6 +180,7 @@ export function createPopupController(client, doc = document) {
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     setBusy(true);
     try {
       selected = await client.updateAnalysis(selected.id, {
@@ -201,6 +204,7 @@ export function createPopupController(client, doc = document) {
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     setBusy(true);
     try {
       const deletedId = selected.id;

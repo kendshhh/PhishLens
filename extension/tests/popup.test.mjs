@@ -53,6 +53,7 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
   assert.match(html, /role="status" aria-live="polite"/);
   assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /<\/div>\s*<button id="clear-button"/);
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
   assert.match(css, /overflow-y:\s*auto/);
@@ -98,6 +99,59 @@ test("late detail response cannot replace the most recently opened analysis", as
   resolveA(first);
   await openA;
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "B");
+});
+
+test("detail reads started before an edit cannot replace the edited record", async () => {
+  const original = record(id, "Original");
+  let resolveLate;
+  let detailCalls = 0;
+  let updated = { ...original };
+  const client = {
+    ...createInMemoryAnalysisClient([original]),
+    async getAnalysis() {
+      detailCalls++;
+      if (detailCalls === 1) return original;
+      return new Promise(resolve => { resolveLate = resolve; });
+    },
+    async updateAnalysis(_id, patch) { updated = { ...original, ...patch }; return updated; },
+    async listAnalyses() { return [updated]; }
+  };
+  const { ui, controller } = setup(client);
+  await controller.loadDetail(id);
+  const lateRead = controller.loadDetail(id);
+  await Promise.resolve();
+  await ui.get("detail-content").children.at(-2).fire("click");
+  ui.get("edit-notes").value = "Saved edit";
+  await ui.get("edit-form").fire("submit");
+  resolveLate(original);
+  await lateRead;
+  assert.equal(ui.get("detail-content").children[7].children[1].textContent, "Saved edit");
+});
+
+test("detail reads started before deletion cannot reopen the deleted record", async () => {
+  const original = record(id, "Deleted");
+  let resolveLate;
+  let detailCalls = 0;
+  const client = {
+    ...createInMemoryAnalysisClient([original]),
+    async getAnalysis() {
+      detailCalls++;
+      if (detailCalls === 1) return original;
+      return new Promise(resolve => { resolveLate = resolve; });
+    },
+    async deleteAnalysis() {},
+    async listAnalyses() { return []; }
+  };
+  const { ui, controller } = setup(client);
+  await controller.loadDetail(id);
+  const lateRead = controller.loadDetail(id);
+  await Promise.resolve();
+  await ui.get("detail-content").children.at(-1).fire("click");
+  await ui.get("delete-confirm").fire("submit");
+  resolveLate(original);
+  await lateRead;
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("history-list").children.length, 0);
 });
 
 test("loads, views safe text, labels mock provenance, and starts empty after last deletion", async () => {
@@ -162,6 +216,27 @@ test("editing notes preserves a null feedback value", async () => {
   const saved = await memory.getAnalysis(id);
   assert.equal(saved.notes, "Reviewed without feedback");
   assert.equal(saved.feedback, null);
+});
+
+test("create subject and body stay disabled until save settles", async () => {
+  let resolveCreate;
+  const saved = record("created", "New draft");
+  const client = {
+    ...createInMemoryAnalysisClient(),
+    createAnalysis() { return new Promise(resolve => { resolveCreate = resolve; }); },
+    async listAnalyses() { return [saved]; },
+    async getAnalysis() { return saved; }
+  };
+  const { ui } = setup(client);
+  ui.get("create-subject").value = "New draft";
+  ui.get("create-body").value = "Synthetic body";
+  const saving = ui.get("create-form").fire("submit");
+  assert.equal(ui.get("create-subject").disabled, true);
+  assert.equal(ui.get("create-body").disabled, true);
+  resolveCreate(saved);
+  await saving;
+  assert.equal(ui.get("create-subject").disabled, false);
+  assert.equal(ui.get("create-body").disabled, false);
 });
 
 test("create and edit submit through the injected five-method client", async () => {
