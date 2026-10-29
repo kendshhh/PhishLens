@@ -3,10 +3,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { initializePopup } from '../js/popup.js';
 import { createLocalAnalyzer, MODEL_SHA256 } from '../ai/local-analyzer.mjs';
+import { createReevaluator } from '../ai/reevaluators.mjs';
+import { releaseWorkflow, validateJudge, quoteOptions } from '../ai/judge-contract.mjs';
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const analyze = createLocalAnalyzer({ fetchImpl: async url => new Response(await readFile(new URL(url))) });
-const r = await analyze('Please review the project meeting agenda. Do not share your password.');
+const primary = await analyze('Please review the project meeting agenda. Do not share your password.');
+const checks = createReevaluator({ fetchImpl: async url => new Response(await readFile(new URL(url))), getBasis: () => analyze.getAssets() });
+const judge = validateJudge(JSON.stringify({ audit: 'supported', evidence_id: quoteOptions(primary)[0].id,
+  reason_code: 'protective_or_routine_context', missing_context: false }), primary);
+const r = releaseWorkflow(primary, judge, await checks(primary));
 const scan = { status: 'success', result: r, selectedText: 'Please review the project meeting agenda. Do not share your password.', scanId: 'scan-1' };
 const record = { id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c', subject: 'Notice <img src=x>',
   prediction: 'legitimate', confidence: null, risk_level: 'low', threat_indicators: [], explanation: 'Check independently.',
@@ -77,10 +83,12 @@ test('confirmed save retains success after refresh failure; notes and delete use
   const calls = []; let saved = false;
   const { dom } = await popup(async (url, options) => {
     calls.push([url, options]);
-    if (url.endsWith('/model-info')) return ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true, model_sha256: MODEL_SHA256 });
+    if (url.endsWith('/model-info')) return ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true, accepts_local_reviews: true, model_sha256: MODEL_SHA256 });
     if (options.method === 'POST') {
       saved = true; assert.equal(options.headers['X-PhishLens-Model'], MODEL_SHA256);
-      assert.deepEqual(JSON.parse(options.body), { subject: '', body: scan.selectedText }); return ok(record, 201);
+      const input = JSON.parse(options.body);
+      assert.equal(input.subject, ''); assert.equal(input.body, scan.selectedText);
+      assert.equal(input.local_review.status, r.workflow.status); return ok(record, 201);
     }
     if (options.method === 'PATCH') { assert.deepEqual(JSON.parse(options.body), { notes: 'Observed', feedback: 'false_positive' }); return ok({ ...record, notes: 'Observed', feedback: 'false_positive' }); }
     if (options.method === 'DELETE') return ok(null, 204);
@@ -101,7 +109,7 @@ test('confirmed save retains success after refresh failure; notes and delete use
 test('ambiguous create retry keeps the request key after popup reopening', async () => {
   const keys = [], shared = { veriqoAnalysis: scan };
   const fetcher = async (url, options) => {
-    if (url.endsWith('/model-info')) return ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true, model_sha256: MODEL_SHA256 });
+    if (url.endsWith('/model-info')) return ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true, accepts_local_reviews: true, model_sha256: MODEL_SHA256 });
     keys.push(options.headers['Idempotency-Key']); throw Error('Connection lost');
   };
   for (let i = 0; i < 2; i++) {

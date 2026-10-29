@@ -105,12 +105,12 @@ async def create_analysis(
 
     # An extension save must never silently invoke a cloud/mock provider. Keep
     # the existing body contract server-owned, including when deployment changes.
-    if required_model is not None:
+    if required_model is not None or request.local_review is not None:
         try:
             from backend.ai.tfidf_provider import MODEL_SHA256, load_artifact
 
             mode, _, _ = get_ai_config()
-            if mode != "tfidf" or required_model != MODEL_SHA256:
+            if mode != "tfidf" or (required_model is not None and required_model != MODEL_SHA256):
                 raise RuntimeError("Model mismatch")
             load_artifact()
         except (RuntimeError, OSError, ValueError, KeyError):

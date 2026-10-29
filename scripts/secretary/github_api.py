@@ -25,8 +25,11 @@ class GitHub:
 
         def read_response(request):
             with urllib.request.urlopen(request, timeout=30) as response:
-                raw = response.read(8_000_001)
-                if len(raw) > 8_000_000:
+                # A bounded ORT-WASM blob is ~28 MB before base64. Other API
+                # responses retain the smaller cap; no remote code is executed.
+                maximum = 44_000_000 if path.startswith("git/blobs/") else 8_000_000
+                raw = response.read(maximum + 1)
+                if len(raw) > maximum:
                     raise APIError("GitHub response exceeds safe size")
                 return json.loads(raw) if raw else None
 

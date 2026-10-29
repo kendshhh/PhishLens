@@ -41,9 +41,12 @@ export function createLocalAnalyzer({ fetchImpl = fetch, cryptoImpl = globalThis
     if (!validArtifact(artifact)) throw Error('Invalid packaged model. Reload the extension.');
     return { artifact, contract };
   }
-  return async text => {
+  async function getAssets() {
     if (!pending) pending = load().catch(error => { pending = undefined; throw error; });
-    const { artifact, contract } = await pending;
+    return pending;
+  }
+  const evaluate = async text => {
+    const { artifact, contract } = await getAssets();
     const result = analyze({ text }, artifact, contract);
     if (!result.valid || !result.verification.quote_spans_valid || !result.matched_features) {
       throw Error('Unable to assess: the selection has no usable model features. Select the complete visible email text.');
@@ -57,6 +60,8 @@ export function createLocalAnalyzer({ fetchImpl = fetch, cryptoImpl = globalThis
     result.verification.model_feature_quotes_dropped = before - result.model_drivers.length;
     return result;
   };
+  evaluate.getAssets = getAssets;
+  return evaluate;
 }
 
 export const analyzeLocal = createLocalAnalyzer();

@@ -2,15 +2,19 @@
 
 import json
 import math
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from backend.ai.service import AIService
-from backend.ai.tfidf_provider import MODEL_SHA256, TfidfProvider, prepare_plain, score_text
+from backend.ai.tfidf_provider import (
+    MODEL_SHA256,
+    TfidfProvider,
+    score_text,
+)
 from backend.app import main
 from backend.app.analysis_deadlines import AnalysisDeadline
 from backend.app.analysis_execution import run_saved_inference
@@ -37,7 +41,8 @@ def test_server_scores_body_only_and_keeps_verified_original_quotes():
     assert fields["analysis_provenance"]["phishing_score"] == first.phishing_score
 
 
-@pytest.mark.parametrize("body", ["", "  ", "🔒⚠️", "<html>meeting</html>", "x" * 30001])
+@pytest.mark.parametrize("body", ["", "  ", "🔒⚠️", "<html>meeting</html>", "x" * 30001],
+                         ids=["empty", "blank", "emoji", "html", "oversize"])
 def test_invalid_or_unscorable_input_is_not_a_safe_verdict(body):
     with pytest.raises(RuntimeError):
         score_text(body)
@@ -65,7 +70,7 @@ let data='';for await(const s of process.stdin)data+=s;
 console.log(JSON.stringify(JSON.parse(data).map(text=>analyze({text},a,c))));
 """
     completed = subprocess.run([node, "--input-type=module", "-e", program], cwd=ROOT,
-                               input=json.dumps(inputs), capture_output=True, text=True, check=True)
+                               input=json.dumps(inputs), capture_output=True, text=True, encoding="utf-8", check=True)
     for body, js in zip(inputs, json.loads(completed.stdout), strict=True):
         py = score_text(body)
         assert py["text"] == js["analysis_text"]

@@ -1,5 +1,8 @@
 # Integration verification — 29 October 2026
 
+This page records the initial TF-IDF-only integration at `dacd777`. The later
+full teacher workflow has [separate implementation checks](ai/live-workflow-verification.md).
+
 See the machine-readable evidence in `docs/evidence/tfidf-integration-20261029/`.
 The integration is based on main `1344fcb061272bac93ced5911f1ab8fbb3b6785d`.
 

@@ -39,7 +39,8 @@ try {
     const request = route.request(); const url = new URL(request.url());
     requests.push({ path: url.pathname, method: request.method() });
     let body;
-    if (url.pathname === '/model-info') body = { provider_mode: 'tfidf', model_sha256: sha, accepts_tfidf_reports: true };
+    if (url.pathname === '/model-info') body = { provider_mode: 'tfidf', model_sha256: sha,
+      accepts_tfidf_reports: true, accepts_local_reviews: true };
     else if (url.pathname === '/api/analyses' && request.method() === 'POST') {
       assert.equal(request.headers()['x-phishlens-model'], sha);
       assert.ok(request.headers()['idempotency-key']); saved = true;

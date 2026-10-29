@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const source = (await readFile(new URL('../background.js', import.meta.url), 'utf8'))
-  .replace("import { analyzeLocal } from './ai/local-analyzer.mjs';", '');
+  .replace(/^import .+;$/gm, '');
 const settle = () => new Promise(resolve => setImmediate(resolve));
 function deferred() {
   let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; });
@@ -17,7 +17,8 @@ function worker({ firstWrite } = {}) {
   const context = vm.createContext({
     console, crypto: globalThis.crypto,
     fetch() { throw Error('Local scans must not call an HTTP API'); },
-    analyzeLocal: text => { const d = deferred(); requests.push({ ...d, text }); return d.promise; },
+    analyzeWithReview: text => { const d = deferred(); requests.push({ ...d, text }); return d.promise; },
+    cancelJudge: async () => {},
     chrome: {
       runtime: { id: 'self', onInstalled: { addListener() {} },
         onMessage: { addListener(fn) { listener = fn; } } },
@@ -46,15 +47,15 @@ for (const outcome of ['success', 'error']) {
   test('latest scan wins over an older ' + outcome, async () => {
     const app = worker(), older = app.analyze('A'); await settle();
     const newer = app.analyze('B'); await settle();
-    app.requests[1].resolve({ alert: true }); await newer;
-    if (outcome === 'success') app.requests[0].resolve({ alert: false });
+    app.requests[1].resolve({ alert: true, workflow: { released: true } }); await newer;
+    if (outcome === 'success') app.requests[0].resolve({ alert: false, workflow: { released: true } });
     else app.requests[0].reject(Error('old failure'));
     await older;
     assert.equal(app.state.analysis.selectedText, 'B'); assert.equal(app.state.badge, '!');
   });
   test('Clear invalidates in-flight ' + outcome, async () => {
     const app = worker(), pending = app.analyze('A'); await settle(); await app.clear();
-    if (outcome === 'success') app.requests[0].resolve({ alert: false });
+    if (outcome === 'success') app.requests[0].resolve({ alert: false, workflow: { released: true } });
     else app.requests[0].reject(Error('old failure'));
     await pending; assert.equal(app.state.analysis, undefined); assert.equal(app.state.badge, '');
   });
@@ -69,7 +70,7 @@ test('local failure is unavailable, never a safe result, and permits retry', asy
   app.requests[0].reject(Error('Packaged model missing')); await failed;
   assert.equal(app.state.analysis.status, 'error'); assert.equal(app.state.analysis.result, null);
   assert.equal(app.state.badge, '?');
-  const retry = app.analyze('B'); await settle(); app.requests[1].resolve({ alert: false }); await retry;
+  const retry = app.analyze('B'); await settle(); app.requests[1].resolve({ alert: false, workflow: { released: true } }); await retry;
   assert.equal(app.state.analysis.status, 'success'); assert.equal(app.state.badge, '·');
 });
 test('debug failure is consumed once and requires no inference/API call', async () => {

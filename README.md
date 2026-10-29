@@ -30,13 +30,19 @@ evidence. See the [current DevOps backlog audit](docs/devops/backlog-audit-2026-
 | Frontend | Chrome extension using HTML, CSS, and JavaScript |
 | Backend | Python with FastAPI |
 | Database | PostgreSQL hosted on Neon |
-| AI | DistilBERT running through the backend |
+| AI | Local TF-IDF v12a, Llama judge, then TF-IDF + linear-kernel KRR + LightGBM review |
 | Version control | Git and GitHub |
 | CI/CD | GitHub Actions and Render deployment after CI passes |
 | Backend hosting | Render Free; https://phishlens-api-ocvt.onrender.com |
 
-The Chrome extension communicates with the backend API.
-The backend owns database access and AI processing.
+Scans run locally in Chrome. The extension contacts the backend only for explicit
+saved-report and history operations. The backend owns database access and replays
+the classifiers before saving a local review. Its matching save configuration is
+`AI_MODE=tfidf`; it attributes LLM audits to the browser.
+
+The implementation is verified locally, with benchmark history preserved
+separately. This combined workflow has no new accuracy qualification or public
+deployment claim. See [setup, workflow and limits](docs/ai/live-workflow.md).
 
 Neon hosts PostgreSQL; Render hosts the FastAPI backend.
 
@@ -227,6 +233,10 @@ workflow, deliverables, and grading:
 records the demo agenda, evidence gaps and Sprint 3/4 handoff.
 
 ## Selected TF-IDF integration pilot
+
+The current live implementation follows the teacher's per-scan workflow:
+**TF-IDF v12a → local LLM judge → TF-IDF + KRR + LightGBM reevaluation → reviewed
+result or Uncertain**. See [the live workflow and setup](docs/ai/live-workflow.md).
 
 The branch `codex/tfidf-v12a-workflow-20261029` connects the frozen v12a model
 to local Chrome selection scanning and the contributors' optional saved-report

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testcase name="returns records from items" time="0.002935" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="returns empty history" time="0.000360" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects an HTTP 503 response" time="0.000716" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects an invalid response wrapper" time="0.000281" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects a null record" time="0.000325" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects confidence stored as text" time="0.000401" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects confidence outside the allowed range" time="0.000246" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="accepts nullable result fields" time="0.000951" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid JSON" time="0.000208" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="handles a network failure" time="0.000229" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects an ID that is not a UUID" time="0.000111" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid UTC timestamp 0" time="0.000442" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid UTC timestamp &quot;0&quot;" time="0.000148" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid UTC timestamp &quot;2026-10-14&quot;" time="0.000105" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid UTC timestamp &quot;2026-10-14T04:00:00&quot;" time="0.000094" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid UTC timestamp &quot;2026-10-14T04:00:00+08:00&quot;" time="0.000126" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="rejects invalid UTC timestamp &quot;2026-02-30T04:00:00Z&quot;" time="0.000149" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="accepts UTC timestamp 2026-10-14T04:00:00Z" time="0.000194" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="accepts UTC timestamp 2026-10-14T04:00:00+00:00" time="0.000105" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="accepts UTC timestamp 2026-10-13T15:07:51.365605+00:00" time="0.000100" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\api.test.mjs"/>
+	<testcase name="latest scan wins over an older success" time="0.007902" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="Clear invalidates in-flight success" time="0.001380" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="latest scan wins over an older error" time="0.001283" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="Clear invalidates in-flight error" time="0.001181" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="Clear waits for a pending write without starting stale inference" time="0.001186" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="local failure is unavailable, never a safe result, and permits retry" time="0.001251" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="debug failure is consumed once and requires no inference/API call" time="0.001027" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="other extensions cannot submit or clear scan state" time="0.000825" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\background.test.mjs"/>
+	<testcase name="CRUD acceptance runner works over HTTP against a local substitute" time="0.053430" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-http.test.mjs"/>
+	<testcase name="imported runner rejects unsafe target https://phishlens-api-ocvt.onrender.com" time="0.001480" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="imported runner rejects unsafe target https://example.test" time="0.000260" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="imported runner rejects unsafe target https://phishlens-staging.onrender.com.evil.invalid" time="0.000137" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="imported runner rejects unsafe target http://127.0.0.1:8000/path" time="0.000113" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="imported runner rejects unsafe target http://user:password@localhost:8000" time="0.000212" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="imported runner cannot omit write permission" time="0.000220" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="requires a full backend SHA" time="0.000179" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for production" time="0.043246" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for wrong-sha" time="0.007031" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for invalid-json" time="0.005899" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for identity-503" time="0.005969" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for not-ready" time="0.007656" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for identity-redirect" time="0.005849" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="refuses writes for post-redirect" time="0.010228" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud-target.test.mjs"/>
+	<testcase name="lists records and normalizes the base URL" time="0.003904" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="accepts an empty list" time="0.000209" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="gets one detail record" time="0.000212" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="creates with POST JSON and accepts 201" time="0.002636" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="create retry reuses its idempotency key after an uncertain network failure" time="0.000722" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="create retry reuses its idempotency key after an analysis timeout response" time="0.000245" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="explicit idempotency key supports retry after recreating the client" time="0.000242" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="a new intentional create after success receives a fresh idempotency key" time="0.000195" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="patches notes and feedback without adding omitted fields" time="0.000172" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="sends null notes to clear them" time="0.000179" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="deletes with 204 and never parses its empty body" time="0.000115" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="preserves HTTP 404 and readable detail" time="0.000098" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="preserves HTTP 422 and readable detail" time="0.000051" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="preserves HTTP 503 and readable detail" time="0.000049" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="keeps a useful error for a non-JSON failure" time="0.000105" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="handles FastAPI validation error arrays" time="0.000133" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed success JSON" time="0.000085" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="propagates network failure" time="0.000092" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="propagates request timeout" time="0.000179" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed list null" time="0.000070" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed list {}" time="0.000039" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed list {&quot;items&quot;:{}}" time="0.000033" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed list {&quot;items&quot;:[null]}" time="0.000061" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;id&quot;:&quot;not-a-uuid&quot;}" time="0.000083" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;created_at&quot;:&quot;0&quot;}" time="0.000095" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;confidence&quot;:&quot;0.93&quot;}" time="0.000045" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;confidence&quot;:2}" time="0.000046" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;prediction&quot;:&quot;unsupported&quot;}" time="0.000035" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;risk_level&quot;:&quot;unknown&quot;}" time="0.000043" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid record {&quot;threat_indicators&quot;:[&quot;link&quot;]}" time="0.000039" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="requires detail field body" time="0.000085" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="requires detail field notes" time="0.000041" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="requires detail field feedback" time="0.000037" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="requires detail field analysis_mode" time="0.000039" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="accepts nullable results and legacy unknown mode" time="0.000080" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid IDs before making requests" time="0.000080" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects unexpected success statuses" time="0.000090" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="getAnalysis accepts nullable feedback without converting it" time="0.000089" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="createAnalysis accepts nullable feedback without converting it" time="0.000048" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="updateAnalysis accepts nullable feedback without converting it" time="0.000055" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects unknown feedback values" time="0.000066" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="listAnalyses preserves a saved spam result" time="0.000077" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="getAnalysis preserves a saved spam result" time="0.000039" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="createAnalysis preserves a saved spam result" time="0.000042" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="sends the aligned subject and body limits without truncation" time="0.000673" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="create allows an omitted or empty subject: undefined" time="0.000139" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="create allows an omitted or empty subject: &quot;&quot;" time="0.000071" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="reads evidence quotes and preserves provenance without inventing values" time="0.000092" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="continues reading old indicators and nullable provenance" time="0.000051" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed evidence quote" time="0.000061" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed provenance &quot;model-name&quot;" time="0.000048" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed provenance []" time="0.000029" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects malformed provenance 123" time="0.000030" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="create uses its configurable deadline and leaves reads at ten seconds" time="0.000148" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid create timeout 0" time="0.000089" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid create timeout -1" time="0.000035" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid create timeout NaN" time="0.000029" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid create timeout Infinity" time="0.000026" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid create timeout 25000" time="0.000026" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="rejects invalid create timeout 2147483648" time="0.000023" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\crud.test.mjs"/>
+	<testcase name="every scan calls the judge and all reevaluators in the required order" time="0.001672" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="a malformed judge still runs reevaluation and releases no reviewed verdict" time="0.000284" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="one dissenting classifier prevents release without changing primary score" time="0.000135" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="quoted evidence, enum rubric and strict schema cannot be forged" time="0.002622" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="compact judge output expands to complete English without changing its audit" time="0.000355" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="cancellation before judge start performs no further model calls" time="0.000305" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="real auxiliary artifacts return three finite locally computed outputs" time="0.056356" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\live-workflow.test.mjs"/>
+	<testcase name="real artifact, protected wording, exact quotes and frozen threshold" time="0.078802" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="scores between 50% and 88.71% remain below frozen cutoff" time="0.000344" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="only packaged asset URLs are read and concurrent calls share one load" time="0.040447" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="corruption never yields a verdict; failed model load can retry" time="0.030591" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="changed display mapping is rejected even with original weights" time="0.005981" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="empty, raw HTML, oversize and out-of-vocabulary inputs fail explicitly" time="0.034738" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="shared first 2000 plus last 300 truncation survives integration" time="0.029811" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="Unicode case expansion never presents a mismatched word-feature quote" time="0.028248" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\local-analyzer.test.mjs"/>
+	<testcase name="opening popup and showing a scan makes no network request" time="0.028150" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="history is explicit, keeps untrusted strings as text and opens detail" time="0.002184" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="malformed history is a visible error and does not hide local results" time="0.001009" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="save requires explicit consent and blocks incompatible service without sending text" time="0.001130" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="confirmed save retains success after refresh failure; notes and delete use contributors API" time="0.001797" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="ambiguous create retry keeps the request key after popup reopening" time="0.001143" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="Clear removes the displayed scan" time="0.000500" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\popup.test.mjs"/>
+	<testcase name="actual API client and local HTTP: create, detail and history preserve report fields" time="0.043896" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client-http.test.mjs"/>
+	<testcase name="actual API client and local HTTP: refresh 503 preserves the confirmed save" time="0.013449" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client-http.test.mjs"/>
+	<testcase name="actual API client and local HTTP: caller retry recovers a lost acknowledgement with the same key" time="0.011685" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client-http.test.mjs"/>
+	<testcase name="creates once and refreshes using the returned server ID" time="0.002443" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="forwards a retained retry key without generating or changing it" time="0.000214" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="detail refresh failure preserves the saved report and successful history" time="0.000307" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="history refresh failure is not returned as successful empty history" time="0.000226" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="both refresh failures preserve the server-confirmed save" time="0.000271" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="create HTTP 409 propagates without refresh or resubmission" time="0.000635" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="create HTTP 422 propagates without refresh or resubmission" time="0.000152" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="create HTTP 502 propagates without refresh or resubmission" time="0.000116" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="create HTTP 503 propagates without refresh or resubmission" time="0.000169" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="create HTTP 504 propagates without refresh or resubmission" time="0.000216" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="network/timeout error retains its identity and retry key" time="0.000279" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<testcase name="keeps completion pending until the requested refreshes settle" time="0.000281" classname="test" file="C:\Users\ACER\.codex\worktrees\pr58-windows-persistence\PhishLens\extension\tests\report-client.test.mjs"/>
+	<!-- tests 140 -->
+	<!-- suites 0 -->
+	<!-- pass 140 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 391.0064 -->
+</testsuites>

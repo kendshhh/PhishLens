@@ -1,4 +1,5 @@
 export default [
+  { ignores: ["extension/vendor/**", "extension/model-assets/**"] },
   {
     files: ["extension/js/**/*.js", "extension/*.js", "extension/ai/*.mjs"],
     languageOptions: {
@@ -11,7 +12,9 @@ export default [
         AbortSignal: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly", chrome: "readonly", crypto: "readonly",
-        URL: "readonly", TextDecoder: "readonly", performance: "readonly"
+        URL: "readonly", TextDecoder: "readonly", performance: "readonly",
+        self: "readonly", navigator: "readonly", Worker: "readonly",
+        Response: "readonly", ReadableStream: "readonly", setInterval: "readonly", clearInterval: "readonly"
       }
     },
     rules: {

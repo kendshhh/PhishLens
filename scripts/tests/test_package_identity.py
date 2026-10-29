@@ -32,7 +32,8 @@ class PackageIdentityTests(unittest.TestCase):
         self.revision = self.git("rev-parse", "HEAD").strip()
 
     def copy_inputs(self, destination):
-        shutil.copytree(SOURCE_ROOT / "extension", destination / "extension")
+        shutil.copytree(SOURCE_ROOT / "extension", destination / "extension",
+                        ignore=shutil.ignore_patterns("model-assets"))
         (destination / "scripts").mkdir(parents=True)
         for name in ("package_extension.py", "validate_extension.py"):
             shutil.copyfile(SOURCE_ROOT / "scripts" / name, destination / "scripts" / name)

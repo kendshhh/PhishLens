@@ -6,13 +6,13 @@ of authentication. Browser explanations are richer; saved evidence below contain
 only exact word-feature quotes verified against the original body.
 """
 
-from collections import Counter
-from functools import lru_cache
 import hashlib
 import json
 import math
-from pathlib import Path
 import re
+from collections import Counter
+from functools import lru_cache
+from pathlib import Path
 
 from backend.ai.schemas import AIAnalysisResult, EvidenceItem
 
@@ -21,7 +21,7 @@ MODEL_SHA256 = "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c
 SLOPE = 1.6158795082744162
 INTERCEPT = 2.0617153419475205
 WORD = re.compile(r"\w{2,}")
-HTML = re.compile(r"<(?:html|body|div|p|a|table|span|br|head|style|script|h[1-6]|img)\b", re.I)
+HTML = re.compile(r"<(?:html|body|div|p|a|table|span|br|head|style|script|h[1-6]|img)\b", re.IGNORECASE)
 
 
 @lru_cache(maxsize=1)
@@ -42,7 +42,7 @@ def prepare_plain(text: str) -> tuple[str, bool]:
     if not isinstance(text, str) or len(text.encode("utf-16-le")) // 2 > 30_000 or HTML.search(text):
         raise RuntimeError("Provide visible plain text of at most 30000 characters")
     cleaned = re.sub(r"\b[A-Z0-9._%+\-]+@([A-Z0-9.\-]+\.[A-Z]{2,})\b", r"[EMAIL]@\1",
-                     text, flags=re.I | re.ASCII)
+                     text, flags=re.IGNORECASE | re.ASCII)
     cleaned = re.sub(r"(?<![\w/])(?:\+?\d[ ()\-.]*){9,15}(?!\w)", "[PHONE]", cleaned)
     cleaned = re.sub(r"(?<!\w)\d{6,}(?!\w)", "[NUMBER]", cleaned)
     cleaned = " ".join(cleaned.split())
@@ -72,7 +72,7 @@ def score_text(body: str, *, prepared: bool = False) -> dict:
         vocab = block["vocabulary"]
         counts = Counter()
 
-        def add(feature):
+        def add(feature, vocab=vocab, counts=counts):
             if feature in vocab:
                 counts[feature] += 1
 

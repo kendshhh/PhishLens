@@ -25,14 +25,18 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         for (const name of ['empty', 'loading', 'error', 'result']) show(name + '-state', false);
         if (changed) { text('save-status', ''); $('save-consent').checked = false; }
         if (!current) { show('empty-state', true); return; }
-        if (current.status === 'loading') { show('loading-state', true); return; }
+        if (current.status === 'loading') {
+            text('workflow-progress', (current.stage || 'Preparing local review') +
+                (Number.isFinite(current.progress) ? ' — ' + Math.round(current.progress * 100) + '%' : ''));
+            show('loading-state', true); return;
+        }
         const r = current.result;
         if (current.status !== 'success' || !r?.valid || r.model_sha256 !== MODEL_SHA256 ||
             !Number.isFinite(r.score) || !r.verification?.quote_spans_valid) {
             text('error-message', current.error || 'Invalid local scan. Reload the extension and scan again.');
             show('error-state', true); return;
         }
-        text('classification', r.alert ? 'Suspicious — review before acting' : 'Below alert threshold');
+        text('classification', r.workflow?.released ? (r.alert ? 'Suspicious — review before acting' : 'Below alert threshold') : 'Uncertain — full review not confirmed');
         text('assessment', r.assessment);
         text('risk-score', (100 * r.score).toFixed(2) + '%');
         text('threshold', 'Frozen alert threshold: ' + (100 * r.alert_threshold_score).toFixed(2) +
@@ -46,6 +50,23 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             (e.direction === 'toward_phishing' ? 'toward phishing' : 'away from phishing') +
             ' (raw margin contribution ' + e.contribution.toFixed(4) + '). This is a statistical association.'));
         rows('recommendations', r.actions); rows('limitations', r.limitations);
+        const audit = r.workflow?.judge;
+        const failureTips = {
+            model_assets_missing: 'Local LLM weights are missing. Run the model setup command or install the full model bundle.',
+            webgpu_unavailable: 'WebGPU is unavailable on this browser/device.',
+            webgpu_fp16_unavailable: 'This device does not provide the GPU feature needed by the local LLM.',
+            model_integrity_failed: 'Local model integrity failed. Reinstall verified model assets.',
+            judge_timeout: 'The local LLM exceeded its safety timeout. Retry after other GPU work finishes.',
+            judge_input_too_long_without_truncation: 'The complete selection exceeds the judge token budget. No hidden extra truncation was applied.'
+        };
+        text('judge-review', audit?.valid ? '“' + audit.quote + '” — ' + audit.reason :
+            (failureTips[audit?.code] || 'The local LLM review was unavailable or unusable. No reviewed verdict was released.'));
+        text('workflow-status', r.workflow?.released ? 'All three classifiers agree and the local judge supports the finding.' :
+            (r.workflow?.reasons || ['No completed full-workflow review is available.']).join(' '));
+        rows('reevaluator-list', (r.workflow?.reevaluators || []).map(e =>
+            e.kind.toUpperCase() + ': ' + (e.alert ? 'suspicious' : 'below its threshold') +
+            ' — model score ' + (100 * e.score).toFixed(2) + '%; alert threshold ' +
+            (100 * e.threshold_score).toFixed(2) + '%'));
         $('analysis-text').replaceChildren();
         let offset = 0;
         for (const e of [...r.evidence].sort((a, b) => a.start - b.start)) {
@@ -61,7 +82,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         $('history-list').replaceChildren(); show('empty', items.length === 0);
         for (const item of items) {
             const li = documentImpl.createElement('li'), button = documentImpl.createElement('button');
-            const prediction = item.prediction === 'legitimate' ? 'below threshold / historical legitimate label' :
+            const prediction = item.review_status === 'uncertain' ? 'Uncertain — local review not confirmed' : item.prediction === 'legitimate' ? 'below threshold / historical legitimate label' :
                 item.prediction || 'pending';
             button.textContent = (item.subject || 'Untitled report') + ' — ' + prediction + ' — ' + item.created_at;
             button.addEventListener('click', () => openDetail(item.id));
@@ -81,9 +102,12 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     function renderDetail(record) {
         detail = record; show('detail-panel', true); text('detail-status', '');
         const p = record.analysis_provenance || {};
+        const local = p.local_review;
         text('detail-text', [
             'Title: ' + record.subject, 'Model: ' + (p.model || 'historical / unknown'),
             'Assessment: ' + (p.assessment || record.prediction || 'unavailable'),
+            ...(local ? ['Local review: ' + local.status,
+                'Audit source: browser-reported LLM; classifier checks replayed by server.'] : []),
             ...(p.model_revision === MODEL_SHA256 && Number.isFinite(p.phishing_score) ?
                 ['Research model score: ' + (100 * p.phishing_score).toFixed(2) + '%',
                     'Alert threshold: ' + (100 * p.alert_threshold_score).toFixed(2) + '%'] : []),
@@ -112,7 +136,18 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         const snapshot = state;
         if (snapshot?.status !== 'success' || !snapshot.result?.valid) return;
         if (!$('save-consent').checked) { text('save-status', 'Confirm the upload checkbox first.'); return; }
-        const input = { subject: $('report-subject').value.trim(), body: snapshot.selectedText };
+        const w = snapshot.result.workflow;
+        if (!w) { text('save-status', 'Scan again to obtain the required full workflow.'); return; }
+        const j = w.judge;
+        const input = { subject: $('report-subject').value.trim(), body: snapshot.selectedText,
+            local_review: { version: w.version, status: w.status, primary_alert: w.primary_alert,
+                judge: j?.valid ? { valid: true, audit: j.audit, quote: j.quote, reason_code: j.reason_code,
+                    missing_context: j.missing_context, model_id: j.model_id, model_revision: j.model_revision,
+                    prompt_version: j.prompt_version, seed_passed_to_runtime: j.seed_passed_to_runtime === true } :
+                    { valid: false, code: j?.code || 'judge_unavailable' },
+                reevaluators: w.reevaluators.map(e => ({ kind: e.kind, model_id: e.model_id, sha256: e.sha256,
+                    raw_margin: e.raw_margin, score: e.score, threshold_score: e.threshold_score,
+                    cutoff: e.cutoff, alert: e.alert, valid: e.valid })) } };
         busy = true; $('save-report').disabled = true;
         try {
             const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');

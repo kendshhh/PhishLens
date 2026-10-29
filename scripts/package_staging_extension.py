@@ -16,7 +16,7 @@ output = root / "output/staging/PhishLens-Staging-Extension.zip"
 output.parent.mkdir(parents=True, exist_ok=True)
 with ZipFile(output, "w", ZIP_DEFLATED) as archive:
     for source in sorted((root / "extension").rglob("*")):
-        if not source.is_file() or "tests" in source.relative_to(root / "extension").parts:
+        if not source.is_file() or {"tests", "model-assets"}.intersection(source.relative_to(root / "extension").parts):
             continue
         relative = source.relative_to(root / "extension").as_posix()
         data = source.read_bytes()

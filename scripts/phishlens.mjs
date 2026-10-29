@@ -65,7 +65,8 @@ try {
     await stat(path.join(root, 'extension/manifest.json'));
     console.log('Next: npm test; npm run lint; load extension/ at chrome://extensions.');
   } else if (command === 'test') run(process.execPath, ['--test', 'extension/tests/*.test.mjs']);
-  else if (command === 'package') run(process.env.PHISHLENS_PYTHON || 'python', ['scripts/package_extension.py']);
+  else if (command === 'setup-models') run(process.execPath, ['scripts/setup_judge_assets.mjs', ...args]);
+  else if (command === 'package') run(process.env.PHISHLENS_PYTHON || 'python', ['scripts/package_extension.py', ...args]);
   else if (command === 'scan') {
     if (args.length !== 2 || args[0] !== '--file') throw Error('Usage: npm run phishlens -- scan --file <plain-text-file>');
     const input = await readFile(path.resolve(args[1]), 'utf8');
@@ -76,15 +77,17 @@ try {
       evidence_checked: r.verification.evidence_checked, matched_features: r.matched_features,
       model_ms: r.model_ms, workflow_ms: r.workflow_ms,
       assessment: r.assessment, actions: r.actions,
-      note: 'Local software diagnostic; not an additional benchmark. Source text and quotes omitted.' }, null, 2));
+      full_review_executed: false,
+      note: 'Primary TF-IDF diagnostic only. The full LLM/KRR/LightGBM workflow runs in Chrome. Source text and quotes omitted.' }, null, 2));
   } else if (command === 'help') console.log([
     'PhishLens developer commands (from the repository root):',
     'npm run phishlens -- doctor          Check runtime, model and folder paths',
     'npm run phishlens -- model-check     Check frozen model/core integrity',
     'npm run phishlens -- records-check   Verify archived benchmark evidence',
-    'npm run phishlens -- scan --file message.txt   Debug visible plain text locally',
+    'npm run phishlens -- scan --file message.txt   Debug primary TF-IDF only (full review runs in Chrome)',
     'npm run phishlens -- test            Run extension tests',
-    'npm run phishlens -- package         Build ZIP using Python',
+    'npm run phishlens -- setup-models --download   Install pinned public LLM weights locally',
+    'npm run phishlens -- package --include-models  Build the full offline extension using Python',
     'Chrome service-worker and popup consoles remain the primary extension debuggers.',
     'See docs/TFIDF_DEBUGGING.md.'
   ].join('\n'));

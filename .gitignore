@@ -26,3 +26,7 @@ datasets/private/
 
 # Temporary working files
 /tmp/
+
+# Local implementation dependencies and provisioned LLM weights (never commit).
+/.runtime/
+/extension/model-assets/

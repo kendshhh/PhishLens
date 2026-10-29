@@ -3,22 +3,24 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PhishLens</title><link rel="stylesheet" href="popup.css"><link rel="stylesheet" href="css/popup.css"></head>
 <body><main class="container">
-<header><h1>PhishLens</h1><p class="subtitle">Local email text screening · TF-IDF v12a</p></header>
+<header><h1>PhishLens</h1><p class="subtitle">TF-IDF v12a · local LLM judge · KRR + LightGBM</p></header>
 <p>Scans stay in Chrome. Highlight the complete visible email text, right-click,
 and choose <strong>Analyze selection with PhishLens</strong>.</p>
 <section id="empty-state" class="panel"><h2>No scan yet</h2><p>No email text is uploaded when you scan.</p></section>
-<section id="loading-state" class="panel hidden"><h2>Checking locally…</h2><p>Loading the packaged model and verifying the text.</p></section>
+<section id="loading-state" class="panel hidden"><h2>Checking locally…</h2><p id="workflow-progress">Preparing the local review.</p><p>First use loads a large local LLM. Clear cancels this scan.</p></section>
 <section id="error-state" class="panel hidden" role="alert"><h2>Unable to assess</h2><p id="error-message"></p></section>
 <section id="result-state" class="hidden" aria-live="polite">
  <div class="panel"><h2 id="classification"></h2><p id="assessment"></p>
- <p>Model risk score: <strong id="risk-score"></strong></p><p id="threshold"></p>
+ <p>Primary TF-IDF score: <strong id="risk-score"></strong></p><p id="threshold"></p>
  <p id="coverage"></p><p class="muted">The score is calibrated on the research data. It is not a guaranteed probability for your inbox.</p></div>
  <div class="panel"><h2>What the text says</h2><p>Observations are checks of wording, not proof of phishing.</p><ul id="evidence"></ul></div>
+ <div class="panel"><h2>Local LLM review</h2><p id="judge-review"></p><p id="workflow-status"></p></div>
+ <div class="panel"><h2>Three-model reevaluation</h2><ul id="reevaluator-list"></ul><p>Each percentage belongs to that model. Agreement does not authenticate the sender.</p></div>
  <details class="panel"><summary>Model feature details</summary><p>Partial word-feature contributions; character features also affect the result.</p><ul id="drivers"></ul></details>
  <div class="panel"><h2>What to do next</h2><ul id="recommendations"></ul><ul id="limitations"></ul></div>
  <details class="panel"><summary>Checked text and highlights</summary><p>Quotes refer to this normalized, redacted model input.</p><p id="analysis-text"></p></details>
  <div class="panel"><h2>Optional: save a report</h2><p>Saving uploads the <strong>original selected text</strong> to the team's API and shared demo history.
- Only save material you are authorized to share. The server independently computes the result using the same model.</p>
+ Only save material you are authorized to share. The server replays classifier checks; the LLM audit is recorded as a browser-reported review.</p>
  <label>Report title <input id="report-subject" maxlength="320" placeholder="Optional title"></label>
  <label class="consent"><input id="save-consent" type="checkbox"> I agree to upload this selection to shared history.</label>
  <button id="save-report" type="button">Save report</button><p id="save-status" role="status"></p></div>
@@ -34,5 +36,5 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
 <button id="update-report" type="button">Save notes / feedback</button>
 <label class="consent"><input id="delete-consent" type="checkbox"> Delete this shared report</label>
 <button id="delete-report" type="button">Delete report</button><p id="detail-status" role="status"></p></section>
-<footer><p>Advisory pilot. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p></footer>
+<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>Built with Llama. LLM weights run locally; no email is sent to an AI provider.</p></footer>
 </main><script type="module" src="popup.js"></script></body></html>

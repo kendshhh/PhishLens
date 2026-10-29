@@ -110,6 +110,11 @@ async def persist_saved_analysis(
         subject=request.subject,
         body=request.body,
     )
+    if request.local_review is not None:
+        from backend.ai.live_review import review_request_sha, validate_local_review
+
+        fields["analysis_provenance"]["local_review"] = validate_local_review(request.local_review, result, request.body)
+        fields["analysis_provenance"]["local_review_request_sha256"] = review_request_sha(request.local_review)
     deadline.inference_remaining()
 
     try:
@@ -194,4 +199,9 @@ def _idempotent_replay(row, request: CreateSavedAnalysis) -> SavedAnalysisDetail
         raise AnalysisIdempotencyConflictError(
             "Idempotency key was already used for a different request"
         )
+    if request.local_review is not None or (row.get("analysis_provenance") or {}).get("local_review_request_sha256"):
+        from backend.ai.live_review import review_request_sha
+
+        if (row.get("analysis_provenance") or {}).get("local_review_request_sha256") != review_request_sha(request.local_review):
+            raise AnalysisIdempotencyConflictError("Idempotency key belongs to another local review")
     return saved_detail_from_record(AnalyzedEmail(**row))

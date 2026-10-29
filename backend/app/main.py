@@ -142,11 +142,20 @@ def model_info():
     try:
         mode, _, _ = get_ai_config()
         if mode == "tfidf":
-            from backend.ai.tfidf_provider import MODEL_SHA256, load_artifact, sigmoid, INTERCEPT
+            from backend.ai.tfidf_provider import (
+                INTERCEPT,
+                MODEL_SHA256,
+                load_artifact,
+                sigmoid,
+            )
 
             load_artifact()
+            from backend.ai.live_review import load_live_models
+
+            load_live_models()
             return {"provider_mode": mode, "model_sha256": MODEL_SHA256,
-                    "alert_threshold_score": sigmoid(INTERCEPT), "accepts_tfidf_reports": True}
+                    "alert_threshold_score": sigmoid(INTERCEPT), "accepts_tfidf_reports": True,
+                    "accepts_local_reviews": True}
     except (RuntimeError, OSError, ValueError, KeyError):
         pass
     return {"provider_mode": "unavailable", "accepts_tfidf_reports": False}

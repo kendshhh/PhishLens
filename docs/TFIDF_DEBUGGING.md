@@ -1,5 +1,10 @@
 # Use and debug the TF-IDF extension
 
+The current extension now runs the teacher's full local LLM/KRR/LightGBM workflow.
+Start with [the live workflow guide](ai/live-workflow.md) for model setup,
+GPU requirements and full-package instructions. Historical TF-IDF-only commands
+and measurements below remain useful for the primary classifier.
+
 A dedicated CLI application is **not required**. Chrome provides the extension
 debuggers. The repository adds a small `npm run phishlens -- …` helper so common
 checks are easy to remember. It is for developers; users only need Chrome.
