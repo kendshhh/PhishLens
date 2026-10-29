@@ -2,7 +2,7 @@
 import { createAnalysisClient } from "./api.js";
 
 const feedbackLabels = new Map([
-  ["none", "No feedback"], ["false_positive", "False positive"],
+  [null, "Unspecified"], ["none", "No feedback"], ["false_positive", "False positive"],
   ["false_negative", "False negative"]
 ]);
 const provenanceLabels = new Map([

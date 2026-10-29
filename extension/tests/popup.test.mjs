@@ -181,6 +181,7 @@ test("editing notes alone preserves null feedback", async () => {
   const { ui, controller } = setup(memory);
   await controller.refresh();
   await controller.loadDetail(id);
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Unspecified");
   await ui.get("detail-content").children.at(-2).fire("click");
   assert.equal(ui.get("edit-feedback").value, "null");
   ui.get("edit-notes").value = "Notes only";
