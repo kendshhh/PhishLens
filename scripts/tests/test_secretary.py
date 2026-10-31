@@ -324,7 +324,7 @@ class PreviewTests(unittest.TestCase):
                 self.assertNotIn(b"127.0.0.1", archive.read("background.js"))
                 self.assertEqual(json.loads(archive.read("manifest.json"))["host_permissions"], [CONFIG["staging_origin"] + "/*"])
 
-    def test_local_scanner_archive_includes_models_and_staging_report_origin(self):
+    def test_local_scanner_archive_labels_partial_llama_package_and_staging_report_origin(self):
         api = Mock()
         files = {
             "manifest.json": json.dumps({
@@ -353,6 +353,15 @@ class PreviewTests(unittest.TestCase):
             package(api, SHA, 123, CONFIG, output)
             with ZipFile(output) as archive:
                 names = set(archive.namelist())
+                self.assertIn("STAGING_PACKAGE_NOTICE.txt", names)
+                self.assertFalse(any(name.startswith("model-assets/llama/") for name in names))
+                notice = archive.read("STAGING_PACKAGE_NOTICE.txt").decode()
+                self.assertIn("PARTIAL STAGING PACKAGE", notice)
+                self.assertIn("model-assets/llama/", notice)
+                preview_info = json.loads(archive.read("preview-info.json"))
+                self.assertEqual(preview_info["package_status"], "partial")
+                self.assertFalse(preview_info["includes_local_llama_weights"])
+                self.assertEqual(preview_info["excluded_assets"], ["model-assets/llama/"])
                 for required in (
                     "ai/live-workflow.mjs",
                     "ai/local-analyzer.mjs",
@@ -377,6 +386,7 @@ class PreviewTests(unittest.TestCase):
                 self.assertNotIn(CONFIG["production_origin"].encode(), worker)
         self.assertIn("vendor/ml/ort-wasm-simd-threaded.jsep.wasm", requested)
         self.assertIn("vendor/ml/ort-wasm-simd-threaded.asyncify.wasm", requested)
+        self.assertFalse(any(asset.startswith("model-assets/llama/") for asset in requested))
 
 
 class MetricsTests(unittest.TestCase):
