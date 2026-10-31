@@ -176,13 +176,46 @@ def package(api, sha, number, config, output):
     if 'import { API_BASE_URL }' in worker:
         manifest["background"]["type"] = "module"
     files["manifest.json"] = json.dumps(manifest, indent=2).encode()
-    banner = f'<div style="background:#fff0b3;color:#111;padding:10px;font:12px sans-serif">STAGING · PR #{number} · {html.escape(sha)} · Synthetic data only</div>'
+    package_label = "PARTIAL · Local Llama weights excluded · " if local_scanner else ""
+    banner = f'<div style="background:#fff0b3;color:#111;padding:10px;font:12px sans-serif">{package_label}STAGING · PR #{number} · {html.escape(sha)} · Synthetic data only</div>'
     page = files["popup.html"].decode()
     page, count = re.subn(r"(<body\b[^>]*>)", lambda m: m[0] + banner, page, count=1, flags=re.IGNORECASE)
     if count != 1:
         raise RuntimeError("Cannot place staging banner in popup")
     files["popup.html"] = page.encode()
-    files["preview-info.json"] = json.dumps({"pr": number, "sha": sha, "origin": origin}).encode()
+    preview_info = {"pr": number, "sha": sha, "origin": origin}
+    if local_scanner:
+        # The source-commit package cannot contain ignored model weights; expose that limit in the artifact.
+        preview_info.update({
+            "package_status": "partial",
+            "includes_local_llama_weights": False,
+            "excluded_assets": ["model-assets/llama/"],
+            "reason": (
+                "Pinned Llama weights are Git-ignored and are not included by the trusted "
+                "source-commit allowlist. Remote model downloads are disabled, so offline "
+                "Llama inference is unavailable in this preview."
+            ),
+            "full_local_package": (
+                "Provision with npm run phishlens -- setup-models --download, then run "
+                "python scripts/package_extension.py --include-models."
+            ),
+            "documentation": "docs/ai/live-workflow.md",
+        })
+        files["STAGING_PACKAGE_NOTICE.txt"] = (
+            "PARTIAL STAGING PACKAGE\n\n"
+            "This trusted preview includes local scanner/judge code and runtime assets, "
+            "but omits the pinned Llama weights under model-assets/llama/. Those weights "
+            "are Git-ignored and are not available from the PR source commit used by the "
+            "staging controller. Remote model downloads are disabled, so offline Llama "
+            "inference is unavailable in this artifact. The preview validates tracked "
+            "asset packaging and staging saved-report/API-origin wiring; it does not "
+            "verify offline Llama inference.\n\n"
+            "To build a full local package, provision the pinned weights once with "
+            "npm run phishlens -- setup-models --download, then run "
+            "python scripts/package_extension.py --include-models. See "
+            "docs/ai/live-workflow.md.\n"
+        ).encode()
+    files["preview-info.json"] = json.dumps(preview_info).encode()
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         for name, data in files.items():
