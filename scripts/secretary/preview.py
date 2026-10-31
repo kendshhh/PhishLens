@@ -20,33 +20,57 @@ from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js",
-          "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js",
-          "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
-          "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
-          "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md",
-          "offscreen.html",
-          "offscreen.js",
-          "ai/judge-client.mjs",
-          "ai/judge-contract.mjs",
-          "ai/judge-worker.mjs",
-          "ai/live-workflow.mjs",
-          "ai/reevaluators.mjs",
-          "ai/judge-assets.json",
-          "ai/reevaluators/manifest.json",
-          "ai/reevaluators/krr.json",
-          "ai/reevaluators/lightgbm.json",
-          "vendor/ml/transformers.min.js",
-          "vendor/ml/structured-output.js",
-          "vendor/ml/ort-wasm-simd-threaded.jsep.mjs",
-          "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
-          "vendor/ml/ort-wasm-simd-threaded.asyncify.mjs",
-          "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm",
-          "vendor/ml/LICENSE-transformers.txt",
-          "vendor/ml/LICENSE-structured-output.txt",
-          "vendor/ml/LICENSE-onnxruntime.txt",
-          "vendor/ml/LICENSE-Llama3.2.txt",
-          "vendor/ml/THIRD_PARTY_NOTICES.md",
-          )
+          "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
+LOCAL_SCANNER_ASSETS = (
+    "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
+    "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
+    "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md", "offscreen.html", "offscreen.js",
+    "ai/judge-client.mjs", "ai/judge-contract.mjs", "ai/judge-worker.mjs",
+    "ai/live-workflow.mjs", "ai/reevaluators.mjs", "ai/judge-assets.json",
+    "ai/reevaluators/manifest.json", "ai/reevaluators/krr.json",
+    "ai/reevaluators/lightgbm.json", "vendor/ml/transformers.min.js",
+    "vendor/ml/structured-output.js", "vendor/ml/ort-wasm-simd-threaded.jsep.mjs",
+    "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
+    "vendor/ml/ort-wasm-simd-threaded.asyncify.mjs",
+    "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm",
+    "vendor/ml/LICENSE-transformers.txt", "vendor/ml/LICENSE-structured-output.txt",
+    "vendor/ml/LICENSE-onnxruntime.txt", "vendor/ml/LICENSE-Llama3.2.txt",
+    "vendor/ml/THIRD_PARTY_NOTICES.md",
+)
+ASSET_SIZE_LIMITS = {
+    "ai/tfidf_v12a.json": 3_000_000,
+    "ai/reevaluators/krr.json": 1_000_000,
+    "vendor/ml/transformers.min.js": 1_000_000,
+    "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm": 32_000_000,
+    "vendor/ml/ort-wasm-simd-threaded.jsep.wasm": 32_000_000,
+}
+
+
+def read_extension_asset(api, sha, asset):
+    """Read one bounded asset from the exact source commit, verifying large blobs."""
+    value = api.request("contents/extension/" + asset + "?ref=" + sha)
+    limit = ASSET_SIZE_LIMITS.get(asset, 512_000)
+    size = value.get("size", 0)
+    if not isinstance(size, int) or not 0 <= size <= limit:
+        raise RuntimeError("Extension asset missing, too large, or not a regular inline file")
+
+    blob_sha = None
+    if value.get("encoding") != "base64" and limit > 512_000:
+        blob_sha = value.get("sha", "")
+        if not re.fullmatch(r"[0-9a-f]{40}", blob_sha):
+            raise RuntimeError("Invalid model blob identity")
+        value = api.request("git/blobs/" + blob_sha)
+        if value.get("sha") != blob_sha or value.get("size") != size:
+            raise RuntimeError("Model blob identity differs")
+    if value.get("encoding") != "base64":
+        raise RuntimeError("Extension asset missing or not a regular inline file")
+
+    data = base64.b64decode(value["content"], validate=False)
+    if len(data) != size:
+        raise RuntimeError("Extension asset size differs from metadata")
+    if blob_sha and hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest() != blob_sha:
+        raise RuntimeError("Model blob digest differs")
+    return data
 
 
 def render_request(path, data=None):
@@ -126,44 +150,21 @@ def smoke(origin, sha):
 
 
 def package(api, sha, number, config, output):
-    files = {}
-    for asset in ASSETS:
-        value = api.request("contents/extension/" + asset + "?ref=" + sha)
-        limit = {"ai/tfidf_v12a.json": 3_000_000,
-                 "ai/reevaluators/krr.json": 1_000_000,
-                 "vendor/ml/transformers.min.js": 1_000_000,
-                 "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm": 32_000_000,
-                 "vendor/ml/ort-wasm-simd-threaded.jsep.wasm": 32_000_000}.get(asset, 512000)
-        size = value.get("size", 0)
-        if not isinstance(size, int) or not 0 <= size <= limit:
-            raise RuntimeError("Extension asset missing, too large, or not a regular inline file")
-        # GitHub Contents omits inline content for files larger than 1 MB.
-        # Use only the same repository's exact blob endpoint, never download_url.
-        blob_sha = None
-        if value.get("encoding") != "base64" and limit > 512000:
-            blob_sha = value.get("sha", "")
-            if not re.fullmatch(r"[0-9a-f]{40}", blob_sha):
-                raise RuntimeError("Invalid model blob identity")
-            value = api.request("git/blobs/" + blob_sha)
-            if value.get("sha") != blob_sha or value.get("size") != size:
-                raise RuntimeError("Model blob identity differs")
-        if value.get("encoding") != "base64":
-            raise RuntimeError("Extension asset missing or not a regular inline file")
-        data = base64.b64decode(value["content"], validate=False)
-        if len(data) != size:
-            raise RuntimeError("Extension asset size differs from metadata")
-        if blob_sha and hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest() != blob_sha:
-            raise RuntimeError("Model blob digest differs")
-        files[asset] = data
+    files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
+    worker = files["background.js"].decode()
+    local_scanner = bool(re.search(
+        r"from\s+['\"]\./ai/(?:local-analyzer|live-workflow)\.mjs['\"]", worker
+    ))
+    if local_scanner:
+        for asset in LOCAL_SCANNER_ASSETS:
+            files[asset] = read_extension_asset(api, sha, asset)
+
     origin = config["staging_origin"]
     files["js/config.js"] = ("export const API_BASE_URL = " + json.dumps(origin) + ";\n").encode()
-    worker = files["background.js"].decode()
     # Compatibility with main before PR #32: rewrite only the exact known localhost constant.
     worker = worker.replace('const API_URL = "http://127.0.0.1:8000";', "const API_URL = " + json.dumps(origin) + ";")
     if "127.0.0.1" in worker or "localhost" in worker or config["production_origin"] in worker:
         raise RuntimeError("Worker still references a non-staging backend; use shared configuration")
-    local_scanner = ("import { analyzeLocal } from './ai/local-analyzer.mjs';" in worker or
-                     "import { analyzeWithReview } from './ai/live-workflow.mjs';" in worker)
     if "API_BASE_URL" not in worker and origin not in worker and not local_scanner:
         raise RuntimeError("Worker backend origin cannot be established")
     if local_scanner and b"API_BASE_URL" not in files["js/popup.js"]:
@@ -349,3 +350,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
