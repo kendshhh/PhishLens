@@ -54,12 +54,18 @@ class GitHub:
         except (urllib.error.URLError, TimeoutError):
             raise APIError("GitHub connection unavailable") from None
 
-    def pages(self, path, key=None, maximum=30):
+    def pages(self, path, key=None, maximum=30, per_page=100):
+        if not isinstance(per_page, int) or not 1 <= per_page <= 100:
+            raise ValueError("GitHub page size must be between 1 and 100")
         rows = []
         for page in range(1, maximum + 1):
-            result = self.request(path + ("&" if "?" in path else "?") + f"per_page=100&page={page}")
+            result = self.request(path + ("&" if "?" in path else "?") + f"per_page={per_page}&page={page}")
             items = result[key] if key else result
             rows.extend(items)
-            if len(items) < 100:
+            if len(items) < per_page:
                 return rows
         raise APIError("GitHub pagination limit reached; coverage incomplete")
+
+    def pull_request_files(self, number):
+        """List PR files in compact pages because REST rows include diff patches."""
+        return self.pages(f"pulls/{number}/files", per_page=10)
