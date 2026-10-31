@@ -78,6 +78,23 @@ test('guarded report replay uses returned ID, refreshes and confirms cleanup', a
     assert.equal(f.calls.filter(x => x === 'GET /api/analyses/' + id).length, 2);
 });
 
+test('controlled HTTP replay retains nonempty evidence and explanation across create, detail and history', async t => {
+    const f = await fixture(t, { createdFields: {
+        threat_indicators: [
+            { type: 'evidence', quote: 'Synthetic verification message.', detail: 'Synthetic first reason' },
+            { type: 'evidence', quote: 'No personal content or credentials.', detail: 'Synthetic second reason' }
+        ],
+        explanation: 'Tactics: synthetic test. Recommendations: verify with the sender.'
+    } });
+    const result = await verifySavedReport(f.url, f.options);
+    assert.equal(result.result, 'passed');
+    assert.equal(result.cleanedUp, true);
+    assert.equal(f.record, undefined);
+    assert.equal(f.calls.filter(call => call.startsWith('POST')).length, 1);
+    assert.ok(f.calls.includes('GET /api/analyses'));
+    assert.ok(f.calls.includes('GET /api/analyses/' + id));
+});
+
 test('guarded report replay accepts equivalent Z and +00:00 timestamps', async t => {
     const f = await fixture(t, {
         detailTimestamp: '2026-10-31T01:00:00+00:00',

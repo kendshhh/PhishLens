@@ -33,7 +33,7 @@ it called verifySavedReport and verifyCrud sequentially, wrote local JSON eviden
 
 | Check | Actual result |
 |---|---|
-| Saved report | PASS: one create, server-returned ID, detail/history reads, shared fields including evidence/explanation, mock mode and matching provenance |
+| Saved report | PASS: one create, server-returned ID, detail/history reads, shared-field equality, mock mode and matching provenance. The mock staging response used empty threat_indicators arrays; this run does not establish nonempty evidence retention. |
 | Saved-report cleanup | PASS: record 710d3c2e-4ff1-4a95-9b9e-acf8a59cce45 deleted; subsequent detail returned 404 |
 | CRUD | PASS: create, list/detail, notes/feedback update, reread, note clearing, delete, final 404 |
 | CRUD cleanup | PASS: record 198315f9-fa8d-4d9d-ad92-51fb82d55e2d deleted and confirmed absent |
@@ -42,6 +42,23 @@ Only these newly created synthetic records were changed. No production writes, s
 edits, environment changes, deployment actions or GitHub posts were performed.
 
 ## Local regression checks
+
+### Controlled nonempty-evidence follow-up
+
+The added test `controlled HTTP replay retains nonempty evidence and explanation across create, detail and history`
+uses the actual client and verifier against a local in-memory HTTP server. It supplies two
+nonempty evidence items (type, quote and detail) plus a nonempty explanation, checks the
+create/detail/history path, and confirms synthetic cleanup. Existing negative tests reject
+dropped or changed history evidence and explanation.
+
+This is controlled fixture evidence only. It does not upgrade the earlier empty-array staging
+run to real-provider or nonempty PostgreSQL evidence. A controlled real-backend nonempty-evidence
+run remains pending with Trixia; staging writes remain on hold until the intended SHA and
+isolated Neon target are confirmed.
+
+Follow-up verification against PR #103 source 9e5ffaeaa1d3de1b10c16edaabc2f60f8e2b3de4
+plus these test/documentation edits: 171 extension tests passed, 0 failed/skipped;
+extension JavaScript ESLint passed. The following 169-test result is the earlier baseline.
 
 With the follow-up validation changes:
 - node --test extension/tests/*.test.mjs: 169 passed, 0 failed, 0 skipped.
@@ -52,7 +69,8 @@ With the follow-up validation changes:
 
 ## Still pending
 
-- Commit/push the follow-up verifier checks, obtain Trixia re-review and fresh required CI.
+- Verifier validation changes were committed in 640fa86. Commit/push the controlled
+  nonempty-evidence test/documentation follow-up, obtain Trixia re-review and fresh required CI.
 - Andrei's exact-package Chrome run, persistence after reopening, deletion after reopening,
   and redacted Network evidence.
 - Week 1 changed-subject display and restoration, remaining browser-state evidence and reviews.
