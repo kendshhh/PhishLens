@@ -1,6 +1,7 @@
 """Trusted shared-staging controller. Never checks out, imports or executes PR code."""
 import base64
 import datetime as dt
+import hashlib
 import html
 import json
 import os
@@ -20,6 +21,56 @@ from .report import latest_jobs
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js",
           "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
+LOCAL_SCANNER_ASSETS = (
+    "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
+    "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
+    "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md", "offscreen.html", "offscreen.js",
+    "ai/judge-client.mjs", "ai/judge-contract.mjs", "ai/judge-worker.mjs",
+    "ai/live-workflow.mjs", "ai/reevaluators.mjs", "ai/judge-assets.json",
+    "ai/reevaluators/manifest.json", "ai/reevaluators/krr.json",
+    "ai/reevaluators/lightgbm.json", "vendor/ml/transformers.min.js",
+    "vendor/ml/structured-output.js", "vendor/ml/ort-wasm-simd-threaded.jsep.mjs",
+    "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
+    "vendor/ml/ort-wasm-simd-threaded.asyncify.mjs",
+    "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm",
+    "vendor/ml/LICENSE-transformers.txt", "vendor/ml/LICENSE-structured-output.txt",
+    "vendor/ml/LICENSE-onnxruntime.txt", "vendor/ml/LICENSE-Llama3.2.txt",
+    "vendor/ml/THIRD_PARTY_NOTICES.md",
+)
+ASSET_SIZE_LIMITS = {
+    "ai/tfidf_v12a.json": 3_000_000,
+    "ai/reevaluators/krr.json": 1_000_000,
+    "vendor/ml/transformers.min.js": 1_000_000,
+    "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm": 32_000_000,
+    "vendor/ml/ort-wasm-simd-threaded.jsep.wasm": 32_000_000,
+}
+
+
+def read_extension_asset(api, sha, asset):
+    """Read one bounded asset from the exact source commit, verifying large blobs."""
+    value = api.request("contents/extension/" + asset + "?ref=" + sha)
+    limit = ASSET_SIZE_LIMITS.get(asset, 512_000)
+    size = value.get("size", 0)
+    if not isinstance(size, int) or not 0 <= size <= limit:
+        raise RuntimeError("Extension asset missing, too large, or not a regular inline file")
+
+    blob_sha = None
+    if value.get("encoding") != "base64" and limit > 512_000:
+        blob_sha = value.get("sha", "")
+        if not re.fullmatch(r"[0-9a-f]{40}", blob_sha):
+            raise RuntimeError("Invalid model blob identity")
+        value = api.request("git/blobs/" + blob_sha)
+        if value.get("sha") != blob_sha or value.get("size") != size:
+            raise RuntimeError("Model blob identity differs")
+    if value.get("encoding") != "base64":
+        raise RuntimeError("Extension asset missing or not a regular inline file")
+
+    data = base64.b64decode(value["content"], validate=False)
+    if len(data) != size:
+        raise RuntimeError("Extension asset size differs from metadata")
+    if blob_sha and hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest() != blob_sha:
+        raise RuntimeError("Model blob digest differs")
+    return data
 
 
 def render_request(path, data=None):
@@ -99,21 +150,25 @@ def smoke(origin, sha):
 
 
 def package(api, sha, number, config, output):
-    files = {}
-    for asset in ASSETS:
-        value = api.request("contents/extension/" + asset + "?ref=" + sha)
-        if value.get("encoding") != "base64" or value.get("size", 0) > 512000:
-            raise RuntimeError("Extension asset missing, too large, or not a regular inline file")
-        files[asset] = base64.b64decode(value["content"], validate=False)
+    files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
+    worker = files["background.js"].decode()
+    local_scanner = bool(re.search(
+        r"from\s+['\"]\./ai/(?:local-analyzer|live-workflow)\.mjs['\"]", worker
+    ))
+    if local_scanner:
+        for asset in LOCAL_SCANNER_ASSETS:
+            files[asset] = read_extension_asset(api, sha, asset)
+
     origin = config["staging_origin"]
     files["js/config.js"] = ("export const API_BASE_URL = " + json.dumps(origin) + ";\n").encode()
-    worker = files["background.js"].decode()
     # Compatibility with main before PR #32: rewrite only the exact known localhost constant.
     worker = worker.replace('const API_URL = "http://127.0.0.1:8000";', "const API_URL = " + json.dumps(origin) + ";")
     if "127.0.0.1" in worker or "localhost" in worker or config["production_origin"] in worker:
         raise RuntimeError("Worker still references a non-staging backend; use shared configuration")
-    if "API_BASE_URL" not in worker and origin not in worker:
+    if "API_BASE_URL" not in worker and origin not in worker and not local_scanner:
         raise RuntimeError("Worker backend origin cannot be established")
+    if local_scanner and b"API_BASE_URL" not in files["js/popup.js"]:
+        raise RuntimeError("Saved-report backend origin cannot be established")
     files["background.js"] = worker.encode()
     manifest = json.loads(files["manifest.json"])
     manifest["name"] = "Veriqo STAGING PR " + str(number)
@@ -121,13 +176,46 @@ def package(api, sha, number, config, output):
     if 'import { API_BASE_URL }' in worker:
         manifest["background"]["type"] = "module"
     files["manifest.json"] = json.dumps(manifest, indent=2).encode()
-    banner = f'<div style="background:#fff0b3;color:#111;padding:10px;font:12px sans-serif">STAGING · PR #{number} · {html.escape(sha)} · Synthetic data only</div>'
+    package_label = "PARTIAL · Local Llama weights excluded · " if local_scanner else ""
+    banner = f'<div style="background:#fff0b3;color:#111;padding:10px;font:12px sans-serif">{package_label}STAGING · PR #{number} · {html.escape(sha)} · Synthetic data only</div>'
     page = files["popup.html"].decode()
     page, count = re.subn(r"(<body\b[^>]*>)", lambda m: m[0] + banner, page, count=1, flags=re.IGNORECASE)
     if count != 1:
         raise RuntimeError("Cannot place staging banner in popup")
     files["popup.html"] = page.encode()
-    files["preview-info.json"] = json.dumps({"pr": number, "sha": sha, "origin": origin}).encode()
+    preview_info = {"pr": number, "sha": sha, "origin": origin}
+    if local_scanner:
+        # The source-commit package cannot contain ignored model weights; expose that limit in the artifact.
+        preview_info.update({
+            "package_status": "partial",
+            "includes_local_llama_weights": False,
+            "excluded_assets": ["model-assets/llama/"],
+            "reason": (
+                "Pinned Llama weights are Git-ignored and are not included by the trusted "
+                "source-commit allowlist. Remote model downloads are disabled, so offline "
+                "Llama inference is unavailable in this preview."
+            ),
+            "full_local_package": (
+                "Provision with npm run phishlens -- setup-models --download, then run "
+                "python scripts/package_extension.py --include-models."
+            ),
+            "documentation": "docs/ai/live-workflow.md",
+        })
+        files["STAGING_PACKAGE_NOTICE.txt"] = (
+            b"PARTIAL STAGING PACKAGE\\n\\n"
+            b"This trusted preview includes local scanner/judge code and runtime assets, "
+            b"but omits the pinned Llama weights under model-assets/llama/. Those weights "
+            b"are Git-ignored and are not available from the PR source commit used by the "
+            b"staging controller. Remote model downloads are disabled, so offline Llama "
+            b"inference is unavailable in this artifact. The preview validates tracked "
+            b"asset packaging and staging saved-report/API-origin wiring; it does not "
+            b"verify offline Llama inference.\\n\\n"
+            b"To build a full local package, provision the pinned weights once with "
+            b"npm run phishlens -- setup-models --download, then run "
+            b"python scripts/package_extension.py --include-models. See "
+            b"docs/ai/live-workflow.md.\\n"
+        )
+    files["preview-info.json"] = json.dumps(preview_info).encode()
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         for name, data in files.items():
@@ -295,3 +383,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
