@@ -66,6 +66,26 @@ job. PR #80 added persistent create/read/list/update/delete and failure-path
 coverage. This verifies the disposable CI database; it does not by itself establish
 live Chrome behavior or production record persistence.
 
+## Deterministic AI and failure evidence gates (#93/#95)
+
+Backend checks run with `AI_MODE=mock` and now require the existing database
+constraint-recovery and invalid-evidence/no-save/recovery cases. The same backend
+artifact includes `ai-regression.json`: the source SHA, frozen synthetic
+development-case version/hash and label inventory, selected deterministic AI
+contract-test counts, failures, and simulated failure IDs. It deliberately does
+not report model predictions or accuracy. AI-owner-approved regression thresholds
+and held-out evaluation remain pending; no live provider or model weights are used
+in ordinary pull request CI.
+
+`docs/devops/ai-provider-smoke.md` documents the separate manual
+`.github/workflows/ai-provider-smoke.yml`. It requires the protected `staging`
+environment, explicit dispatch confirmation, the exact staging `/version` SHA,
+and a healthy `/ready` check before one fixed synthetic request. It has no
+schedule and is blocked until the AI/staging owners configure an approved
+provider-side budget and cost cap. The smoke uses the non-persisting `/analyses`
+route, so a successful run creates no database record. No provider request was
+made while preparing this change.
+
 ## Status
 
 ## Current checks and evidence
@@ -172,7 +192,7 @@ to produce a misleading successful run.
 
 - Install and render the exact staging package in Chrome.
 - Verify production saved-record persistence across refresh or a safe redeploy.
-- Run the planned real-provider evaluation and scheduled smoke separately from mock CI.
+- Run the manual real-provider staging smoke after owners confirm the provider, model and budget; keep the schedule disabled.
 - Select and measure another safe whole-job optimization; the npm download-cache
   trial did not improve Extension checks and was removed.
 
@@ -213,6 +233,15 @@ It does not establish database, frontend, or AI integration.
 
 ## Merge Protections
 
+Current `main` rule was read in the repository UI on 2026-10-31. It requires a
+pull request, one approval, dismissal of stale approvals, passing Backend checks,
+Extension checks, Hosted staging, and Staging integration, up-to-date branches,
+and resolved conversations. “Do not allow bypassing” is enabled; force pushes
+and branch deletion are disabled. Code-owner review, approval of the latest
+reviewable push, signed commits, linear history, successful deployment, and
+branch lock are disabled. The dated read-only record is
+[here](docs/devops/evidence/2026-10-31-main-branch-protection.md).
+
 Historical setup evidence showed main requiring:
 
 - A pull request.
@@ -224,9 +253,8 @@ Stale approvals are dismissed after new commits.
 Administrator bypass, force pushes, and branch deletion are disabled.
 
 Review enforcement was observed on setup PR #2, and Backend checks plus teammate
-approval were verified on PR #11. Current effective rules were not independently
-read during this audit; verify them in GitHub before treating the historical list
-as the current protection state.
+approval were verified on PR #11. The dated repository-UI observation above
+records the current rule separately from that historical evidence.
 
 ## Database Connections
 
@@ -312,3 +340,4 @@ The measured snapshot contains 23 backend jobs, 20 passing and 3 failing
 (including two deliberate drills). See [CI run evidence](docs/devops/ci-run-evidence.csv)
 for source timestamps.
 No optimization claim is made from changing durations or changing CI coverage.
+
