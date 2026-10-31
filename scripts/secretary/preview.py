@@ -21,8 +21,6 @@ from .report import latest_jobs
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js",
           "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
-
-
 LOCAL_SCANNER_ASSETS = (
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
     "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
@@ -73,6 +71,8 @@ def read_extension_asset(api, sha, asset):
     if blob_sha and hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest() != blob_sha:
         raise RuntimeError("Model blob digest differs")
     return data
+
+
 def render_request(path, data=None):
     req = urllib.request.Request("https://api.render.com/v1/" + path,
         data=json.dumps(data).encode() if data is not None else None,
@@ -176,13 +176,46 @@ def package(api, sha, number, config, output):
     if 'import { API_BASE_URL }' in worker:
         manifest["background"]["type"] = "module"
     files["manifest.json"] = json.dumps(manifest, indent=2).encode()
-    banner = f'<div style="background:#fff0b3;color:#111;padding:10px;font:12px sans-serif">STAGING · PR #{number} · {html.escape(sha)} · Synthetic data only</div>'
+    package_label = "PARTIAL · Local Llama weights excluded · " if local_scanner else ""
+    banner = f'<div style="background:#fff0b3;color:#111;padding:10px;font:12px sans-serif">{package_label}STAGING · PR #{number} · {html.escape(sha)} · Synthetic data only</div>'
     page = files["popup.html"].decode()
     page, count = re.subn(r"(<body\b[^>]*>)", lambda m: m[0] + banner, page, count=1, flags=re.IGNORECASE)
     if count != 1:
         raise RuntimeError("Cannot place staging banner in popup")
     files["popup.html"] = page.encode()
-    files["preview-info.json"] = json.dumps({"pr": number, "sha": sha, "origin": origin}).encode()
+    preview_info = {"pr": number, "sha": sha, "origin": origin}
+    if local_scanner:
+        # The source-commit package cannot contain ignored model weights; expose that limit in the artifact.
+        preview_info.update({
+            "package_status": "partial",
+            "includes_local_llama_weights": False,
+            "excluded_assets": ["model-assets/llama/"],
+            "reason": (
+                "Pinned Llama weights are Git-ignored and are not included by the trusted "
+                "source-commit allowlist. Remote model downloads are disabled, so offline "
+                "Llama inference is unavailable in this preview."
+            ),
+            "full_local_package": (
+                "Provision with npm run phishlens -- setup-models --download, then run "
+                "python scripts/package_extension.py --include-models."
+            ),
+            "documentation": "docs/ai/live-workflow.md",
+        })
+        files["STAGING_PACKAGE_NOTICE.txt"] = (
+            b"PARTIAL STAGING PACKAGE\\n\\n"
+            b"This trusted preview includes local scanner/judge code and runtime assets, "
+            b"but omits the pinned Llama weights under model-assets/llama/. Those weights "
+            b"are Git-ignored and are not available from the PR source commit used by the "
+            b"staging controller. Remote model downloads are disabled, so offline Llama "
+            b"inference is unavailable in this artifact. The preview validates tracked "
+            b"asset packaging and staging saved-report/API-origin wiring; it does not "
+            b"verify offline Llama inference.\\n\\n"
+            b"To build a full local package, provision the pinned weights once with "
+            b"npm run phishlens -- setup-models --download, then run "
+            b"python scripts/package_extension.py --include-models. See "
+            b"docs/ai/live-workflow.md.\\n"
+        )
+    files["preview-info.json"] = json.dumps(preview_info).encode()
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         for name, data in files.items():
@@ -190,6 +223,8 @@ def package(api, sha, number, config, output):
     with ZipFile(output) as archive:
         if archive.testzip() is not None:
             raise RuntimeError("Invalid extension archive")
+
+
 def eligibility(pr, files, run, repo):
     if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
@@ -348,3 +383,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
