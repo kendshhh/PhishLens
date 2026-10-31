@@ -1,6 +1,7 @@
 """Trusted shared-staging controller. Never checks out, imports or executes PR code."""
 import base64
 import datetime as dt
+import hashlib
 import html
 import json
 import os
@@ -19,7 +20,33 @@ from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js",
-          "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
+          "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js",
+          "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
+          "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
+          "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md",
+          "offscreen.html",
+          "offscreen.js",
+          "ai/judge-client.mjs",
+          "ai/judge-contract.mjs",
+          "ai/judge-worker.mjs",
+          "ai/live-workflow.mjs",
+          "ai/reevaluators.mjs",
+          "ai/judge-assets.json",
+          "ai/reevaluators/manifest.json",
+          "ai/reevaluators/krr.json",
+          "ai/reevaluators/lightgbm.json",
+          "vendor/ml/transformers.min.js",
+          "vendor/ml/structured-output.js",
+          "vendor/ml/ort-wasm-simd-threaded.jsep.mjs",
+          "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
+          "vendor/ml/ort-wasm-simd-threaded.asyncify.mjs",
+          "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm",
+          "vendor/ml/LICENSE-transformers.txt",
+          "vendor/ml/LICENSE-structured-output.txt",
+          "vendor/ml/LICENSE-onnxruntime.txt",
+          "vendor/ml/LICENSE-Llama3.2.txt",
+          "vendor/ml/THIRD_PARTY_NOTICES.md",
+          )
 
 
 def render_request(path, data=None):
@@ -102,9 +129,32 @@ def package(api, sha, number, config, output):
     files = {}
     for asset in ASSETS:
         value = api.request("contents/extension/" + asset + "?ref=" + sha)
-        if value.get("encoding") != "base64" or value.get("size", 0) > 512000:
+        limit = {"ai/tfidf_v12a.json": 3_000_000,
+                 "ai/reevaluators/krr.json": 1_000_000,
+                 "vendor/ml/transformers.min.js": 1_000_000,
+                 "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm": 32_000_000,
+                 "vendor/ml/ort-wasm-simd-threaded.jsep.wasm": 32_000_000}.get(asset, 512000)
+        size = value.get("size", 0)
+        if not isinstance(size, int) or not 0 <= size <= limit:
             raise RuntimeError("Extension asset missing, too large, or not a regular inline file")
-        files[asset] = base64.b64decode(value["content"], validate=False)
+        # GitHub Contents omits inline content for files larger than 1 MB.
+        # Use only the same repository's exact blob endpoint, never download_url.
+        blob_sha = None
+        if value.get("encoding") != "base64" and limit > 512000:
+            blob_sha = value.get("sha", "")
+            if not re.fullmatch(r"[0-9a-f]{40}", blob_sha):
+                raise RuntimeError("Invalid model blob identity")
+            value = api.request("git/blobs/" + blob_sha)
+            if value.get("sha") != blob_sha or value.get("size") != size:
+                raise RuntimeError("Model blob identity differs")
+        if value.get("encoding") != "base64":
+            raise RuntimeError("Extension asset missing or not a regular inline file")
+        data = base64.b64decode(value["content"], validate=False)
+        if len(data) != size:
+            raise RuntimeError("Extension asset size differs from metadata")
+        if blob_sha and hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest() != blob_sha:
+            raise RuntimeError("Model blob digest differs")
+        files[asset] = data
     origin = config["staging_origin"]
     files["js/config.js"] = ("export const API_BASE_URL = " + json.dumps(origin) + ";\n").encode()
     worker = files["background.js"].decode()
@@ -112,8 +162,12 @@ def package(api, sha, number, config, output):
     worker = worker.replace('const API_URL = "http://127.0.0.1:8000";', "const API_URL = " + json.dumps(origin) + ";")
     if "127.0.0.1" in worker or "localhost" in worker or config["production_origin"] in worker:
         raise RuntimeError("Worker still references a non-staging backend; use shared configuration")
-    if "API_BASE_URL" not in worker and origin not in worker:
+    local_scanner = ("import { analyzeLocal } from './ai/local-analyzer.mjs';" in worker or
+                     "import { analyzeWithReview } from './ai/live-workflow.mjs';" in worker)
+    if "API_BASE_URL" not in worker and origin not in worker and not local_scanner:
         raise RuntimeError("Worker backend origin cannot be established")
+    if local_scanner and b"API_BASE_URL" not in files["js/popup.js"]:
+        raise RuntimeError("Saved-report backend origin cannot be established")
     files["background.js"] = worker.encode()
     manifest = json.loads(files["manifest.json"])
     manifest["name"] = "Veriqo STAGING PR " + str(number)
