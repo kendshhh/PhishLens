@@ -359,6 +359,69 @@ class PreviewTests(unittest.TestCase):
         api.request.side_effect = read
         with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(RuntimeError, "identity"):
             package(api, SHA, 123, CONFIG, Path(directory) / "test.zip")
+    def test_local_scanner_archive_labels_partial_llama_package_and_staging_report_origin(self):
+        api = Mock()
+        files = {
+            "manifest.json": json.dumps({
+                "manifest_version": 3,
+                "background": {"service_worker": "background.js", "type": "module"},
+            }).encode(),
+            "popup.html": b"<html><body><main></main></body></html>",
+            "background.js": b"import { analyzeWithReview } from './ai/live-workflow.mjs';\n",
+            "js/popup.js": b"import { API_BASE_URL } from './config.js';\n",
+        }
+        requested = []
+
+        def read(path):
+            relative = path.split("contents/extension/", 1)[1].split("?", 1)[0]
+            requested.append(relative)
+            data = files.get(relative, f"fixture:{relative}".encode())
+            return {
+                "encoding": "base64",
+                "size": len(data),
+                "content": base64.b64encode(data).decode(),
+            }
+
+        api.request.side_effect = read
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "local-scanner.zip"
+            package(api, SHA, 123, CONFIG, output)
+            with ZipFile(output) as archive:
+                names = set(archive.namelist())
+                self.assertIn("STAGING_PACKAGE_NOTICE.txt", names)
+                self.assertFalse(any(name.startswith("model-assets/llama/") for name in names))
+                notice = archive.read("STAGING_PACKAGE_NOTICE.txt").decode()
+                self.assertIn("PARTIAL STAGING PACKAGE", notice)
+                self.assertIn("model-assets/llama/", notice)
+                preview_info = json.loads(archive.read("preview-info.json"))
+                self.assertEqual(preview_info["package_status"], "partial")
+                self.assertFalse(preview_info["includes_local_llama_weights"])
+                self.assertEqual(preview_info["excluded_assets"], ["model-assets/llama/"])
+                for required in (
+                    "ai/live-workflow.mjs",
+                    "ai/local-analyzer.mjs",
+                    "ai/tfidf_v12a.json",
+                    "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
+                    "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm",
+                    "js/report-workflow.js",
+                ):
+                    self.assertIn(required, names)
+                self.assertEqual(
+                    archive.read("js/config.js"),
+                    ("export const API_BASE_URL = " + json.dumps(CONFIG["staging_origin"]) + ";\n").encode(),
+                )
+                self.assertIn(b"API_BASE_URL", archive.read("js/popup.js"))
+                self.assertEqual(
+                    json.loads(archive.read("manifest.json"))["host_permissions"],
+                    [CONFIG["staging_origin"] + "/*"],
+                )
+                worker = archive.read("background.js")
+                self.assertNotIn(b"127.0.0.1", worker)
+                self.assertNotIn(b"localhost", worker)
+                self.assertNotIn(CONFIG["production_origin"].encode(), worker)
+        self.assertIn("vendor/ml/ort-wasm-simd-threaded.jsep.wasm", requested)
+        self.assertIn("vendor/ml/ort-wasm-simd-threaded.asyncify.wasm", requested)
+        self.assertFalse(any(asset.startswith("model-assets/llama/") for asset in requested))
 
 
 class MetricsTests(unittest.TestCase):
@@ -404,3 +467,4 @@ class MetricsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
