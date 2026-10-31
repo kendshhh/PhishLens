@@ -202,19 +202,19 @@ def package(api, sha, number, config, output):
             "documentation": "docs/ai/live-workflow.md",
         })
         files["STAGING_PACKAGE_NOTICE.txt"] = (
-            "PARTIAL STAGING PACKAGE\n\n"
-            "This trusted preview includes local scanner/judge code and runtime assets, "
-            "but omits the pinned Llama weights under model-assets/llama/. Those weights "
-            "are Git-ignored and are not available from the PR source commit used by the "
-            "staging controller. Remote model downloads are disabled, so offline Llama "
-            "inference is unavailable in this artifact. The preview validates tracked "
-            "asset packaging and staging saved-report/API-origin wiring; it does not "
-            "verify offline Llama inference.\n\n"
-            "To build a full local package, provision the pinned weights once with "
-            "npm run phishlens -- setup-models --download, then run "
-            "python scripts/package_extension.py --include-models. See "
-            "docs/ai/live-workflow.md.\n"
-        ).encode()
+            b"PARTIAL STAGING PACKAGE\\n\\n"
+            b"This trusted preview includes local scanner/judge code and runtime assets, "
+            b"but omits the pinned Llama weights under model-assets/llama/. Those weights "
+            b"are Git-ignored and are not available from the PR source commit used by the "
+            b"staging controller. Remote model downloads are disabled, so offline Llama "
+            b"inference is unavailable in this artifact. The preview validates tracked "
+            b"asset packaging and staging saved-report/API-origin wiring; it does not "
+            b"verify offline Llama inference.\\n\\n"
+            b"To build a full local package, provision the pinned weights once with "
+            b"npm run phishlens -- setup-models --download, then run "
+            b"python scripts/package_extension.py --include-models. See "
+            b"docs/ai/live-workflow.md.\\n"
+        )
     files["preview-info.json"] = json.dumps(preview_info).encode()
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
