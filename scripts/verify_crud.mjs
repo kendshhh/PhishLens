@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { createAnalysisClient } from '../extension/js/api.js';
 
-async function verifyTarget(baseUrl, options) {
+export async function verifyTarget(baseUrl, options) {
     const { environment, expectedSha, allowWrites } = options;
     if (allowWrites !== true) throw new Error('Explicit write permission is required');
     if (!/^[0-9a-f]{40}$/i.test(expectedSha || '')) {
