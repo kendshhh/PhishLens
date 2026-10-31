@@ -8,9 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy.engine import URL, make_url
-
 from backend.core.config import get_database_url
+from sqlalchemy.engine import URL, make_url
 
 DNS_TIMEOUT_SECONDS = 15
 DATABASE_CONNECT_TIMEOUT_SECONDS = 10
