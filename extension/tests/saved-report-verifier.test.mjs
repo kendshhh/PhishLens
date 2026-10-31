@@ -8,7 +8,7 @@ const id = '29d80c39-ec0d-4db8-a6e5-87444ba2600c';
 
 async function fixture(t, {
     createStatus, failHistory, failCleanup, invalidJson, identitySha = sha,
-    detailTimestamp, historyTimestamp
+    detailTimestamp, historyTimestamp, createdFields = {}, historyFields = {}
 } = {}) {
     let record;
     const calls = [];
@@ -32,9 +32,10 @@ async function fixture(t, {
             record = {
                 id, ...JSON.parse(body), prediction: 'spam', confidence: null, risk_level: 'medium',
                 threat_indicators: [{ type: 'evidence', quote: 'Synthetic', detail: 'Fixture only' }],
-                explanation: null, created_at: '2026-10-31T01:00:00Z',
+                explanation: 'Synthetic explanation', created_at: '2026-10-31T01:00:00Z',
                 notes: null, feedback: null, analysis_mode: 'mock',
-                analysis_provenance: { model: null }
+                analysis_provenance: { provider_mode: 'mock', model: null },
+                ...createdFields
             };
             return send(201, record);
         }
@@ -46,7 +47,7 @@ async function fixture(t, {
         if (request.url === '/api/analyses') {
             return failHistory ? send(503, { detail: 'History unavailable' })
                 : send(200, { items: record ? [{
-                    ...record, created_at: historyTimestamp ?? record.created_at
+                    ...record, created_at: historyTimestamp ?? record.created_at, ...historyFields
                 }] : [] });
         }
         return record ? send(200, {
@@ -141,3 +142,44 @@ test('unconfirmed cleanup fails with the exact synthetic record ID', async t => 
         /cleanup could not be confirmed/.test(error.message) && error.recordId === id);
     assert.equal(f.record.id, id);
 });
+
+for (const [name, historyFields] of [
+    ['missing evidence', { threat_indicators: [] }],
+    ['changed evidence', { threat_indicators: [{ type: 'evidence', quote: 'Synthetic', detail: 'Changed reason' }] }],
+    ['missing explanation', { explanation: null }],
+    ['changed explanation', { explanation: 'Changed explanation' }]
+]) {
+    test('report verification rejects history ' + name, async t => {
+        const f = await fixture(t, { historyFields });
+        await assert.rejects(verifySavedReport(f.url, f.options), /History differs/);
+        assert.equal(f.record, undefined);
+    });
+}
+
+for (const [name, createdFields] of [
+    ['null mode', { analysis_mode: null }],
+    ['legacy mode', { analysis_mode: 'unknown' }],
+    ['missing provenance', { analysis_provenance: undefined }],
+    ['null provenance', { analysis_provenance: null }],
+    ['empty provenance', { analysis_provenance: {} }],
+    ['unknown provider', { analysis_provenance: { provider_mode: 'unknown' } }],
+    ['mismatched provider', { analysis_provenance: { provider_mode: 'local' } }]
+]) {
+    test('report verification rejects newly created ' + name, async t => {
+        const f = await fixture(t, { createdFields });
+        await assert.rejects(verifySavedReport(f.url, f.options), /New report/);
+        assert.equal(f.record, undefined);
+    });
+}
+
+for (const provider of ['gemini', 'local']) {
+    test('report verification accepts real provenance for ' + provider, async t => {
+        const f = await fixture(t, { createdFields: {
+            analysis_mode: 'real',
+            analysis_provenance: { provider_mode: provider, model: 'synthetic-model' }
+        } });
+        const result = await verifySavedReport(f.url, f.options);
+        assert.equal(result.analysisMode, 'real');
+        assert.equal(result.cleanedUp, true);
+    });
+}

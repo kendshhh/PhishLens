@@ -1,0 +1,61 @@
+# Leyan: staging API verification, October 31, 2026
+
+Related: #44, #45, #87, #98, PR #103. API evidence only; no Chrome or real-model claim.
+
+## Identity and target
+
+- Run: 2026-10-31 06:56:39–06:56:55 UTC (14:56 GMT+8).
+- Origin: https://phishlens-staging.onrender.com
+- Client/backend source: 4127dd14d3dc5e28e56f874775be84b95d8a57b1.
+- Read-only /version: HTTP 200, exact source above, environment staging.
+- /ready: HTTP 200, ready, database connected.
+- Isolation basis: Kendra's maintained docs/devops/staging.md identifies Neon
+  pr-58-staging/phishlens_dev with a restricted app role and separate migration role;
+  protected Hosted staging and Secretary staging passed for this source.
+- The verifier additionally guards origin, environment, exact SHA, readiness and redirects
+  before writes. No database credentials were read or included in evidence.
+- The saved-report verifier included local follow-up changes for Trixia review 5721676032:
+  compare history evidence/explanation, require new-report mock/real mode and provider
+  provenance consistent with that mode. Those follow-up edits were not committed at run time.
+  They must be tied to the eventual committed source; this is not evidence for untested future edits.
+
+## Commands and actual results
+
+The imported functions used the same guard and arguments as these CLI commands:
+
+```text
+node scripts/verify_saved_report.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha 4127dd14d3dc5e28e56f874775be84b95d8a57b1 --allow-writes
+node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha 4127dd14d3dc5e28e56f874775be84b95d8a57b1 --allow-writes
+```
+
+Actual invocation was outputs/run-live-api-2026-10-31.mjs in the isolated Codex workspace;
+it called verifySavedReport and verifyCrud sequentially, wrote local JSON evidence, and exited 0.
+
+| Check | Actual result |
+|---|---|
+| Saved report | PASS: one create, server-returned ID, detail/history reads, shared fields including evidence/explanation, mock mode and matching provenance |
+| Saved-report cleanup | PASS: record 710d3c2e-4ff1-4a95-9b9e-acf8a59cce45 deleted; subsequent detail returned 404 |
+| CRUD | PASS: create, list/detail, notes/feedback update, reread, note clearing, delete, final 404 |
+| CRUD cleanup | PASS: record 198315f9-fa8d-4d9d-ad92-51fb82d55e2d deleted and confirmed absent |
+
+Only these newly created synthetic records were changed. No production writes, seeded subject
+edits, environment changes, deployment actions or GitHub posts were performed.
+
+## Local regression checks
+
+With the follow-up validation changes:
+- node --test extension/tests/*.test.mjs: 169 passed, 0 failed, 0 skipped.
+- Extension JavaScript ESLint: passed.
+- The new tests reject dropped/changed history evidence or explanation, legacy/null mode,
+  missing/null/empty provenance, unknown or mismatched provider modes. Synthetic valid
+  real/local and real/gemini cases pass; these are fixtures, not provider inference evidence.
+
+## Still pending
+
+- Commit/push the follow-up verifier checks, obtain Trixia re-review and fresh required CI.
+- Andrei's exact-package Chrome run, persistence after reopening, deletion after reopening,
+  and redacted Network evidence.
+- Week 1 changed-subject display and restoration, remaining browser-state evidence and reviews.
+- Controlled actual-backend timeout/unavailable/invalid-output/database fault mapping.
+- Real-provider/model acceptance where required. This run used mock AI.
+- Board/sprint-log reconciliation and revision-linked post-merge delivery.
