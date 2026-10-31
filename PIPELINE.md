@@ -340,4 +340,3 @@ The measured snapshot contains 23 backend jobs, 20 passing and 3 failing
 (including two deliberate drills). See [CI run evidence](docs/devops/ci-run-evidence.csv)
 for source timestamps.
 No optimization claim is made from changing durations or changing CI coverage.
-
