@@ -43,6 +43,14 @@ REQUIRED_DATABASE_TESTS = {
     ),
     (
         "backend.tests.test_saved_create_postgres",
+        "test_create_recovers_after_database_constraint_failure",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
+        "test_invalid_evidence_does_not_save_and_next_request_succeeds",
+    ),
+    (
+        "backend.tests.test_saved_create_postgres",
         "test_database_lock_timeout_does_not_save",
     ),
     (
@@ -126,9 +134,38 @@ def main():
             summary["gate_error"] = str(exc)
         if report.exists():
             (output / "pytest.xml").write_bytes(report.read_bytes())
+        ai_report = output / "ai-regression.json"
+        ai_result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts/ai_ci_report.py"),
+                "--junit",
+                str(report),
+                "--output",
+                str(ai_report),
+                "--source-sha",
+                os.getenv("SOURCE_COMMIT", "local"),
+                "--ai-mode",
+                os.getenv("AI_MODE", "unknown"),
+            ],
+            cwd=ROOT,
+            check=False,
+        )
+        summary["ai_regression_report_exit_code"] = ai_result.returncode
+        if ai_report.is_file():
+            try:
+                ai_evidence = json.loads(ai_report.read_text(encoding="utf-8"))
+                summary["ai_regression_status"] = ai_evidence.get("status", "incomplete")
+                summary["ai_regression_tests"] = ai_evidence.get("tests", {})
+                summary["offline_failure_drill"] = ai_evidence.get("offline_failure_drill", {})
+            except (OSError, json.JSONDecodeError) as exc:
+                summary["ai_regression_status"] = "incomplete"
+                summary["ai_regression_report_error"] = type(exc).__name__
+        else:
+            summary["ai_regression_status"] = "incomplete"
         (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(summary, indent=2))
-        return 1 if result.returncode or "gate_error" in summary else 0
+        return 1 if result.returncode or "gate_error" in summary or ai_result.returncode else 0
 
 
 if __name__ == "__main__":
