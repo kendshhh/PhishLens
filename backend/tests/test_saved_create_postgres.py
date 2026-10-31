@@ -693,6 +693,8 @@ def test_local_review_saved_fresh_session_read_delete(saved_postgres_context, mo
     client, engine, user_id = saved_postgres_context
     monkeypatch.setattr(saved_create, "get_ai_config", lambda: ("tfidf", None, None))
     _, local_review = payload()
+    local_review["judge"] = {"valid": False, "code": "judge_timeout"}
+    local_review["status"] = "uncertain"
     created = client.post("/api/analyses", json={"subject": "Local review software fixture", "body": BODY,
                                                "local_review": local_review},
                           headers={"Idempotency-Key": "local-review-fixture", "X-PhishLens-Model": MODEL_SHA256})
@@ -702,6 +704,12 @@ def test_local_review_saved_fresh_session_read_delete(saved_postgres_context, mo
     with TestClient(main.app) as fresh_client:
         reread = fresh_client.get("/api/analyses/" + identifier)
         assert reread.status_code == 200
+        assert reread.json()["review_status"] == "uncertain"
+        listed = fresh_client.get("/api/analyses")
+        assert listed.status_code == 200
+        summary = next(item for item in listed.json()["items"] if item["id"] == identifier)
+        assert summary["review_status"] == "uncertain"
+        assert summary["prediction"] == saved["prediction"]
         provenance = reread.json()["analysis_provenance"]["local_review"]
         assert provenance["origin"] == "browser_reported_LLM_audit_not_server_LLM_inference"
         assert len(provenance["server_replayed_classifiers"]) == 3

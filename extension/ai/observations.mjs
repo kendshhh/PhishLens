@@ -1,5 +1,5 @@
 // Deterministic software observations. Never presented as hidden model reasoning.
-export const VERSION='evidence-advice-v1';
+export const VERSION='evidence-advice-v2';
 const RULES={
  sensitive:{priority:10,observation:'The text directs the reader to provide or enter sensitive information.',why:'Passwords, payment details and verification codes can grant access or authorise an action. A request to disclose them needs independent verification.',action:'Do not send passwords or verification codes in a reply or to an unsolicited requester. Open the service through your usual app or a known address instead.'},
  pressure:{priority:9,observation:'The text connects an account-access consequence with a requested action.',why:'A threat of lost access can push a reader to act before checking the request. Legitimate services can also send urgent notices, so urgency does not establish phishing by itself.',action:'Check the account status through the app or website you normally use before following the requested action.'},
@@ -52,7 +52,8 @@ export function observations(text){
   const code=/\b(?:verification code|security (?:code|passcode)|one[- ]time (?:code|passcode)|confirmation code|authorisation token|authorization token)\b/i.exec(s.text);
   if(code)add('code',s,code);
   const pressure=/\b(?:account|access|profile|service|membership)\b[^.!?;]{0,100}\b(?:suspend(?:ed)?|disable[ds]?|closed?|terminat(?:ed|ion)|restrict(?:ed)?|locked?)\b/i.exec(s.text);
-  if(pressure&&!reported&&!/\b(?:not|never)\s+(?:be\s+)?(?:suspended|disabled|closed|locked)\b/i.test(s.text)&&/\b(?:unless|must|within|immediate|verify|confirm|update|prevent)\b/i.test(text))add('pressure',s,pressure);
+  // Both signals must occur in this clause; quote their shared context.
+  if(pressure&&!reported&&!/\b(?:not|never)\s+(?:be\s+)?(?:suspended|disabled|closed|locked)\b/i.test(s.text)&&/\b(?:unless|must|within|immediate|verify|confirm|update|prevent)\b/i.test(s.text))add('pressure',s);
   const payment=/\b(?:pay|wire|transfer|remit|send)\s+(?:(?:the|this|a|an|your|these)\s+)?(?:invoice|payment|money|funds|[$£€¥])|\b(?:make|process|complete)\s+(?:(?:the|this|a|an|your)\s+)?payment\b/i.exec(s.text);
   if(payment&&!reported&&!NEG.test(s.text.slice(0,payment.index)))add('payment',s,payment);
   const attachment=/\b(?:attached|attachment|enclosed (?:file|document)|PDF attachment)\b/i.exec(s.text);

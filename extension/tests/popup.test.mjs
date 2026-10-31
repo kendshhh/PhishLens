@@ -70,6 +70,17 @@ test('malformed history is a visible error and does not hide local results', asy
   assert.match(dom.get('error').textContent, /Invalid/);
   assert.equal(dom.get('result-state').classList.contains('hidden'), false);
 });
+
+for (const prediction of ['phishing', 'legitimate']) {
+  test('uncertain history overrides the primary ' + prediction + ' label', async () => {
+    const uncertain = { ...record, prediction, review_status: 'uncertain' };
+    const { dom } = await popup(async () => ok({ items: [uncertain] }));
+    await dom.get('load-history').click();
+    const button = dom.get('history-list').children[0].children[0];
+    assert.match(button.textContent, /Uncertain — local review not confirmed/);
+    assert.doesNotMatch(button.textContent, /phishing|legitimate|below threshold/i);
+  });
+}
 test('save requires explicit consent and blocks incompatible service without sending text', async () => {
   const calls = []; const { dom } = await popup(async (url, options) => {
     calls.push([url, options]); return ok({ provider_mode: 'gemini', accepts_tfidf_reports: false });

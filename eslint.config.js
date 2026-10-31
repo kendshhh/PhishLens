@@ -27,8 +27,7 @@ export default [
     }
   },
   {
-    // Preserve the byte-identical benchmark explanation module. Its destructuring
-    // intentionally omits priority from the public result.
+    // The observation sorter intentionally omits priority from the public result.
     files: ["extension/ai/observations.mjs"],
     rules: { "no-unused-vars": ["error", { "varsIgnorePattern": "^priority$", "argsIgnorePattern": "^priority$" }] }
   }

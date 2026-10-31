@@ -60,7 +60,7 @@ is a local Node diagnostic, not Chrome benchmark speed or new accuracy evidence.
 |---|---|
 | `extension/background.js` | Selection requests, latest-request/Clear protection, session state and badge |
 | `extension/ai/local-analyzer.mjs` | Packaged model loading, SHA-256 checks, cache, invalid-input failure |
-| `extension/ai/core.mjs` and `observations.mjs` | Frozen scoring/preprocessing and complete English wording observations |
+| `extension/ai/core.mjs` and `observations.mjs` | Frozen scoring/preprocessing and versioned English wording observations; v2 bounds pressure evidence to one clause |
 | `extension/ai/contract.json` | Frozen score mapping and raw-margin alert cutoff |
 | `extension/js/popup.js` | Safe rendering, explicit upload consent, history/detail/notes/feedback/delete |
 | `extension/js/report-client.js` | Contributors' confirmed-create + independent refresh handling |

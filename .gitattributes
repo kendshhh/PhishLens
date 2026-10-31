@@ -1,4 +1,4 @@
-# Integrity-pinned benchmark artifacts must retain bytes on every OS/clone.
+# Integrity-pinned model/runtime modules must retain bytes on every OS/clone.
 /extension/ai/tfidf_v12a.json -text -diff whitespace=cr-at-eol
 /extension/ai/core.mjs -text whitespace=cr-at-eol
 /extension/ai/observations.mjs -text whitespace=cr-at-eol

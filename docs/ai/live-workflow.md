@@ -126,6 +126,29 @@ The developer-only `phishlensDebug` session flag records extra runtime diagnosti
 locally; leave it off when handling private mail. `phishlensDebugFailNext` simulates
 one failure for a demo. See [the debugging guide](../TFIDF_DEBUGGING.md).
 
+## Review fixes — 31 October 2026
+
+History list and detail responses now share the summary serializer, preserving
+`review_status`. An Uncertain review stays labelled Uncertain in history even
+when its stored primary TF-IDF label is phishing or legitimate. Legacy records
+without local reviews keep their existing fields.
+
+The software observation layer is now `evidence-advice-v2`. Account-access
+consequences and pressure/action cues must occur within the same parsed sentence
+or semicolon-delimited clause. Its exact quote includes the shared context.
+An unrelated request to confirm a meeting no longer supplies evidence for a
+separate locked-account sentence. The model weights, frozen scoring kernel,
+calibration, cutoffs and archived benchmark records remain unchanged. These are
+implementation corrections with software regression tests, not new accuracy
+measurements. The debugging command pins the revised observation-module hash.
+
+The review regressions reproduced both original faults before the fixes. Local
+verification passed 147 extension tests and 242 backend tests; 38 database/provider
+opt-ins were skipped locally. The required CI PostgreSQL case now creates an
+Uncertain review, rereads its detail and history through a fresh client, and
+checks that both retain the status before deleting the record. Historical
+benchmark evidence and its recorded hashes were not rewritten.
+
 ## Evidence and limits
 
 The implementation result files record software checks, actual local browser

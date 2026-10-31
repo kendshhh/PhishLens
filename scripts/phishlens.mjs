@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
 import { createLocalAnalyzer, MODEL_SHA256 } from '../extension/ai/local-analyzer.mjs';
+import { VERSION as OBSERVATIONS_VERSION } from '../extension/ai/observations.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -21,14 +22,15 @@ async function modelCheck() {
   if (hash(model) !== MODEL_SHA256) throw Error('Model hash differs from the frozen v12a artifact.');
   const expected = {
     'core.mjs': 'fbef6d86cc179c960b38307b6e9d72462c454ccdbdad688f7e353193f8b0b447',
-    'observations.mjs': '7c85b25df39e78495824a0c95e633c5dcb22f623246a1689119e05375048e705'
+    'observations.mjs': '97d25c61cc8975e89a5d3de9072374534d8b0a6b9099f07a537f440e6bead3c4'
   };
   for (const [file, sha] of Object.entries(expected)) {
-    if (hash(await read('extension/ai/' + file)) !== sha) throw Error('Frozen kernel differs: ' + file);
+    if (hash(await read('extension/ai/' + file)) !== sha) throw Error('Packaged AI module differs: ' + file);
   }
   const result = await analyzer('Please confirm the meeting agenda with your project team.');
   console.log(JSON.stringify({ check: 'model integrity and software smoke check',
     model_sha256: MODEL_SHA256, bytes: model.length, raw_alert_threshold: result.alert_threshold,
+    observations_version: OBSERVATIONS_VERSION,
     displayed_threshold_percent: 100 * result.alert_threshold_score,
     evidence_spans_valid: result.verification.quote_spans_valid,
     accuracy_test: false }, null, 2));

@@ -1,6 +1,5 @@
 """Synthetic demo history, with lazy database initialization."""
 
-from datetime import UTC
 from typing import Annotated
 from uuid import UUID
 
@@ -14,7 +13,10 @@ from backend.app.analysis_schemas import (
     SavedAnalysisDetail,
     UpdateSavedAnalysis,
 )
-from backend.app.analysis_serialization import saved_detail_from_record
+from backend.app.analysis_serialization import (
+    saved_detail_from_record,
+    saved_summary_from_record,
+)
 from backend.app.routers.saved_create import router as saved_create_router
 from backend.models import AnalyzedEmail, User
 
@@ -58,28 +60,11 @@ def get_analyses(db: Annotated[Session, Depends(get_db)]):
             .limit(100)
         )
         analyses = db.scalars(query).all()
-    except SQLAlchemyError:
+        # Share the detail serializer so an Uncertain local review cannot lose
+        # its status when the same record appears in the history list.
+        return {"items": [saved_summary_from_record(analysis).model_dump() for analysis in analyses]}
+    except (SQLAlchemyError, ValidationError, ValueError):
         raise HTTPException(503, HISTORY_UNAVAILABLE) from None
-
-    return {
-        "items": [
-            {
-                "id": str(analysis.id),
-                "subject": analysis.subject,
-                "prediction": analysis.prediction,
-                "confidence": (
-                    float(analysis.confidence)
-                    if analysis.confidence is not None
-                    else None
-                ),
-                "risk_level": analysis.risk_level,
-                "threat_indicators": analysis.indicators or [],
-                "explanation": analysis.explanation,
-                "created_at": analysis.created_at.astimezone(UTC).isoformat(),
-            }
-            for analysis in analyses
-        ]
-    }
 
 
 @router.get(
