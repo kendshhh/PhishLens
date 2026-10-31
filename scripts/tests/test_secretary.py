@@ -19,6 +19,7 @@ from scripts.secretary.core import (
     render,
     safe,
 )
+from scripts.secretary.github_api import GitHub
 from scripts.secretary.preview import (
     completed_event,
     eligibility,
@@ -213,6 +214,26 @@ class ReportTests(unittest.TestCase):
         api = Mock()
         api.request.side_effect = [[{"id": 2, "sha": "c" * 40, "creator": {"login": "github-actions[bot]"}, "payload": {"secretary": 1}}], [{"state": "success"}]]
         self.assertFalse(preview_state(api, CONFIG, SHA)["current"])
+
+
+class GitHubPaginationTests(unittest.TestCase):
+    def test_pull_request_files_use_compact_pages(self):
+        api = GitHub(repo="kendshhh/PhishLens", token="synthetic")
+        first_page = [{"filename": f"extension/file-{index}.js"} for index in range(10)]
+        second_page = [{"filename": "extension/last.js"}]
+        with patch.object(api, "request", side_effect=[first_page, second_page]) as request:
+            rows = api.pull_request_files(123)
+
+        self.assertEqual(len(rows), 11)
+        self.assertEqual(
+            [call.args[0] for call in request.call_args_list],
+            ["pulls/123/files?per_page=10&page=1", "pulls/123/files?per_page=10&page=2"],
+        )
+
+    def test_pages_reject_invalid_page_size(self):
+        api = GitHub(repo="kendshhh/PhishLens", token="synthetic")
+        with self.assertRaises(ValueError):
+            api.pages("pulls/123/files", per_page=101)
 
 
 class PreviewTests(unittest.TestCase):

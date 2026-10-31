@@ -298,7 +298,7 @@ def main():
         pr = api.request(f"pulls/{candidate['number']}")
         if not current_pr_head_matches(pr, run["head_sha"]):
             continue
-        files = api.pages(f"pulls/{pr['number']}/files")
+        files = api.pull_request_files(pr["number"])
         action, message = eligibility(pr, files, run, api.repo)
         if action == "deploy":
             jobs, latest = latest_jobs(api, run["head_sha"])
