@@ -37,10 +37,13 @@ export async function verifySavedReport(baseUrl, options = {}) {
         assert.equal(report.detail.body, input.body);
         const listed = report.history.find(item => item.id === report.saved.id);
         assert.ok(listed, 'Saved ID is missing from refreshed history');
-        for (const field of ['subject', 'prediction', 'confidence', 'risk_level', 'created_at']) {
+        for (const field of ['subject', 'prediction', 'confidence', 'risk_level']) {
             assert.deepEqual(report.detail[field], report.saved[field], 'Detail differs: ' + field);
             assert.deepEqual(listed[field], report.saved[field], 'History differs: ' + field);
         }
+        const createdAt = Date.parse(report.saved.created_at);
+        assert.equal(Date.parse(report.detail.created_at), createdAt, 'Detail timestamp differs');
+        assert.equal(Date.parse(listed.created_at), createdAt, 'History timestamp differs');
         assert.deepEqual(report.detail.threat_indicators, report.saved.threat_indicators);
         assert.deepEqual(report.detail.analysis_provenance, report.saved.analysis_provenance);
         assert.equal(report.detail.analysis_mode, report.saved.analysis_mode);

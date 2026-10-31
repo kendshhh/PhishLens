@@ -6,7 +6,10 @@ import { verifySavedReport } from '../../scripts/verify_saved_report.mjs';
 const sha = 'a'.repeat(40);
 const id = '29d80c39-ec0d-4db8-a6e5-87444ba2600c';
 
-async function fixture(t, { createStatus, failHistory, failCleanup, invalidJson, identitySha = sha } = {}) {
+async function fixture(t, {
+    createStatus, failHistory, failCleanup, invalidJson, identitySha = sha,
+    detailTimestamp, historyTimestamp
+} = {}) {
     let record;
     const calls = [];
     const server = createServer(async (request, response) => {
@@ -42,9 +45,13 @@ async function fixture(t, { createStatus, failHistory, failCleanup, invalidJson,
         }
         if (request.url === '/api/analyses') {
             return failHistory ? send(503, { detail: 'History unavailable' })
-                : send(200, { items: record ? [record] : [] });
+                : send(200, { items: record ? [{
+                    ...record, created_at: historyTimestamp ?? record.created_at
+                }] : [] });
         }
-        return record ? send(200, record) : send(404, { detail: 'Absent' });
+        return record ? send(200, {
+            ...record, created_at: detailTimestamp ?? record.created_at
+        }) : send(404, { detail: 'Absent' });
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     t.after(() => new Promise(resolve => {
@@ -69,6 +76,24 @@ test('guarded report replay uses returned ID, refreshes and confirms cleanup', a
     assert.equal(f.calls.filter(x => x.startsWith('POST')).length, 1);
     assert.equal(f.calls.filter(x => x === 'GET /api/analyses/' + id).length, 2);
 });
+
+test('guarded report replay accepts equivalent Z and +00:00 timestamps', async t => {
+    const f = await fixture(t, {
+        detailTimestamp: '2026-10-31T01:00:00+00:00',
+        historyTimestamp: '2026-10-31T01:00:00+00:00'
+    });
+    const result = await verifySavedReport(f.url, f.options);
+    assert.equal(result.result, 'passed');
+    assert.equal(result.cleanedUp, true);
+});
+
+for (const field of ['detailTimestamp', 'historyTimestamp']) {
+    test('guarded report replay rejects a different instant in ' + field, async t => {
+        const f = await fixture(t, { [field]: '2026-10-31T01:00:01+00:00' });
+        await assert.rejects(verifySavedReport(f.url, f.options), /timestamp differs/);
+        assert.equal(f.record, undefined);
+    });
+}
 
 test('guarded report replay rejects mismatched source before POST', async t => {
     const f = await fixture(t, { identitySha: 'b'.repeat(40) });
