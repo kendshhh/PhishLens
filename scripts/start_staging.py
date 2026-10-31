@@ -1,7 +1,9 @@
 """Start only against the separately configured staging database."""
+import queue
 import socket
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -10,6 +12,45 @@ from sqlalchemy.engine import URL, make_url
 
 from backend.core.config import get_database_url
 
+DNS_TIMEOUT_SECONDS = 15
+DATABASE_CONNECT_TIMEOUT_SECONDS = 10
+MIGRATION_TIMEOUT_SECONDS = 300
+SEED_TIMEOUT_SECONDS = 180
+
+
+def resolve_ipv4_addresses(host: str, port: int) -> list[tuple]:
+    """Resolve IPv4 routes with a deadline so startup cannot hang in libc DNS."""
+    result: queue.Queue[tuple[list[tuple] | None, OSError | None]] = queue.Queue(maxsize=1)
+
+    def lookup() -> None:
+        try:
+            result.put((
+                socket.getaddrinfo(
+                    host,
+                    port,
+                    family=socket.AF_INET,
+                    type=socket.SOCK_STREAM,
+                ),
+                None,
+            ))
+        except OSError as exc:
+            result.put((None, exc))
+
+    threading.Thread(target=lookup, daemon=True).start()
+    try:
+        records, error = result.get(timeout=DNS_TIMEOUT_SECONDS)
+    except queue.Empty as exc:
+        raise SystemExit(
+            f"Hosted staging IPv4 DNS lookup timed out after {DNS_TIMEOUT_SECONDS} seconds."
+        ) from exc
+    if error:
+        raise SystemExit(
+            f"Hosted staging could not resolve an IPv4 address for DATABASE_URL: {error}"
+        ) from error
+    if records is None:
+        raise SystemExit("Hosted staging IPv4 DNS lookup returned no result.")
+    return records
+
 
 def pin_ipv4_addresses(database: URL) -> URL:
     """Keep the Neon hostname for TLS while making libpq try IPv4 routes only."""
@@ -17,15 +58,7 @@ def pin_ipv4_addresses(database: URL) -> URL:
     if not host or "," in host:
         raise SystemExit("Hosted staging requires one DNS hostname for DATABASE_URL.")
 
-    try:
-        records = socket.getaddrinfo(
-            host,
-            database.port or 5432,
-            family=socket.AF_INET,
-            type=socket.SOCK_STREAM,
-        )
-    except OSError as exc:
-        raise SystemExit(f"Hosted staging could not resolve an IPv4 address for DATABASE_URL: {exc}") from exc
+    records = resolve_ipv4_addresses(host, database.port or 5432)
 
     addresses = list(dict.fromkeys(record[4][0] for record in records))
     if not addresses:
@@ -35,6 +68,7 @@ def pin_ipv4_addresses(database: URL) -> URL:
 
     query = dict(database.query)
     query["hostaddr"] = ",".join(addresses)
+    query["connect_timeout"] = str(DATABASE_CONNECT_TIMEOUT_SECONDS)
     return database.set(host=",".join([host] * len(addresses)), query=query)
 
 
@@ -70,7 +104,9 @@ def main():
             raise SystemExit("Hosted staging requires a separate STAGING_MIGRATION_DATABASE_URL.")
         app_role = os.getenv("STAGING_APP_DATABASE_ROLE", "").strip()
         validate_hosted_database_urls(runtime_database, migration_database, expected_host, app_role)
+        print("[staging] resolving IPv4 routes for the runtime database", flush=True)
         runtime_database = pin_ipv4_addresses(runtime_database)
+        print("[staging] resolving IPv4 routes for the migration database", flush=True)
         migration_database = pin_ipv4_addresses(migration_database)
         # Keep the owner credential in the migration subprocess only. The API and
         # seed process receive the restricted runtime URL.
@@ -81,22 +117,32 @@ def main():
             raise SystemExit("Staging requires a separate development database named phishlens_dev.")
         migration_environment["DATABASE_URL"] = migration_database.render_as_string(hide_password=False)
 
+    print("[staging] applying database migrations", flush=True)
     subprocess.run(
         [sys.executable, "-m", "alembic", "-c", "backend/alembic.ini", "upgrade", "head"],
         check=True,
         env=migration_environment,
+        timeout=MIGRATION_TIMEOUT_SECONDS,
     )
     # Do not pass the privileged migration URL into seed_demo.py, Uvicorn, or the
     # application process. In hosted staging this stays the restricted app URL.
     os.environ["DATABASE_URL"] = runtime_database.render_as_string(hide_password=False)
     os.environ.pop("STAGING_MIGRATION_DATABASE_URL", None)
-    subprocess.run([sys.executable, "scripts/seed_demo.py"], check=True, env=os.environ.copy())
+    print("[staging] seeding synthetic staging records", flush=True)
+    subprocess.run(
+        [sys.executable, "scripts/seed_demo.py"],
+        check=True,
+        env=os.environ.copy(),
+        timeout=SEED_TIMEOUT_SECONDS,
+    )
     import uvicorn
 
+    port = int(os.environ.get("PORT", "8000"))
+    print(f"[staging] starting API server on port {port}", flush=True)
     uvicorn.run(
         "backend.app.main:app",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", "8000")),
+        port=port,
         loop="backend.core.event_loop:new_event_loop",
     )
 
