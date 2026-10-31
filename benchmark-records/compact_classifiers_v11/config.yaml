@@ -1,0 +1,69 @@
+protocol: compact-classifiers-v11
+authorized_by: direct_user_request_to_benchmark_three_shortlisted_models
+seed: 42
+synthetic_primary_allowed: false
+fine_tuning_allowed: false
+models:
+  bert_small:
+    id: onnx-community/bert-small-phishing-ONNX
+    revision: cfe22cf93103a4ed9c6cf18fc4d2d0b6aa734dc0
+    artifact: onnx/model_quantized.onnx
+    export_required: false
+  mobilebert:
+    id: Perth0603/phishing-email-mobilebert
+    revision: fe209c2e2a345c184b828d67c5e589344dbe8a58
+    artifact: onnx/model_quantized.onnx
+    export_required: true
+  dima_distilbert:
+    id: dima806/phishing-email-detection
+    revision: 310a5602280486e01dd60e37230980cfcc327b41
+    artifact: onnx/model_quantized.onnx
+    export_required: true
+preprocessing:
+  reference: english_real_v4_checkpoint_clean_shared_cleaner
+  max_characters: 2300
+  head_characters: 2000
+  tail_characters: 300
+  encoder_positions: 512
+  content_window_tokens: 510
+  window_aggregation: maximum_phishing_probability
+  extra_token_truncation: false
+evaluation:
+  primary_validation_fpr_target: 0.02
+  minimum_threshold_legitimate: 1000
+  calibration_counts: [500, 500]
+  threshold_counts: [1000, 1000]
+  broad_id_counts: [500, 500]
+  calibration_selection: grouped_5fold_log_loss_identity_or_nondecreasing_sigmoid
+  invalid_output: safe_probability_zero_invalid
+  bootstrap_replicates: 2000
+  confidence: 0.95
+  primary_operational_cohort: real_readiness_v10_body_unique_cohort_after_known_training_exclusions
+  diagnostic_leader: highest_balanced_accuracy_on_operational_cohort_then_lower_fpr_then_wasm_p95
+  original_weighted_qualification: unavailable_without_all_original_required_test_sets
+browser:
+  backends: [wasm, webgpu]
+  cpu_throttling_rates: [1, 4]
+  wasm_threads: 4
+  timed_emails: 100
+  discarded_warmups: 10
+  cold_start_trials: 3
+  maximum_load_seconds: 90
+  maximum_single_inference_seconds: 30
+gates:
+  test_id_fpr_max: 0.03
+  test_id_recall_min: 0.90
+  test_ood_fpr_max: 0.15
+  test_adv_fpr_max: 0.15
+  test_ood_recall_min: 0.70
+  ece_max: 0.10
+  p95_ms_max: 500
+  cold_start_ms_max: 3000
+  size_bytes_max: 100000000
+  valid_rate_min: 1.0
+ranking_weights_original:
+  recall: 0.30
+  robustness: 0.25
+  latency: 0.20
+  reliability: 0.15
+  size: 0.10

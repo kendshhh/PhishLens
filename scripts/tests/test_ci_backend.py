@@ -46,7 +46,7 @@ class BackendGateTests(unittest.TestCase):
     def test_required_database_tests_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             result = verify_report(self.report(directory, self.cases()))
-        self.assertEqual(result["required_database_tests_passed"], 10)
+        self.assertEqual(result["required_database_tests_passed"], len(REQUIRED_DATABASE_TESTS))
         self.assertIn("hosted acceptance not established", result["crud_acceptance"])
 
     def test_seed_integrity_is_separate_from_disposable_database_gate(self):

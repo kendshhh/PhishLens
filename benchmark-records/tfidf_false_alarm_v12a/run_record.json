@@ -1,0 +1,492 @@
+{
+  "at_utc": "2026-10-28T16:53:58.408759+00:00",
+  "local_date": "2026-10-29",
+  "timezone": "Asia/Manila",
+  "protocol": "tfidf-v12a-conservative-policy-followup",
+  "approval": {
+    "at_utc": "2026-10-28T16:15:47.483855+00:00",
+    "approval": "Approve the v12a follow-up",
+    "plan_sha256": "0c49991e8d7c831ffb1be168c19eeec7027144f6fd5bb63a0a5b99850d2a0ac1",
+    "base_manifest_sha256": "36bb3f69bb33f4d1289f9d751c275eba67dbf456a760f1354555db7023c1927a",
+    "original_v12_selection_sha256": "5c6e7ac21a5c62cb653e9b213281c9b9830cabc438f61984f0caf77f4dc28f78",
+    "fresh_cohort_sha256": "005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de",
+    "prior_v12_failure_preserved": true
+  },
+  "seed": 42,
+  "base_inner_fold_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104
+  ],
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "libraries": {
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "scikit_learn": "1.9.1"
+  },
+  "chrome_version": "156.0.8078.73",
+  "hardware": {
+    "captured_at_utc": "2026-10-28T16:11:51.6571789Z",
+    "cpu": {
+      "Name": "Intel(R) Core(TM) i5-14450HX",
+      "NumberOfCores": 10,
+      "NumberOfLogicalProcessors": 16
+    },
+    "os": {
+      "Caption": "Microsoft Windows 11 Home Single Language",
+      "Version": "10.0.26300",
+      "BuildNumber": "26300"
+    },
+    "gpu": [
+      {
+        "Name": "Meta Virtual Monitor",
+        "DriverVersion": "5.3.57.114"
+      },
+      {
+        "Name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+        "DriverVersion": "32.0.16.1088"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics",
+        "DriverVersion": "32.0.101.5972"
+      }
+    ]
+  },
+  "power_snapshot_after_timing": {
+    "get_system_power_status_success": true,
+    "AC_line_status": 1,
+    "per_cell_power_logging": "not recorded; snapshot is not proof of unchanged power state throughout"
+  },
+  "backend": "JavaScript CPU in dedicated Web Worker; separate directly throttled main-thread stress reference",
+  "config_sha256": "fb069aefd7eec46ebbf3b51f4e3468cb4a63843bdabbc48b07958472b6d26290",
+  "base_manifest_sha256": "36bb3f69bb33f4d1289f9d751c275eba67dbf456a760f1354555db7023c1927a",
+  "data": {
+    "fresh_source_pair": {
+      "rows": 1200,
+      "labels": {
+        "0": 1000,
+        "1": 200
+      },
+      "groups": 1135,
+      "truncated": 190,
+      "source_counts": {
+        "kaggle/Enron.csv": 594,
+        "kaggle/SpamAssasin.csv": 121,
+        "kaggle/Ling.csv": 135,
+        "kaggle/Nazario.csv": 36,
+        "kaggle/CEAS_08.csv": 150,
+        "Nazario/original-2024": 58,
+        "Nazario/original-2020": 8,
+        "Nazario/original-2021": 5,
+        "Nazario/original-2022": 11,
+        "Nazario/original-2023": 82
+      },
+      "sha256": "005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de"
+    },
+    "unused_id_reserved": {
+      "rows": 201,
+      "labels": {
+        "0": 122,
+        "1": 79
+      },
+      "groups": 181,
+      "truncated": 28,
+      "source_counts": {
+        "kaggle/Enron.csv": 68,
+        "kaggle/CEAS_08.csv": 20,
+        "kaggle/Ling.csv": 16,
+        "kaggle/Nazario.csv": 7,
+        "kaggle/SpamAssasin.csv": 18,
+        "Nazario/original-2024": 36,
+        "Nazario/original-2020": 6,
+        "Nazario/original-2022": 4,
+        "Nazario/original-2023": 26
+      },
+      "sha256": "3cd4bc0c2c6aefaadbc3d19cfe82078958e4234ef625f3a5e24f42ffd2dde46e"
+    },
+    "calibration": {
+      "rows": 600,
+      "labels": {
+        "1": 100,
+        "0": 500
+      },
+      "groups": 549,
+      "truncated": 80,
+      "source_counts": {
+        "kaggle/Nazario.csv": 40,
+        "kaggle/Enron.csv": 279,
+        "kaggle/CEAS_08.csv": 177,
+        "kaggle/SpamAssasin.csv": 28,
+        "kaggle/Ling.csv": 16,
+        "Nazario/original-2025": 38,
+        "Nazario/original-2024": 3,
+        "Nazario/original-2020": 7,
+        "Nazario/original-2021": 4,
+        "Nazario/original-2022": 5,
+        "Nazario/original-2023": 3
+      },
+      "sha256": "85f15e190cd976954704b18885df73dd11d5ca2a335f55367858969258f6d1fa"
+    },
+    "threshold": {
+      "rows": 1100,
+      "labels": {
+        "0": 1000,
+        "1": 100
+      },
+      "groups": 1042,
+      "truncated": 164,
+      "source_counts": {
+        "kaggle/CEAS_08.csv": 310,
+        "kaggle/Enron.csv": 578,
+        "kaggle/SpamAssasin.csv": 59,
+        "kaggle/Nazario.csv": 49,
+        "kaggle/Ling.csv": 53,
+        "Nazario/original-2025": 34,
+        "Nazario/original-2024": 5,
+        "Nazario/original-2020": 2,
+        "Nazario/original-2021": 2,
+        "Nazario/original-2022": 6,
+        "Nazario/original-2023": 2
+      },
+      "sha256": "3f73e753bb0259e5004b10d20a8b889f8e33dc094aecf4534aa9589033e3f8cc"
+    },
+    "train_development": {
+      "rows": 27391,
+      "labels": {
+        "0": 25311,
+        "1": 2080
+      },
+      "groups": 16891,
+      "truncated": 5474,
+      "source_counts": {
+        "kaggle/Enron.csv": 10640,
+        "kaggle/SpamAssasin.csv": 3125,
+        "kaggle/CEAS_08.csv": 9759,
+        "kaggle/Ling.csv": 1746,
+        "kaggle/Nazario.csv": 1140,
+        "collector_attested_received_security_control": 41,
+        "Nazario/original-2024": 148,
+        "Nazario/original-2025": 297,
+        "Nazario/original-2020": 85,
+        "Nazario/original-2021": 65,
+        "Nazario/original-2022": 147,
+        "Nazario/original-2023": 198
+      },
+      "sha256": "08128dea211ad7428776577cda33101b5ae5beba035934112d9e3c0b835f0903"
+    },
+    "unused_validation": {
+      "rows": 163,
+      "labels": {
+        "0": 97,
+        "1": 66
+      },
+      "groups": 148,
+      "truncated": 17,
+      "source_counts": {
+        "kaggle/CEAS_08.csv": 14,
+        "kaggle/Ling.csv": 10,
+        "kaggle/Enron.csv": 58,
+        "kaggle/SpamAssasin.csv": 15,
+        "kaggle/Nazario.csv": 9,
+        "Nazario/original-2024": 27,
+        "Nazario/original-2020": 4,
+        "Nazario/original-2022": 4,
+        "Nazario/original-2023": 22
+      },
+      "sha256": "6aabc6fd744cbcf8664fdad47b82d273eb39063c51c99d1a4c7caa1a2a87252a"
+    }
+  },
+  "model_versions": {
+    "reference_frozen": {
+      "local_id": "tfidf_lr_v4_reference",
+      "source_artifact_sha256": "4e8eedf9d25c3149d0a797c1bcb2b0f2c0091c3fa8db1fb4f74f5d297e873ade",
+      "mapping": {
+        "kind": "frozen_probability_sigmoid",
+        "slope": 2.8391359102904223,
+        "intercept": -0.2610483825710062,
+        "epsilon": 1e-06
+      },
+      "alert_threshold": 0.6196111742515448,
+      "alert_threshold_space": "mapped_probability"
+    },
+    "reference_recalibrated": {
+      "local_id": "tfidf_lr_v4_reference",
+      "source_artifact_sha256": "4e8eedf9d25c3149d0a797c1bcb2b0f2c0091c3fa8db1fb4f74f5d297e873ade",
+      "mapping": {
+        "kind": "margin_sigmoid",
+        "slope": 2.2808187424580484,
+        "intercept": -0.24314303907940243
+      },
+      "alert_threshold": 0.3452140259350454,
+      "alert_threshold_space": "raw_margin"
+    },
+    "tfidf_v12a": {
+      "local_id": "word_plus_char_wb_C1p0",
+      "source_artifact_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+      "mapping": {
+        "kind": "margin_sigmoid",
+        "slope": 1.6158795082744162,
+        "intercept": 2.0617153419475205
+      },
+      "alert_threshold": 0.0,
+      "alert_threshold_space": "raw_margin"
+    }
+  },
+  "truncation_rule": "Shared inert HTML/whitespace/privacy preparation; first 2000 + last 300 Unicode codepoints; no additional model token truncation",
+  "prompts": null,
+  "LLM_output_tokens": 0,
+  "additional_classifier_weight_fits_in_v12a": 0,
+  "base_classifier_fits": {
+    "nested": 30,
+    "full_development_exports": 6
+  },
+  "calibration_roles": "600 fit/check, 1100 cutoff with 1000 legitimate; no final fitting",
+  "primary_fresh_classifier_predictions": 3600,
+  "primary_fresh_scoring_passes_per_system": 1,
+  "timing": {
+    "cells": 12,
+    "timed_observations": 1200,
+    "discarded_warmups": 120,
+    "cold_trials": 36,
+    "inputs": "validation only",
+    "cold_definition": "fresh browser context navigation to first valid response using local assets and fixture delivery; OS/file caches may be warm; no Internet installation timing"
+  },
+  "numerical_parity": {
+    "at_utc": "2026-10-28T16:27:47.379354+00:00",
+    "status": "PASS",
+    "systems": {
+      "reference_frozen": {
+        "records": 52,
+        "max_margin_delta": 1.2434497875801753e-14,
+        "max_probability_delta": 2.0816681711721685e-16,
+        "max_feature_contribution_delta": 4.440892098500626e-16,
+        "all_decisions_identical": true
+      },
+      "reference_recalibrated": {
+        "records": 52,
+        "max_margin_delta": 1.2434497875801753e-14,
+        "max_probability_delta": 3.0531133177191805e-16,
+        "max_feature_contribution_delta": 4.440892098500626e-16,
+        "all_decisions_identical": true
+      },
+      "tfidf_v12a": {
+        "records": 52,
+        "max_margin_delta": 2.042810365310288e-14,
+        "max_probability_delta": 4.2674197509029455e-16,
+        "max_feature_contribution_delta": 8.326672684688674e-17,
+        "all_decisions_identical": true
+      }
+    },
+    "quote_spans_verified": 525,
+    "fresh_test_used": false,
+    "actual_worker_failure_exercised": true,
+    "sender_authentication_claimed": false
+  },
+  "fresh_scoring_lock_sha256": "3e91a3ab354758821055e9439e1de6fdf283dcb43612bf7072040c53c00663d4",
+  "source_evidence": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\results\\tfidf-20261028-001\\admission\\source_evidence.json",
+  "source_urls": [
+    "https://www.kaggle.com/datasets/naserabdullahalam/phishing-email-dataset",
+    "https://arxiv.org/abs/2405.11619",
+    "https://monkey.org/~jose/phishing/README.txt"
+  ],
+  "raw_data_published": false,
+  "new_human_ratings_created": 0,
+  "Mac_evaluation": "not performed",
+  "original_full_qualification": false,
+  "original_v12_failed_search_preserved": true,
+  "test_based_tuning": 0,
+  "preflight_issue": "First browser preflight could not reach a sandbox-context loopback server; same-context local server fixed before parity or final scoring.",
+  "report_completed_at_utc": "2026-10-28T17:19:58.122544+00:00",
+  "repository_head": "00d0bf60deb4f90544435e2af24563b3a5b376fe",
+  "repository_state": "Pre-existing working changes retained. Benchmark sources are untracked; individual file hashes identify the evaluated code, not the repository HEAD alone.",
+  "prediction_files": {
+    "reference_frozen": {
+      "sha256": "0eb4780dbf61441ffe4c0a79cf2048a23247ae617b7fea347e5933c47cc7b81b",
+      "rows": 1200
+    },
+    "reference_recalibrated": {
+      "sha256": "9fa0207792719a882685c03dcdf8389806f1eda5c8f2579983950ffbfbd3451a",
+      "rows": 1200
+    },
+    "tfidf_v12a": {
+      "sha256": "22a61808828c78979c27e9fe3107e0410b3d0ebe426cb076ae2e668f9e186366",
+      "rows": 1200
+    }
+  },
+  "report_artifact_hashes": {
+    "Graph.csv": "4225fdb5fb549bc68a60d8a83513834d360b53206345e9c32d378e67c7139e4d",
+    "metrics.json": "3eef2d2a58035c1c15c3d1899a54e38b81949c809511e5632e7ff2fec5ef7351",
+    "summary.md": "a41d05ae77aca82cc6472159a6f270f8a315e3866565e8607a161a74754e24e1",
+    "visual_report.html": "005b9848f0bce9c49cfeffa86550c51401f435dbf5c98c915c2fabbcb7ff004b",
+    "terminology.html": "4c28a3671efbef3bc9017df35644aa660c5a64cddde11a75ac3c0f4133005021",
+    "error_analysis.md": "d7ce245a62ac2531fe438279324b1d37719cdd1822a2974bf6c552aab66bf9cc",
+    "tfidf-v12a-integration.zip": "bb13889bd92c78aefae8438e9346a133e0b4194edaf0138c5258e9478bbe44d6",
+    "integration_verification.json": "bc74c41ea643584debdd60da407abfd026d26bdab109bf38e3d7c08ab0647414",
+    "chart_verification.json": "7e8836ec191b2eaa148262f9a34d435fb2cca9789b08ff310a724770f6aa2521",
+    "data_dictionary.md": "16ebbd72dd631410e5ed1a422dc9e01c40deac2309e6a8aaeb4b8f857dd16cf1"
+  },
+  "report_script_hashes": {
+    "scripts\\append_policy_graph.py": "70b160df1fa79dfc489538177d1fc687deba9c0255d8379824ae155787830e30",
+    "scripts\\build_handoff.py": "4dd048ccbbd9b9fc8be612b876e168f710bdc2a891357fdfc14ed7939aa58670",
+    "scripts\\calibrate_policy.py": "b1770b4a51927968714915e5f19838dbef652488abc5385149238dbd8e7383b8",
+    "scripts\\freeze_final.py": "5b478919ecc9669277130dbda5c89bf8628ff6ef59c8097dd8b781edaa716b94",
+    "scripts\\human_rubric.py": "7296f74d814d7a6c52499a7f00ab8215b755c56a865f4632ea188f0dca9ce771",
+    "scripts\\policy_common.py": "af786570667b08e5f0adcd3be91e901e003f3ff938e43b95923d534af11d9e05",
+    "scripts\\prepare_fixtures.py": "a54d4b12b71a8b579cae00fc1d3382fb2b5250bb32a615a856a577d8bbc18b84",
+    "scripts\\publish_report.py": "3c7850a1bf20b754def56e432c4814398e0d492e92061a70532aafab0b3ee964",
+    "scripts\\report_results.py": "c8ad6e73514cfc53ee0d61416b755d86f4437e2cb6d568f58ee200c64d06fc4b",
+    "scripts\\run_browser.mjs": "2fe3a217e30155d0fdc919e28f5efc545ad48b010c8870f1790c15a0924f17b6",
+    "scripts\\select_policy.py": "3fc7b5b10a5dbc3085644b43aa0c6f1550aa0c1218217634bb3d0727f1873937",
+    "scripts\\server.py": "b89be675191894f2dccd670b469670e6de2a104c05a78734be65cee0ee2240df",
+    "scripts\\time_main_thread.mjs": "6dda207790027819bcffdb171707e1cf6923c26fabcdc541b6d1273f6b35d2a9",
+    "scripts\\verify_final.py": "06d2a91244b3476fc6d8e61e89b8161dc610a84f47a2a8565fb32adf5d46727b",
+    "scripts\\verify_handoff.mjs": "912250c0ca78ed6f2694fecdc5c00347744eb21551bf37cf9854a24c4efe5fd0",
+    "scripts\\verify_parity.py": "700dc99743100e8631f663cf9a628ef3e2f27e4f1059c29df288ef0fe6a2e3b3",
+    "scripts\\verify_report.mjs": "22aa871305f0dd0728e1e57c8976ffe2cabd17913b81c3a7c731a22ebf69bc8f"
+  },
+  "unit_tests_distinct": 11,
+  "integration_check": {
+    "at_utc": "2026-10-28T17:08:25.551Z",
+    "status": "PASS",
+    "browser": "156.0.8078.73",
+    "packaged_development_validation_inputs": 52,
+    "max_margin_difference": 2.042810365310288e-14,
+    "max_probability_difference": 4.2674197509029455e-16,
+    "decision_disagreements": 0,
+    "verified_quote_spans": 175,
+    "blank_rejected": true,
+    "raw_html_rejected": true,
+    "actual_worker_failure_visible": true,
+    "human_review": {
+      "cards": 30,
+      "prefilled_ratings": 0,
+      "progress": "0 / 30 completed"
+    },
+    "fresh_test_rescored": false,
+    "external_requests": [],
+    "page_errors": []
+  },
+  "memory_limit": "Whole-user-agent memory timed out for all six worker cells; page heap excludes worker allocations. Main-thread stress heap is reported separately.",
+  "measured_workflow_boundary": "Prepared-text classification + observations + attribution + quote validation + worker roundtrip where used. Excludes extension capture/DOM rendering, MIME preparation and public input normalization.",
+  "artifact_generation_note": "Graph.csv authored from graph_rows.json using Artifact Tool; publish_report.py reconciles every cell and plots only CSV. Source-family grouping and all classifier fits occurred earlier, prior to the final lock.",
+  "commands_for_reproduction_not_permission_to_rescore": [
+    "python benchmarks/tfidf_false_alarm_v12/scripts/fetch_public.py",
+    "python benchmarks/tfidf_false_alarm_v12/scripts/admit_data.py",
+    "python benchmarks/tfidf_false_alarm_v12/scripts/group_full_passages.py",
+    "python benchmarks/tfidf_false_alarm_v12/scripts/allocate_roles.py",
+    "python benchmarks/tfidf_false_alarm_v12/scripts/develop.py",
+    "python benchmarks/tfidf_false_alarm_v12/scripts/development_report.py",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/select_policy.py",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/calibrate_policy.py",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/prepare_fixtures.py",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/server.py --port 8972",
+    "node benchmarks/tfidf_false_alarm_v12a/scripts/run_browser.mjs parity",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/verify_parity.py",
+    "node benchmarks/tfidf_false_alarm_v12a/scripts/run_browser.mjs timing",
+    "node benchmarks/tfidf_false_alarm_v12a/scripts/time_main_thread.mjs",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/freeze_final.py",
+    "node benchmarks/tfidf_false_alarm_v12a/scripts/run_browser.mjs score (already executed once; repeat blocked)",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/report_results.py",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/append_policy_graph.py",
+    "node benchmarks/tfidf_false_alarm_v12a/artifact_work/export_results.mjs",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/build_handoff.py",
+    "node benchmarks/tfidf_false_alarm_v12a/scripts/verify_handoff.mjs",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/publish_report.py",
+    "python benchmarks/tfidf_false_alarm_v12a/scripts/verify_final.py"
+  ],
+  "report_ui_check": {
+    "at_utc": "2026-10-28T17:18:36.700Z",
+    "status": "PASS",
+    "browser": "156.0.8078.73",
+    "checks": [
+      {
+        "file": "visual_report.html",
+        "width": 1440,
+        "horizontal_overflow": false,
+        "images": 6,
+        "broken_images": 0,
+        "cards": 0,
+        "prefilled_ratings": 0,
+        "has_rubric": false,
+        "screenshot": "qa/visual_report-1440.png"
+      },
+      {
+        "file": "visual_report.html",
+        "width": 390,
+        "horizontal_overflow": false,
+        "images": 6,
+        "broken_images": 0,
+        "cards": 0,
+        "prefilled_ratings": 0,
+        "has_rubric": false,
+        "screenshot": "qa/visual_report-390.png"
+      },
+      {
+        "file": "terminology.html",
+        "width": 1440,
+        "horizontal_overflow": false,
+        "images": 0,
+        "broken_images": 0,
+        "cards": 0,
+        "prefilled_ratings": 0,
+        "has_rubric": false,
+        "screenshot": "qa/terminology-1440.png"
+      },
+      {
+        "file": "terminology.html",
+        "width": 390,
+        "horizontal_overflow": false,
+        "images": 0,
+        "broken_images": 0,
+        "cards": 0,
+        "prefilled_ratings": 0,
+        "has_rubric": false,
+        "screenshot": "qa/terminology-390.png"
+      },
+      {
+        "file": "human_review/review_form.html",
+        "width": 1440,
+        "horizontal_overflow": false,
+        "images": 0,
+        "broken_images": 0,
+        "cards": 30,
+        "prefilled_ratings": 0,
+        "has_rubric": true,
+        "screenshot": "qa/review_form-1440.png"
+      },
+      {
+        "file": "human_review/review_form.html",
+        "width": 390,
+        "horizontal_overflow": false,
+        "images": 0,
+        "broken_images": 0,
+        "cards": 30,
+        "prefilled_ratings": 0,
+        "has_rubric": true,
+        "screenshot": "qa/review_form-390.png"
+      }
+    ],
+    "external_requests": [],
+    "page_errors": [],
+    "human_ratings_created": 0,
+    "classifier_inferences": 0
+  },
+  "post_test_data_quality": "A CSS-heavy German input passed the statistical English filter; strict English purity is not established. The source-labelled bank statement FP and publisher-positive licensing-thread ambiguity were retained. No test example was removed or relabelled.",
+  "cleanup": {
+    "at_utc": "2026-10-28T17:21:32.974424+00:00",
+    "benchmark_server_sessions_stopped": [
+      64879,
+      66721
+    ],
+    "verified_listening_ports_8972_8973": 0,
+    "Chrome_automation_contexts_closed": true,
+    "temporary_review_ratings_created": 0,
+    "datasets_or_test_predictions_deleted": 0,
+    "existing_application_provider_changed": false,
+    "database_or_public_deployment_changed": false
+  },
+  "integration_handoff_doc_sha256": "4e2033fdd53b3761d929739ed09730d244510b77d28b615b0d361c8340c63dc3"
+}

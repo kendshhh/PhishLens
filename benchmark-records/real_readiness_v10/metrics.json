@@ -1,0 +1,547 @@
+{
+  "at_utc": "2026-10-28T08:32:29.780926+00:00",
+  "cohort": {
+    "at_utc": "2026-10-28T07:48:03.286918+00:00",
+    "status": "ADMITTED_SUPPLEMENTARY_SOURCE_PAIR_NOT_ORIGINAL_FULL_QUALIFICATION",
+    "counts": {
+      "0": 41,
+      "1": 249
+    },
+    "groups_by_class": {
+      "0": 18,
+      "1": 223
+    },
+    "positives": "Unused eligible Nazario 2025 publisher-hand-classified collected phishing groups; collector admits possible errors",
+    "negatives": "Body-unique collector-attested received/redacted security controls; no independent authentication",
+    "selection": "All eligible unused groups, no model outcomes consulted; exact duplicate inputs collapsed",
+    "is_representative_inbox_sample": false,
+    "is_independent_new_collector": false,
+    "synthetic_primary_rows": 0,
+    "test_ids_previously_scored": false,
+    "new_model_training": 0,
+    "model_inferences_before_freeze": 0,
+    "hashes": {
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\data\\prepared\\checkpoint_clean_pool.audit.jsonl": "e11b9d882513ce1064ffb6d4542d3c821b0a495cb8d4a0725168a1624eff83b3",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_text_acceptance_v8\\data\\prepared\\control_submissions\\controls100-20261027-001.received.private.jsonl": "4ea3f0039028d69d5122d245e1b7cc9bd07e337e96ce2b2a1c7810a0bef52359",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\data\\manifest.json": "e8acdf26884d16bb190d588a60744cb4b94b40ded1f34905e2691fc249836a75",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\scoring_lock.json": "052496c770ff827653bbd7feb6d6a4dc3ac3a27a642c2d63547635bbd370295d",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\models\\tfidf_lr\\model.json": "4e8eedf9d25c3149d0a797c1bcb2b0f2c0091c3fa8db1fb4f74f5d297e873ade",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\leakage_audit.json": "893f209997796429f8292f2b9c216629c3ef504de0bf3eb97d6f3067fc21b58d",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\data\\prepared\\test.private.jsonl": "0287e3b980c4b1d1f09e72bfabd2f9ea99f312f4fc2c50c5b73f5c6541199bcb",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\data\\prepared\\consistency_ids.json": "292fc6d4a9c3c37573d48cbd7bc0a22c32b4dc351a69f1011ad4e773c6f4ec3e",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\config.yaml": "0ecc03c65288c986d40108cd2d8127cfa632f586f9b6b7101cd3d3774929ae85",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\protocol.md": "914e86e83f647b79f9e13b8e4a89b5b9dde303b617d7cf42ef29750e28bd7754",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\calibration\\tfidf_lr.json": "febad17702b8d6b6b3ffff1af4ee5ef0fc854fc2d0331ef8569a4400cdc2fbe0",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\calibration\\distilbert.json": "79cd04aa5e38c49420635792efc46933da86c15179dec5283bef1981b4fcc5b4",
+      "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\calibration\\llm.json": "c317c8c62246cb92dc3f7fb0669cae02d225228545d4665b0133b6b90663610b"
+    },
+    "protected_old_artifacts_unchanged": 74
+  },
+  "models": {
+    "tfidf_lr": {
+      "metrics": {
+        "recall": {
+          "value": 0.8875502008032129,
+          "ci_lower": 0.8427408028271113,
+          "ci_upper": 0.9283086253369272,
+          "valid_bootstrap_reps": 2000
+        },
+        "fpr": {
+          "value": 0.926829268292683,
+          "ci_lower": 0.7727272727272727,
+          "ci_upper": 1.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "precision": {
+          "value": 0.8532818532818532,
+          "ci_lower": 0.7659556678289333,
+          "ci_upper": 0.9262295081967213,
+          "valid_bootstrap_reps": 2000
+        },
+        "f1": {
+          "value": 0.8700787401574803,
+          "ci_lower": 0.8166351606805293,
+          "ci_upper": 0.9132231404958677,
+          "valid_bootstrap_reps": 2000
+        },
+        "mcc": {
+          "value": -0.04429166859857417,
+          "ci_lower": -0.1452502045848666,
+          "ci_upper": 0.10939353257787732,
+          "valid_bootstrap_reps": 2000
+        },
+        "roc_auc": {
+          "value": 0.5649916740131257,
+          "ci_lower": 0.46062414992770867,
+          "ci_upper": 0.6969296934541451,
+          "valid_bootstrap_reps": 2000
+        },
+        "pr_auc": {
+          "value": 0.9135806021991355,
+          "ci_lower": 0.8539831782901715,
+          "ci_upper": 0.957320688889305,
+          "valid_bootstrap_reps": 2000
+        },
+        "ece": {
+          "value": 0.2117519097587596,
+          "ci_lower": 0.14626831047940883,
+          "ci_upper": 0.2876080424996304,
+          "valid_bootstrap_reps": 2000
+        },
+        "valid_output_rate": {
+          "value": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "accuracy": {
+          "value": 0.7724137931034483,
+          "ci_lower": 0.6932218327003603,
+          "ci_upper": 0.8429157227955365,
+          "valid_bootstrap_reps": 2000
+        },
+        "tp": {
+          "value": 221,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fp": {
+          "value": 38,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "tn": {
+          "value": 3,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fn": {
+          "value": 28,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        }
+      },
+      "counts": {
+        "tp": 221,
+        "fp": 38,
+        "tn": 3,
+        "fn": 28
+      },
+      "threshold": 0.6196111742515448,
+      "diagnostic_exact_binomial_intervals": {
+        "fpr": {
+          "numerator": 38,
+          "denominator": 41,
+          "exact_binomial_ci_lower": 0.8007540216233371,
+          "exact_binomial_ci_upper": 0.9846485284665834,
+          "assumes_independence_not_satisfied_by_repeated_templates": true
+        },
+        "recall": {
+          "numerator": 221,
+          "denominator": 249,
+          "exact_binomial_ci_lower": 0.8415916168686028,
+          "exact_binomial_ci_upper": 0.9239642127856108,
+          "assumes_independence_not_satisfied_by_repeated_templates": true
+        }
+      },
+      "observed_inference_latency": {
+        "p50_ms": 0.3149999976158142,
+        "p95_ms": 0.8027499765157701,
+        "p99_ms": 1.2635999989509754,
+        "n": 290,
+        "method": "performance.now inside each scored inference; no warmup/throttle/cold certification",
+        "first_page_load_ms": 131.38499999046326,
+        "first_page_ready_ms": 5674.2699999809265,
+        "observed_static_bytes": 1336903
+      },
+      "invalid_reasons": {},
+      "checks_on_new_cohort": [
+        {
+          "check": "fresh_collected_phishing_recall",
+          "value": 0.8875502008032129,
+          "limit": 0.9,
+          "status": "fail"
+        },
+        {
+          "check": "attested_security_control_fpr",
+          "value": 0.926829268292683,
+          "limit": 0.03,
+          "status": "fail"
+        },
+        {
+          "check": "convenience_cohort_ece",
+          "value": 0.2117519097587596,
+          "limit": 0.1,
+          "status": "fail"
+        },
+        {
+          "check": "valid_output_rate",
+          "value": 1.0,
+          "limit": 1.0,
+          "status": "pass"
+        }
+      ],
+      "full_qualification": false,
+      "full_qualification_reason": "New measured failures; original unassessed requirements are not retroactively passed."
+    },
+    "distilbert": {
+      "metrics": {
+        "recall": {
+          "value": 0.23694779116465864,
+          "ci_lower": 0.1840897446844847,
+          "ci_upper": 0.2924901185770751,
+          "valid_bootstrap_reps": 2000
+        },
+        "fpr": {
+          "value": 0.024390243902439025,
+          "ci_lower": 0.0,
+          "ci_upper": 0.1,
+          "valid_bootstrap_reps": 2000
+        },
+        "precision": {
+          "value": 0.9833333333333333,
+          "ci_lower": 0.9433962264150944,
+          "ci_upper": 1.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "f1": {
+          "value": 0.3818770226537217,
+          "ci_lower": 0.30927665491047207,
+          "ci_upper": 0.45181235779029427,
+          "valid_bootstrap_reps": 2000
+        },
+        "mcc": {
+          "value": 0.18282205602974502,
+          "ci_lower": 0.0914570605629186,
+          "ci_upper": 0.25553597447340765,
+          "valid_bootstrap_reps": 2000
+        },
+        "roc_auc": {
+          "value": 0.632579096875306,
+          "ci_lower": 0.495174376336422,
+          "ci_upper": 0.7149658225863446,
+          "valid_bootstrap_reps": 2000
+        },
+        "pr_auc": {
+          "value": 0.9283555931485399,
+          "ci_lower": 0.8982074676802686,
+          "ci_upper": 0.9550925037310314,
+          "valid_bootstrap_reps": 2000
+        },
+        "ece": {
+          "value": 0.20545516589165186,
+          "ci_lower": 0.16839259130840978,
+          "ci_upper": 0.2802663147173305,
+          "valid_bootstrap_reps": 2000
+        },
+        "valid_output_rate": {
+          "value": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "accuracy": {
+          "value": 0.3413793103448276,
+          "ci_lower": 0.27169137466307275,
+          "ci_upper": 0.4166794478527607,
+          "valid_bootstrap_reps": 2000
+        },
+        "tp": {
+          "value": 59,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fp": {
+          "value": 1,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "tn": {
+          "value": 40,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fn": {
+          "value": 190,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        }
+      },
+      "counts": {
+        "tp": 59,
+        "fp": 1,
+        "tn": 40,
+        "fn": 190
+      },
+      "threshold": 0.9437535358176138,
+      "diagnostic_exact_binomial_intervals": {
+        "fpr": {
+          "numerator": 1,
+          "denominator": 41,
+          "exact_binomial_ci_lower": 0.0006173168932865194,
+          "exact_binomial_ci_upper": 0.1285540203841463,
+          "assumes_independence_not_satisfied_by_repeated_templates": true
+        },
+        "recall": {
+          "numerator": 59,
+          "denominator": 249,
+          "exact_binomial_ci_lower": 0.18554199027740076,
+          "exact_binomial_ci_upper": 0.29473279178423456,
+          "assumes_independence_not_satisfied_by_repeated_templates": true
+        }
+      },
+      "observed_inference_latency": {
+        "p50_ms": 101.15499997138977,
+        "p95_ms": 680.2639999806883,
+        "p99_ms": 1541.1366999959985,
+        "n": 290,
+        "method": "performance.now inside each scored inference; no warmup/throttle/cold certification",
+        "first_page_load_ms": 5989.020000040531,
+        "first_page_ready_ms": 6628.34500002861,
+        "observed_static_bytes": 95857448
+      },
+      "invalid_reasons": {},
+      "checks_on_new_cohort": [
+        {
+          "check": "fresh_collected_phishing_recall",
+          "value": 0.23694779116465864,
+          "limit": 0.9,
+          "status": "fail"
+        },
+        {
+          "check": "attested_security_control_fpr",
+          "value": 0.024390243902439025,
+          "limit": 0.03,
+          "status": "pass"
+        },
+        {
+          "check": "convenience_cohort_ece",
+          "value": 0.20545516589165186,
+          "limit": 0.1,
+          "status": "fail"
+        },
+        {
+          "check": "valid_output_rate",
+          "value": 1.0,
+          "limit": 1.0,
+          "status": "pass"
+        }
+      ],
+      "full_qualification": false,
+      "full_qualification_reason": "New measured failures; original unassessed requirements are not retroactively passed."
+    },
+    "llm": {
+      "metrics": {
+        "recall": {
+          "value": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "fpr": {
+          "value": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "precision": {
+          "value": null,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "f1": {
+          "value": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "mcc": {
+          "value": null,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "roc_auc": {
+          "value": 0.6148496424723283,
+          "ci_lower": 0.5109305889466905,
+          "ci_upper": 0.6746413906090472,
+          "valid_bootstrap_reps": 2000
+        },
+        "pr_auc": {
+          "value": 0.8884493273220596,
+          "ci_lower": 0.8340115934831025,
+          "ci_upper": 0.9345286488507062,
+          "valid_bootstrap_reps": 2000
+        },
+        "ece": {
+          "value": 0.6337187823001196,
+          "ci_lower": 0.5632546398433159,
+          "ci_upper": 0.6949147915491979,
+          "valid_bootstrap_reps": 2000
+        },
+        "valid_output_rate": {
+          "value": 0.46551724137931033,
+          "ci_lower": 0.40424994627122285,
+          "ci_upper": 0.5288178580201425,
+          "valid_bootstrap_reps": 2000
+        },
+        "accuracy": {
+          "value": 0.1413793103448276,
+          "ci_lower": 0.08014885496183205,
+          "ci_upper": 0.21896819703491144,
+          "valid_bootstrap_reps": 2000
+        },
+        "tp": {
+          "value": 0,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fp": {
+          "value": 0,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "tn": {
+          "value": 41,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fn": {
+          "value": 249,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        }
+      },
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "tn": 41,
+        "fn": 249
+      },
+      "threshold": 0.4831226157997432,
+      "diagnostic_exact_binomial_intervals": {
+        "fpr": {
+          "numerator": 0,
+          "denominator": 41,
+          "exact_binomial_ci_lower": 0.0,
+          "exact_binomial_ci_upper": 0.08604383629402841,
+          "assumes_independence_not_satisfied_by_repeated_templates": true
+        },
+        "recall": {
+          "numerator": 0,
+          "denominator": 249,
+          "exact_binomial_ci_lower": 0.0,
+          "exact_binomial_ci_upper": 0.014705578033979249,
+          "assumes_independence_not_satisfied_by_repeated_templates": true
+        }
+      },
+      "observed_inference_latency": {
+        "p50_ms": 2395.4774999916553,
+        "p95_ms": 5434.361250001193,
+        "p99_ms": 6773.320349997879,
+        "n": 290,
+        "method": "performance.now inside each scored inference; no warmup/throttle/cold certification",
+        "first_page_load_ms": 18501.15499997139,
+        "first_page_ready_ms": 18855.03499996662,
+        "observed_static_bytes": 1128990755
+      },
+      "invalid_reasons": {
+        "label_confidence_disagreement": 4,
+        "reason_not_confident_English_or_too_short": 29,
+        "Unterminated string starting at: line 1 column 36 (char 35)": 15,
+        "Unterminated string starting at: line 1 column 38 (char 37)": 6,
+        "Unterminated string starting at: line 4 column 12 (char 46)": 26,
+        "Unterminated string starting at: line 4 column 11 (char 44)": 5,
+        "Unterminated string starting at: line 4 column 11 (char 43)": 47,
+        "Unterminated string starting at: line 4 column 11 (char 45)": 3,
+        "Unterminated string starting at: line 4 column 15 (char 55)": 18,
+        "Unterminated string starting at: line 4 column 12 (char 44)": 2
+      },
+      "checks_on_new_cohort": [
+        {
+          "check": "fresh_collected_phishing_recall",
+          "value": 0.0,
+          "limit": 0.9,
+          "status": "fail"
+        },
+        {
+          "check": "attested_security_control_fpr",
+          "value": 0.0,
+          "limit": 0.03,
+          "status": "pass"
+        },
+        {
+          "check": "convenience_cohort_ece",
+          "value": 0.6337187823001196,
+          "limit": 0.1,
+          "status": "fail"
+        },
+        {
+          "check": "valid_output_rate",
+          "value": 0.46551724137931033,
+          "limit": 0.99,
+          "status": "fail"
+        }
+      ],
+      "full_qualification": false,
+      "full_qualification_reason": "New measured failures; original unassessed requirements are not retroactively passed.",
+      "consistency": {
+        "numerator": 13,
+        "denominator": 30,
+        "value": 0.43333333333333335,
+        "limit": 0.95,
+        "status": "fail",
+        "definition": "all five outputs valid and identical final labels; repeat zero is the single scored output"
+      }
+    }
+  },
+  "mcnemar_source_pair": [
+    {
+      "model_a": "tfidf_lr",
+      "model_b": "distilbert",
+      "a_only_correct": 166,
+      "b_only_correct": 41,
+      "p_value": 4.944515169301755e-19,
+      "limitation": "Convenience source pair and dependent templates; no passed hard-gate winner inferred.",
+      "holm_p_value": 9.88903033860351e-19
+    },
+    {
+      "model_a": "tfidf_lr",
+      "model_b": "llm",
+      "a_only_correct": 221,
+      "b_only_correct": 38,
+      "p_value": 1.451787567834405e-32,
+      "limitation": "Convenience source pair and dependent templates; no passed hard-gate winner inferred.",
+      "holm_p_value": 4.3553627035032146e-32
+    },
+    {
+      "model_a": "distilbert",
+      "model_b": "llm",
+      "a_only_correct": 59,
+      "b_only_correct": 1,
+      "p_value": 1.0581813203458523e-16,
+      "limitation": "Convenience source pair and dependent templates; no passed hard-gate winner inferred.",
+      "holm_p_value": 1.0581813203458523e-16
+    }
+  ],
+  "qualified_winner": null,
+  "survivor_ranking": "not_computed_no_complete_survivor",
+  "weight_sensitivity": "not_applicable_no_survivor; frozen weights cannot repair failed gates",
+  "synthetic_primary_examples": 0,
+  "source_pair_precision_is_real_inbox_precision": false,
+  "original_historical_results_rewritten": false,
+  "confidence_interval_caveat": "Bootstrap intervals may be degenerate for all-safe/constant outputs; exact binomial diagnostics additionally shown but optimistic under template dependence."
+}

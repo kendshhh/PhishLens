@@ -1,246 +1,86 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import vm from "node:vm";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
-const source = await readFile(new URL("../background.js", import.meta.url), "utf8");
-const { API_BASE_URL } = await import("../js/config.js");
-assert.ok(source.startsWith('import { API_BASE_URL } from "./js/config.js";'));
-const workerSource = source.replace('import { API_BASE_URL } from "./js/config.js";', "");
-
+const source = (await readFile(new URL('../background.js', import.meta.url), 'utf8'))
+  .replace(/^import .+;$/gm, '');
+const settle = () => new Promise(resolve => setImmediate(resolve));
 function deferred() {
-  let resolve;
-  let reject;
-  const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
+  let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; });
   return { promise, resolve, reject };
 }
-
 function worker({ firstWrite } = {}) {
-  const requests = [];
-  const state = { analysis: undefined, badge: "" };
-  let onMessage;
-  let writes = 0;
-  const timers = new Map();
+  let listener, clicks, writes = 0;
+  const requests = [], state = { analysis: undefined, badge: '' };
+  const storage = {};
   const context = vm.createContext({
-    API_BASE_URL,
-    AbortController,
-    setTimeout(callback, delay) {
-      const id = Symbol();
-      timers.set(id, { callback, delay });
-      return id;
-    },
-    clearTimeout(id) { timers.delete(id); },
-    console: { error() {} },
-    fetch: async (_url, options) => {
-      assert.equal(_url, `${API_BASE_URL}/analyses`);
-      const request = deferred();
-      request.signal = options.signal;
-      requests.push(request);
-      return request.promise;
-    },
+    console, crypto: globalThis.crypto,
+    fetch() { throw Error('Local scans must not call an HTTP API'); },
+    analyzeWithReview: text => { const d = deferred(); requests.push({ ...d, text }); return d.promise; },
+    cancelJudge: async () => {},
     chrome: {
-      runtime: {
-        onInstalled: { addListener() {} },
-        onMessage: { addListener(listener) { onMessage = listener; } }
-      },
-      contextMenus: { onClicked: { addListener() {} } },
+      runtime: { id: 'self', onInstalled: { addListener() {} },
+        onMessage: { addListener(fn) { listener = fn; } } },
+      contextMenus: { onClicked: { addListener(fn) { clicks = fn; } } },
       storage: { session: {
+        async get(key) { return { [key]: storage[key] }; },
         async set(value) {
           if (writes++ === 0 && firstWrite) await firstWrite.promise;
-          state.analysis = value.veriqoAnalysis;
+          Object.assign(storage, value); state.analysis = storage.veriqoAnalysis;
         },
-        async remove() { state.analysis = undefined; }
+        async remove(key) { delete storage[key]; state.analysis = storage.veriqoAnalysis; }
       } },
       action: { async setBadgeText({ text }) { state.badge = text; } }
     }
   });
-  vm.runInContext(workerSource, context);
-  return {
-    state, requests, timers,
-    expire: () => {
-      for (const { callback, delay } of [...timers.values()]) {
-        assert.equal(delay, 25_000);
-        callback();
-      }
-    },
+  vm.runInContext(source, context);
+  return { state, requests, storage, clicks,
     analyze: text => context.analyzeSelectedText(text),
+    message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
     clear: () => new Promise(resolve => {
-      assert.equal(onMessage({ type: "phishlens-clear-analysis" }, {}, resolve), true);
+      assert.equal(listener({ type: 'phishlens-clear-analysis' }, { id: 'self' }, resolve), true);
     })
   };
 }
-
-const settle = () => new Promise(resolve => setImmediate(resolve));
-const success = classification => ({ ok: true, json: async () => ({ classification }) });
-
-for (const staleOutcome of ["success", "error"]) {
-  test(`older ${staleOutcome} cannot replace the latest analysis or badge`, async () => {
-    const app = worker();
-    const older = app.analyze("Email A");
-    await settle();
-    const newer = app.analyze("Email B");
-    await settle();
-    app.requests[1].resolve(success("phishing"));
-    await newer;
-    if (staleOutcome === "success") app.requests[0].resolve(success("legitimate"));
-    else app.requests[0].reject(new Error("Old request failed"));
+for (const outcome of ['success', 'error']) {
+  test('latest scan wins over an older ' + outcome, async () => {
+    const app = worker(), older = app.analyze('A'); await settle();
+    const newer = app.analyze('B'); await settle();
+    app.requests[1].resolve({ alert: true, workflow: { released: true } }); await newer;
+    if (outcome === 'success') app.requests[0].resolve({ alert: false, workflow: { released: true } });
+    else app.requests[0].reject(Error('old failure'));
     await older;
-    assert.equal(app.state.analysis.selectedText, "Email B");
-    assert.equal(app.state.analysis.result.classification, "phishing");
-    assert.equal(app.state.badge, "✓");
+    assert.equal(app.state.analysis.selectedText, 'B'); assert.equal(app.state.badge, '!');
   });
-
-  test(`Clear invalidates an in-flight ${staleOutcome}`, async () => {
-    const app = worker();
-    const pending = app.analyze("Email A");
-    await settle();
-    assert.equal((await app.clear()).ok, true);
-    if (staleOutcome === "success") app.requests[0].resolve(success("phishing"));
-    else app.requests[0].reject(new Error("Cleared request failed"));
-    await pending;
-    assert.equal(app.state.analysis, undefined);
-    assert.equal(app.state.badge, "");
+  test('Clear invalidates in-flight ' + outcome, async () => {
+    const app = worker(), pending = app.analyze('A'); await settle(); await app.clear();
+    if (outcome === 'success') app.requests[0].resolve({ alert: false, workflow: { released: true } });
+    else app.requests[0].reject(Error('old failure'));
+    await pending; assert.equal(app.state.analysis, undefined); assert.equal(app.state.badge, '');
   });
 }
-
-test("Clear waits for a pending storage write and prevents stale badges", async () => {
-  const firstWrite = deferred();
-  const app = worker({ firstWrite });
-  const pending = app.analyze("Email A");
-  await settle();
-  const cleared = app.clear();
-  firstWrite.resolve();
-  await pending;
-  await cleared;
+test('Clear waits for a pending write without starting stale inference', async () => {
+  const firstWrite = deferred(), app = worker({ firstWrite }), scan = app.analyze('A'); await settle();
+  const clear = app.clear(); firstWrite.resolve(); await Promise.all([scan, clear]);
+  assert.equal(app.requests.length, 0); assert.equal(app.state.analysis, undefined);
+});
+test('local failure is unavailable, never a safe result, and permits retry', async () => {
+  const app = worker(), failed = app.analyze('A'); await settle();
+  app.requests[0].reject(Error('Packaged model missing')); await failed;
+  assert.equal(app.state.analysis.status, 'error'); assert.equal(app.state.analysis.result, null);
+  assert.equal(app.state.badge, '?');
+  const retry = app.analyze('B'); await settle(); app.requests[1].resolve({ alert: false, workflow: { released: true } }); await retry;
+  assert.equal(app.state.analysis.status, 'success'); assert.equal(app.state.badge, '·');
+});
+test('debug failure is consumed once and requires no inference/API call', async () => {
+  const app = worker(); app.storage.phishlensDebugFailNext = true; await app.analyze('A');
+  assert.equal(app.requests.length, 0); assert.equal(app.storage.phishlensDebugFailNext, undefined);
+  assert.match(app.state.analysis.error, /Simulated/);
+});
+test('other extensions cannot submit or clear scan state', async () => {
+  const app = worker();
+  assert.equal(app.message({ type: 'phishlens-clear-analysis' }, { id: 'stranger' }), undefined);
+  assert.equal(app.message({ type: 'phishlens-analyze-text', text: 'private' }, { id: 'stranger' }), undefined);
   assert.equal(app.requests.length, 0);
-  assert.equal(app.state.analysis, undefined);
-  assert.equal(app.state.badge, "");
-});
-
-test("a new analysis works after Clear", async () => {
-  const app = worker();
-  await app.clear();
-  const pending = app.analyze("Email B");
-  await settle();
-  app.requests[0].resolve(success("legitimate"));
-  await pending;
-  assert.equal(app.state.analysis.selectedText, "Email B");
-  assert.equal(app.state.badge, "✓");
-});
-
-test("timeout aborts a stalled request, saves a retryable error, and allows retry", async () => {
-  const app = worker();
-  const pending = app.analyze("Email A");
-  await settle();
-  app.expire();
-  await pending;
-  assert.equal(app.requests[0].signal.aborted, true);
-  assert.equal(app.state.analysis.status, "error");
-  assert.match(app.state.analysis.error, /timed out.*try again/);
-  assert.equal(app.state.badge, "!");
-  assert.equal(app.timers.size, 0);
-  const retry = app.analyze("Email B");
-  await settle();
-  app.requests[1].resolve(success("legitimate"));
-  await retry;
-  app.requests[0].resolve(success("phishing"));
-  await settle();
-  assert.equal(app.state.analysis.selectedText, "Email B");
-  assert.equal(app.state.analysis.status, "success");
-  assert.equal(app.state.badge, "✓");
-  assert.equal(app.timers.size, 0);
-});
-
-test("deadline also covers stalled response bodies", async () => {
-  const app = worker();
-  const pending = app.analyze("Email A");
-  await settle();
-  const body = deferred();
-  app.requests[0].resolve({ ok: true, json: () => body.promise });
-  await settle();
-  app.expire();
-  await pending;
-  assert.equal(app.state.analysis.status, "error");
-  body.resolve({ classification: "phishing" });
-  await settle();
-  assert.equal(app.state.analysis.status, "error");
-});
-
-test("timeout after Clear cannot restore cleared state", async () => {
-  const app = worker();
-  const pending = app.analyze("Email A");
-  await settle();
-  await app.clear();
-  app.expire();
-  await pending;
-  assert.equal(app.state.analysis, undefined);
-  assert.equal(app.state.badge, "");
-});
-
-
-for (const [status, code, message] of [
-  [422, 'invalid_input', 'Invalid email input'],
-  [502, 'inference_failed', 'Analysis failed'],
-  [503, 'analysis_unavailable', 'Analysis temporarily unavailable']
-]) {
-  test('POST HTTP ' + status + ' displays the structured backend message', async () => {
-    const app = worker();
-    const pending = app.analyze('Synthetic email body');
-    await settle();
-    app.requests[0].resolve({
-      ok: false, status,
-      json: async () => ({ error: { code, message } })
-    });
-    await pending;
-    assert.equal(app.state.analysis.status, 'error');
-    assert.equal(app.state.analysis.error, message);
-    assert.equal(app.state.analysis.result, null);
-    assert.equal(app.state.badge, '!');
-    assert.equal(app.requests.length, 1);
-    assert.equal(app.timers.size, 0);
-  });
-
-  test('POST HTTP ' + status + ' preserves older detail responses', async () => {
-    const app = worker();
-    const pending = app.analyze('Synthetic email body');
-    await settle();
-    app.requests[0].resolve({ ok: false, status, json: async () => ({ detail: 'Older backend message' }) });
-    await pending;
-    assert.equal(app.state.analysis.status, 'error');
-    assert.equal(app.state.analysis.error, 'Older backend message');
-    assert.equal(app.state.analysis.result, null);
-  });
-}
-
-for (const body of [null, {}, { error: null }, { error: { message: 123 } },
-  { error: { message: '   ' }, detail: [] }, { detail: [{ msg: 'Invalid input' }] }]) {
-  test('POST uses a safe HTTP fallback for ' + JSON.stringify(body), async () => {
-    const app = worker();
-    const pending = app.analyze('Synthetic email body');
-    await settle();
-    app.requests[0].resolve({ ok: false, status: 422, json: async () => body });
-    await pending;
-    assert.equal(app.state.analysis.error, 'Backend returned HTTP 422');
-    assert.equal(app.state.analysis.result, null);
-    assert.equal(app.state.badge, '!');
-  });
-}
-
-test('invalid structured message falls back to readable legacy detail', async () => {
-  const app = worker();
-  const pending = app.analyze('Synthetic email body');
-  await settle();
-  app.requests[0].resolve({ ok: false, status: 503, json: async () => ({ error: { message: {} }, detail: 'Legacy unavailable' }) });
-  await pending;
-  assert.equal(app.state.analysis.error, 'Legacy unavailable');
-});
-
-test('non-JSON POST failure remains a readable HTTP error', async () => {
-  const app = worker();
-  const pending = app.analyze('Synthetic email body');
-  await settle();
-  app.requests[0].resolve({ ok: false, status: 502, json: async () => { throw new SyntaxError('Private parser details'); } });
-  await pending;
-  assert.equal(app.state.analysis.error, 'Backend returned HTTP 502 with an invalid error response.');
-  assert.equal(app.state.analysis.result, null);
 });

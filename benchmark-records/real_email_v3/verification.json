@@ -1,0 +1,21 @@
+{
+  "at_utc": "2026-10-23T13:56:02.678784+00:00",
+  "status": "passed",
+  "checks": [
+    "Original and new configuration, source/cohort, lineage, prompt and scoring-adapter locks pass.",
+    "All three 200-message scored passes align, strict parsing reproduces, and cached ID/new OOD metrics and CSV confidence intervals agree.",
+    "All ten browser cases are recorded; 8 measured cases contain 10 warmups, the same 100 real validation IDs and three corrected cold trials; incomplete cases have no invented latency.",
+    "Model assets, frozen gate decision and cached McNemar comparisons verify; no missing adversarial evidence is treated as a pass.",
+    "Five PNG charts decode; 91 error-review samples are preserved; actual real-only human judgments, missing-output denominators and reviewer language limitations reproduce without inherited or generated scores."
+  ],
+  "graph_rows": 3686,
+  "measured_browser_cases": 8,
+  "explicit_incomplete_browser_cases": 2,
+  "run_record_sha256": "6167694609c4f03be79350667ebc7c8673734c2efad4fad90a6097e3d8adb1b5",
+  "qualified_winner": null,
+  "unfinished_evidence": [
+    "validated real adversarial holdout",
+    "Spanish-capable semantic explanation review",
+    "end-to-end extension/cascade timing"
+  ]
+}

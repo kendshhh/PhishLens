@@ -39,6 +39,12 @@ class HostedIdentityTests(unittest.TestCase):
             config_dir.mkdir()
             config = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
             (config_dir / "secretary.json").write_text(json.dumps(config), encoding="utf-8")
+            helper_path = root / "pr-source/scripts/secretary/github_api.py"
+            helper_path.parent.mkdir(parents=True)
+            helper_path.write_text(
+                "from scripts.secretary.github_api import APIError, GitHub\n",
+                encoding="utf-8",
+            )
             output_dir = root / "output/hosted-staging"
             output_dir.mkdir(parents=True)
             output_file = root / "github-output.txt"

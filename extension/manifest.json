@@ -5,7 +5,8 @@
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
     "contextMenus",
-    "storage"
+    "storage",
+    "offscreen"
   ],
   "host_permissions": [
     "https://phishlens-api-ocvt.onrender.com/*"
@@ -17,5 +18,8 @@
   "action": {
     "default_title": "PhishLens",
     "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
 }

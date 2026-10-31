@@ -92,17 +92,21 @@ async def handle_request_validation(
 _ai_service_lock = Lock()
 
 
-def get_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local"]]:
+def get_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local", "tfidf"]]:
     # Lock outside the cache so concurrent misses cannot create separate providers.
     with _ai_service_lock:
         return _get_cached_ai_service()
 
 
 @lru_cache(maxsize=1)
-def _get_cached_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local"]]:
+def _get_cached_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local", "tfidf"]]:
     mode, api_key, model = get_ai_config()
     if mode == "mock":
         return AIService(MockProvider()), "mock"
+    if mode == "tfidf":
+        from backend.ai.tfidf_provider import TfidfProvider
+
+        return AIService(TfidfProvider()), "tfidf"
     if mode == "local":
         import os
         from pathlib import Path
@@ -130,6 +134,31 @@ def version():
         "commit": os.getenv("RENDER_GIT_COMMIT", "unknown"),
         "environment": os.getenv("APP_ENV", "development"),
     }
+
+
+@app.get("/model-info")
+def model_info():
+    """Public save capability; no input, database access or private settings."""
+    try:
+        mode, _, _ = get_ai_config()
+        if mode == "tfidf":
+            from backend.ai.tfidf_provider import (
+                INTERCEPT,
+                MODEL_SHA256,
+                load_artifact,
+                sigmoid,
+            )
+
+            load_artifact()
+            from backend.ai.live_review import load_live_models
+
+            load_live_models()
+            return {"provider_mode": mode, "model_sha256": MODEL_SHA256,
+                    "alert_threshold_score": sigmoid(INTERCEPT), "accepts_tfidf_reports": True,
+                    "accepts_local_reviews": True}
+    except (RuntimeError, OSError, ValueError, KeyError):
+        pass
+    return {"provider_mode": "unavailable", "accepts_tfidf_reports": False}
 
 
 @app.post(

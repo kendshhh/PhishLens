@@ -685,6 +685,40 @@ def test_database_lock_timeout_does_not_save(
         )
         assert count == 0
 
+def test_local_review_saved_fresh_session_read_delete(saved_postgres_context, monkeypatch):
+    """Actual disposable PostgreSQL; the audit itself is a software schema fixture."""
+    from backend.ai.tfidf_provider import MODEL_SHA256
+    from backend.tests.test_live_review import BODY, payload
+
+    client, engine, user_id = saved_postgres_context
+    monkeypatch.setattr(saved_create, "get_ai_config", lambda: ("tfidf", None, None))
+    _, local_review = payload()
+    local_review["judge"] = {"valid": False, "code": "judge_timeout"}
+    local_review["status"] = "uncertain"
+    created = client.post("/api/analyses", json={"subject": "Local review software fixture", "body": BODY,
+                                               "local_review": local_review},
+                          headers={"Idempotency-Key": "local-review-fixture", "X-PhishLens-Model": MODEL_SHA256})
+    assert created.status_code == 201
+    saved = created.json(); identifier = saved["id"]
+    assert saved["review_status"] == local_review["status"]
+    with TestClient(main.app) as fresh_client:
+        reread = fresh_client.get("/api/analyses/" + identifier)
+        assert reread.status_code == 200
+        assert reread.json()["review_status"] == "uncertain"
+        listed = fresh_client.get("/api/analyses")
+        assert listed.status_code == 200
+        summary = next(item for item in listed.json()["items"] if item["id"] == identifier)
+        assert summary["review_status"] == "uncertain"
+        assert summary["prediction"] == saved["prediction"]
+        provenance = reread.json()["analysis_provenance"]["local_review"]
+        assert provenance["origin"] == "browser_reported_LLM_audit_not_server_LLM_inference"
+        assert len(provenance["server_replayed_classifiers"]) == 3
+        assert fresh_client.delete("/api/analyses/" + identifier).status_code == 204
+        assert fresh_client.get("/api/analyses/" + identifier).status_code == 404
+    with Session(engine) as verification:
+        assert verification.scalar(select(func.count()).select_from(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)) == 0
+
+
 def test_live_analysis_does_not_save_history(
     saved_postgres_context,
     monkeypatch,

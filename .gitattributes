@@ -1,0 +1,8 @@
+# Integrity-pinned model/runtime modules must retain bytes on every OS/clone.
+/extension/ai/tfidf_v12a.json -text -diff whitespace=cr-at-eol
+/extension/ai/core.mjs -text whitespace=cr-at-eol
+/extension/ai/observations.mjs -text whitespace=cr-at-eol
+/benchmark-records/** -text -whitespace
+/extension/ai/reevaluators/** -text -diff
+/extension/ai/judge-assets.json -text
+/extension/vendor/** -text -diff

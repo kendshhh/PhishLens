@@ -1,3 +1,3 @@
-body { width: 320px; font-family: sans-serif; padding: 12px; }
+/* Shared history styles; popup.css owns the outer layout. */
 .hidden { display: none !important; }
 .error-text { color: #d9534f; }
