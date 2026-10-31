@@ -21,6 +21,8 @@ from .report import latest_jobs
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js",
           "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
+
+
 LOCAL_SCANNER_ASSETS = (
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
     "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
@@ -71,8 +73,6 @@ def read_extension_asset(api, sha, asset):
     if blob_sha and hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest() != blob_sha:
         raise RuntimeError("Model blob digest differs")
     return data
-
-
 def render_request(path, data=None):
     req = urllib.request.Request("https://api.render.com/v1/" + path,
         data=json.dumps(data).encode() if data is not None else None,
@@ -190,8 +190,6 @@ def package(api, sha, number, config, output):
     with ZipFile(output) as archive:
         if archive.testzip() is not None:
             raise RuntimeError("Invalid extension archive")
-
-
 def eligibility(pr, files, run, repo):
     if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
@@ -350,4 +348,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
