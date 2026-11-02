@@ -131,6 +131,12 @@ export function createPopupController(client, doc = document) {
   async function loadDetail(id, { announce = true } = {}) {
     if (busy) return;
     const request = ++detailRequest;
+    selected = null;
+    ui.detailContent.replaceChildren();
+    show(ui.detail, false);
+    show(ui.editForm, false);
+    show(ui.deleteConfirm, false);
+    if (announce) setStatus("Loading analysis details…", "info");
     try {
       const result = await client.getAnalysis(id);
       if (request !== detailRequest) return;

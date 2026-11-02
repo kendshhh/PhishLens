@@ -85,6 +85,34 @@ test("context-menu result, error, and Clear remain available beside CRUD", async
   assert.deepEqual(cleared, { type: "phishlens-clear-analysis" });
 });
 
+test("opening another analysis hides old actions during loading and after failure", async () => {
+  let rejectB;
+  const first = record(id, "A");
+  const client = {
+    ...createInMemoryAnalysisClient([first]),
+    getAnalysis(recordId) {
+      if (recordId === id) return Promise.resolve(first);
+      return new Promise((_resolve, reject) => { rejectB = reject; });
+    }
+  };
+  const { ui, controller } = setup(client);
+  await controller.loadDetail(id);
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), false);
+  assert.equal(ui.get("detail-content").children.length, 12);
+
+  const loadingB = controller.loadDetail("record-b");
+  await Promise.resolve();
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("detail-content").children.length, 0);
+  assert.equal(ui.get("edit-form").classList.contains("hidden"), true);
+  assert.equal(ui.get("delete-confirm").classList.contains("hidden"), true);
+
+  rejectB(new Error("Server unavailable"));
+  await loadingB;
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("detail-content").children.length, 0);
+  assert.match(ui.get("crud-status").textContent, /Unable to load details/);
+});
 test("late detail response cannot replace the most recently opened analysis", async () => {
   let resolveA;
   const first = record("first", "A");
