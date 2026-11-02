@@ -83,6 +83,7 @@ REQUIRED_FAILURE_PATH_TESTS = frozenset(
     }
 )
 REQUIRED_TESTS = REQUIRED_AI_TESTS | REQUIRED_FAILURE_PATH_TESTS
+SAVED_FAILURE_MODULE = "test_saved_create_postgres"
 # Keep the expected number of cases for parametrized tests explicit so losing
 # one parameter case cannot be hidden by the other cases for the same function.
 REQUIRED_PARAMETRIZED_CASE_COUNTS = {
