@@ -3,11 +3,300 @@ import { createAnalysisClient } from './api.js';
 import { saveLocalReport } from './report-workflow.js';
 import { MODEL_SHA256 } from '../ai/local-analyzer.mjs';
 
+
+const feedbackLabels = new Map([
+  [null, "Unspecified"], ["none", "No feedback"], ["false_positive", "False positive"],
+  ["false_negative", "False negative"]
+]);
+const provenanceLabels = new Map([
+  ["mock", "Mock AI analysis"], ["real", "Real AI analysis"],
+  ["unknown", "AI provenance unknown"]
+]);
+
+function node(doc, tag, className, text) {
+  const element = doc.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined) element.textContent = text;
+  return element;
+}
+
+function show(element, visible) {
+  element.classList.toggle("hidden", !visible);
+}
+
+export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {} } = {}) {
+  const $ = id => doc.getElementById(id);
+  const ui = {
+    status: $("crud-status"), list: $("history-list"), empty: $("empty"),
+    loading: $("loading"), createForm: $("create-form"), subject: $("create-subject"),
+    body: $("create-body"), detail: $("detail-panel"), detailContent: $("detail-content"),
+    editForm: $("edit-form"), notes: $("edit-notes"), feedback: $("edit-feedback"),
+    deleteConfirm: $("delete-confirm"), deleteSubject: $("delete-subject"),
+    deleteButton: $("confirm-delete"), cancelDelete: $("cancel-delete"),
+    cancelEdit: $("cancel-edit"), saveEdit: $("save-edit"), createButton: $("create-button")
+  };
+  let records = [];
+  let selected = null;
+  let busy = false;
+  let detailRequest = 0;
+  let listRequest = 0;
+
+  function setStatus(message, kind = "info") {
+    ui.status.textContent = message;
+    ui.status.className = `status ${kind}`;
+    show(ui.status, Boolean(message));
+  }
+
+  function setBusy(value) {
+    busy = value;
+    onBusyChange(value);
+    if (value) { ++detailRequest; ++listRequest; show(ui.loading, false); }
+    ui.subject.disabled = value;
+    ui.body.disabled = value;
+    ui.notes.disabled = value;
+    ui.feedback.disabled = value;
+    for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete]) {
+      button.disabled = value;
+    }
+    ui.createButton.textContent = value ? "Saving…" : "Save analysis";
+    ui.saveEdit.textContent = value ? "Saving…" : "Save changes";
+    ui.deleteButton.textContent = value ? "Deleting…" : "Delete analysis";
+  }
+
+  function predictionLabel(record) {
+    if (record.review_status === "uncertain" || record.analysis_provenance?.local_review?.status === "uncertain") {
+      return "Uncertain — local review not confirmed";
+    }
+    return record.prediction === "legitimate" ? "below threshold / historical legitimate label" : record.prediction || "Pending";
+  }
+
+  function renderDetail(record) {
+    ui.detailContent.replaceChildren();
+    const values = [
+      ["Subject", record.subject || "Untitled analysis"], ["Email body", record.body],
+      ["Explanation", record.explanation || "No explanation available."],
+      ["Prediction", predictionLabel(record)], ["Risk", record.risk_level || "Unknown"],
+      ["Confidence", record.confidence == null ? "Not provided" : `${Math.round(record.confidence * 100)}%`],
+      ["Threat indicators", record.threat_indicators.length
+        ? record.threat_indicators.map(indicator => `${indicator.type}: ${indicator.detail}${indicator.quote ? ` (“${indicator.quote}”)` : ""}`).join("\n")
+        : "None reported"],
+      ["Notes", record.notes || "No notes"], ["Feedback", feedbackLabels.get(record.feedback) || "Feedback unavailable"],
+      ["AI provenance", provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"]
+    ];
+    const provenance = record.analysis_provenance;
+    if (provenance) {
+      values.push(["Model", provenance.model || "historical / unknown"],
+        ["Assessment", provenance.assessment || "No assessment recorded."]);
+      if (provenance.local_review) values.push(["Local review", provenance.local_review.status],
+        ["Audit source", "Browser-reported LLM; classifier checks replayed by server."]);
+      if (provenance.model_revision === MODEL_SHA256 && Number.isFinite(provenance.phishing_score)) {
+        values.push(["Research model score", (100 * provenance.phishing_score).toFixed(2) + "%"],
+          ["Alert threshold", (100 * provenance.alert_threshold_score).toFixed(2) + "%"]);
+      }
+    }
+    for (const [label, value] of values) {
+      const section = node(doc, "div", "detail-field");
+      section.append(node(doc, "h4", "", label), node(doc, "p", "", value));
+      ui.detailContent.append(section);
+    }
+    const edit = node(doc, "button", "secondary", "Edit notes and feedback");
+    edit.type = "button";
+    edit.addEventListener("click", openEdit);
+    const remove = node(doc, "button", "danger", "Delete analysis");
+    remove.type = "button";
+    remove.addEventListener("click", openDelete);
+    ui.detailContent.append(edit, remove);
+    ui.notes.value = record.notes || "";
+    ui.feedback.value = record.feedback || "none";
+    show(ui.detail, true);
+  }
+
+  function renderList() {
+    ui.list.replaceChildren();
+    show(ui.empty, records.length === 0);
+    for (const record of records) {
+      const item = node(doc, "li", "history-item");
+      const title = node(doc, "strong", "", record.subject || "Untitled analysis");
+      const meta = node(doc, "p", "muted", `${predictionLabel(record)} · ${record.risk_level || "Risk unknown"}`);
+      const open = node(doc, "button", "link-button", "View details");
+      open.type = "button";
+      open.setAttribute("aria-label", `View ${record.subject || "untitled analysis"}`);
+      open.addEventListener("click", () => loadDetail(record.id));
+      item.append(title, meta, open);
+      ui.list.append(item);
+    }
+  }
+
+  async function refresh() {
+    const request = ++listRequest;
+    show(ui.loading, true);
+    show(ui.empty, false);
+    try {
+      const latestRecords = await client.listAnalyses();
+      if (request !== listRequest) return false;
+      records = latestRecords;
+      renderList();
+      show(ui.loading, false);
+      setStatus(records.length ? "Saved analyses loaded." : "No saved analyses yet.", records.length ? "success" : "info");
+      return true;
+    } catch (error) {
+      if (request !== listRequest) return false;
+      show(ui.loading, false);
+      if (records.length) renderList();
+      else show(ui.empty, false);
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned malformed analysis data. Try again later."
+        : `Saved analyses are unavailable: ${error.message}`, "error");
+      return false;
+    }
+  }
+
+  async function loadDetail(id, { announce = true } = {}) {
+    if (busy) return;
+    const request = ++detailRequest;
+    selected = null;
+    ui.detailContent.replaceChildren();
+    show(ui.detail, false);
+    show(ui.editForm, false);
+    show(ui.deleteConfirm, false);
+    if (announce) setStatus("Loading analysis details…", "info");
+    try {
+      const result = await client.getAnalysis(id);
+      if (request !== detailRequest) return;
+      selected = result;
+      renderDetail(selected);
+      show(ui.editForm, false);
+      show(ui.deleteConfirm, false);
+      if (announce) setStatus("Analysis details loaded.", "success");
+    } catch (error) {
+      if (request !== detailRequest) return;
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned malformed analysis details."
+        : `Unable to load details: ${error.message}`, "error");
+    }
+  }
+
+  function openEdit() {
+    ui.notes.value = selected.notes || "";
+    ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
+    show(ui.editForm, true);
+    ui.notes.focus();
+  }
+  function openDelete() {
+    ui.deleteSubject.textContent = selected.subject || "Untitled analysis";
+    show(ui.deleteConfirm, true);
+    ui.cancelDelete.focus();
+  }
+
+  ui.createForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy) return;
+    const input = { subject: ui.subject.value.trim(), body: ui.body.value.trim() };
+    if (!input.body) {
+      setStatus("Enter the email body before saving.", "error");
+      ui.body.focus();
+      return;
+    }
+    setBusy(true);
+    let created;
+    try {
+      created = await client.createAnalysis(input);
+      records = [created, ...records.filter(record => record.id !== created.id)];
+      renderList();
+      ui.subject.value = "";
+      ui.body.value = "";
+      const refreshed = await refresh();
+      if (refreshed) setStatus("Analysis saved successfully.", "success");
+    } catch (error) {
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned a malformed result. Your input is still here."
+        : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
+    } finally { setBusy(false); }
+    if (created) await loadDetail(created.id, { announce: false });
+  });
+
+  ui.editForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || !selected) return;
+    setBusy(true);
+    try {
+      selected = await client.updateAnalysis(selected.id, {
+        notes: ui.notes.value.trim() || null,
+        feedback: ui.feedback.value === "null" ? null : ui.feedback.value
+      });
+      show(ui.editForm, false);
+      records = records.map(record => record.id === selected.id ? selected : record);
+      renderList();
+      renderDetail(selected);
+      const refreshed = await refresh();
+      if (refreshed) setStatus("Changes saved successfully.", "success");
+    } catch (error) {
+      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+        ? "The server returned a malformed result. Your edits are still here."
+        : `Could not save changes: ${error.message}. Your edits are still here.`, "error");
+    } finally { setBusy(false); }
+  });
+  ui.cancelEdit.addEventListener("click", () => { show(ui.editForm, false); if (selected) renderDetail(selected); });
+  ui.cancelDelete.addEventListener("click", () => show(ui.deleteConfirm, false));
+  ui.deleteConfirm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || !selected) return;
+    setBusy(true);
+    try {
+      const deletedId = selected.id;
+      await client.deleteAnalysis(deletedId);
+      await onDeleted(deletedId);
+      records = records.filter(record => record.id !== deletedId);
+      renderList();
+      selected = null;
+      show(ui.detail, false);
+      show(ui.deleteConfirm, false);
+      show(ui.editForm, false);
+      const refreshed = await refresh();
+      if (refreshed) setStatus("Analysis deleted successfully.", "success");
+    } catch (error) {
+      setStatus(`Could not delete analysis: ${error.message}`, "error");
+    } finally { setBusy(false); }
+  });
+
+  function acceptSavedReport(outcome) {
+    ++detailRequest;
+    ++listRequest;
+    show(ui.loading, false);
+    records = outcome.history || [outcome.saved, ...records.filter(record => record.id !== outcome.saved.id)];
+    renderList();
+    selected = outcome.detail || outcome.saved;
+    renderDetail(selected);
+    show(ui.editForm, false);
+    show(ui.deleteConfirm, false);
+  }
+
+  return { refresh, loadDetail, acceptSavedReport,
+    beginSave() { if (busy) return false; setBusy(true); return true; },
+    endSave() { setBusy(false); }, get records() { return records; } };
+
+}
+
+
 export function initializePopup({ documentImpl = document, chromeImpl = globalThis.chrome,
     fetchImpl = fetch } = {}) {
     const $ = id => documentImpl.getElementById(id);
     const client = createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
-    let state, detail, busy = false, historyGeneration = 0, detailGeneration = 0, stateGeneration = 0;
+    let state, stateGeneration = 0;
+    const controller = createPopupController(client, documentImpl, {
+        onBusyChange(value) { $('save-report').disabled = value; },
+        async onDeleted(id) {
+            try {
+                const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');
+                if (stored.phishlensReportAttempt?.savedId === id) {
+                    await chromeImpl.storage.session.remove('phishlensReportAttempt');
+                    text('save-status', 'The saved report was deleted. You may explicitly save it again.');
+                }
+            } catch {
+                text('save-status', 'The report was deleted, but its local save marker could not be cleared.');
+            }
+        }
+    });
     const show = (id, visible) => $(id).classList.toggle('hidden', !visible);
     const text = (id, value) => { $(id).textContent = value; };
     const message = error => error instanceof Error ? error.message : 'The operation failed. Please retry.';
@@ -78,61 +367,12 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         $('analysis-text').append(documentImpl.createTextNode(r.analysis_text.slice(offset)));
         show('result-state', true);
     }
-    function renderHistory(items) {
-        $('history-list').replaceChildren(); show('empty', items.length === 0);
-        for (const item of items) {
-            const li = documentImpl.createElement('li'), button = documentImpl.createElement('button');
-            const prediction = item.review_status === 'uncertain' ? 'Uncertain — local review not confirmed' : item.prediction === 'legitimate' ? 'below threshold / historical legitimate label' :
-                item.prediction || 'pending';
-            button.textContent = (item.subject || 'Untitled report') + ' — ' + prediction + ' — ' + item.created_at;
-            button.addEventListener('click', () => openDetail(item.id));
-            li.appendChild(button); $('history-list').appendChild(li);
-        }
-    }
-    async function loadHistory() {
-        const generation = ++historyGeneration;
-        show('loading', true); show('error', false); show('empty', false);
-        try {
-            const items = await client.listAnalyses();
-            if (generation === historyGeneration) renderHistory(items);
-        } catch (error) {
-            if (generation === historyGeneration) { text('error', message(error)); show('error', true); }
-        } finally { if (generation === historyGeneration) show('loading', false); }
-    }
-    function renderDetail(record) {
-        detail = record; show('detail-panel', true); text('detail-status', '');
-        const p = record.analysis_provenance || {};
-        const local = p.local_review;
-        text('detail-text', [
-            'Title: ' + record.subject, 'Model: ' + (p.model || 'historical / unknown'),
-            'Assessment: ' + (p.assessment || record.prediction || 'unavailable'),
-            ...(local ? ['Local review: ' + local.status,
-                'Audit source: browser-reported LLM; classifier checks replayed by server.'] : []),
-            ...(p.model_revision === MODEL_SHA256 && Number.isFinite(p.phishing_score) ?
-                ['Research model score: ' + (100 * p.phishing_score).toFixed(2) + '%',
-                    'Alert threshold: ' + (100 * p.alert_threshold_score).toFixed(2) + '%'] : []),
-            'Saved: ' + record.created_at, '', record.explanation || 'No explanation recorded.',
-            '', ...record.threat_indicators.map(i => (i.quote ? '“' + i.quote + '” — ' : '') + i.detail),
-            '', 'Saved text:', record.body
-        ].join('\n'));
-        $('report-notes').value = record.notes || ''; $('report-feedback').value = record.feedback || 'none';
-        $('delete-consent').checked = false;
-    }
-    async function openDetail(id) {
-        if (busy) return;
-        const generation = ++detailGeneration;
-        try {
-            const record = await client.getAnalysis(id);
-            if (generation === detailGeneration) renderDetail(record);
-        } catch (error) { text('error', message(error)); show('error', true); }
-    }
-    $('load-history').addEventListener('click', loadHistory);
+    $('load-history').addEventListener('click', controller.refresh);
     $('clear-button').addEventListener('click', async () => {
         const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-clear-analysis' }).catch(() => null);
         if (!response?.ok) { text('error-message', 'Local scan could not be cleared. Reload the extension.'); show('error-state', true); }
     });
     $('save-report').addEventListener('click', async () => {
-        if (busy) return;
         const snapshot = state;
         if (snapshot?.status !== 'success' || !snapshot.result?.valid) return;
         if (!$('save-consent').checked) { text('save-status', 'Confirm the upload checkbox first.'); return; }
@@ -148,7 +388,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
                 reevaluators: w.reevaluators.map(e => ({ kind: e.kind, model_id: e.model_id, sha256: e.sha256,
                     raw_margin: e.raw_margin, score: e.score, threshold_score: e.threshold_score,
                     cutoff: e.cutoff, alert: e.alert, valid: e.valid })) } };
-        busy = true; $('save-report').disabled = true;
+        if (!controller.beginSave()) return;
         try {
             const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');
             let attempt = stored.phishlensReportAttempt;
@@ -169,43 +409,11 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
                 text('save-status', outcome.refreshErrors.length ? 'Saved. Some refreshes failed; use Load / refresh history.' :
                     'Saved and reread successfully.');
             }
-            ++detailGeneration;
-            if (outcome.history) {
-                ++historyGeneration; show('loading', false); renderHistory(outcome.history);
-            }
-            renderDetail(outcome.detail || outcome.saved);
+            controller.acceptSavedReport(outcome);
         } catch (error) {
             if (state?.scanId === snapshot.scanId) text('save-status', message(error) +
                 ' No automatic retry was made. Retry uses the same request key, including after reopening this popup.');
-        } finally { busy = false; $('save-report').disabled = false; }
-    });
-    $('update-report').addEventListener('click', async () => {
-        if (!detail || busy) return;
-        busy = true; ++detailGeneration;
-        try {
-            renderDetail(await client.updateAnalysis(detail.id, {
-                notes: $('report-notes').value, feedback: $('report-feedback').value
-            }));
-            text('detail-status', 'Notes and feedback saved. Feedback does not retrain the model.');
-        } catch (error) { text('detail-status', message(error)); }
-        finally { busy = false; }
-    });
-    $('delete-report').addEventListener('click', async () => {
-        if (!detail || busy) return;
-        if (!$('delete-consent').checked) { text('detail-status', 'Confirm the delete checkbox first.'); return; }
-        busy = true; ++detailGeneration;
-        try {
-            const id = detail.id;
-            await client.deleteAnalysis(id);
-            const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');
-            if (stored.phishlensReportAttempt?.savedId === id) {
-                await chromeImpl.storage.session.remove('phishlensReportAttempt');
-                text('save-status', 'The saved report was deleted. You may explicitly save it again.');
-            }
-            detail = undefined;
-            show('detail-panel', false); await loadHistory();
-        } catch (error) { text('detail-status', message(error)); }
-        finally { busy = false; }
+        } finally { controller.endSave(); }
     });
     chromeImpl.storage.onChanged.addListener((changes, area) => {
         if (area === 'session' && changes.veriqoAnalysis) {
@@ -217,5 +425,5 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     }).catch(() => {
         if (stateGeneration === 0) render({ status: 'error', error: 'Local state could not be read. Reload the extension.' });
     });
-    return { loadHistory, render, openDetail };
+    return { loadHistory: controller.refresh, render, openDetail: controller.loadDetail };
 }

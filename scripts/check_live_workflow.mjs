@@ -97,11 +97,13 @@ try {
     await page.check('#save-consent'); await page.click('#save-report');
     await page.getByText('Saved and reread successfully.', { exact: true }).waitFor();
     assert.equal(apiRequests.filter(r => r.method === 'POST').length, 1);
-    await page.fill('#report-notes', 'Software check only');
-    await page.selectOption('#report-feedback', 'false_positive'); await page.click('#update-report');
-    await page.getByText('Notes and feedback saved. Feedback does not retrain the model.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Edit notes and feedback', exact: true }).click();
+    await page.fill('#edit-notes', 'Software check only');
+    await page.selectOption('#edit-feedback', 'false_positive'); await page.click('#save-edit');
+    await page.getByText('Changes saved successfully.', { exact: true }).waitFor();
     assert.equal(detail.feedback, 'false_positive');
-    await page.check('#delete-consent'); await page.click('#delete-report');
+    await page.getByRole('button', { name: 'Delete analysis', exact: true }).click();
+    await page.click('#confirm-delete');
     await page.locator('#detail-panel').waitFor({ state: 'hidden' }); assert.equal(deleted, true);
     assert.equal(await page.locator('script:not([src])').count(), 0);
     record.intercepted_api_software_check = { explicit_consent: true, create_reread_history: true,

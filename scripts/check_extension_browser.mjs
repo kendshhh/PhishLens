@@ -80,11 +80,13 @@ try {
   assert.equal(requests.filter(r => r.method === 'POST').length, 1);
   check('Save, fresh detail reread and history refresh use the contributors API contract (intercepted)');
   assert.equal(await page.locator('script:not([src])').count(), 0);
-  await page.fill('#report-notes', 'Smoke test feedback');
-  await page.selectOption('#report-feedback', 'false_positive'); await page.click('#update-report');
-  await page.getByText('Notes and feedback saved. Feedback does not retrain the model.', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Edit notes and feedback', exact: true }).click();
+  await page.fill('#edit-notes', 'Smoke test feedback');
+  await page.selectOption('#edit-feedback', 'false_positive'); await page.click('#save-edit');
+  await page.getByText('Changes saved successfully.', { exact: true }).waitFor();
   assert.equal(record.feedback, 'false_positive'); check('Notes and feedback update without changing model weights');
-  await page.check('#delete-consent'); await page.click('#delete-report');
+  await page.getByRole('button', { name: 'Delete analysis', exact: true }).click();
+  await page.click('#confirm-delete');
   await page.locator('#detail-panel').waitFor({ state: 'hidden' });
   assert.equal(deleted, true); check('Explicit delete and empty history rendering work');
   await page.evaluate(async () => { await chrome.storage.session.set({ phishlensDebugFailNext: true });

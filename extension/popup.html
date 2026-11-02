@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PhishLens</title><link rel="stylesheet" href="popup.css"><link rel="stylesheet" href="css/popup.css"></head>
+<title>PhishLens</title><link rel="stylesheet" href="css/popup.css"></head>
 <body><main class="container">
 <header><h1>PhishLens</h1><p class="subtitle">TF-IDF v12a · local LLM judge · KRR + LightGBM</p></header>
 <p>Scans stay in Chrome. Highlight the complete visible email text, right-click,
@@ -26,15 +26,53 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
  <button id="save-report" type="button">Save report</button><p id="save-status" role="status"></p></div>
 </section>
 <button id="clear-button" type="button">Clear local scan</button>
-<section class="panel"><h2>Shared saved reports</h2><p>History uses the API. Scanning works while it is unavailable.</p>
-<button id="load-history" type="button">Load / refresh history</button>
-<div id="loading" class="hidden">Loading history…</div><div id="error" class="hidden" role="alert"></div>
-<div id="empty" class="hidden">No saved reports.</div><ul id="history-list"></ul></section>
-<section id="detail-panel" class="panel hidden"><h2>Saved report</h2><pre id="detail-text"></pre>
-<label>Notes <textarea id="report-notes" maxlength="2000" rows="3"></textarea></label>
-<label>Feedback <select id="report-feedback"><option value="none">No feedback</option><option value="false_positive">False alarm</option><option value="false_negative">Missed phishing</option></select></label>
-<button id="update-report" type="button">Save notes / feedback</button>
-<label class="consent"><input id="delete-consent" type="checkbox"> Delete this shared report</label>
-<button id="delete-report" type="button">Delete report</button><p id="detail-status" role="status"></p></section>
+    <section class="panel" aria-labelledby="create-heading">
+      <h2 id="create-heading">Save an analysis</h2>
+      <p>Saving uploads the text you enter to the team’s API and shared demo history. Only save material you are authorized to share.</p>
+      <form id="create-form">
+        <label for="create-subject">Subject <span class="muted">(optional)</span></label>
+        <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
+        <label for="create-body">Email body <span class="required">(required)</span></label>
+        <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
+        <button id="create-button" type="submit">Save analysis</button>
+      </form>
+    </section>
+    <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
+    <section class="panel" aria-labelledby="history-heading">
+      <h2 id="history-heading">Saved analyses</h2>
+      <p>Loading history uses the API. Local scanning works while it is unavailable.</p>
+      <button id="load-history" type="button">Load / refresh history</button>
+      <p id="loading" class="hidden">Loading analyses…</p>
+      <p id="empty" class="hidden">No saved analyses yet.</p>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+    <section id="detail-panel" class="panel hidden" aria-labelledby="detail-heading">
+      <h2 id="detail-heading">Analysis details</h2>
+      <div id="detail-content"></div>
+      <form id="edit-form" class="subpanel hidden">
+        <h3>Edit notes and feedback</h3>
+        <label for="edit-notes">Notes</label>
+        <textarea id="edit-notes" rows="3" maxlength="2000"></textarea>
+        <label for="edit-feedback">Feedback</label>
+        <select id="edit-feedback">
+          <option value="null">Unspecified</option>
+          <option value="none">No feedback</option>
+          <option value="false_positive">False positive</option>
+          <option value="false_negative">False negative</option>
+        </select>
+        <div class="actions">
+          <button id="save-edit" type="submit">Save changes</button>
+          <button id="cancel-edit" class="secondary" type="button">Cancel</button>
+        </div>
+      </form>
+      <form id="delete-confirm" class="subpanel hidden" aria-labelledby="delete-heading">
+        <h3 id="delete-heading">Delete this analysis?</h3>
+        <p>Delete <strong id="delete-subject"></strong>? This cannot be undone.</p>
+        <div class="actions">
+          <button id="confirm-delete" class="danger" type="submit">Delete analysis</button>
+          <button id="cancel-delete" class="secondary" type="button">Cancel</button>
+        </div>
+      </form>
+    </section>
 <footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>Built with Llama. LLM weights run locally; no email is sent to an AI provider.</p></footer>
 </main><script type="module" src="popup.js"></script></body></html>
