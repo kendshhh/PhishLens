@@ -7,7 +7,7 @@ Owner: Andrei (`JupitraxNeptuna`)
 
 ## Evidence status
 
-This record contains historical evidence snapshots; it does not claim verification of the reviewed PR head or later code. The local/package checks and staging API run below were recorded against source `23e2973dcc4f4030cc9f58e894116179cb992365`. The screenshots came from source `f8691e6c5b4e16bea99982a8c9b466b13ddb5e17`. The reviewed PR head at the time of review was `5c217fad69067574894e844c5e0ed4ef8d1aafc`; the subsequent popup code-fix commit was `454754c`. None of these historical records is evidence for those heads or any later documentation-only head. The screenshots document visible UI states only; they do not establish persistence or deletion after reopening the popup.
+The local/package checks and staging API run documented below are historical snapshots from source `23e2973dcc4f4030cc9f58e894116179cb992365`; the older 2026-10-22 PR screenshots came from source `f8691e6c5b4e16bea99982a8c9b466b13ddb5e17`. The reviewed PR head at the time was `5c217fad69067574894e844c5e0ed4ef8d1aafc`, followed by popup code-fix commit `454754c`. The four screenshots supplied on 2026-11-02 and embedded below replace those older images in the PR presentation. Their source/package identity is not visible and is not inferred. They show visible UI states only; they do not establish persistence or deletion after reopening the popup.
 
 | Evidence | Status | Recorded value |
 |---|---|---|
