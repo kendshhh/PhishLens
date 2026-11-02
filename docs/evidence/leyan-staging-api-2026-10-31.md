@@ -67,10 +67,21 @@ With the follow-up validation changes:
   missing/null/empty provenance, unknown or mismatched provider modes. Synthetic valid
   real/local and real/gemini cases pass; these are fixtures, not provider inference evidence.
 
+## Review follow-ups
+
+The mode/provenance and shared-field checks were committed in 640fa86; the explicit
+controlled nonempty-evidence test and its limitation were committed in fa3218f.
+Those completed changes are no longer pending.
+
+The November 2 local follow-up rejects null predictions on newly created mock and
+real/local reports. It also accepts all three supported predictions with null confidence.
+The shared client still permits nullable predictions on legacy GET records.
+Against fa3218f plus these edits, 176 extension tests passed, 0 failed/skipped;
+extension JavaScript ESLint passed. No new staging or production run was performed.
+
 ## Still pending
 
-- Verifier validation changes were committed in 640fa86. Commit/push the controlled
-  nonempty-evidence test/documentation follow-up, obtain Trixia re-review and fresh required CI.
+- Teammate re-review and fresh required CI for the latest verifier/documentation changes.
 - Andrei's exact-package Chrome run, persistence after reopening, deletion after reopening,
   and redacted Network evidence.
 - Week 1 changed-subject display and restoration, remaining browser-state evidence and reviews.

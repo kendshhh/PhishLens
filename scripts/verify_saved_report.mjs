@@ -25,6 +25,8 @@ export async function verifySavedReport(baseUrl, options = {}) {
             }
         };
         const report = await saveAnalysisAndRefresh(trackedClient, input, { idempotencyKey });
+        assert.ok(['legitimate', 'spam', 'phishing'].includes(report.saved.prediction),
+            'New report prediction must be legitimate, spam or phishing');
         assert.ok(['mock', 'real'].includes(report.saved.analysis_mode), 'New report mode must be mock or real');
         const provenance = report.saved.analysis_provenance;
         assert.ok(provenance && typeof provenance === 'object' && !Array.isArray(provenance),

@@ -95,6 +95,27 @@ test('controlled HTTP replay retains nonempty evidence and explanation across cr
     assert.ok(f.calls.includes('GET /api/analyses/' + id));
 });
 
+for (const mode of ['mock', 'real']) {
+    test('new ' + mode + ' report with null prediction cannot pass acceptance', async t => {
+        const f = await fixture(t, { createdFields: {
+            prediction: null,
+            analysis_mode: mode,
+            analysis_provenance: { provider_mode: mode === 'mock' ? 'mock' : 'local', model: null }
+        } });
+        await assert.rejects(verifySavedReport(f.url, f.options), /New report prediction/);
+        assert.equal(f.record, undefined);
+    });
+}
+
+for (const prediction of ['legitimate', 'spam', 'phishing']) {
+    test('new report accepts ' + prediction + ' with nullable confidence', async t => {
+        const f = await fixture(t, { createdFields: { prediction, confidence: null } });
+        const result = await verifySavedReport(f.url, f.options);
+        assert.equal(result.result, 'passed');
+        assert.equal(result.cleanedUp, true);
+    });
+}
+
 test('guarded report replay accepts equivalent Z and +00:00 timestamps', async t => {
     const f = await fixture(t, {
         detailTimestamp: '2026-10-31T01:00:00+00:00',
