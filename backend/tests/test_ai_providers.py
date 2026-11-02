@@ -65,6 +65,23 @@ def test_gemini_uses_raw_json_schema_with_bounded_single_attempt(google_client):
     client.close.assert_called_once()
 
 
+def test_saved_create_gemini_timeout_keeps_single_sdk_attempt(google_client):
+    client, constructor = google_client
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key",
+        model="gemini-3.1-flash-lite",
+        timeout_ms=15_000,
+    )
+
+    provider.analyze('{"body":"Synthetic email"}')
+
+    http_options = constructor.call_args.kwargs["http_options"]
+    assert http_options.timeout == 15_000
+    assert http_options.retry_options.attempts == 1
+    provider.close()
+    client.close.assert_called_once()
+
+
 def test_gemma_uses_explicit_prompt_schema_instead_of_unsupported_json_mode(google_client):
     client, _ = google_client
     provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemma-4-31b-it")

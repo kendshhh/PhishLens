@@ -25,13 +25,23 @@ pytestmark = pytest.mark.skipif(
     reason="Requires a disposable local PostgreSQL database",
 )
 
+_ALLOWED_TEST_DATABASES = {
+    "phishlens_s2_t1_test",
+    "phishlens_s3_t2_test",
+}
+
 
 @pytest.fixture
 def saved_postgres_context(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database == "phishlens_s2_t1_test"
+    expected_database = os.getenv(
+        "SAVED_CREATE_TEST_DATABASE",
+        "phishlens_s2_t1_test",
+    )
+    assert expected_database in _ALLOWED_TEST_DATABASES
+    assert engine.url.database == expected_database
 
     user_id = uuid4()
     email = f"crud-http-{user_id}@phishlens.test"
