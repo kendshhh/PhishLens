@@ -199,6 +199,26 @@ test("unknown feedback is labeled unavailable", async () => {
   assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Feedback unavailable");
 });
 
+test("notes and feedback stay disabled until edit save settles", async () => {
+  let resolveUpdate;
+  const original = record(id, "Pending edit");
+  const updated = { ...original, notes: "Saved notes", feedback: null };
+  const client = {
+    ...createInMemoryAnalysisClient([original]),
+    updateAnalysis() { return new Promise(resolve => { resolveUpdate = resolve; }); }
+  };
+  const { ui, controller } = setup(client);
+  await controller.loadDetail(id);
+  await ui.get("detail-content").children.at(-2).fire("click");
+
+  const saving = ui.get("edit-form").fire("submit");
+  assert.equal(ui.get("edit-notes").disabled, true);
+  assert.equal(ui.get("edit-feedback").disabled, true);
+  resolveUpdate(updated);
+  await saving;
+  assert.equal(ui.get("edit-notes").disabled, false);
+  assert.equal(ui.get("edit-feedback").disabled, false);
+});
 test("create subject and body stay disabled until save settles", async () => {
   let resolveCreate;
   const saved = record("created", "New draft");
