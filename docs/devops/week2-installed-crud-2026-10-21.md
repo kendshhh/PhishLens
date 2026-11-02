@@ -73,11 +73,13 @@ node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com -
 
 It verified create/list/detail, notes and feedback patching including null feedback, read-after-write, delete, and post-delete 404, then cleaned up only its own synthetic record `854787a0-b7d9-41d6-94a8-1f8fff8cff34`. This is deployed **API** evidence. It is not a packaged-extension browser run and does not satisfy the persistence-after-reopen or deletion-after-reopen browser checks.
 
-## Current browser evidence and remaining checks
+## Historical staging and browser screenshot evidence
 
-PR head `40f67d720270d05cb64d9f616fc3d16400ffc960` contains the reviewed UI fixes. The four screenshots supplied on 2026-11-02 are included above and replace the older images in the PR description. They show selected-text result content in mock mode, a saved-analysis detail, the edit form, and delete success with an empty list. The images do not expose package identity or Chrome version, so the exact installed-package provenance is unverified.
+The staging run recorded here tested PR code revision `40f67d720270d05cb64d9f616fc3d16400ffc960`, which was the PR head when run 41424692539 executed. This is historical evidence for that revision; it does not identify the current PR head. Later documentation and screenshot updates do not change which code revision the run tested.
 
-The PR's Hosted staging run [41424692539](https://github.com/kendshhh/PhishLens/actions/runs/41424692539) passed for PR head `40f67d720270d05cb64d9f616fc3d16400ffc960`; it deployed merge candidate `8b5f292bfb318bf41a3c41fdafa113198facf67e` and produced a staging artifact. This automated deployment evidence does not tie the supplied screenshots to that artifact or establish an installed-Chrome run.
+The four screenshots supplied on 2026-11-02 are included above and replace the older images in the PR description. They show selected-text result content in mock mode, a saved-analysis detail, the edit form, and delete success with an empty list. The images do not expose package identity or Chrome version, so their exact installed-package provenance is unverified.
+
+The PR's Hosted staging run [41424692539](https://github.com/kendshhh/PhishLens/actions/runs/41424692539) passed for code revision `40f67d720270d05cb64d9f616fc3d16400ffc960`; it deployed merge candidate `8b5f292bfb318bf41a3c41fdafa113198facf67e` and produced a staging artifact. This automated deployment evidence does not tie the supplied screenshots to that artifact or establish an installed-Chrome run.
 
 Still pending:
 
