@@ -1,8 +1,10 @@
 # Release verification
 
 Planning source: Daily Tasks PDF, Week 4 — Final, W4-D1-Leyan through W4-D5-Leyan.
-Dates remain TBD and the schedule is proposed. No issue, board status, release or demo completion is implied.
-Baseline: main b8015961b6f31bdeaea62820b313f339b587d5f1, November 2, 2026.
+Dates remain TBD and the schedule is proposed. Tracked in [#105](https://github.com/kendshhh/PhishLens/issues/105)
+and [#106](https://github.com/kendshhh/PhishLens/pull/106); release and demo acceptance remain pending.
+Original baseline: main b8015961b6f31bdeaea62820b313f339b587d5f1.
+Latest tested PR source: 899b14a9b9ccd7ab61ea5ada344e0158969ea5d1, November 2, 2026.
 
 ## Task map
 
@@ -38,7 +40,8 @@ not current environment confirmation.
 - Redirects now reject before the destination is called; blank detail falls back to readable HTTP status.
 - A real local HTTP timeout test checks one POST, retained idempotency key, explicit same-key retry,
   and unchanged input. It uses a disposable synthetic server, not PostgreSQL.
-- Full baseline extension suite plus Week 4 work: 151 passed, 0 failed/skipped.
+- Original baseline extension suite plus Week 4 work: 151 passed, 0 failed/skipped.
+- Latest PR source above, after updating main: 162 passed, 0 failed/skipped; ESLint passed.
 - API example create, patch, detail and list validate against the actual backend Pydantic schemas.
 - New API-reference tests replay the JSON examples through the actual client.
 - UI loading/empty/malformed rendering remains Andrei-owned; earlier local UI tests are not browser proof.
@@ -46,6 +49,31 @@ not current environment confirmation.
 See [API reference](api-reference.md) and [synthetic fixtures](examples/saved-api.json).
 Use node --test extension/tests/*.test.mjs and npm.cmd run lint from the project root.
 No AI weights, real-provider calls or external database are needed for these local checks.
+
+## November 2 status
+
+Trixia and Andrei approved PR #106 at the latest tested source. Backend, extension, isolated staging
+integration and workflow checks passed. Hosted staging failed, so delivery is still pending.
+
+[Hosted staging run](https://github.com/kendshhh/PhishLens/actions/runs/41424660062/job/125209368839):
+deployment of merge commit 3004eb7029c0f5757f10d79c4263a4605765738f and the first API integration
+check passed. The subsequent smoke check in scripts/secretary/preview.py timed out before packaging.
+Its generic error does not identify which endpoint or assertion failed.
+
+At 10:48:14 UTC (18:48:14 UTC+8), a read-only probe returned HTTP 200 for /health, /ready, /version
+and /api/analyses. Health and readiness matched the expected contract; seeded synthetic history was
+present. /version reported staging commit a690466f1483fbcd8d092aafdba47aeff177b87f, which differs
+from the merge commit above. This confirms current drift, not the cause of the earlier failure.
+See [read-only probe evidence](evidence/staging-readonly-2026-11-02.json).
+
+No records were changed. Kendra must confirm the intended live target and matching package and
+resolve the failed verification before record-changing acceptance resumes. Do not bypass SHA checks.
+The last documented Neon target is not independently reconfirmed by these public endpoints.
+
+PR #103 is still separate and open at fd3b683b89bf0019618911790cdca8d7cfdfe10d.
+Wilberr approved that source and its Hosted staging run passed; Secretary staging subsequently
+requires attention. Trixia's latest formal review still requests changes, so a re-review is outstanding.
+Neither that earlier run nor this read-only probe proves final installed-browser acceptance.
 
 ## D4 candidate run record
 
@@ -115,7 +143,7 @@ explicit and assigned. No release tag, meeting, instructor approval or measured 
 ## Publishing and ownership
 
 Keep Week 4 work on a new task branch from updated main, separate from PR #103.
-No dedicated Leyan Week 4 issue was found at audit time; prepare the task issue and obtain the team
-scope/date agreement before presenting this proposed schedule as committed.
+Issue #105 and PR #106 now track this work. Obtain the team scope/date agreement before presenting
+the proposed schedule as committed; keep final candidate and demo acceptance open until observed.
 Trixia reviews API/client contract; Andrei reviews client/UI composition. Kendra owns delivery targets,
 and Wilberr owns real model/evaluation evidence. No backend, UI, migration or workflow files were edited.
