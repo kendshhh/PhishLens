@@ -230,22 +230,57 @@ test("unknown feedback is labeled unavailable", async () => {
 test("notes and feedback stay disabled until edit save settles", async () => {
   let resolveUpdate;
   const original = record(id, "Pending edit");
-  const updated = { ...original, notes: "Saved notes", feedback: null };
+  let submitted;
   const client = {
     ...createInMemoryAnalysisClient([original]),
-    updateAnalysis() { return new Promise(resolve => { resolveUpdate = resolve; }); }
+    updateAnalysis(_id, patch) {
+      submitted = patch;
+      return new Promise(resolve => { resolveUpdate = () => resolve({ ...original, ...patch }); });
+    }
   };
   const { ui, controller } = setup(client);
   await controller.loadDetail(id);
   await ui.get("detail-content").children.at(-2).fire("click");
+  ui.get("edit-notes").value = "Draft saved";
+  ui.get("edit-feedback").value = "false_positive";
 
   const saving = ui.get("edit-form").fire("submit");
   assert.equal(ui.get("edit-notes").disabled, true);
   assert.equal(ui.get("edit-feedback").disabled, true);
-  resolveUpdate(updated);
+  assert.equal(ui.get("edit-notes").value, "Draft saved");
+  assert.equal(ui.get("edit-feedback").value, "false_positive");
+  assert.deepEqual(submitted, { notes: "Draft saved", feedback: "false_positive" });
+  resolveUpdate();
   await saving;
   assert.equal(ui.get("edit-notes").disabled, false);
   assert.equal(ui.get("edit-feedback").disabled, false);
+  assert.equal(ui.get("detail-content").children[7].children[1].textContent, "Draft saved");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "False positive");
+});
+
+test("a delayed older detail response cannot replace an open editor draft", async () => {
+  let resolveOlder;
+  const selected = record(id, "Selected");
+  const client = {
+    ...createInMemoryAnalysisClient([selected]),
+    getAnalysis(recordId) {
+      if (recordId === "older") return new Promise(resolve => { resolveOlder = resolve; });
+      return Promise.resolve(selected);
+    }
+  };
+  const { ui, controller } = setup(client);
+  const olderRead = controller.loadDetail("older");
+  await Promise.resolve();
+  await controller.loadDetail(id);
+  await ui.get("detail-content").children.at(-2).fire("click");
+  ui.get("edit-notes").value = "Unsaved editor draft";
+
+  resolveOlder(record("older", "Older response"));
+  await olderRead;
+
+  assert.equal(ui.get("edit-form").classList.contains("hidden"), false);
+  assert.equal(ui.get("edit-notes").value, "Unsaved editor draft");
+  assert.equal(ui.get("detail-content").children[0].children[1].textContent, "Selected");
 });
 test("create subject and body stay disabled until save settles", async () => {
   let resolveCreate;
@@ -377,54 +412,25 @@ test("malformed list responses have a distinct message instead of an empty state
 });
 
 
-test("detail reads started before an edit cannot replace the edited record", async () => {
-  const original = record(id, "Original");
-  let resolveLate;
-  let detailCalls = 0;
-  let updated = { ...original };
-  const client = {
-    ...createInMemoryAnalysisClient([original]),
-    async getAnalysis() {
-      detailCalls++;
-      if (detailCalls === 1) return original;
-      return new Promise(resolve => { resolveLate = resolve; });
-    },
-    async updateAnalysis(_id, patch) { updated = { ...original, ...patch }; return updated; },
-    async listAnalyses() { return [updated]; }
-  };
-  const { ui, controller } = setup(client);
-  await controller.loadDetail(id);
-  const lateRead = controller.loadDetail(id);
-  await Promise.resolve();
-  await ui.get("detail-content").children.at(-2).fire("click");
-  ui.get("edit-notes").value = "Saved edit";
-  await ui.get("edit-form").fire("submit");
-  resolveLate(original);
-  await lateRead;
-  assert.equal(ui.get("detail-content").children[7].children[1].textContent, "Saved edit");
-});
-
-test("detail reads started before deletion cannot reopen the deleted record", async () => {
+test("a detail read pending before deletion cannot reopen the deleted record", async () => {
   const original = record(id, "Deleted");
   let resolveLate;
-  let detailCalls = 0;
   const client = {
     ...createInMemoryAnalysisClient([original]),
-    async getAnalysis() {
-      detailCalls++;
-      if (detailCalls === 1) return original;
-      return new Promise(resolve => { resolveLate = resolve; });
+    getAnalysis(recordId) {
+      if (recordId === "older") return new Promise(resolve => { resolveLate = resolve; });
+      return Promise.resolve(original);
     },
     async deleteAnalysis() {},
     async listAnalyses() { return []; }
   };
   const { ui, controller } = setup(client);
-  await controller.loadDetail(id);
-  const lateRead = controller.loadDetail(id);
+  const lateRead = controller.loadDetail("older");
   await Promise.resolve();
+  await controller.loadDetail(id);
   await ui.get("detail-content").children.at(-1).fire("click");
   await ui.get("delete-confirm").fire("submit");
-  resolveLate(original);
+  resolveLate(record("older", "Late response"));
   await lateRead;
   assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
   assert.equal(ui.get("history-list").children.length, 0);

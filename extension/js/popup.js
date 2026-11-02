@@ -50,8 +50,6 @@ export function createPopupController(client, doc = document) {
     ui.body.disabled = value;
     ui.notes.disabled = value;
     ui.feedback.disabled = value;
-    ui.notes.disabled = value;
-    ui.feedback.disabled = value;
     for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete]) {
       button.disabled = value;
     }
@@ -156,6 +154,8 @@ export function createPopupController(client, doc = document) {
   }
 
   function openEdit() {
+    if (!selected || busy) return;
+    detailRequest++;
     ui.notes.value = selected.notes || "";
     ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
     show(ui.editForm, true);
