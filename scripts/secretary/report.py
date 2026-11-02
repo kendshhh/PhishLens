@@ -39,7 +39,7 @@ def preview_state(api, config, sha):
 
 def snapshot(api, number, config):
     pr = api.request(f"pulls/{number}")
-    files = api.pages(f"pulls/{number}/files")
+    files = api.pull_request_files(number)
     jobs, run = latest_jobs(api, pr["head"]["sha"])
     gaps = []
     try:
