@@ -1,7 +1,7 @@
 # CRUD client
 
 Current endpoint, error and identity reference: [API reference](api-reference.md).
-Week 4 audit and final-candidate verification: [Leyan runbook](week4-leyan.md).
+Final-candidate audit and verification: [Release verification](release-verification.md).
 Historical test counts below identify earlier work; they are not current release acceptance.
 
 Owner: Leyan. Primary reviewer: Trixia. Backup: Kendra.

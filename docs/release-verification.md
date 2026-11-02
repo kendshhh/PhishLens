@@ -1,4 +1,4 @@
-# Leyan: Week 4 audit and acceptance runbook
+# Release verification
 
 Planning source: Daily Tasks PDF, Week 4 — Final, W4-D1-Leyan through W4-D5-Leyan.
 Dates remain TBD and the schedule is proposed. No issue, board status, release or demo completion is implied.
