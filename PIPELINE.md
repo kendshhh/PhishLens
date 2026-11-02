@@ -73,7 +73,9 @@ constraint-recovery and invalid-evidence/no-save/recovery cases. The same backen
 artifact includes `ai-regression.json`: the source SHA, frozen synthetic
 development-case version/hash and label inventory, selected deterministic AI
 contract-test counts, failures, and simulated failure IDs. It deliberately does
-not report model predictions or accuracy. AI-owner-approved regression thresholds
+not report model predictions or accuracy. Required AI and failure-path test cases,
+including expected parameter counts, are explicit in `scripts/ai_ci_report.py`;
+missing or skipped cases fail Backend checks. AI-owner-approved regression thresholds
 and held-out evaluation remain pending; no live provider or model weights are used
 in ordinary pull request CI.
 

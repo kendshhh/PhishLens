@@ -8,6 +8,8 @@ evidence artifact now also contains `ai-regression.json`, generated from the
 current JUnit report and tied to the PR source SHA. It records the frozen
 development case-set version and hash, class inventory, selected deterministic
 contract-test counts, failing test IDs, and the simulated failure-path test IDs.
+Required AI and failure-path test cases and expected parameter counts are explicit
+in `scripts/ai_ci_report.py`; missing or skipped cases fail Backend checks.
 The report does not score model predictions or claim an accuracy result. AI
 quality thresholds remain pending agreement with the AI owner in #49/#92; the
 held-out set must stay separate from this development gate.

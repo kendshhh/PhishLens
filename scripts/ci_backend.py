@@ -156,6 +156,9 @@ def main():
             try:
                 ai_evidence = json.loads(ai_report.read_text(encoding="utf-8"))
                 summary["ai_regression_status"] = ai_evidence.get("status", "incomplete")
+                summary["ai_regression_required_coverage"] = ai_evidence.get(
+                    "required_coverage", {}
+                )
                 summary["ai_regression_tests"] = ai_evidence.get("tests", {})
                 summary["offline_failure_drill"] = ai_evidence.get("offline_failure_drill", {})
             except (OSError, json.JSONDecodeError) as exc:
