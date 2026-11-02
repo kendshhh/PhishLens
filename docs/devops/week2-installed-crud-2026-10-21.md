@@ -1,6 +1,6 @@
 # Issue #47 — installed-browser CRUD evidence
 
-Date updated: 2026-11-02 (Asia/Manila)
+Date updated: 2026-11-03 (Asia/Manila)
 Branch: `test/47-verify-installed-browser-crud`
 PR: [#61](https://github.com/kendshhh/PhishLens/pull/61)
 Owner: Andrei (`JupitraxNeptuna`)
@@ -14,7 +14,8 @@ This record contains historical evidence snapshots; it does not claim verificati
 | Source revision for recorded local/package checks | Historical snapshot | `23e2973dcc4f4030cc9f58e894116179cb992365` |
 | Production archive recorded for that snapshot | Rebuilt locally at that snapshot | `PhishLens-Extension.zip`; SHA-256 `41ca3b82650d2dcf1e93dc4bc37552b5a62c3e71b1a28f2806bb11d12da46d9e`; includes `extension/js/api.js`, `extension/background.js`, CRUD popup assets, and result-view assets |
 | Staging package recorded for that snapshot | Local temporary package | Built from source `23e2973dcc4f4030cc9f58e894116179cb992365` for `https://phishlens-staging.onrender.com`; SHA-256 `c52a2d020db71613cefe84ff56ee1f6a14ceff06f5d11e18fe977c38ec3dae78`; 10 runtime files, staging manifest/host, no tests |
-| Existing PR screenshots | Earlier revision only | Source `f8691e6c5b4e16bea99982a8c9b466b13ddb5e17`; package SHA `a5e7cb6f82fc91750fb5b3e7f95eb47ea9efc5c4b9fa001d41b7ad88b77afff9`; Chrome `153.0.8010.55`; see links below |
+| Earlier PR screenshots | Superseded in PR description | Historical 2026-10-22 set; source/package provenance is retained in the prior evidence record, not used for current acceptance |
+| Screenshots supplied 2026-11-02 | Visible UI states only; source/package identity unverified | Context-menu mock result, saved-analysis detail, edit form, delete success and empty list; files below |
 | UI states shown in those screenshots | Completed on earlier revision | Create/list and detail view; edit notes/feedback form; delete confirmation and visible delete-success state |
 | Selected-text analysis in Chrome | Pending current revision | No browser result/error view captured against the current PR head/package |
 | CRUD flow in Chrome using current packaged extension | Pending | Current exact-head package has not completed a browser run against staging |
@@ -24,16 +25,26 @@ This record contains historical evidence snapshots; it does not claim verificati
 | Staging API observed during the historical run | Deployed API verified at that time | `/version` SHA `57da457be77fcf7a132e3a5e2f0d704c676040d6`; `/ready` ready, database connected |
 | Staging synthetic CRUD recorded for that run | Passed against deployed API at that time | Guarded client run created and cleaned up synthetic record `854787a0-b7d9-41d6-94a8-1f8fff8cff34` |
 
-### Screenshots attached to PR #61
+### Screenshots replacing the earlier PR images
 
-These are linked from the PR description and have the older source/package provenance listed above:
+The following four user-supplied screenshots, dated 2026-11-02, replace the older 2026-10-22 images in the PR description. They show these visible states:
 
-- [Create and view](https://github.com/user-attachments/assets/45d3376e-33aa-4a32-b7c8-349db08835a9)
-- [Edit notes and feedback](https://github.com/user-attachments/assets/d803b6e9-bddf-4202-b566-7dbe64985113)
-- [Delete confirmation](https://github.com/user-attachments/assets/d7ce9c60-a0d0-429b-9b4d-cf346676a0d7)
-- [Delete success](https://github.com/user-attachments/assets/973f06ad-e3e3-4a1b-9914-3b7335cf5225)
+1. Context-menu analysis result with selected text and mock-mode notice.
+2. Saved-analysis detail view.
+3. Edit notes and feedback form.
+4. Delete-success message and empty saved-analysis list.
 
-They show those screens were reached on the earlier revision. They do not prove the current PR head, successful persistence through reopening, absence after reopening, selected-text analysis, or Network request/response statuses. The PR narrative’s claim of screenshot completion is retained with that scope.
+The screenshots do not visibly identify the source commit, installed package checksum, or Chrome version. They are recorded as supplied visual evidence; they do not establish which package produced them. They show UI states, not a complete create-to-delete run. In particular, they do not demonstrate notes/feedback persistence after closing and reopening the popup, deleted-record absence after reopening, or Network request/response details.
+
+![Context-menu analysis result](evidence/issue-47-chrome-2026-11-02/01-selected-text-analysis.png)
+
+![Saved-analysis detail view](evidence/issue-47-chrome-2026-11-02/04-analysis-details.png)
+
+![Edit notes and feedback form](evidence/issue-47-chrome-2026-11-02/02-edit-notes-feedback.png)
+
+![Delete success and empty saved-analysis list](evidence/issue-47-chrome-2026-11-02/03-delete-success-empty-list.png)
+
+These images supersede the earlier-revision screenshots in the PR presentation. Their provenance is not inferred from their appearance.
 
 ## Implementation and local verification at the recorded snapshot
 
@@ -62,17 +73,21 @@ node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com -
 
 It verified create/list/detail, notes and feedback patching including null feedback, read-after-write, delete, and post-delete 404, then cleaned up only its own synthetic record `854787a0-b7d9-41d6-94a8-1f8fff8cff34`. This is deployed **API** evidence. It is not a packaged-extension browser run and does not satisfy the persistence-after-reopen or deletion-after-reopen browser checks.
 
-## Browser verification still required
+## Current browser evidence and remaining checks
 
-The reviewed PR head `5c217fad69067574894e844c5e0ed4ef8d1aafc`, subsequent popup code-fix commit `454754c`, and any later head still need installation in a fresh Chrome profile using a staging-target package built from the exact head under test. Record Chrome version, source SHA, package SHA-256, `/version` identity, and the exact artifact used. Verify selected-text analysis result and error rendering, then create, view, edit notes/feedback, and delete a synthetic record through the packaged extension against staging. Capture screenshots and a redacted Network record showing request methods, paths, statuses, and response envelope. Do not include cookies, authorization values, tokens, or personal data.
+PR head `40f67d720270d05cb64d9f616fc3d16400ffc960` contains the reviewed UI fixes. The four screenshots supplied on 2026-11-02 are included above and replace the older images in the PR description. They show selected-text result content in mock mode, a saved-analysis detail, the edit form, and delete success with an empty list. The images do not expose package identity or Chrome version, so the exact installed-package provenance is unverified.
 
-Keep these acceptance items pending until captured against the current PR head:
+The PR's Hosted staging run [41424692539](https://github.com/kendshhh/PhishLens/actions/runs/41424692539) passed for PR head `40f67d720270d05cb64d9f616fc3d16400ffc960`; it deployed merge candidate `8b5f292bfb318bf41a3c41fdafa113198facf67e` and produced a staging artifact. This automated deployment evidence does not tie the supplied screenshots to that artifact or establish an installed-Chrome run.
 
-- Notes and feedback still present after closing and reopening the popup.
-- Deleted record remains absent after closing and reopening the popup.
-- DevTools Network evidence for the full flow.
+Still pending:
 
-The PR screenshots linked above are useful evidence for visible earlier-revision states, but do not substitute for this current-head run. The current Chrome attempt did not load the extension: Chrome ignored the command-line unpacked-extension switches and the `chrome://extensions` Load unpacked action did not produce a folder picker. No PhishLens action was performed in that browser session, so no Chrome acceptance is claimed.
+- Verify create, view, edit-save, and delete with the current staging package in Chrome.
+- Confirm saved notes and feedback persist after closing and reopening the popup.
+- Confirm a deleted record remains absent after closing and reopening the popup.
+- Capture redacted Network evidence with request methods, paths, statuses, and response envelopes. Exclude cookies, authorization values, tokens, and personal data.
+- Record the exact package SHA-256, Chrome version, and package-to-source identity for the browser run.
+
+The earlier 2026-10-22 screenshots have been superseded in the PR description. The new images are useful visual evidence, but they do not satisfy the pending persistence or Network checks.
 
 ## Run record / handoff
 
