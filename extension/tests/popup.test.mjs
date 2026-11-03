@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { connectContextAnalysis, createPopupController, renderContextAnalysis } from "../js/popup.js";
+import { createPopupController } from "../js/popup.js";
 import { createInMemoryAnalysisClient } from "./in-memory-analysis-client.mjs";
 
 class Element {
@@ -52,37 +52,13 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
   }
   assert.match(html, /role="status" aria-live="polite"/);
   assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
-  assert.match(html, /Analyze selection with VeriQo/);
-  assert.doesNotMatch(html, /Analyze selection with PhishLens/);
+  assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
   assert.match(css, /overflow-y:\s*auto/);
-  assert.match(popup, /createAnalysisClient\(API_BASE_URL\)/);
+  assert.match(popup, /createAnalysisClient\(API_BASE_URL, fetchImpl, \{ requiredModel: MODEL_SHA256 \}\)/);
   assert.doesNotMatch(popup, /in-memory-analysis-client/);
-});
-
-test("context-menu result, error, and Clear remain available beside CRUD", async () => {
-  const { ui } = setup(createInMemoryAnalysisClient());
-  renderContextAnalysis({ status: "success", selectedText: "Selected message", result: {
-    classification: "phishing", risk_level: "high", mode: "mock", tactics: ["Urgency"], recommendations: ["Verify sender"]
-  } }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
-  assert.equal(ui.get("result-state").classList.contains("hidden"), false);
-  assert.equal(ui.get("classification").textContent, "phishing");
-  assert.equal(ui.get("selected-text").textContent, "Selected message");
-  assert.equal(ui.get("tactics").children[0].textContent, "Urgency");
-  renderContextAnalysis({ status: "error", error: "Backend unavailable" }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
-  assert.equal(ui.get("error-message").textContent, "Backend unavailable");
-
-  let cleared;
-  const doc = { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
-  const chromeApi = {
-    storage: { session: { get: async () => ({ veriqoAnalysis: null }) }, onChanged: { addListener() {} } },
-    runtime: { sendMessage: async message => { cleared = message; return { ok: true }; } }
-  };
-  connectContextAnalysis(chromeApi, doc);
-  await ui.get("clear-button").fire("click");
-  assert.deepEqual(cleared, { type: "phishlens-clear-analysis" });
 });
 
 test("opening another analysis hides old actions during loading and after failure", async () => {

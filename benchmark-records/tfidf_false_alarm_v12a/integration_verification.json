@@ -1,0 +1,21 @@
+{
+  "at_utc": "2026-10-28T17:08:25.551Z",
+  "status": "PASS",
+  "browser": "156.0.8078.73",
+  "packaged_development_validation_inputs": 52,
+  "max_margin_difference": 2.042810365310288e-14,
+  "max_probability_difference": 4.2674197509029455e-16,
+  "decision_disagreements": 0,
+  "verified_quote_spans": 175,
+  "blank_rejected": true,
+  "raw_html_rejected": true,
+  "actual_worker_failure_visible": true,
+  "human_review": {
+    "cards": 30,
+    "prefilled_ratings": 0,
+    "progress": "0 / 30 completed"
+  },
+  "fresh_test_rescored": false,
+  "external_requests": [],
+  "page_errors": []
+}

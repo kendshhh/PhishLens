@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from backend.ai.schemas import AIAnalysisResult
 
-ProviderMode = Literal["mock", "gemini", "local"]
+ProviderMode = Literal["mock", "gemini", "local", "tfidf"]
 
 RISK_BY_CLASSIFICATION = {
     "legitimate": "low",
@@ -24,7 +24,7 @@ def build_saved_analysis_fields(
 
     validated = AIAnalysisResult.model_validate(result)
 
-    if mode not in ("mock", "gemini", "local"):
+    if mode not in ("mock", "gemini", "local", "tfidf"):
         raise ValueError("Unsupported provider mode")
 
     sources = [
@@ -69,5 +69,8 @@ def build_saved_analysis_fields(
             "explanation_source": validated.explanation_source,
             "input_truncated": validated.input_truncated,
             "windows_processed": validated.windows_processed,
+            **{key: value for key in (
+                "phishing_score", "raw_margin", "alert_threshold_score", "model_alert", "assessment"
+            ) if (value := getattr(validated, key)) is not None},
         },
     }
