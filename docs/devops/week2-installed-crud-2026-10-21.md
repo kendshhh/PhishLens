@@ -7,6 +7,11 @@ Owner: Andrei (`JupitraxNeptuna`)
 
 ## Evidence status
 
+## Pre-test staging change — 2026-11-03
+
+The identified staging package was built for `b294a91eb19f46f8434ff5b987931911e58137db`. Before Chrome testing, a fresh `/version` check reported staging SHA `2f32881982a67c9d070bdecd2ef981965ae4125e`, so no Chrome CRUD or persistence run was performed against the mismatched backend. This note records the reason for the fresh CI and staging preview; use the new artifact only after its SHA matches the live `/version` response.
+
+
 The local/package checks and staging API run documented below are historical snapshots from source `23e2973dcc4f4030cc9f58e894116179cb992365`; the older 2026-10-22 PR screenshots came from source `f8691e6c5b4e16bea99982a8c9b466b13ddb5e17`. The reviewed PR head at the time was `5c217fad69067574894e844c5e0ed4ef8d1aafc`, followed by popup code-fix commit `454754c`. The four screenshots supplied on 2026-11-02 and embedded below replace those older images in the PR presentation. Their source/package identity is not visible and is not inferred. They show visible UI states only; they do not establish persistence or deletion after reopening the popup.
 
 | Evidence | Status | Recorded value |
