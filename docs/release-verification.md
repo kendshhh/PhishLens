@@ -4,7 +4,7 @@ Planning source: Daily Tasks PDF, Week 4 — Final, W4-D1-Leyan through W4-D5-Le
 Dates remain TBD and the schedule is proposed. Tracked in [#105](https://github.com/kendshhh/PhishLens/issues/105)
 and [#106](https://github.com/kendshhh/PhishLens/pull/106); release and demo acceptance remain pending.
 Original baseline: main b8015961b6f31bdeaea62820b313f339b587d5f1.
-Latest tested PR source: 899b14a9b9ccd7ab61ea5ada344e0158969ea5d1, November 2, 2026.
+Latest tested PR source: 2dcd48a2f77a10274d0405ee7ab81e2f17471613, November 3, 2026.
 
 ## Task map
 
@@ -27,7 +27,7 @@ Latest tested PR source: 899b14a9b9ccd7ab61ea5ada344e0158969ea5d1, November 2, 2
 | HTTP errors | Client preserves status and readable saved detail; malformed/network failures reject | Blank messages and HTTP redirects reproduced and fixed here; real backend fault injection still owner-dependent |
 | Duplicate behavior | Same-input uncertain create keeps key, no automatic retry; explicit retry can reuse original key | Local timed-out POST/retry checked; final environment/backend retry acceptance still pending |
 | Authentication | Current saved routes derive a fixed synthetic demo owner | Trixia/Andrei/Leyan: separate auth contract; no real-user isolation claim |
-| Candidate drift | PR #103 verification is separate from main; #99 local-analysis workflow is a different unmerged candidate at audit time | Freeze exact accepted client/backend/model revisions before final acceptance |
+| Candidate drift | PR #103 is merged and included in the latest tested branch; #99 remains a separate unmerged candidate | Freeze exact accepted client/backend/model revisions before final acceptance |
 
 No new staging write was performed. The team's hold on record-changing actions remains in force until
 the intended live SHA and isolated Neon target are confirmed. An earlier passed run is dated evidence,
@@ -41,18 +41,20 @@ not current environment confirmation.
 - A real local HTTP timeout test checks one POST, retained idempotency key, explicit same-key retry,
   and unchanged input. It uses a disposable synthetic server, not PostgreSQL.
 - Original baseline extension suite plus Week 4 work: 151 passed, 0 failed/skipped.
-- Latest PR source above, after updating main: 162 passed, 0 failed/skipped; ESLint passed.
+- November 2 source 899b14a: 162 passed, 0 failed/skipped; ESLint passed.
+- Latest source above, including merged #103 and the seven additional HTTP failure checks:
+  202 passed, 0 failed/skipped; ESLint passed. All four API examples passed the backend schemas.
 - API example create, patch, detail and list validate against the actual backend Pydantic schemas.
 - New API-reference tests replay the JSON examples through the actual client.
 - UI loading/empty/malformed rendering remains Andrei-owned; earlier local UI tests are not browser proof.
 
 See [API reference](api-reference.md) and [synthetic fixtures](examples/saved-api.json).
-Use node --test extension/tests/*.test.mjs and npm.cmd run lint from the project root.
+Use node --test extension/tests/*.test.mjs and npm run lint from the project root.
 No AI weights, real-provider calls or external database are needed for these local checks.
 
 ## November 2 status
 
-Trixia and Andrei approved PR #106 at the latest tested source. Backend, extension, isolated staging
+Trixia and Andrei approved PR #106 at source 899b14a. Backend, extension, isolated staging
 integration and workflow checks passed. Hosted staging failed, so delivery is still pending.
 
 [Hosted staging run](https://github.com/kendshhh/PhishLens/actions/runs/41424660062/job/125209368839):
@@ -70,10 +72,27 @@ No records were changed. Kendra must confirm the intended live target and matchi
 resolve the failed verification before record-changing acceptance resumes. Do not bypass SHA checks.
 The last documented Neon target is not independently reconfirmed by these public endpoints.
 
-PR #103 is still separate and open at fd3b683b89bf0019618911790cdca8d7cfdfe10d.
+At that November 2 snapshot, PR #103 was separate and open at fd3b683b89bf0019618911790cdca8d7cfdfe10d.
 Wilberr approved that source and its Hosted staging run passed; Secretary staging subsequently
 requires attention. Trixia's latest formal review still requests changes, so a re-review is outstanding.
 Neither that earlier run nor this read-only probe proves final installed-browser acceptance.
+
+## November 3 update
+
+PR #103 is now merged. Trixia and Wilberr approved its final head
+436445972cb2f6d2007784a212d4e15e8d1dc451, whose listed checks passed. The saved-report verifier
+and tests are present in this branch. This supersedes the open-PR status above, but does not establish
+new installed-browser, real-provider or redeploy-persistence acceptance.
+
+At the current check, PR #106 source 2dcd48a had successful Backend checks, Extension checks,
+CodeQL, workflow lint, migration preflight and advisory dependency review. Staging integration was
+still running; no Hosted staging or artifact result for this source is claimed. Trixia and Andrei
+are requested for re-review; their earlier approvals were dismissed after the source changed.
+
+Local commands: node --test extension/tests/*.test.mjs (202 passed), ESLint extension/js/
+(passed), and validation of create/patch/detail/list examples against the backend Pydantic schemas
+(four passed). Tests use synthetic fixtures and local HTTP substitutes. No external writes, model
+downloads, provider requests or installed-Chrome actions were performed.
 
 ## D4 candidate run record
 
@@ -109,9 +128,9 @@ Run sequence after the target and any writes are authorized:
    failures. Preserve input; show readable errors; do not present empty success or silently retry POST.
 10. Record redacted Network methods/statuses, expected/actual UI behavior, remaining defects and owners.
 
-Reuse scripts/verify_crud.mjs for guarded CRUD. scripts/verify_saved_report.mjs belongs to PR #103;
-use the exact reviewed source when available and record any separate verifier revision.
-Do not imply this Week 4 main-based branch already includes or delivers #103.
+Reuse scripts/verify_crud.mjs for guarded CRUD and scripts/verify_saved_report.mjs for the saved-report
+flow. The latter came from merged PR #103 and is included in the latest tested branch. Record the
+exact verifier and backend revisions; inclusion alone does not prove a current live replay.
 
 For a lost acknowledgement, keep the identical request/key and coordinate recovery rather than
 rerunning a new command with a new subject/key. If cleanup is uncertain, retain that exact synthetic
