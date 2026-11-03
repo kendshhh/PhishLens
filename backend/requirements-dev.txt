@@ -32,7 +32,7 @@ fastapi==0.162.0
     # via -r requirements.in
 google-auth==2.62.0
     # via google-genai
-google-genai==2.33.0
+google-genai==2.34.0
     # via -r requirements.in
 h11==0.16.0
     # via
@@ -110,7 +110,6 @@ truststore==0.10.5
 typing-extensions==4.16.0
     # via
     #   alembic
-    #   anyio
     #   fastapi
     #   google-genai
     #   opentelemetry-api
