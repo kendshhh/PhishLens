@@ -93,6 +93,8 @@ function isValidAnalysis(analysis) {
     if (!isValidUtcTimestamp(analysis.created_at)) {
         return false;
     }
+    if (analysis.review_status !== undefined && analysis.review_status !== null &&
+        !['released', 'uncertain'].includes(analysis.review_status)) return false;
 
     return true;
 }
@@ -124,7 +126,7 @@ export async function getAnalyses(baseUrl) {
     return data.items;
 }
 
-export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000 } = {}) {
+export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel } = {}) {
     if (!Number.isSafeInteger(createTimeoutMs) || createTimeoutMs < 1 || createTimeoutMs > 2147483647) {
         throw new Error('Create timeout must be a positive integer in milliseconds');
     }
@@ -189,7 +191,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
             return checkRecord(await request(recordUrl(id), 'GET', 200), true);
         },
         async createAnalysis(input, { idempotencyKey } = {}) {
-            const fingerprint = JSON.stringify([input?.subject ?? '', input?.body]);
+            const fingerprint = JSON.stringify([input?.subject ?? '', input?.body, input?.local_review ?? null]);
             const automaticKey = idempotencyKey === undefined;
             const key = idempotencyKey ?? pendingCreateKeys.get(fingerprint) ?? globalThis.crypto.randomUUID();
             if (automaticKey) pendingCreateKeys.set(fingerprint, key);
@@ -202,7 +204,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                         201,
                         input,
                         createTimeoutMs,
-                        { 'Idempotency-Key': key }
+                        { 'Idempotency-Key': key, ...(requiredModel ? { 'X-PhishLens-Model': requiredModel } : {}) }
                     ),
                     true
                 );
