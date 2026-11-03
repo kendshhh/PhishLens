@@ -1,8 +1,12 @@
 """Small bounded GitHub client. Never print request credentials or API error bodies."""
 import json
 import os
+import time
 import urllib.error
 import urllib.request
+
+TRANSIENT_SERVER_ERRORS = {500, 502, 503, 504}
+MAX_TRANSIENT_GET_ATTEMPTS = 3
 
 
 class APIError(RuntimeError):
@@ -24,11 +28,26 @@ class GitHub:
             method=request_method, headers=headers)
 
         def read_response(request):
-            with urllib.request.urlopen(request, timeout=30) as response:
-                raw = response.read(8_000_001)
-                if len(raw) > 8_000_000:
-                    raise APIError("GitHub response exceeds safe size")
-                return json.loads(raw) if raw else None
+            attempts = (
+                MAX_TRANSIENT_GET_ATTEMPTS
+                if request.get_method() == "GET" and request.data is None
+                else 1
+            )
+            for attempt in range(attempts):
+                try:
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        # A bounded ORT-WASM blob is ~28 MB before base64. Keep other
+                        # GitHub API responses under the existing smaller limit.
+                        maximum = 44_000_000 if path.startswith("git/blobs/") else 8_000_000
+                        raw = response.read(maximum + 1)
+                        if len(raw) > maximum:
+                            raise APIError("GitHub response exceeds safe size")
+                        return json.loads(raw) if raw else None
+                except urllib.error.HTTPError as exc:
+                    if exc.code not in TRANSIENT_SERVER_ERRORS or attempt + 1 == attempts:
+                        raise
+                    exc.close()
+                    time.sleep(0.25 * (2 ** attempt))
 
         try:
             return read_response(req)
