@@ -94,20 +94,45 @@ def fingerprint(snapshot):
     return hashlib.sha256(json.dumps(snapshot, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
-def manual_steps(files):
+def automated_checklist(files, jobs, preview, sha):
     names = [f["filename"] for f in files]
-    steps = ["Open the linked Actions run and staging deployment. Confirm PR number and full deployed SHA match this report before testing."]
     if any(n.startswith("extension/") for n in names):
-        steps += ["Download the staging-extension artifact, extract it, open chrome://extensions, enable Developer mode, and Load unpacked. Check the STAGING banner and SHA.",
-                  "Select synthetic text: 'Your account closes today; enter your password at https://example.invalid/verify'. Use Analyze selection. Observe loading followed by a labeled result or a readable provider error; mock output is not AI acceptance.",
-                  "Open history: expect Synthetic account notice, phishing, high risk, 93% confidence. Try a disconnected backend for the error state; use an isolated empty test database for the empty state. Select twice rapidly and Clear during loading; older results must not return."]
+        passed = jobs.get("Extension checks", {}).get("conclusion") == "success"
+        label = (
+            f"Packaged extension browser checklist passed for current head `{sha}`; see the SHA-bound Extension-Browser-Acceptance artifact."
+            if passed else
+            f"Packaged extension browser checklist has not passed for current head `{sha}`; wait for or repair Extension checks."
+        )
+        yield passed, label
     if any(n.startswith("backend/") for n in names):
-        steps += ["Open staging /docs. Try POST /analyses with synthetic text, then an empty JSON body: expect a structured result (check mode) and HTTP 422 respectively. Record responses without real emails or credentials."]
+        passed = jobs.get("Backend checks", {}).get("conclusion") == "success"
+        label = (
+            f"Backend and disposable-PostgreSQL checks passed for current head `{sha}`."
+            if passed else
+            f"Backend and disposable-PostgreSQL checks have not passed for current head `{sha}`."
+        )
+        yield passed, label
     if any(n.startswith("backend/migrations/") for n in names):
-        steps += ["Inspect the disposable-database migration/seed job and schema relationship tests. Do not test migrations against production. Confirm the Neon staging host privately."]
-    steps += ["Compare with the production API /docs and a separately identified production extension profile/build. A website cannot demonstrate context-menu, Chrome storage, permissions, or badge behavior.",
-              "Record 'Manual test: SHA, build/run link, browser/version, actions, expected/actual results, evidence, PASS/FAIL' in your own PR comment. Report file/step and synthetic reproduction for problems; then submit a separate formal GitHub review."]
-    return steps
+        passed = jobs.get("Backend checks", {}).get("conclusion") == "success"
+        label = (
+            f"Migration, repeated-seed, and database-integrity checks passed on disposable PostgreSQL for `{sha}`."
+            if passed else
+            f"Migration and database-integrity checks have not passed on disposable PostgreSQL for `{sha}`."
+        )
+        yield passed, label
+    if application_change(files):
+        passed = (
+            preview.get("current") is True
+            and preview.get("sha") == sha
+            and preview.get("state") == "success"
+        )
+        label = (
+            f"Exact-head staging synthetic AI/provenance and saved-report CRUD passed for `{sha}`; the synthetic record was cleaned up."
+            if passed else
+            f"Exact-head staging synthetic AI/provenance and saved-report CRUD has not passed for `{sha}`."
+        )
+        yield passed, label
+    yield False, "Formal teammate review is a separate required approval; automated checks do not approve or merge the PR."
 
 
 def render(snapshot, ai, now):
@@ -137,7 +162,7 @@ def render(snapshot, ai, now):
               f"Preview state: {safe(preview.get('state', 'waiting'))}; current exact SHA: {bool(preview.get('current'))}; deployed SHA: {safe(preview.get('sha', 'not available'))}.",
               f"Deployment/artifact evidence: {preview.get('log_url') or url + '/checks'}",
               "Download **Veriqo-Staging-Extension** from the preview run artifacts. It has a STAGING/PR/SHA banner. The API URL is a working backend, not a browser-extension UI preview.",
-              "Before/after screenshots and installed-Chrome verification: not available from this agent; no visual pass is claimed.",
+              "The packaged extension browser checklist runs in CI and records per-scenario checkboxes in its SHA-bound artifact.",
               "### Findings"]
     for kind, severity, location, message in findings:
         lines.append(f"- **{severity.upper()} · {kind}** · {safe(location)}: {safe(message)}")
@@ -147,11 +172,11 @@ def render(snapshot, ai, now):
               "AI status: " + safe(ai.get("status", "unavailable")), "### Deployment, migration and access limits",
               "Shared staging can be replaced by another PR. Recheck its SHA immediately before testing. Hosted PR code receives only isolated non-production runtime credentials; environment approval is a deployment trust gate, not PR approval."]
     lines += ["- " + safe(g) for g in gaps] or []
-    lines += ["- Branch protection/admin-only configuration is not inferred from passing jobs. AI quality, persistent CRUD and actual human testing require separate evidence.",
-              "### Kendra’s manual test checklist"]
-    lines += ["- [ ] " + s for s in manual_steps(files)]
+    lines += ["- Branch protection/admin-only configuration is not inferred from passing jobs. Held-out AI quality, production persistence, and formal teammate review require separate evidence.",
+              "### Automated and human follow-up checklist"]
+    lines += [f"- [{'x' if passed else ' '}] {text}" for passed, text in automated_checklist(files, jobs, preview, sha)]
     lines += ["### Recommended next action", "**" + action + "** — " + reason,
-              "Automated evidence, this recommendation, your manual test record, and a formal teammate approval are separate. This bot never approves, merges, changes secrets/protection, or rolls back."]
+              "Automated checks are marked only after the current-head job or staging evidence passes. Formal teammate approval remains separate. This bot never approves, merges, changes secrets/protection, or rolls back."]
     # Keep Markdown table rows adjacent; separate prose blocks for readable reports.
     output = ""
     previous_table = False

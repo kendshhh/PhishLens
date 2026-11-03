@@ -74,6 +74,19 @@ class PolicyTests(unittest.TestCase):
     def test_passing_is_review_never_approval(self):
         self.assertEqual(self.decision(fixture()), "READY FOR KENDRA’S REVIEW")
 
+    def test_report_checks_only_automated_items_with_current_passing_evidence(self):
+        snapshot = fixture()
+        body = render(snapshot, {"status": "disabled"}, "test")
+        self.assertIn("- [x] Packaged extension browser checklist passed", body)
+        self.assertIn("- [x] Exact-head staging synthetic AI/provenance and saved-report CRUD passed", body)
+        self.assertIn("- [ ] Formal teammate review is a separate required approval", body)
+
+        snapshot["jobs"]["Extension checks"]["conclusion"] = "failure"
+        snapshot["preview"]["current"] = False
+        body = render(snapshot, {"status": "disabled"}, "test")
+        self.assertIn("- [ ] Packaged extension browser checklist has not passed", body)
+        self.assertIn("- [ ] Exact-head staging synthetic AI/provenance and saved-report CRUD has not passed", body)
+
     def test_failed_cancelled_skipped_checks(self):
         for conclusion in ("failure", "cancelled", "skipped", "timed_out"):
             s = fixture()

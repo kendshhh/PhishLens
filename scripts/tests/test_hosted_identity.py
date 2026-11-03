@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from scripts.secretary.github_api import APIError, GitHub
-from scripts.secretary.preview import smoke
+from scripts.secretary.preview import smoke, verify_saved_report
 
 SHA = "a" * 40
 ROOT = Path(__file__).resolve().parents[2]
@@ -47,6 +47,13 @@ class HostedIdentityTests(unittest.TestCase):
             )
             output_dir = root / "output/hosted-staging"
             output_dir.mkdir(parents=True)
+            (output_dir / "saved-report-crud.json").write_text(json.dumps({
+                "result": "passed", "cleanedUp": True, "analysisMode": "mock",
+                "analysisProvenance": {
+                    "providerMode": "mock", "model": None,
+                    "modelRevision": None, "promptVersion": None,
+                },
+            }), encoding="utf-8")
             output_file = root / "github-output.txt"
             summary_file = root / "github-summary.md"
             script_file = root / "workflow-step.py"
@@ -104,6 +111,29 @@ class HostedIdentityTests(unittest.TestCase):
         evidence = self.verify(self.responses())
         self.assertEqual(evidence["version"], SHA)
         self.assertEqual(evidence["history"], "passed")
+
+    def test_saved_report_runner_accepts_only_complete_machine_evidence(self):
+        result = {
+            "result": "passed", "cleanedUp": True,
+            "analysisProvenance": {"providerMode": "mock"},
+        }
+        with patch("scripts.secretary.preview.subprocess.run", return_value=type(
+            "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
+        )()) as run:
+            self.assertEqual(verify_saved_report("https://staging.invalid", SHA), result)
+        command = run.call_args.args[0]
+        self.assertIn("--environment", command)
+        self.assertIn("staging", command)
+        self.assertIn("--allow-writes", command)
+        self.assertIn(SHA, command)
+
+    def test_saved_report_runner_rejects_failed_or_unclean_result(self):
+        result = {"result": "passed", "cleanedUp": False,
+                  "analysisProvenance": {"providerMode": "mock"}}
+        with patch("scripts.secretary.preview.subprocess.run", return_value=type(
+            "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
+        )()), self.assertRaisesRegex(RuntimeError, "did not confirm cleanup"):
+            verify_saved_report("https://staging.invalid", SHA)
 
     def test_wrong_commit_fails(self):
         values = self.responses()
@@ -190,6 +220,9 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("current['head']['sha'] == pr_head_sha", step)
         self.assertIn("not current.get('draft', False)", step)
         self.assertEqual(step.count("if superseded():"), 3)
+        self.assertIn("'automated_checklist'", step)
+        self.assertIn("'packaged_extension_browser'", step)
+        self.assertIn("- [x] Packaged extension browser checklist passed", step)
         self.assertIn("'deployed_commit': deploy_sha", step)
         self.assertIn("result.write('current=false\\n')", step)
         self.assertIn("raise SystemExit(0)", step)

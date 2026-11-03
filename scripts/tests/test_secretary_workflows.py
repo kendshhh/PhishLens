@@ -87,6 +87,15 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
         self.assertNotIn("github.event.pull_request.head.sha", workflow)
 
+    def test_ci_runs_packaged_browser_and_staging_saved_report_checks(self):
+        workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        controller = (ROOT / "scripts/secretary/preview.py").read_text(encoding="utf-8")
+
+        self.assertIn("npm run test:browser", workflow)
+        self.assertIn("Extension-Browser-Acceptance", workflow)
+        self.assertIn("Verify saved report synthetic AI and CRUD checklist", workflow)
+        self.assertIn("verify_saved_report(config[\"staging_origin\"], run[\"head_sha\"])", controller)
+
 
 if __name__ == "__main__":
     unittest.main()

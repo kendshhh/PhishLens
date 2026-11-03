@@ -22,7 +22,12 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
             const record = {
                 id: crypto.randomUUID(), ...input, prediction: null, confidence: null,
                 risk_level: null, threat_indicators: [], explanation: null,
-                created_at: new Date().toISOString(), notes: null, feedback: 'none', analysis_mode: 'mock'
+                created_at: new Date().toISOString(), notes: null, feedback: 'none', analysis_mode: 'mock',
+                analysis_provenance: {
+                    provider_mode: 'mock', model: null, model_revision: null,
+                    prompt_version: null, explanation_source: 'mock',
+                    input_truncated: false, windows_processed: null
+                }
             };
             records.set(record.id, record);
             return send(201, record);
@@ -46,6 +51,9 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
     try {
         const result = await verifyCrud('http://127.0.0.1:' + server.address().port, { environment: 'disposable', expectedSha: 'a'.repeat(40), allowWrites: true });
         assert.equal(result.result, 'passed');
+        assert.deepEqual(result.analysisProvenance, {
+            providerMode: 'mock', model: null, modelRevision: null, promptVersion: null
+        });
         assert.deepEqual(methods.slice(0, 3), ['GET', 'GET', 'POST']);
         assert.equal(records.size, 0);
         assert.ok(methods.includes('POST') && methods.includes('PATCH') && methods.includes('DELETE'));

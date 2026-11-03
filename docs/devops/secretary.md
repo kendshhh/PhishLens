@@ -15,13 +15,13 @@ has run on GitHub. Existing staging is not evidence for this new implementation.
 
 ```mermaid
 flowchart TD
-  P[Teammate opens or updates PR] --> C[CI: install, lint, tests, package]
+  P[Teammate opens or updates PR] --> C[CI: install, lint, tests, package, browser acceptance]
   P --> R[Trusted secretary reads metadata]
   C --> D{Application change, same repo, ready, CI passed?}
   D -->|Yes| E[Staging environment trust approval]
   E --> S[Serialized exact-SHA Render staging deploy]
   S --> V[Health, DB readiness, SHA, seeded history]
-  V --> Z[STAGING extension ZIP and deployment evidence]
+  V --> Z[Saved-report synthetic AI/CRUD, staging ZIP, and deployment evidence]
   D -->|Docs only| N[Secretary staging check: success, not applicable]
   D -->|Fork, draft or failure| B[Explicit blocked or failed result]
   C --> R
@@ -55,7 +55,7 @@ status reconciliation, not continuous monitoring.
 | Deterministic CI | Install, lint, mock AI tests, migrations/seed in disposable PostgreSQL, package | Fix failures; inspect coverage |
 | Secretary | Read patches/evidence, flag bounded heuristics, update its own report | Assess concerns and uncovered code |
 | Optional Gemini | Explain sanitized metadata, validate JSON, fall back on failure | Enable a separate capped key and approve external data policy |
-| Preview | Deploy exact eligible SHA, smoke test, build staging ZIP | Approve deployment trust; test Chrome behavior |
+| Preview | Deploy exact eligible SHA, run saved-report synthetic AI/CRUD, test packaged browser scenarios, build staging ZIP | Approve deployment trust; check production-specific behavior and submit formal review |
 | Review | Provide checklist and evidence links | Record manual test and submit formal review |
 | Merge | Nothing | Authorized human merges after required checks/reviews |
 | Production | Existing Render deployment plus read-only observer | Decide and execute rollback if needed |
@@ -78,7 +78,7 @@ enabled by the bot. Optional proposed labels: `needs-manual-test`, `preview-bloc
 | `.github/workflows/secretary-report.yml` | Trusted-base report events and single writer |
 | `.github/workflows/secretary-preview.yml` | Assess without secrets, then environment-controlled deploy |
 | `.github/workflows/secretary-production.yml` | Observe production after main CI; preserve evidence |
-| `scripts/secretary/core.py` | Recommendation policy, requirement mapping, manual checklist |
+| `scripts/secretary/core.py` | Recommendation policy, requirement mapping, evidence-driven automated checklist |
 | `scripts/secretary/github_api.py` | Bounded, paginated GitHub API client |
 | `scripts/secretary/report.py` | Evidence gathering, deduplication, optional Gemini |
 | `scripts/secretary/preview.py` | Render controller, isolation guards, smoke, extension artifact |
@@ -243,7 +243,11 @@ an explicit capped-key policy.
    Compare those with the deployment/report. Open staging `/version` and confirm
    the SHA. If another PR replaced staging, rerun the PR CI; do not test an old
    artifact against the wrong backend.
-6. Follow the report's feature-specific checklist. For history, expect the
+6. The report checks packaged browser scenarios when the current-head
+   **Extension checks** job passes and checks staging AI/provenance plus saved
+   report CRUD only when the deployment SHA matches the reviewed head and cleanup
+   is confirmed. Open the SHA-bound `Extension-Browser-Acceptance` artifact for
+   per-scenario results. Follow any remaining human checklist items. For history, expect the
    synthetic account notice, phishing, high risk, 93% confidence. For analysis,
    try synthetic text, loading, provider errors and Clear. `mode: mock` is a wiring
    result, not proof of meaningful AI. For malformed requests use staging `/docs`.

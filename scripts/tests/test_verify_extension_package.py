@@ -28,6 +28,7 @@ class PackageVerificationTests(unittest.TestCase):
                                "host_permissions": hosts or self.hosts}).encode()
         files = {name: b"synthetic asset" for name in ASSETS}
         files["manifest.json"] = manifest
+        files["js/config.js"] = b'export const API_BASE_URL = "https://phishlens-api-ocvt.onrender.com";\n'
         with ZipFile(self.archive, "w") as package:
             for name, content in files.items():
                 package.writestr(name, content)
