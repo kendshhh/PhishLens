@@ -87,6 +87,7 @@ export async function verifyTarget(baseUrl, options) {
 export async function verifyCrud(baseUrl, options = {}) {
     const target = await verifyTarget(baseUrl, options);
     const client = createAnalysisClient(target.baseUrl, target.safeFetch);
+    const requireRealAI = options.environment === 'staging' || options.requireRealAI === true;
     const subject = 'Synthetic CRUD check ' + crypto.randomUUID();
     const body = 'Synthetic test email. No real user data or credentials.';
     let created;
@@ -94,6 +95,9 @@ export async function verifyCrud(baseUrl, options = {}) {
     try {
         created = await client.createAnalysis({ subject, body });
         assertReportProvenance(created);
+        if (requireRealAI && created.analysis_mode !== 'real') {
+            throw new Error('Mock output is not AI acceptance');
+        }
         assert.equal(created.subject, subject);
         const read = await client.getAnalysis(created.id);
         assertReportProvenance(read);
@@ -155,3 +159,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         process.exitCode = 1;
     }
 }
+

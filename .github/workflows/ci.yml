@@ -578,8 +578,12 @@ jobs:
               raise SystemExit(0)
           evidence = smoke(config['staging_origin'], deploy_sha)
           crud = json.loads((output / 'saved-report-crud.json').read_text())
-          if crud.get('result') != 'passed' or crud.get('cleanedUp') is not True:
-              raise RuntimeError('The SHA-matched synthetic AI/saved-report check did not complete cleanly.')
+          provenance = crud.get('analysisProvenance')
+          if (crud.get('result') != 'passed' or crud.get('cleanedUp') is not True
+                  or crud.get('analysisMode') != 'real'
+                  or not isinstance(provenance, dict)
+                  or provenance.get('providerMode') not in {'gemini', 'local'}):
+              raise RuntimeError('The staging checklist requires real, non-mock AI provenance and confirmed cleanup.')
           if superseded():
               raise SystemExit(0)
           try:
@@ -628,3 +632,4 @@ jobs:
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+

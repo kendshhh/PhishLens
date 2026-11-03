@@ -57,7 +57,13 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
         assert.deepEqual(methods.slice(0, 3), ['GET', 'GET', 'POST']);
         assert.equal(records.size, 0);
         assert.ok(methods.includes('POST') && methods.includes('PATCH') && methods.includes('DELETE'));
+        await assert.rejects(verifyCrud(
+            'http://127.0.0.1:' + server.address().port,
+            { environment: 'disposable', expectedSha: 'a'.repeat(40), allowWrites: true, requireRealAI: true }
+        ), /Mock output is not AI acceptance/);
+        assert.equal(records.size, 0, 'A rejected mock report must still be cleaned up');
     } finally {
         await new Promise(resolve => server.close(resolve));
     }
 });
+

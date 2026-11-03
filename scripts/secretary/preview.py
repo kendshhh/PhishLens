@@ -169,11 +169,14 @@ def verify_saved_report(origin, sha):
         result = json.loads(completed.stdout)
         provenance = result["analysisProvenance"]
         passed = result.get("result") == "passed" and result.get("cleanedUp") is True
+        analysis_mode = result.get("analysisMode")
         provider_mode = provenance.get("providerMode")
     except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as exc:
         raise RuntimeError("Synthetic saved-report verification returned invalid evidence") from exc
-    if not passed or not provider_mode:
+    if not passed:
         raise RuntimeError("Synthetic saved-report verification did not confirm cleanup and provider mode")
+    if analysis_mode != "real" or provider_mode not in {"gemini", "local"}:
+        raise RuntimeError("Mock output is not AI acceptance for the staging checklist")
     return result
 
 
@@ -461,4 +464,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

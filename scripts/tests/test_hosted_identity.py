@@ -31,7 +31,7 @@ class HostedIdentityTests(unittest.TestCase):
             for line in block[1:-1]
         )
 
-    def run_workflow_python(self, marker, request_effect, package_effect=None):
+    def run_workflow_python(self, marker, request_effect, package_effect=None, crud_result=None):
         script = self.workflow_python_script(marker)
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -47,13 +47,14 @@ class HostedIdentityTests(unittest.TestCase):
             )
             output_dir = root / "output/hosted-staging"
             output_dir.mkdir(parents=True)
-            (output_dir / "saved-report-crud.json").write_text(json.dumps({
-                "result": "passed", "cleanedUp": True, "analysisMode": "mock",
+            evidence = crud_result or {
+                "result": "passed", "cleanedUp": True, "analysisMode": "real",
                 "analysisProvenance": {
-                    "providerMode": "mock", "model": None,
-                    "modelRevision": None, "promptVersion": None,
+                    "providerMode": "gemini", "model": "synthetic-model",
+                    "modelRevision": "test-revision", "promptVersion": "test-prompt",
                 },
-            }), encoding="utf-8")
+            }
+            (output_dir / "saved-report-crud.json").write_text(json.dumps(evidence), encoding="utf-8")
             output_file = root / "github-output.txt"
             summary_file = root / "github-summary.md"
             script_file = root / "workflow-step.py"
@@ -70,6 +71,7 @@ class HostedIdentityTests(unittest.TestCase):
             }
             previous_dir = Path.cwd()
             exit_code = None
+            step_error = None
             try:
                 os.chdir(root)
                 with patch.dict(os.environ, environment), patch.object(
@@ -81,11 +83,15 @@ class HostedIdentityTests(unittest.TestCase):
                         runpy.run_path(str(script_file), run_name="__main__")
                     except SystemExit as error:
                         exit_code = error.code
+                    except RuntimeError as error:
+                        exit_code = 1
+                        step_error = str(error)
             finally:
                 os.chdir(previous_dir)
 
             return {
                 "exit_code": exit_code,
+                "step_error": step_error,
                 "output": output_file.read_text(encoding="utf-8") if output_file.exists() else "",
                 "summary": summary_file.read_text(encoding="utf-8") if summary_file.exists() else "",
                 "evidence_exists": (output_dir / "evidence.json").exists(),
@@ -115,7 +121,8 @@ class HostedIdentityTests(unittest.TestCase):
     def test_saved_report_runner_accepts_only_complete_machine_evidence(self):
         result = {
             "result": "passed", "cleanedUp": True,
-            "analysisProvenance": {"providerMode": "mock"},
+            "analysisMode": "real",
+            "analysisProvenance": {"providerMode": "gemini"},
         }
         with patch("scripts.secretary.preview.subprocess.run", return_value=type(
             "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
@@ -128,11 +135,21 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn(SHA, command)
 
     def test_saved_report_runner_rejects_failed_or_unclean_result(self):
-        result = {"result": "passed", "cleanedUp": False,
-                  "analysisProvenance": {"providerMode": "mock"}}
+        result = {"result": "passed", "cleanedUp": False, "analysisMode": "real",
+                  "analysisProvenance": {"providerMode": "gemini"}}
         with patch("scripts.secretary.preview.subprocess.run", return_value=type(
             "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
         )()), self.assertRaisesRegex(RuntimeError, "did not confirm cleanup"):
+            verify_saved_report("https://staging.invalid", SHA)
+
+    def test_saved_report_runner_rejects_mock_as_ai_acceptance(self):
+        result = {
+            "result": "passed", "cleanedUp": True, "analysisMode": "mock",
+            "analysisProvenance": {"providerMode": "mock"},
+        }
+        with patch("scripts.secretary.preview.subprocess.run", return_value=type(
+            "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
+        )()), self.assertRaisesRegex(RuntimeError, "Mock output is not AI acceptance"):
             verify_saved_report("https://staging.invalid", SHA)
 
     def test_wrong_commit_fails(self):
@@ -258,6 +275,24 @@ class HostedIdentityTests(unittest.TestCase):
                 self.assertFalse(result["evidence_exists"])
                 self.assertFalse(result["package_exists"])
 
+    def test_hosted_finalizer_rejects_mock_evidence(self):
+        marker = "      - name: Verify deployed merge identity and package staging assets"
+        current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
+        mock_result = {
+            "result": "passed", "cleanedUp": True, "analysisMode": "mock",
+            "analysisProvenance": {
+                "providerMode": "mock", "model": None,
+                "modelRevision": None, "promptVersion": None,
+            },
+        }
+        result = self.run_workflow_python(marker, [current_pr], crud_result=mock_result)
+
+        self.assertEqual(result["exit_code"], 1)
+        self.assertIn("non-mock AI provenance", result["step_error"])
+        self.assertNotIn("current=true", result["output"])
+        self.assertFalse(result["evidence_exists"])
+        self.assertFalse(result["package_exists"])
+
     def test_draft_pr_is_skipped_before_approval_and_verification(self):
         current_draft = {"state": "open", "head": {"sha": SHA}, "draft": True}
         preflight = self.run_workflow_python(
@@ -281,3 +316,4 @@ class HostedIdentityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
