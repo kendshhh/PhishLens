@@ -9,8 +9,14 @@ const feedbackLabels = new Map([
   ["false_negative", "False negative"]
 ]);
 const provenanceLabels = new Map([
-  ["mock", "Mock AI analysis"], ["real", "Real AI analysis"],
+  ["mock", "Mock analysis (development/test output)"], ["real", "Provider-backed AI analysis"],
   ["unknown", "AI provenance unknown"]
+]);
+const classificationLabels = new Map([
+  ["phishing", "Phishing"], ["legitimate", "Legitimate"], ["spam", "Spam"]
+]);
+const providerLabels = new Map([
+  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"]
 ]);
 
 function node(doc, tag, className, text) {
@@ -67,26 +73,45 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     if (record.review_status === "uncertain" || record.analysis_provenance?.local_review?.status === "uncertain") {
       return "Uncertain — local review not confirmed";
     }
-    return record.prediction === "legitimate" ? "below threshold / historical legitimate label" : record.prediction || "Pending";
+    if (record.prediction === "legitimate") return "below threshold / historical legitimate label";
+    return classificationLabels.get(record.prediction) ||
+      (record.prediction == null ? "Not analyzed yet" : "Classification unavailable");
   }
 
   function renderDetail(record) {
     ui.detailContent.replaceChildren();
+    const analyzed = classificationLabels.has(record.prediction);
+    const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
+      ? record.analysis_provenance : {};
+    const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"];
+    if (typeof provenance.provider_mode === "string" && provenance.provider_mode.trim()) {
+      provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode) || `Unrecognized (${provenance.provider_mode})`}`);
+    }
+    if (typeof provenance.model === "string" && provenance.model.trim()) provenanceLines.push(`Model: ${provenance.model}`);
+    if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) provenanceLines.push(`Model revision: ${provenance.model_revision}`);
+    if (typeof provenance.prompt_version === "string" && provenance.prompt_version.trim()) provenanceLines.push(`Prompt version: ${provenance.prompt_version}`);
+    if (typeof provenance.explanation_source === "string" && provenance.explanation_source.trim()) provenanceLines.push(`Explanation source: ${provenance.explanation_source}`);
+    if (provenanceLines.length === 1 && record.analysis_mode === "real") provenanceLines.push("Provider and model were not reported.");
     const values = [
       ["Subject", record.subject || "Untitled analysis"], ["Email body", record.body],
-      ["Explanation", record.explanation || "No explanation available."],
-      ["Prediction", predictionLabel(record)], ["Risk", record.risk_level || "Unknown"],
-      ["Confidence", record.confidence == null ? "Not provided" : `${Math.round(record.confidence * 100)}%`],
-      ["Threat indicators", record.threat_indicators.length
+      ["Explanation", record.explanation || (analyzed
+        ? "No explanation was returned. Review the available indicators and verify independently."
+        : "Unavailable because this report has not been analyzed.")],
+      ["Classification", predictionLabel(record)],
+      ["Risk", record.risk_level || (analyzed ? "Not provided" : "Not assessed (analysis not completed)")],
+      ["Confidence", record.confidence == null
+        ? "Not provided; no confidence estimate is available."
+        : `${Math.round(record.confidence * 100)}% (model-reported score, not a guarantee)`],
+      ["Threat indicators", !analyzed
+        ? "Unavailable because this report has not been analyzed."
+        : record.threat_indicators.length
         ? record.threat_indicators.map(indicator => `${indicator.type}: ${indicator.detail}${indicator.quote ? ` (“${indicator.quote}”)` : ""}`).join("\n")
-        : "None reported"],
+        : "No validated indicators were returned."],
       ["Notes", record.notes || "No notes"], ["Feedback", feedbackLabels.get(record.feedback) || "Feedback unavailable"],
-      ["AI provenance", provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"]
+      ["AI provenance", provenanceLines.join("\n")]
     ];
-    const provenance = record.analysis_provenance;
     if (provenance) {
-      values.push(["Model", provenance.model || "historical / unknown"],
-        ["Assessment", provenance.assessment || "No assessment recorded."]);
+      if (provenance.assessment) values.push(["Assessment", provenance.assessment]);
       if (provenance.local_review) values.push(["Local review", provenance.local_review.status],
         ["Audit source", "Browser-reported LLM; classifier checks replayed by server."]);
       if (provenance.model_revision === MODEL_SHA256 && Number.isFinite(provenance.phishing_score)) {
@@ -125,6 +150,10 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       item.append(title, meta, open);
       ui.list.append(item);
     }
+  }
+
+  function invalidatePendingDetail() {
+    ++detailRequest;
   }
 
   async function refresh() {
@@ -177,12 +206,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   }
 
   function openEdit() {
+    if (busy || !selected) return;
     ui.notes.value = selected.notes || "";
     ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
     show(ui.editForm, true);
     ui.notes.focus();
   }
   function openDelete() {
+    if (busy || !selected) return;
     ui.deleteSubject.textContent = selected.subject || "Untitled analysis";
     show(ui.deleteConfirm, true);
     ui.cancelDelete.focus();
@@ -197,6 +228,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       ui.body.focus();
       return;
     }
+    invalidatePendingDetail();
     setBusy(true);
     let created;
     try {
@@ -260,7 +292,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   });
 
   function acceptSavedReport(outcome) {
-    ++detailRequest;
+    invalidatePendingDetail();
     ++listRequest;
     show(ui.loading, false);
     records = outcome.history || [outcome.saved, ...records.filter(record => record.id !== outcome.saved.id)];
@@ -272,7 +304,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   }
 
   return { refresh, loadDetail, acceptSavedReport,
-    beginSave() { if (busy) return false; setBusy(true); return true; },
+    beginSave() { if (busy) return false; invalidatePendingDetail(); setBusy(true); return true; },
     endSave() { setBusy(false); }, get records() { return records; } };
 
 }
