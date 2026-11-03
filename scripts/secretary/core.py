@@ -121,17 +121,34 @@ def automated_checklist(files, jobs, preview, sha):
         )
         yield passed, label
     if application_change(files):
-        passed = (
+        staging_current = (
             preview.get("current") is True
             and preview.get("sha") == sha
             and preview.get("state") == "success"
         )
-        label = (
-            f"Exact-head staging synthetic AI/provenance and saved-report CRUD passed for `{sha}`; the synthetic record was cleaned up."
-            if passed else
-            f"Exact-head staging synthetic AI/provenance and saved-report CRUD has not passed for `{sha}`."
+        crud_passed = (
+            staging_current
+            and preview.get("saved_report_crud") == "passed"
+            and preview.get("record_cleanup") == "confirmed"
         )
-        yield passed, label
+        provider_mode = preview.get("provider_mode", "unknown")
+        label = (
+            f"Exact-head staging saved-report CRUD passed for `{sha}` with `{provider_mode}` provenance; the synthetic record was cleaned up."
+            if crud_passed else
+            f"Exact-head staging saved-report CRUD and cleanup have not passed for `{sha}`."
+        )
+        yield crud_passed, label
+        real_ai_passed = (
+            crud_passed
+            and preview.get("analysis_mode") == "real"
+            and provider_mode in {"gemini", "local", "tfidf"}
+        )
+        ai_label = (
+            f"Non-mock AI acceptance passed on exact-head staging with `{provider_mode}` for `{sha}`."
+            if real_ai_passed else
+            f"Real AI acceptance is not checked: staging used `{provider_mode}`. Mock output is not AI acceptance; no live-provider request was run."
+        )
+        yield real_ai_passed, ai_label
     yield False, "Formal teammate review is a separate required approval; automated checks do not approve or merge the PR."
 
 
@@ -185,3 +202,4 @@ def render(snapshot, ai, now):
         output += ("\n" if table and previous_table else "\n\n") + line
         previous_table = table
     return output.strip()
+

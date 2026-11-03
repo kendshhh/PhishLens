@@ -151,7 +151,7 @@ def smoke(origin, sha):
 
 
 def verify_saved_report(origin, sha):
-    """Run synthetic AI/provenance and saved-report lifecycle checks on exact staging."""
+    """Verify exact-staging CRUD/provenance; preserve whether its provider is mock."""
     command = [
         "node", str(ROOT / "scripts/verify_crud.mjs"),
         "--base-url", origin, "--environment", "staging",
@@ -175,8 +175,13 @@ def verify_saved_report(origin, sha):
         raise RuntimeError("Synthetic saved-report verification returned invalid evidence") from exc
     if not passed:
         raise RuntimeError("Synthetic saved-report verification did not confirm cleanup and provider mode")
-    if analysis_mode != "real" or provider_mode not in {"gemini", "local"}:
-        raise RuntimeError("Mock output is not AI acceptance for the staging checklist")
+    valid_provenance = (
+        analysis_mode == "mock" and provider_mode == "mock"
+    ) or (
+        analysis_mode == "real" and provider_mode in {"gemini", "local", "tfidf"}
+    )
+    if not valid_provenance:
+        raise RuntimeError("Synthetic saved-report verification returned inconsistent AI provenance")
     return result
 
 
@@ -433,15 +438,22 @@ def main():
                             "log_url": log, "auto_inactive": False})
                     else:
                         package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
-                        api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
+                        description = (
+                            f"secretary-crud=passed;analysis={crud['analysisMode']};"
+                            f"provider={crud['analysisProvenance']['providerMode']};cleanup=confirmed"
+                        )
+                        api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "description": description, "log_url": log,
                             "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
                         provider_mode = crud["analysisProvenance"]["providerMode"]
+                        analysis_mode = crud["analysisMode"]
                         action = "success"
-                        message = (
-                            "- [x] Exact PR SHA live; health, readiness, version, and seeded history passed.\n"
-                            f"- [x] Synthetic saved-report AI/provenance and CRUD lifecycle passed (`{provider_mode}` provider); record cleaned up.\n"
-                            f"- [x] Packaged extension browser acceptance passed in CI run `{run['id']}`; see `Extension-Browser-Acceptance`."
-                        )
+                        message = "- [x] Exact PR SHA live; health, readiness, version, and seeded history passed.\n"
+                        message += f"- [x] Synthetic saved-report provenance and CRUD lifecycle passed (`{provider_mode}` provider); record cleaned up.\n"
+                        if analysis_mode == "real":
+                            message += f"- [x] Non-mock AI acceptance passed with `{provider_mode}`.\n"
+                        else:
+                            message += "- [ ] Real AI acceptance is not checked: staging used `mock`. Mock output is not AI acceptance.\n"
+                        message += f"- [x] Packaged extension browser acceptance passed in CI run `{run['id']}`; see `Extension-Browser-Acceptance`."
         except Exception as exc:  # noqa: BLE001 -- fail the exact-SHA check without exposing API bodies
             action = "failure"
             # Only controlled errors are exposed, not upstream exception bodies.

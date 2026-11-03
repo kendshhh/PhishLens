@@ -63,7 +63,10 @@ def fixture():
         "base": {"sha": "b" * 40, "ref": "main", "repo": {"full_name": "kendshhh/PhishLens"}}},
         "files": [{"filename": "extension/js/history.js", "status": "modified", "patch": "@@ -1 +1 @@\n-old\n+new"}],
         "jobs": {n: {"conclusion": "success", "html_url": "https://github.com/kendshhh/PhishLens/actions/runs/1"} for n in CONFIG["required_ci_jobs"]},
-        "preview": {"sha": SHA, "current": True, "state": "success"}, "config": CONFIG, "gaps": [], "issues": {}, "protection": "not available"}
+        "preview": {"sha": SHA, "current": True, "state": "success",
+                    "saved_report_crud": "passed", "analysis_mode": "real",
+                    "provider_mode": "gemini", "record_cleanup": "confirmed"},
+        "config": CONFIG, "gaps": [], "issues": {}, "protection": "not available"}
 
 
 class PolicyTests(unittest.TestCase):
@@ -78,14 +81,24 @@ class PolicyTests(unittest.TestCase):
         snapshot = fixture()
         body = render(snapshot, {"status": "disabled"}, "test")
         self.assertIn("- [x] Packaged extension browser checklist passed", body)
-        self.assertIn("- [x] Exact-head staging synthetic AI/provenance and saved-report CRUD passed", body)
+        self.assertIn("- [x] Exact-head staging saved-report CRUD passed", body)
+        self.assertIn("- [x] Non-mock AI acceptance passed", body)
         self.assertIn("- [ ] Formal teammate review is a separate required approval", body)
 
         snapshot["jobs"]["Extension checks"]["conclusion"] = "failure"
         snapshot["preview"]["current"] = False
         body = render(snapshot, {"status": "disabled"}, "test")
         self.assertIn("- [ ] Packaged extension browser checklist has not passed", body)
-        self.assertIn("- [ ] Exact-head staging synthetic AI/provenance and saved-report CRUD has not passed", body)
+        self.assertIn("- [ ] Exact-head staging saved-report CRUD and cleanup have not passed", body)
+        self.assertIn("- [ ] Real AI acceptance is not checked", body)
+
+    def test_mock_staging_checks_crud_but_never_ai_acceptance(self):
+        snapshot = fixture()
+        snapshot["preview"].update({"analysis_mode": "mock", "provider_mode": "mock"})
+        body = render(snapshot, {"status": "disabled"}, "test")
+        self.assertIn("- [x] Exact-head staging saved-report CRUD passed", body)
+        self.assertIn("- [ ] Real AI acceptance is not checked: staging used `mock`", body)
+        self.assertIn("Mock output is not AI acceptance", body)
 
     def test_failed_cancelled_skipped_checks(self):
         for conclusion in ("failure", "cancelled", "skipped", "timed_out"):
@@ -229,6 +242,21 @@ class ReportTests(unittest.TestCase):
         api = Mock()
         api.request.side_effect = [[{"id": 2, "sha": "c" * 40, "creator": {"login": "github-actions[bot]"}, "payload": {"secretary": 1}}], [{"state": "success"}]]
         self.assertFalse(preview_state(api, CONFIG, SHA)["current"])
+
+    def test_preview_state_preserves_mock_provider_evidence(self):
+        api = Mock()
+        api.request.side_effect = [
+            [{"id": 2, "sha": SHA, "creator": {"login": "github-actions[bot]"},
+              "payload": {"secretary": 1}}],
+            [{"state": "success", "description":
+              "secretary-crud=passed;analysis=mock;provider=mock;cleanup=confirmed"}],
+        ]
+        preview = preview_state(api, CONFIG, SHA)
+        self.assertTrue(preview["current"])
+        self.assertEqual(preview["saved_report_crud"], "passed")
+        self.assertEqual(preview["analysis_mode"], "mock")
+        self.assertEqual(preview["provider_mode"], "mock")
+        self.assertEqual(preview["record_cleanup"], "confirmed")
 
 
 class GitHubPaginationTests(unittest.TestCase):
@@ -528,4 +556,5 @@ class MetricsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 

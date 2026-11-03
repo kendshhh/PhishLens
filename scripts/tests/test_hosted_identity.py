@@ -48,10 +48,10 @@ class HostedIdentityTests(unittest.TestCase):
             output_dir = root / "output/hosted-staging"
             output_dir.mkdir(parents=True)
             evidence = crud_result or {
-                "result": "passed", "cleanedUp": True, "analysisMode": "real",
+                "result": "passed", "cleanedUp": True, "analysisMode": "mock",
                 "analysisProvenance": {
-                    "providerMode": "gemini", "model": "synthetic-model",
-                    "modelRevision": "test-revision", "promptVersion": "test-prompt",
+                    "providerMode": "mock", "model": None,
+                    "modelRevision": None, "promptVersion": None,
                 },
             }
             (output_dir / "saved-report-crud.json").write_text(json.dumps(evidence), encoding="utf-8")
@@ -66,6 +66,7 @@ class HostedIdentityTests(unittest.TestCase):
                 "GITHUB_STEP_SUMMARY": str(summary_file),
                 "STAGING_BASE_URL": config["staging_origin"],
                 "STAGING_COMMIT": "b" * 40,
+                "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
                 "STAGING_PR_HEAD_SHA": SHA,
                 "STAGING_PR": "68",
             }
@@ -86,6 +87,8 @@ class HostedIdentityTests(unittest.TestCase):
                     except RuntimeError as error:
                         exit_code = 1
                         step_error = str(error)
+                    else:
+                        exit_code = 0
             finally:
                 os.chdir(previous_dir)
 
@@ -142,14 +145,24 @@ class HostedIdentityTests(unittest.TestCase):
         )()), self.assertRaisesRegex(RuntimeError, "did not confirm cleanup"):
             verify_saved_report("https://staging.invalid", SHA)
 
-    def test_saved_report_runner_rejects_mock_as_ai_acceptance(self):
+    def test_saved_report_runner_preserves_mock_mode_for_checklist(self):
         result = {
             "result": "passed", "cleanedUp": True, "analysisMode": "mock",
             "analysisProvenance": {"providerMode": "mock"},
         }
         with patch("scripts.secretary.preview.subprocess.run", return_value=type(
             "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
-        )()), self.assertRaisesRegex(RuntimeError, "Mock output is not AI acceptance"):
+        )()):
+            self.assertEqual(verify_saved_report("https://staging.invalid", SHA), result)
+
+    def test_saved_report_runner_rejects_inconsistent_mode_and_provider(self):
+        result = {
+            "result": "passed", "cleanedUp": True, "analysisMode": "real",
+            "analysisProvenance": {"providerMode": "mock"},
+        }
+        with patch("scripts.secretary.preview.subprocess.run", return_value=type(
+            "Completed", (), {"returncode": 0, "stdout": json.dumps(result)}
+        )()), self.assertRaisesRegex(RuntimeError, "inconsistent AI provenance"):
             verify_saved_report("https://staging.invalid", SHA)
 
     def test_wrong_commit_fails(self):
@@ -275,7 +288,7 @@ class HostedIdentityTests(unittest.TestCase):
                 self.assertFalse(result["evidence_exists"])
                 self.assertFalse(result["package_exists"])
 
-    def test_hosted_finalizer_rejects_mock_evidence(self):
+    def test_hosted_finalizer_checks_mock_crud_but_not_ai_acceptance(self):
         marker = "      - name: Verify deployed merge identity and package staging assets"
         current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
         mock_result = {
@@ -285,13 +298,20 @@ class HostedIdentityTests(unittest.TestCase):
                 "modelRevision": None, "promptVersion": None,
             },
         }
-        result = self.run_workflow_python(marker, [current_pr], crud_result=mock_result)
+        def package_effect(_api, _sha, _number, _config, output):
+            Path(output).write_bytes(b"synthetic staging package")
 
-        self.assertEqual(result["exit_code"], 1)
-        self.assertIn("non-mock AI provenance", result["step_error"])
-        self.assertNotIn("current=true", result["output"])
-        self.assertFalse(result["evidence_exists"])
-        self.assertFalse(result["package_exists"])
+        result = self.run_workflow_python(
+            marker, [current_pr, current_pr, current_pr], package_effect, crud_result=mock_result
+        )
+
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("current=true", result["output"])
+        self.assertIn("saved-report CRUD/provenance passed (`mock` provider", result["summary"])
+        self.assertIn("Real AI acceptance is not checked", result["summary"])
+        self.assertNotIn("[x] Non-mock AI acceptance", result["summary"])
+        self.assertTrue(result["evidence_exists"])
+        self.assertTrue(result["package_exists"])
 
     def test_draft_pr_is_skipped_before_approval_and_verification(self):
         current_draft = {"state": "open", "head": {"sha": SHA}, "draft": True}

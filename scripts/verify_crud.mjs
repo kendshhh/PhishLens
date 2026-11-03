@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { createAnalysisClient } from '../extension/js/api.js';
 
 const ANALYSIS_MODES = new Set(['mock', 'real']);
-const PROVIDER_MODES = new Set(['mock', 'gemini', 'local']);
+const PROVIDER_MODES = new Set(['mock', 'gemini', 'local', 'tfidf']);
 const PROVENANCE_FIELDS = [
     'provider_mode', 'model', 'model_revision', 'prompt_version',
     'explanation_source', 'input_truncated', 'windows_processed'
@@ -87,7 +87,7 @@ export async function verifyTarget(baseUrl, options) {
 export async function verifyCrud(baseUrl, options = {}) {
     const target = await verifyTarget(baseUrl, options);
     const client = createAnalysisClient(target.baseUrl, target.safeFetch);
-    const requireRealAI = options.environment === 'staging' || options.requireRealAI === true;
+    const requireRealAI = options.requireRealAI === true;
     const subject = 'Synthetic CRUD check ' + crypto.randomUUID();
     const body = 'Synthetic test email. No real user data or credentials.';
     let created;
@@ -151,7 +151,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         const result = await verifyCrud(value('--base-url'), {
             environment: value('--environment'),
             expectedSha: value('--expected-sha'),
-            allowWrites: args.includes('--allow-writes')
+            allowWrites: args.includes('--allow-writes'),
+            requireRealAI: args.includes('--require-real-ai')
         });
         console.log(JSON.stringify(result, null, 2));
     } catch (error) {

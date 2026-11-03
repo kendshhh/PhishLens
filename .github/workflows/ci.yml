@@ -579,11 +579,16 @@ jobs:
           evidence = smoke(config['staging_origin'], deploy_sha)
           crud = json.loads((output / 'saved-report-crud.json').read_text())
           provenance = crud.get('analysisProvenance')
+          provider_mode = provenance.get('providerMode') if isinstance(provenance, dict) else None
+          analysis_mode = crud.get('analysisMode')
+          valid_provenance = (
+              analysis_mode == 'mock' and provider_mode == 'mock'
+          ) or (
+              analysis_mode == 'real' and provider_mode in {'gemini', 'local', 'tfidf'}
+          )
           if (crud.get('result') != 'passed' or crud.get('cleanedUp') is not True
-                  or crud.get('analysisMode') != 'real'
-                  or not isinstance(provenance, dict)
-                  or provenance.get('providerMode') not in {'gemini', 'local'}):
-              raise RuntimeError('The staging checklist requires real, non-mock AI provenance and confirmed cleanup.')
+                  or not valid_provenance):
+              raise RuntimeError('The staging CRUD check requires consistent provider provenance and confirmed cleanup.')
           if superseded():
               raise SystemExit(0)
           try:
@@ -598,14 +603,19 @@ jobs:
               'migration_revision': os.environ['STAGING_MIGRATION_REVISION'],
               'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
               'automated_checklist': {
-                  'saved_report_ai_and_crud': {
+              'saved_report_crud': {
                       'result': 'passed',
                       'analysis_mode': crud['analysisMode'],
-                      'provider_mode': crud['analysisProvenance']['providerMode'],
+                  'provider_mode': provider_mode,
+                  'cleaned_up': crud['cleanedUp'],
+              },
+              'real_ai_acceptance': {
+                  'result': 'passed' if analysis_mode == 'real' else 'not_verified',
+                  'analysis_mode': analysis_mode,
+                  'provider_mode': provider_mode,
                       'model': crud['analysisProvenance']['model'],
                       'model_revision': crud['analysisProvenance']['modelRevision'],
                       'prompt_version': crud['analysisProvenance']['promptVersion'],
-                      'cleaned_up': crud['cleanedUp'],
                   },
                   'packaged_extension_browser': {
                       'result': 'passed',
@@ -621,7 +631,11 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
               summary.write('- [x] Health, readiness, version, seeded history, and staging package passed.\n')
-              summary.write(f"- [x] Synthetic saved-report AI/provenance and CRUD lifecycle passed (`{crud['analysisProvenance']['providerMode']}` provider; record cleaned up).\n")
+              summary.write(f"- [x] Synthetic saved-report CRUD/provenance passed (`{provider_mode}` provider; record cleaned up).\n")
+              if analysis_mode == 'real':
+                  summary.write(f"- [x] Non-mock AI acceptance passed with `{provider_mode}`.\n")
+              else:
+                  summary.write('- [ ] Real AI acceptance is not checked: staging used `mock`. Mock output is not AI acceptance.\n')
               summary.write(f'- [x] Packaged extension browser checklist passed for `{pr_head_sha}` in `Extension-Browser-Acceptance` (tested checkout `{deploy_sha}`).\n')
           PY
       - name: Preserve hosted staging evidence and extension
