@@ -16,9 +16,11 @@ The local/package checks and staging API run documented below are historical sna
 
 ## New Chrome screenshots supplied 2026-11-03
 
-The following screenshots were supplied by the tester and copied into this evidence directory. The matching preview evidence identifies PR #61 source SHA `efed115457dc4fdc212f6205199096266a71e9f1`; its preview smoke and the supplied staging `/version` both report that same SHA. The staging deployment identifier was `dep-dbkvbjjncjis73feqai0`. These values identify the reported build, but the extension ZIP itself was not present in this checkout or Downloads, so its inner ZIP SHA-256 is **not recorded**. Do not treat the screenshot set as package-hash verification.
+The following screenshots were supplied by the tester and copied into this evidence directory. The matching preview evidence identifies PR #61 source SHA `efed115457dc4fdc212f6205199096266a71e9f1`; its preview smoke and the supplied staging `/version` both reported that same SHA. The staging deployment identifier was `dep-dbkvbjjncjis73feqai0`.
 
-The tester reported Windows 11 64-bit, Chrome Update stream Early Access, Core `138.0.6044.65`, and Chromium `154.0.8037.99`. Confirm the exact browser version from `chrome://version` before final acceptance. The package metadata says `package_status: partial` and excludes `model-assets/llama/`; the local LLM judge was unavailable or unusable in the captured result. This is local scan/UI evidence, not real local Llama or complete AI acceptance.
+Follow-up identity check on 2026-11-04 (Asia/Manila): the downloaded inner ZIP was found at `Downloads/Veriqo-Staging-Extension/Veriqo-Staging-Extension.zip`. Its SHA-256 is `221bb5c3c36089ecee3568d378f30cc66d273ff40ae0054770d8636348f994b8`. Chrome `chrome://version` reported Google Chrome `156.0.8078.80` (Official Build, 64-bit) on Windows 11 25H2. The live staging `/version` page was opened in Edge immediately before the planned test and returned `{"commit":"efed115457dc4fdc212f6205199096266a71e9f1","environment":"staging"}`, matching the package source SHA. The package was not yet loaded into Chrome and no CRUD interaction was performed in this follow-up.
+
+The tester initially reported Windows 11 64-bit, Chrome Update stream Early Access, Core `138.0.6044.65`, and Chromium `154.0.8037.99`. A later direct `chrome://version` check for this acceptance run reported Google Chrome `156.0.8078.80` (Official Build, 64-bit), Windows 11 25H2. The package metadata says `package_status: partial` and excludes `model-assets/llama/`; the local LLM judge was unavailable or unusable in the captured result. This is local scan/UI evidence, not real local Llama or complete AI acceptance.
 
 | Screenshot | What it shows | SHA-256 |
 |---|---|---|
@@ -36,8 +38,8 @@ The tester also reported that saving is disabled until the server has the matchi
 | PR source SHA | `efed115457dc4fdc212f6205199096266a71e9f1` |
 | Staging `/version` SHA immediately before the supplied run | `efed115457dc4fdc212f6205199096266a71e9f1` (tester supplied) |
 | Preview smoke / deployment | Passed for that SHA; deployment `dep-dbkvbjjncjis73feqai0` |
-| Extension inner ZIP SHA-256 | Not available; matching ZIP was not found locally |
-| Browser version | Tester reported Core `138.0.6044.65`, Chromium `154.0.8037.99`; confirm at `chrome://version` |
+| Extension inner ZIP SHA-256 | `221bb5c3c36089ecee3568d378f30cc66d273ff40ae0054770d8636348f994b8` |
+| Browser version | Chrome `156.0.8078.80` Official Build (64-bit), confirmed at `chrome://version`; Windows 11 25H2 |
 | Selected-text analysis | Local scan/result UI captured; full review not confirmed; local LLM unavailable |
 | Save / CRUD | Save was blocked/timed out; successful create/view/edit/delete not evidenced |
 | Notes/feedback persistence and deleted-record absence after reopen | Pending |
@@ -123,7 +125,7 @@ Still pending:
 - Confirm saved notes and feedback persist after closing and reopening the popup.
 - Confirm a deleted record remains absent after closing and reopening the popup.
 - Capture redacted Network evidence with request methods, paths, statuses, and response envelopes. Exclude cookies, authorization values, tokens, and personal data.
-- Record the exact package SHA-256, Chrome version, and package-to-source identity for the browser run.
+- Complete the browser run using the identified package; the ZIP SHA-256, Chrome version, and package-to-source identity have now been recorded above, but no Chrome interaction has yet been performed.
 
 The earlier 2026-10-22 screenshots have been superseded in the PR description. The new images are useful visual evidence, but they do not satisfy the pending persistence or Network checks.
 
@@ -138,6 +140,7 @@ The earlier 2026-10-22 screenshots have been superseded in the PR description. T
 | Persistence after popup reopen | Pending |
 | Deletion absence after popup reopen | Pending |
 | Network evidence | Pending |
+| 2026-11-04 package/staging/browser identity | ZIP SHA-256 and Chrome `156.0.8078.80` recorded above; staging SHA matched package source SHA `efed115457dc4fdc212f6205199096266a71e9f1`; Chrome package not loaded and CRUD not performed |
 | Existing PR screenshots | Earlier revision; links and scope recorded above |
 | Public presentation arrangement | Pending Kendra/instructor confirmation |
 | Reviewer / required checks / board update | Pending; no merge or deployment claim |
