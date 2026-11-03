@@ -1,0 +1,66 @@
+{
+  "create": {
+    "subject": "",
+    "body": "Synthetic account notice. Verify with the sender."
+  },
+  "patch": {
+    "notes": "Reviewed synthetic example",
+    "feedback": null
+  },
+  "detail": {
+    "id": "29d80c39-ec0d-4db8-a6e5-87444ba2600c",
+    "subject": "",
+    "body": "Synthetic account notice. Verify with the sender.",
+    "prediction": "spam",
+    "confidence": null,
+    "risk_level": "medium",
+    "threat_indicators": [
+      {
+        "type": "evidence",
+        "quote": "Synthetic account notice.",
+        "detail": "Synthetic example indicator"
+      }
+    ],
+    "explanation": "Recommendations: verify with the sender.",
+    "created_at": "2026-11-02T01:00:00Z",
+    "notes": null,
+    "feedback": null,
+    "analysis_mode": "mock",
+    "analysis_provenance": {
+      "provider_mode": "mock",
+      "model": null,
+      "model_revision": null,
+      "prompt_version": null,
+      "explanation_source": "mock",
+      "input_truncated": false,
+      "windows_processed": 1
+    }
+  },
+  "savedError": {
+    "detail": "Email analysis is temporarily unavailable",
+    "code": "analysis_unavailable"
+  },
+  "historyError": {
+    "detail": "History temporarily unavailable"
+  },
+  "list": {
+    "items": [
+      {
+        "id": "29d80c39-ec0d-4db8-a6e5-87444ba2600c",
+        "subject": "",
+        "prediction": "spam",
+        "confidence": null,
+        "risk_level": "medium",
+        "threat_indicators": [
+          {
+            "type": "evidence",
+            "quote": "Synthetic account notice.",
+            "detail": "Synthetic example indicator"
+          }
+        ],
+        "explanation": "Recommendations: verify with the sender.",
+        "created_at": "2026-11-02T01:00:00Z"
+      }
+    ]
+  }
+}
