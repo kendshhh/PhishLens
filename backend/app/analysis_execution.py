@@ -74,7 +74,7 @@ def run_saved_inference(
     """Return timely, validated output without accessing the database."""
     deadline.inference_remaining()
 
-    if mode not in {"mock", "gemini"}:
+    if mode not in {"mock", "gemini", "tfidf"}:
         raise AnalysisUnavailableError("Analysis provider unavailable")
     if mode == "gemini" and (not api_key or not model):
         raise AnalysisUnavailableError("Analysis provider unavailable")

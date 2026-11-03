@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.verify_extension_package import verify
+from scripts.verify_extension_package import ASSETS, verify
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
@@ -32,7 +32,8 @@ class PackageIdentityTests(unittest.TestCase):
         self.revision = self.git("rev-parse", "HEAD").strip()
 
     def copy_inputs(self, destination):
-        shutil.copytree(SOURCE_ROOT / "extension", destination / "extension")
+        shutil.copytree(SOURCE_ROOT / "extension", destination / "extension",
+                        ignore=shutil.ignore_patterns("model-assets"))
         (destination / "scripts").mkdir(parents=True)
         for name in ("package_extension.py", "validate_extension.py"):
             shutil.copyfile(SOURCE_ROOT / "scripts" / name, destination / "scripts" / name)
@@ -69,7 +70,7 @@ class PackageIdentityTests(unittest.TestCase):
         self.assertEqual(evidence["tested_commit"], self.revision)
         self.assertIs(evidence["runtime_or_packaging_changes"], False)
         self.assertEqual(verify(path.with_name("PhishLens-Extension.zip"), path,
-                                self.revision)["files_verified"], 10)
+                                self.revision)["files_verified"], len(ASSETS))
 
     def test_staged_and_unstaged_runtime_changes_are_dirty(self):
         asset = self.root / "extension/popup.css"
@@ -118,4 +119,4 @@ class PackageIdentityTests(unittest.TestCase):
         self.assertEqual(evidence["tested_commit"], self.revision)
         self.assertIs(evidence["runtime_or_packaging_changes"], False)
         self.assertEqual(verify(path.with_name("PhishLens-Extension.zip"), path,
-                                source_head)["files_verified"], 10)
+                                source_head)["files_verified"], len(ASSETS))

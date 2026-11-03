@@ -99,8 +99,22 @@ async def create_analysis(
         min_length=1,
         max_length=255,
     ),
+    required_model: str | None = Header(default=None, alias="X-PhishLens-Model", max_length=64),
 ) -> SavedAnalysisDetail | JSONResponse:
     deadline = AnalysisDeadline.start()
+
+    # An extension save must never silently invoke a cloud/mock provider. Keep
+    # the existing body contract server-owned, including when deployment changes.
+    if required_model is not None or request.local_review is not None:
+        try:
+            from backend.ai.tfidf_provider import MODEL_SHA256, load_artifact
+
+            mode, _, _ = get_ai_config()
+            if mode != "tfidf" or (required_model is not None and required_model != MODEL_SHA256):
+                raise RuntimeError("Model mismatch")
+            load_artifact()
+        except (RuntimeError, OSError, ValueError, KeyError):
+            return _error(503, "analysis_unavailable", "The matching TF-IDF save service is unavailable")
 
     if idempotency_key is not None and not _IDEMPOTENCY_KEY_PATTERN.fullmatch(
         idempotency_key
@@ -155,7 +169,7 @@ async def create_analysis(
             "Email analysis is temporarily unavailable",
         )
 
-    if mode not in {"mock", "gemini"}:
+    if mode not in {"mock", "gemini", "tfidf"}:
         return _error(
             503,
             "analysis_unavailable",

@@ -1,0 +1,114 @@
+{
+  "purpose": "one software fixture, actual local LLM; not a new benchmark",
+  "recorded_at": "2026-10-29T15:56:12.181Z",
+  "checks": [
+    "Unpacked extension with offscreen permission loaded"
+  ],
+  "reserved_records_opened": 0,
+  "chrome": "156.0.8078.73",
+  "stages_observed": [
+    "Verifying local LLM weights",
+    "Verified local LLM weights",
+    "Preparing the local LLM",
+    "success",
+    "Local LLM judge",
+    "success"
+  ],
+  "scan_status": "success",
+  "workflow": {
+    "all_stages_required": true,
+    "elapsed_ms": 38257.29999999702,
+    "judge": {
+      "audit": "unsupported",
+      "backend": "webgpu",
+      "evidence_id": "q0",
+      "explanation_origin": "deterministic_English_from_LLM_selected_rubric",
+      "generated_tokens": 13,
+      "input_tokens": 311,
+      "missing_context": false,
+      "model_id": "onnx-community/Llama-3.2-1B-Instruct-ONNX",
+      "model_revision": "14007543b6dc92de88daf96a9aa85d2f95ace6ef",
+      "prompt_version": "phishlens-live-judge-1",
+      "quote": "Team meeting tomorrow at ten.",
+      "reason": "The judge found a mismatch between the wording and the preliminary finding. The system keeps the disagreement visible instead of releasing a reviewed verdict.",
+      "reason_code": "inconsistent_finding",
+      "seed": 42,
+      "seed_passed_to_runtime": true,
+      "temperature": 0,
+      "valid": true
+    },
+    "primary_alert": false,
+    "reasons": [
+      "The judge found a mismatch between the wording and the preliminary finding. The system keeps the disagreement visible instead of releasing a reviewed verdict."
+    ],
+    "reevaluators": [
+      {
+        "alert": false,
+        "cutoff": 0,
+        "kind": "tfidf",
+        "model_id": "word_plus_char_wb_C1p0",
+        "raw_margin": -3.0126075503978598,
+        "score": 0.056984927382496935,
+        "sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+        "threshold_score": 0.8871260470833809,
+        "valid": true
+      },
+      {
+        "alert": false,
+        "cutoff": 0.1661702515033329,
+        "kind": "krr",
+        "model_id": "krr_live_review_20261029",
+        "raw_margin": 0.1138566778260562,
+        "score": 0.010809811598222942,
+        "sha256": "4867c1cccae2b6eb65ecf311d8fbd11fc7dee64295c33693980bfe5fca8c2b02",
+        "threshold_score": 0.026648516427481415,
+        "valid": true
+      },
+      {
+        "alert": false,
+        "cutoff": -2.6751797520437224,
+        "kind": "lightgbm",
+        "model_id": "lightgbm_live_review_20261029",
+        "raw_margin": -3.170843275754796,
+        "score": 0.049330521968233655,
+        "sha256": "c1096eccd72b5d839d98b59f0b34e7e1826f862ff24c608e12146b9df3f6c606",
+        "threshold_score": 0.110268155242875,
+        "valid": true
+      }
+    ],
+    "released": false,
+    "score_semantics": "primary_TFIDF_research_score_not_ensemble_probability",
+    "status": "uncertain",
+    "version": "phishlens-live-review-1"
+  },
+  "primary_score": 0.056984927382496935,
+  "error": null,
+  "runtime_diagnostic": {
+    "generated_tokens": 13,
+    "input_tokens": 311,
+    "phase": "judge_output",
+    "raw": "{\"r\":\"I\",\"q\":\"q0\"}",
+    "seed_passed": true
+  },
+  "external_request_hosts": [],
+  "console_errors": [],
+  "actual_judge_output_valid": true,
+  "all_three_reevaluators": true,
+  "full_workflow_completed": true,
+  "warm_software_check": {
+    "status": "uncertain",
+    "judge_valid": true,
+    "generated_tokens": 13,
+    "elapsed_ms": 4382.5,
+    "reevaluators": 3
+  },
+  "intercepted_api_software_check": {
+    "explicit_consent": true,
+    "create_reread_history": true,
+    "notes_feedback_delete": true,
+    "review_metadata": true,
+    "database_persistence_tested": false
+  },
+  "cancel_cleared_active_review": true,
+  "temporary_profile_removed": true
+}

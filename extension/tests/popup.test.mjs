@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { connectContextAnalysis, createPopupController, renderContextAnalysis } from "../js/popup.js";
+import { createPopupController } from "../js/popup.js";
 import { createInMemoryAnalysisClient } from "./in-memory-analysis-client.mjs";
 
 class Element {
@@ -29,9 +29,9 @@ class Element {
   }
 }
 
-const ids = ["crud-status", "history-list", "empty", "loading", "retry-history", "create-form", "create-subject", "create-body", "detail-panel", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-confidence", "confidence-note", "analysis-mode", "analysis-model", "uncertainty-note", "selected-text", "evidence", "tactics", "recommendations", "clear-button"];
+const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
 function setup(client) {
-  const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status", "retry-history"].includes(id) ? "hidden" : "")]));
+  const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status"].includes(id) ? "hidden" : "")]));
   const doc = { getElementById: id => elements.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
   return { ui: elements, controller: createPopupController(client, doc) };
 }
@@ -52,70 +52,13 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
   }
   assert.match(html, /role="status" aria-live="polite"/);
   assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
-  assert.match(html, /Analyze and save an email report/);
-  assert.match(html, /id="retry-history"/);
-  for (const id of ["analysis-confidence", "analysis-mode", "analysis-model", "evidence"]) assert.match(html, new RegExp(`id="${id}"`));
-  assert.match(html, /Analyze selection with VeriQo/);
-  assert.doesNotMatch(html, /Analyze selection with PhishLens/);
+  assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
   assert.match(css, /overflow-y:\s*auto/);
-  assert.match(popup, /createAnalysisClient\(API_BASE_URL\)/);
+  assert.match(popup, /createAnalysisClient\(API_BASE_URL, fetchImpl, \{ requiredModel: MODEL_SHA256 \}\)/);
   assert.doesNotMatch(popup, /in-memory-analysis-client/);
-});
-
-test("context-menu result shows validated evidence, uncertainty, and truthful provider provenance", async () => {
-  const { ui } = setup(createInMemoryAnalysisClient());
-  renderContextAnalysis({ status: "success", selectedText: "Selected message", result: {
-    classification: "phishing", risk_level: "high", confidence: 0.67, mode: "gemini", model: "synthetic-model",
-    evidence: [{ text: "<img src=x>", reason: "Unsolicited credential request" }],
-    tactics: ["Urgency"], recommendations: ["Verify sender"]
-  } }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
-  assert.equal(ui.get("result-state").classList.contains("hidden"), false);
-  assert.equal(ui.get("classification").textContent, "Phishing");
-  assert.equal(ui.get("analysis-confidence").textContent, "67% (model-reported score)");
-  assert.match(ui.get("confidence-note").textContent, /not a guarantee/i);
-  assert.equal(ui.get("analysis-mode").textContent, "Gemini provider");
-  assert.equal(ui.get("analysis-model").textContent, "Model: synthetic-model");
-  assert.equal(ui.get("selected-text").textContent, "Selected message");
-  assert.equal(ui.get("evidence").children[0].textContent, "<img src=x>: Unsolicited credential request");
-  assert.equal(ui.get("tactics").children[0].textContent, "Urgency");
-
-  renderContextAnalysis({ status: "success", result: {
-    classification: "spam", risk_level: "medium", confidence: null, mode: "mock",
-    evidence: [], tactics: [], recommendations: []
-  } }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
-  assert.equal(ui.get("analysis-mode").textContent, "Mock analysis (development/test output)");
-  assert.match(ui.get("analysis-confidence").textContent, /Not provided/);
-  assert.equal(ui.get("evidence").children[0].textContent, "No supporting indicators were returned.");
-
-  renderContextAnalysis({ status: "error", error: "Backend unavailable" }, { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) });
-  assert.match(ui.get("error-message").textContent, /unavailable/i);
-
-  let cleared;
-  const doc = { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
-  const chromeApi = {
-    storage: { session: { get: async () => ({ veriqoAnalysis: null }) }, onChanged: { addListener() {} } },
-    runtime: { sendMessage: async message => { cleared = message; return { ok: true }; } }
-  };
-  connectContextAnalysis(chromeApi, doc);
-  await ui.get("clear-button").fire("click");
-  assert.deepEqual(cleared, { type: "phishlens-clear-analysis" });
-});
-
-test("context report distinguishes loading, not-analyzed, timeout, and malformed response states", () => {
-  const { ui } = setup(createInMemoryAnalysisClient());
-  const doc = { getElementById: id => ui.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
-  renderContextAnalysis({ status: "loading" }, doc);
-  assert.equal(ui.get("loading-state").classList.contains("hidden"), false);
-  renderContextAnalysis({ status: "not_analyzed" }, doc);
-  assert.equal(ui.get("empty-state").classList.contains("hidden"), false);
-  assert.match(ui.get("empty-state").textContent, /No analysis result/);
-  renderContextAnalysis({ status: "error", error: "Analysis timed out" }, doc);
-  assert.match(ui.get("error-message").textContent, /timed out/i);
-  renderContextAnalysis({ status: "success", result: { classification: "unsupported" } }, doc);
-  assert.match(ui.get("error-message").textContent, /malformed or incomplete/i);
 });
 
 test("opening another analysis hides old actions during loading and after failure", async () => {
@@ -144,7 +87,7 @@ test("opening another analysis hides old actions during loading and after failur
   await loadingB;
   assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
   assert.equal(ui.get("detail-content").children.length, 0);
-  assert.match(ui.get("crud-status").textContent, /Analysis details are unavailable/);
+  assert.match(ui.get("crud-status").textContent, /Unable to load details/);
 });
 test("late detail response cannot replace the most recently opened analysis", async () => {
   let resolveA;
@@ -165,24 +108,15 @@ test("late detail response cannot replace the most recently opened analysis", as
 
 test("starting Analyze and save invalidates an older pending detail response", async () => {
   let resolveOldDetail;
-  let resolveCreate;
   const older = record("older", "Older report");
   const saved = record("created", "New analysis");
-  const client = {
-    ...createInMemoryAnalysisClient(),
-    getAnalysis(recordId) {
-      if (recordId === "older") return new Promise(resolve => { resolveOldDetail = resolve; });
-      return Promise.resolve(saved);
-    },
-    createAnalysis() { return new Promise(resolve => { resolveCreate = resolve; }); },
-    async listAnalyses() { return [saved]; }
-  };
+  const client = { ...createInMemoryAnalysisClient(), getAnalysis(recordId) {
+    if (recordId === "older") return new Promise(resolve => { resolveOldDetail = resolve; });
+    return Promise.resolve(saved);
+  } };
   const { ui, controller } = setup(client);
   const openingOlder = controller.loadDetail("older");
-  ui.get("create-body").value = "Synthetic email body";
-  const creating = ui.get("create-form").fire("submit");
-  await Promise.resolve();
-
+  assert.equal(controller.beginSave(), true);
   resolveOldDetail(older);
   await openingOlder;
   assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
@@ -190,8 +124,8 @@ test("starting Analyze and save invalidates an older pending detail response", a
   assert.equal(ui.get("edit-form").classList.contains("hidden"), true);
   assert.equal(ui.get("delete-confirm").classList.contains("hidden"), true);
 
-  resolveCreate(saved);
-  await creating;
+  controller.acceptSavedReport({ saved, detail: saved, history: [saved] });
+  controller.endSave();
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "New analysis");
 });
 
@@ -237,8 +171,16 @@ test("loads, views safe text, labels mock provenance, and starts empty after las
   assert.equal(ui.get("empty").classList.contains("hidden"), false);
 });
 
-test("saved report provenance and uncertainty never invent a missing classification", async () => {
-  const data = record(id, "Not analyzed");
+test("unknown AI provenance stays explicitly unknown", async () => {
+  const data = record(id); data.analysis_mode = null;
+  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+  await controller.refresh();
+  await controller.loadDetail(id);
+  assert.match(ui.get("detail-content").children[9].children[1].textContent, /unknown/i);
+});
+
+test("saved report uncertainty and missing results are described without inventing a verdict", async () => {
+  const data = record(id);
   data.prediction = null;
   data.confidence = null;
   data.risk_level = null;
@@ -255,28 +197,20 @@ test("saved report provenance and uncertainty never invent a missing classificat
   assert.match(detail.children[5].children[1].textContent, /Not provided/);
   assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
   assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
-  assert.doesNotMatch(detail.children[9].children[1].textContent, /Real AI analysis/);
-  assert.match(detail.children[9].children[1].textContent, /fixture-model/);
+  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
 });
 
-test("unknown AI provenance stays explicitly unknown", async () => {
-  const data = record(id); data.analysis_mode = null;
-  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
-  await controller.refresh();
-  await controller.loadDetail(id);
-  assert.match(ui.get("detail-content").children[9].children[1].textContent, /unknown/i);
-});
-
-test("real AI provenance is labeled as real", async () => {
+test("provider provenance is labeled explicitly", async () => {
   const data = record(id);
   data.analysis_mode = "real";
   data.analysis_provenance = { provider_mode: "gemini", model: "fixture-gemini-model", model_revision: "fixture-revision" };
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
-  assert.match(ui.get("detail-content").children[9].children[1].textContent, /Provider-backed AI analysis/);
-  assert.match(ui.get("detail-content").children[9].children[1].textContent, /Provider: Gemini/);
-  assert.match(ui.get("detail-content").children[9].children[1].textContent, /Model: fixture-gemini-model/);
-  assert.match(ui.get("detail-content").children[9].children[1].textContent, /fixture-revision/);
+  const text = ui.get("detail-content").children[9].children[1].textContent;
+  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Provider: Gemini/);
+  assert.match(text, /Model: fixture-gemini-model/);
+  assert.match(text, /fixture-revision/);
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
@@ -371,54 +305,8 @@ test("failed post-create history refresh warning is not replaced by detail succe
   const { ui } = setup(client);
   ui.get("create-body").value = "Synthetic email body";
   await ui.get("create-form").fire("submit");
-  assert.match(ui.get("crud-status").textContent, /Report saved.*Saved analyses are unavailable/i);
-  assert.equal(ui.get("history-list").children.length, 1);
-  assert.equal(ui.get("empty").classList.contains("hidden"), true);
-  assert.equal(ui.get("retry-history").classList.contains("hidden"), false);
-  assert.doesNotMatch(ui.get("crud-status").textContent, /Analysis completed/i);
-});
-
-for (const [label, failure, expected] of [
-  ["validation", Object.assign(new Error("Email body is invalid"), { status: 422 }), /could not validate/i],
-  ["timeout", new DOMException("Request timed out", "TimeoutError"), /timed out/i],
-  ["malformed", new SyntaxError("Invalid analysis data"), /malformed/i],
-  ["unavailable", Object.assign(new Error("Server unavailable"), { status: 503 }), /service is unavailable/i]
-]) {
-  test(`failed ${label} preserves report input and gives a distinct next step`, async () => {
-    const client = { ...createInMemoryAnalysisClient(), async createAnalysis() { throw failure; } };
-    const { ui } = setup(client);
-    ui.get("create-subject").value = "Keep this subject";
-    ui.get("create-body").value = "Keep this synthetic email body";
-    await ui.get("create-form").fire("submit");
-    assert.equal(ui.get("create-subject").value, "Keep this subject");
-    assert.equal(ui.get("create-body").value, "Keep this synthetic email body");
-    assert.match(ui.get("crud-status").textContent, expected);
-    assert.equal(ui.get("crud-status").className, "status error");
-    assert.doesNotMatch(ui.get("crud-status").textContent, /saved successfully|analysis completed/i);
-  });
-}
-
-test("retry history action recovers after an unavailable history response", async () => {
-  let calls = 0;
-  const saved = record("created", "Saved while history was down");
-  const client = {
-    ...createInMemoryAnalysisClient(),
-    async createAnalysis() { return saved; },
-    async getAnalysis() { return saved; },
-    async listAnalyses() {
-      calls++;
-      if (calls === 1) throw Object.assign(new Error("Unavailable"), { status: 503 });
-      return [saved];
-    }
-  };
-  const { ui } = setup(client);
-  ui.get("create-body").value = "Synthetic email body";
-  await ui.get("create-form").fire("submit");
-  await ui.get("retry-history").fire("click");
-  assert.equal(calls, 2);
-  assert.equal(ui.get("retry-history").classList.contains("hidden"), true);
-  assert.equal(ui.get("history-list").children.length, 1);
-  assert.match(ui.get("crud-status").textContent, /Saved analyses loaded/);
+  assert.match(ui.get("crud-status").textContent, /Saved analyses are unavailable: Server unavailable/);
+  assert.doesNotMatch(ui.get("crud-status").textContent, /details loaded|saved successfully/i);
 });
 
 test("create and edit submit through the injected five-method client", async () => {

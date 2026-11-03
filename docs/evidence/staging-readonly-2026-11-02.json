@@ -1,0 +1,14 @@
+{
+  "recordedAt": "2026-11-02T10:48:14.346Z",
+  "origin": "https://phishlens-staging.onrender.com",
+  "expectedCommit": "3004eb7029c0f5757f10d79c4263a4605765738f",
+  "scope": "Read-only current-state probe; no records changed. Does not reconstruct the earlier failure.",
+  "results": [
+    { "path": "/health", "status": 200, "body": { "status": "ok", "service": "phishlens-api" } },
+    { "path": "/ready", "status": 200, "body": { "status": "ready", "database": "connected" } },
+    { "path": "/version", "status": 200, "body": {
+      "commit": "a690466f1483fbcd8d092aafdba47aeff177b87f", "environment": "staging"
+    } },
+    { "path": "/api/analyses", "status": 200, "validEnvelope": true, "seedPresent": true }
+  ]
+}

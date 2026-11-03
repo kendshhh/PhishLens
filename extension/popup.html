@@ -1,53 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PhishLens</title>
-  <link rel="stylesheet" href="css/popup.css">
-</head>
-<body>
-  <main class="container">
-    <header>
-      <h1>PhishLens</h1>
-      <p class="subtitle">Saved phishing analysis</p>
-    </header>
-    <section class="panel" aria-labelledby="context-analysis-heading">
-      <h2 id="context-analysis-heading">Context-menu analysis</h2>
-      <div id="empty-state"><p>Select text on a page, then choose Analyze selection with VeriQo.</p></div>
-      <div id="loading-state" class="hidden" role="status">Analyzing selected text…</div>
-      <div id="error-state" class="hidden" role="alert"><p id="error-message"></p></div>
-      <div id="result-state" class="hidden">
-        <p><strong>Classification:</strong> <span id="classification"></span></p>
-        <p><strong>Risk:</strong> <span id="risk-level"></span></p>
-        <p><strong>Confidence:</strong> <span id="analysis-confidence"></span></p>
-        <p id="confidence-note" class="muted">A confidence score is not a guarantee of correctness.</p>
-        <p><strong>AI provenance:</strong> <span id="analysis-mode"></span></p>
-        <p id="analysis-model" class="muted"></p>
-        <h3>Selected text</h3><p id="selected-text" class="selected-text"></p>
-        <p id="uncertainty-note" class="muted">Treat this report as decision support. Verify unexpected requests independently.</p>
-        <h3>Supporting indicators</h3><ul id="evidence"></ul>
-        <h3>Threat tactics</h3><ul id="tactics"></ul>
-        <h3>Recommendations</h3><ul id="recommendations"></ul>
-        <button id="clear-button" class="secondary" type="button">Clear result</button>
-      </div>
-    </section>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhishLens</title><link rel="stylesheet" href="css/popup.css"></head>
+<body><main class="container">
+<header><h1>PhishLens</h1><p class="subtitle">TF-IDF v12a · local LLM judge · KRR + LightGBM</p></header>
+<p>Scans stay in Chrome. Highlight the complete visible email text, right-click,
+and choose <strong>Analyze selection with PhishLens</strong>.</p>
+<section id="empty-state" class="panel"><h2>No scan yet</h2><p>No email text is uploaded when you scan.</p></section>
+<section id="loading-state" class="panel hidden"><h2>Checking locally…</h2><p id="workflow-progress">Preparing the local review.</p><p>First use loads a large local LLM. Clear cancels this scan.</p></section>
+<section id="error-state" class="panel hidden" role="alert"><h2>Unable to assess</h2><p id="error-message"></p></section>
+<section id="result-state" class="hidden" aria-live="polite">
+ <div class="panel"><h2 id="classification"></h2><p id="assessment"></p>
+ <p>Primary TF-IDF score: <strong id="risk-score"></strong></p><p id="threshold"></p>
+ <p id="coverage"></p><p class="muted">The score is calibrated on the research data. It is not a guaranteed probability for your inbox.</p></div>
+ <div class="panel"><h2>What the text says</h2><p>Observations are checks of wording, not proof of phishing.</p><ul id="evidence"></ul></div>
+ <div class="panel"><h2>Local LLM review</h2><p id="judge-review"></p><p id="workflow-status"></p></div>
+ <div class="panel"><h2>Three-model reevaluation</h2><ul id="reevaluator-list"></ul><p>Each percentage belongs to that model. Agreement does not authenticate the sender.</p></div>
+ <details class="panel"><summary>Model feature details</summary><p>Partial word-feature contributions; character features also affect the result.</p><ul id="drivers"></ul></details>
+ <div class="panel"><h2>What to do next</h2><ul id="recommendations"></ul><ul id="limitations"></ul></div>
+ <details class="panel"><summary>Checked text and highlights</summary><p>Quotes refer to this normalized, redacted model input.</p><p id="analysis-text"></p></details>
+ <div class="panel"><h2>Optional: save a report</h2><p>Saving uploads the <strong>original selected text</strong> to the team's API and shared demo history.
+ Only save material you are authorized to share. The server replays classifier checks; the LLM audit is recorded as a browser-reported review.</p>
+ <label>Report title <input id="report-subject" maxlength="320" placeholder="Optional title"></label>
+ <label class="consent"><input id="save-consent" type="checkbox"> I agree to upload this selection to shared history.</label>
+ <button id="save-report" type="button">Save report</button><p id="save-status" role="status"></p></div>
+</section>
+<button id="clear-button" type="button">Clear local scan</button>
     <section class="panel" aria-labelledby="create-heading">
-      <h2 id="create-heading">Analyze and save an email report</h2>
+      <h2 id="create-heading">Save an analysis</h2>
+      <p>Saving uploads the text you enter to the team’s API and shared demo history. Only save material you are authorized to share.</p>
       <form id="create-form">
         <label for="create-subject">Subject <span class="muted">(optional)</span></label>
         <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
         <label for="create-body">Email body <span class="required">(required)</span></label>
         <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
-        <button id="create-button" type="submit">Analyze and save</button>
+        <button id="create-button" type="submit">Save analysis</button>
       </form>
     </section>
     <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
     <section class="panel" aria-labelledby="history-heading">
       <h2 id="history-heading">Saved analyses</h2>
-      <p id="loading">Loading analyses…</p>
+      <p>Loading history uses the API. Local scanning works while it is unavailable.</p>
+      <button id="load-history" type="button">Load / refresh history</button>
+      <p id="loading" class="hidden">Loading analyses…</p>
       <p id="empty" class="hidden">No saved analyses yet.</p>
-      <button id="retry-history" class="secondary hidden" type="button">Retry loading history</button>
       <ul id="history-list" class="history-list"></ul>
     </section>
     <section id="detail-panel" class="panel hidden" aria-labelledby="detail-heading">
@@ -78,7 +74,5 @@
         </div>
       </form>
     </section>
-  </main>
-  <script type="module" src="js/popup.js"></script>
-</body>
-</html>
+<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>Built with Llama. LLM weights run locally; no email is sent to an AI provider.</p></footer>
+</main><script type="module" src="popup.js"></script></body></html>

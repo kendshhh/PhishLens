@@ -9,9 +9,12 @@
   },
   "scripts": {
     "test": "node --test extension/tests/*.test.mjs",
-    "lint": "eslint extension/js/",
+    "lint": "eslint extension/",
     "validate": "python scripts/validate_extension.py",
-    "package": "python scripts/package_extension.py"
+    "package": "python scripts/package_extension.py",
+    "phishlens": "node scripts/phishlens.mjs",
+    "doctor": "node scripts/phishlens.mjs doctor",
+    "model:check": "node scripts/phishlens.mjs model-check"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,2496 @@
+{
+  "at_utc": "2026-10-23T19:08:08.694864+00:00",
+  "run_id": "english-real-20261024-checkpoint-clean-002",
+  "config_sha256": "710c09872def12e6b1939ad2f352fd180fc86fdca379092c5c7840d3a9c8eef9",
+  "data_manifest": {
+    "at_utc": "2026-10-23T16:31:52.850418+00:00",
+    "status": "passed_checkpoint_clean_ID_and_validation_only",
+    "counts": {
+      "train": {
+        "1": 22714,
+        "0": 26150
+      },
+      "calibration": {
+        "1": 500,
+        "0": 500
+      },
+      "threshold": {
+        "0": 1000,
+        "1": 1000
+      },
+      "test_id": {
+        "0": 500,
+        "1": 500
+      }
+    },
+    "truncated": {
+      "train": 9666,
+      "calibration": 84,
+      "threshold": 176,
+      "test_id": 106
+    },
+    "source_label_definition": {
+      "0": "Original publisher/curator legitimate or ham label; identities are not independently authenticated.",
+      "1": "Inherited Kaggle positive label, including spam and fraud as well as phishing. Not uniformly verified credential phishing."
+    },
+    "label_scope_limit": "ID metrics measure this original broad positive task. They cannot establish strict phishing-specific accuracy without human relabeling.",
+    "source_attribution": "Supplied Kaggle Phish No More; cite Al-Subaiey et al. (2024); underlying six corpus families recorded per row.",
+    "english_eligibility": "Lingua 2.2.0, full 75-language detector, prepared model text only; confidence >=0.95, margin >=0.20, >=8 alphabetic words; fallible metadata not human truth.",
+    "pool_policy": "Retain original grouped 70/15/15 membership; filter and quarantine inside those pools, then allocate disjoint new roles.",
+    "sample_policy": "Whole groups, seed42 greedy, smallest unused matching groups added to meet minimum; exact observed counts reported.",
+    "external_admission": {
+      "Nazario": "publisher_hand_classification_and_CC_BY_4_verified; candidate_positive_challenge",
+      "TREC06": "provisional; original ham truth linkage and original reuse terms not fully verified; not in scored tests",
+      "test_ood": "not_admitted_two_class_independent_source_checks_incomplete",
+      "test_adv": "not_admitted_missing_true_English_bank_OTP_controls_and_human_technique_validation"
+    },
+    "external_eligible_candidate_counts": {
+      "Nazario/original-2024": 278,
+      "Nazario/original-2025": 371,
+      "TREC06/Zenodo-8339691-ham": 11758
+    },
+    "outputs": {
+      "data\\prepared\\train.jsonl": "c63c76104c6784ed7d4e992d86431eeca20c7d01b689d3b1410841265355b3ec",
+      "data\\prepared\\train.audit.jsonl": "e8a30c0591951e07952868edbce7784f25a29cb4061fb9b8f7c67cb7f5e46132",
+      "data\\prepared\\calibration.jsonl": "9d1ed5057462f67a61a51b214ee1a18857f47af48b2086c9b33768022ea12fab",
+      "data\\prepared\\calibration.audit.jsonl": "e032ec81269aee1a369ec1b5466b630f24ad726f46148fd5665620ac8c18bbe5",
+      "data\\prepared\\threshold.jsonl": "79cae235010bc36cda891e8b9376cc6de97927d3171b7d1c9b0a63f302d2ea9e",
+      "data\\prepared\\threshold.audit.jsonl": "75c90655df6896bb08f6cdefacbf916107c96c13ba38be4dcdfbcfad40ece179",
+      "data\\prepared\\test_id.jsonl": "5cd4d66d2dbdc12b0e2fee3e0b8269138fb2c662d2c90450410678ac318e8aa0",
+      "data\\prepared\\test_id.audit.jsonl": "dccf1e53aa67c9a12a26965b0615619f5d2bd1d6ab830e5275a9dd1268e164f8",
+      "data\\prepared\\timing_ids.json": "dc76ee2b43b6de11027b5710ac5ec4c987d3f3412280a81a5a5a9e4665e3bbe4",
+      "data\\prepared\\consistency_ids.json": "0c7d4e1d9aabd8685695435f5aeaf68ec3a719ea9193166a255502dd930a6f2f"
+    },
+    "inventory_sha256": "745f611866b6813abdcc6c669361958b53b23ab3b52a34685c8e14ee3e60c69d",
+    "leakage_sha256": "a59bbfd423b3db145f8de20cb67321e40c6da5ebd11461c1ab3a438f9144662a",
+    "preparation_code_hashes": {
+      "scripts\\prepare_checkpoint_clean.py": "271deb2c3383c225fc4a98ef5704d15d7f2d60a85892bd1f7f19379530f01a2e",
+      "scripts\\split_english.py": "b6e4017c7b08e2f2562c47bd0a416dc5b38b4eb2aff1e043d943bd7e3e40b52f",
+      "scripts\\prepare_english.py": "3189fd7842b33ff630262c7539f11702cc0cddf2e0e06b59cff31c5d7e603ba8",
+      "scripts\\language_filter.py": "d4797a03409e2809db210d3dc47105a43d6b11183bb094e2c7722599ee45f5de",
+      "scripts\\inference_guard.py": "e20b163be63ebd075759e14c285ea5126885014498e27582f1236665f5c94c8d"
+    },
+    "synthetic_messages": 0,
+    "translations": 0,
+    "AI_assigned_binary_labels": 0,
+    "model_inferences_before_freeze": 0,
+    "parent_attempt": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4",
+    "parent_attempt_status": "halted_before_new_test_scoring",
+    "source_pool_qualification": {
+      "at_utc": "2026-10-23T16:31:52.731375+00:00",
+      "status": "passed_after_excluding_all_known_publisher_splits",
+      "unresolved_admitted_overlap": [],
+      "parent_pool_audit": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\results\\checkpoint_clean_pool_audit.json",
+      "parent_pool_audit_sha256": "fb58ceedb3de41b6a981eb25feb13d5e91398bb832b21cee30f830648da3aa85",
+      "source_pool_sha256": "e11b9d882513ce1064ffb6d4542d3c821b0a495cb8d4a0725168a1624eff83b3",
+      "local_role_leakage": [],
+      "known_checkpoint_exact_near_shared_passage_groups_in_calibration_threshold_test": 0,
+      "dataset_revision": "afba38f4a7ffbe89259ab68ae7c6426f944496cc",
+      "unknown_LLM_pretraining": "not_verifiable; explicitly not ruled out"
+    },
+    "development": "Fixed choices from separately documented prior development; no new development role or test-based tuning in this corrected attempt.",
+    "baseline": "Existing train-only weights reused on byte-identical English training inputs."
+  },
+  "development_selection": {
+    "at_utc": "2026-10-23T15:35:58.754301+00:00",
+    "role": "development_validation_only",
+    "selection_policy": "common prompt by mean valid rate then mean accuracy then latency; candidate by valid rate then accuracy then latency; DistilBERT by latency among parity-passing variants",
+    "prompt_scores": [
+      {
+        "draft": 1,
+        "candidates": 2,
+        "mean_valid_rate": 0.275,
+        "mean_accuracy": 0.5,
+        "mean_p95_ms": 4337.837500004471
+      },
+      {
+        "draft": 2,
+        "candidates": 2,
+        "mean_valid_rate": 0.3,
+        "mean_accuracy": 0.5,
+        "mean_p95_ms": 4480.442500023543
+      }
+    ],
+    "llm_trials": [
+      {
+        "file": "llm_webgpu_candidatellama_draft1_cap128_threads4_batch1.json",
+        "sha256": "c6c580835279cd85cd5b6883e53c80eb7a2ecb0e978f8017e4fb5f67950c1f51",
+        "model": "llm",
+        "settings": {
+          "candidate": "llama",
+          "draft": 1,
+          "cap": 128,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.55,
+        "accuracy": 0.5,
+        "p95_ms": 2302.5982499837874,
+        "invalid_reasons": [
+          {
+            "id": "297cf83a8bb3a145f4b96acd",
+            "reason": "Unterminated string starting at: line 5 column 13 (char 50)"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d70ceb3e7e97ff0ff315f77a",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "Unterminated string starting at: line 7 column 12 (char 49)"
+          },
+          {
+            "id": "8c4dbee9cd639059fdbe0f5c",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "990893cd942ac25fffbe2d45",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "805d203a0b28f02244afb8a0",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "reason_not_confident_English_or_too_short"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidatellama_draft1_cap192_threads4_batch1.json",
+        "sha256": "f5e95494526cff391507cc8a850cdb74d0ac3b60ca5b996ab8673afff81cd0d9",
+        "model": "llm",
+        "settings": {
+          "candidate": "llama",
+          "draft": 1,
+          "cap": 192,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.55,
+        "accuracy": 0.5,
+        "p95_ms": 3312.102999961376,
+        "invalid_reasons": [
+          {
+            "id": "297cf83a8bb3a145f4b96acd",
+            "reason": "Unterminated string starting at: line 5 column 13 (char 50)"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d70ceb3e7e97ff0ff315f77a",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "Unterminated string starting at: line 7 column 12 (char 49)"
+          },
+          {
+            "id": "8c4dbee9cd639059fdbe0f5c",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "Unterminated string starting at: line 4 column 13 (char 49)"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "990893cd942ac25fffbe2d45",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "805d203a0b28f02244afb8a0",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "reason_not_confident_English_or_too_short"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidatellama_draft2_cap128_threads4_batch1.json",
+        "sha256": "a176067f0c82a8e1617e3aeb7d91279ea007d31750d02027b41f363619d03072",
+        "model": "llm",
+        "settings": {
+          "candidate": "llama",
+          "draft": 2,
+          "cap": 128,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.6,
+        "accuracy": 0.5,
+        "p95_ms": 2476.4337500184765,
+        "invalid_reasons": [
+          {
+            "id": "4219711b0a04033b9a015d50",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "998cfcca6da3a6fc8e012c03",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "6552fe9ec6ab590bf72d9200",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "Unterminated string starting at: line 4 column 12 (char 46)"
+          },
+          {
+            "id": "4aa1a8ed88632c2279f3978b",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "2bc18ebe0a4d426407446e59",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "cad03f58fba127efeeec771e",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "7c7955956dcc1436ba7c3da0",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "36a50d9d56fd287b8abdd67d",
+            "reason": "Unterminated string starting at: line 1 column 36 (char 35)"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "65db1eeb958e4ef3889952da",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "Unterminated string starting at: line 4 column 12 (char 46)"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "Unterminated string starting at: line 4 column 12 (char 46)"
+          },
+          {
+            "id": "b701fb324d765b9068a1ebdf",
+            "reason": "Unterminated string starting at: line 4 column 15 (char 55)"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidatellama_draft2_cap192_threads4_batch1.json",
+        "sha256": "f0a637b9dc98e6e71857082c77e0541ea3a37c7d23a171010c99c6ebef81f79f",
+        "model": "llm",
+        "settings": {
+          "candidate": "llama",
+          "draft": 2,
+          "cap": 192,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.4,
+        "accuracy": 0.475,
+        "p95_ms": 3390.7777499765148,
+        "invalid_reasons": [
+          {
+            "id": "4219711b0a04033b9a015d50",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "998cfcca6da3a6fc8e012c03",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "0ece8529f56ad9a8d86f824e",
+            "reason": "Unterminated string starting at: line 1 column 36 (char 35)"
+          },
+          {
+            "id": "1eadfeb0b48775f51200a5a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "eb6b0e72e8a5bc2eb0ab56f5",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "17cc8c7a781a9bea33e450d2",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 41)"
+          },
+          {
+            "id": "2bc18ebe0a4d426407446e59",
+            "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+          },
+          {
+            "id": "cad03f58fba127efeeec771e",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7c7955956dcc1436ba7c3da0",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "65db1eeb958e4ef3889952da",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "8c24407ae9cc009d84dde293",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "label_confidence_disagreement"
+          },
+          {
+            "id": "8166692f79688ef96f840db5",
+            "reason": "reason_not_confident_English_or_too_short"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidateqwen_draft1_cap128_threads4_batch1.json",
+        "sha256": "426cbfb96e1047b71ca7d2de4cba09d46458299493610b5f32c18de6af26d71e",
+        "model": "llm",
+        "settings": {
+          "candidate": "qwen",
+          "draft": 1,
+          "cap": 128,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.0,
+        "accuracy": 0.5,
+        "p95_ms": 6373.076750025153,
+        "invalid_reasons": [
+          {
+            "id": "f18a0680439513287385bd30",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "4219711b0a04033b9a015d50",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "998cfcca6da3a6fc8e012c03",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "297cf83a8bb3a145f4b96acd",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "0ece8529f56ad9a8d86f824e",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "1eadfeb0b48775f51200a5a3",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "6552fe9ec6ab590bf72d9200",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "d70ceb3e7e97ff0ff315f77a",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "eb6b0e72e8a5bc2eb0ab56f5",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "9ef3f14761596cde685bb8e9",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "a3d716010b5e7bdefe6247ea",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "17cc8c7a781a9bea33e450d2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "8c4dbee9cd639059fdbe0f5c",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "b7d641abbf635d05344892af",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "4aa1a8ed88632c2279f3978b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "2bc18ebe0a4d426407446e59",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "cad03f58fba127efeeec771e",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "7c7955956dcc1436ba7c3da0",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "36a50d9d56fd287b8abdd67d",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "65db1eeb958e4ef3889952da",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "8c24407ae9cc009d84dde293",
+            "reason": "Unterminated string starting at: line 1 column 39 (char 38)"
+          },
+          {
+            "id": "75b7414fd633658282d2c777",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "990893cd942ac25fffbe2d45",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "acf18ece182117fe86e541e6",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "805d203a0b28f02244afb8a0",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "b701fb324d765b9068a1ebdf",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "8166692f79688ef96f840db5",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidateqwen_draft1_cap192_threads4_batch1.json",
+        "sha256": "a0752706247b6bfc798caa8985e9bf420aee5ef477399715293bf855465ebfe9",
+        "model": "llm",
+        "settings": {
+          "candidate": "qwen",
+          "draft": 1,
+          "cap": 192,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.0,
+        "accuracy": 0.5,
+        "p95_ms": 8564.44700000286,
+        "invalid_reasons": [
+          {
+            "id": "f18a0680439513287385bd30",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "4219711b0a04033b9a015d50",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "998cfcca6da3a6fc8e012c03",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "297cf83a8bb3a145f4b96acd",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "0ece8529f56ad9a8d86f824e",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "1eadfeb0b48775f51200a5a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "6552fe9ec6ab590bf72d9200",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "Unterminated string starting at: line 2 column 37 (char 38)"
+          },
+          {
+            "id": "d70ceb3e7e97ff0ff315f77a",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "eb6b0e72e8a5bc2eb0ab56f5",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9ef3f14761596cde685bb8e9",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "a3d716010b5e7bdefe6247ea",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "17cc8c7a781a9bea33e450d2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "8c4dbee9cd639059fdbe0f5c",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "b7d641abbf635d05344892af",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "4aa1a8ed88632c2279f3978b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "2bc18ebe0a4d426407446e59",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "cad03f58fba127efeeec771e",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7c7955956dcc1436ba7c3da0",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "36a50d9d56fd287b8abdd67d",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "65db1eeb958e4ef3889952da",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "8c24407ae9cc009d84dde293",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "75b7414fd633658282d2c777",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "990893cd942ac25fffbe2d45",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "acf18ece182117fe86e541e6",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "805d203a0b28f02244afb8a0",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "b701fb324d765b9068a1ebdf",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "8166692f79688ef96f840db5",
+            "reason": "reason_not_confident_English_or_too_short"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidateqwen_draft2_cap128_threads4_batch1.json",
+        "sha256": "e7a3861af06caabb1993a2d1fb99b20ddbf43dfb63ff7c26250aa9ccc9fb6d7b",
+        "model": "llm",
+        "settings": {
+          "candidate": "qwen",
+          "draft": 2,
+          "cap": 128,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.0,
+        "accuracy": 0.5,
+        "p95_ms": 6484.45125002861,
+        "invalid_reasons": [
+          {
+            "id": "f18a0680439513287385bd30",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "4219711b0a04033b9a015d50",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "998cfcca6da3a6fc8e012c03",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "297cf83a8bb3a145f4b96acd",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "0ece8529f56ad9a8d86f824e",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "1eadfeb0b48775f51200a5a3",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "6552fe9ec6ab590bf72d9200",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d70ceb3e7e97ff0ff315f77a",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "eb6b0e72e8a5bc2eb0ab56f5",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9ef3f14761596cde685bb8e9",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "a3d716010b5e7bdefe6247ea",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "17cc8c7a781a9bea33e450d2",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "8c4dbee9cd639059fdbe0f5c",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "b7d641abbf635d05344892af",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "4aa1a8ed88632c2279f3978b",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "2bc18ebe0a4d426407446e59",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "cad03f58fba127efeeec771e",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7c7955956dcc1436ba7c3da0",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "36a50d9d56fd287b8abdd67d",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "65db1eeb958e4ef3889952da",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "Unterminated string starting at: line 1 column 37 (char 36)"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "8c24407ae9cc009d84dde293",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "75b7414fd633658282d2c777",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "990893cd942ac25fffbe2d45",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "acf18ece182117fe86e541e6",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "805d203a0b28f02244afb8a0",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "b701fb324d765b9068a1ebdf",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "8166692f79688ef96f840db5",
+            "reason": "reason_not_confident_English_or_too_short"
+          }
+        ],
+        "selection_eligible": true
+      },
+      {
+        "file": "llm_webgpu_candidateqwen_draft2_cap192_threads4_batch1.json",
+        "sha256": "c7d7b3dd6bb43d3f458a84d8928a94b243cd66094ba295992961d708be4dd831",
+        "model": "llm",
+        "settings": {
+          "candidate": "qwen",
+          "draft": 2,
+          "cap": 192,
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 0.0,
+        "accuracy": 0.5,
+        "p95_ms": 9344.000999996066,
+        "invalid_reasons": [
+          {
+            "id": "f18a0680439513287385bd30",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "4219711b0a04033b9a015d50",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "998cfcca6da3a6fc8e012c03",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "297cf83a8bb3a145f4b96acd",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "0ece8529f56ad9a8d86f824e",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "1eadfeb0b48775f51200a5a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "6552fe9ec6ab590bf72d9200",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "c94937d265582eaa6aa24288",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "94201e0ea022cd672f1319ba",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d70ceb3e7e97ff0ff315f77a",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "eb6b0e72e8a5bc2eb0ab56f5",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9ef3f14761596cde685bb8e9",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "a3d716010b5e7bdefe6247ea",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "e8d56984c750d3e640f88aee",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "4a2181e0a0b0989e02a7d15b",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "17cc8c7a781a9bea33e450d2",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "8c4dbee9cd639059fdbe0f5c",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "b7d641abbf635d05344892af",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "4aa1a8ed88632c2279f3978b",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "2bc18ebe0a4d426407446e59",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "cad03f58fba127efeeec771e",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "7c7955956dcc1436ba7c3da0",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "36a50d9d56fd287b8abdd67d",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "80e4c644e6752052152987a3",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "65db1eeb958e4ef3889952da",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "ad8b5f36121e7ee923b00f7d",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "7b29231533444eb403549ad7",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "9c998a72bbc07675d2d3bc36",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "34450f175c76534bdbabcb26",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "d8e92aa3653674b24a14984b",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "8c24407ae9cc009d84dde293",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "75b7414fd633658282d2c777",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "3da4139e36cbd3acfaa8e1c2",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "990893cd942ac25fffbe2d45",
+            "reason": "Expecting ',' delimiter: line 1 column 200 (char 199)"
+          },
+          {
+            "id": "f21673c1b6dbe146049ecb25",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "acf18ece182117fe86e541e6",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "805d203a0b28f02244afb8a0",
+            "reason": "reason_not_confident_English_or_too_short"
+          },
+          {
+            "id": "cd6aa7c34904c8bf29858945",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "b701fb324d765b9068a1ebdf",
+            "reason": "Unterminated string starting at: line 1 column 38 (char 37)"
+          },
+          {
+            "id": "8166692f79688ef96f840db5",
+            "reason": "reason_not_confident_English_or_too_short"
+          }
+        ],
+        "selection_eligible": true
+      }
+    ],
+    "distilbert_trials": [
+      {
+        "file": "distilbert_wasm_threads1_batch1.json",
+        "sha256": "b918174d03abbcd856f4f2f50cb358dfa955866af76e8e9a28314b1f44153435",
+        "model": "distilbert",
+        "settings": {
+          "threads": 1,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 1.0,
+        "accuracy": 0.95,
+        "p95_ms": 783.1989999949928,
+        "invalid_reasons": [],
+        "selection_eligible": true,
+        "max_abs_score_difference_from_sequential": 0.0,
+        "parity_tolerance": 1e-06
+      },
+      {
+        "file": "distilbert_wasm_threads1_batch4.json",
+        "sha256": "53408d0ac6373fba7bb5bf588fe4bb42bad47aeac417baea20ba976c5d8ce036",
+        "model": "distilbert",
+        "settings": {
+          "threads": 1,
+          "batch": 4
+        },
+        "status": "complete",
+        "valid_rate": 1.0,
+        "accuracy": 0.95,
+        "p95_ms": 1499.1087500184774,
+        "invalid_reasons": [],
+        "selection_eligible": false,
+        "max_abs_score_difference_from_sequential": 0.007053933302692106,
+        "parity_tolerance": 1e-06
+      },
+      {
+        "file": "distilbert_wasm_threads2_batch1.json",
+        "sha256": "0e1f7deb1647db2eb1a62508517392ecc8dd39eb4f7eb1f65caff0ff47fac625",
+        "model": "distilbert",
+        "settings": {
+          "threads": 2,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 1.0,
+        "accuracy": 0.95,
+        "p95_ms": 476.4492499738931,
+        "invalid_reasons": [],
+        "selection_eligible": true,
+        "max_abs_score_difference_from_sequential": 0.0,
+        "parity_tolerance": 1e-06
+      },
+      {
+        "file": "distilbert_wasm_threads2_batch4.json",
+        "sha256": "946e6279cd878a081e9656fa7569eab7bdd3c796aae5c0c395b12b64b0f79569",
+        "model": "distilbert",
+        "settings": {
+          "threads": 2,
+          "batch": 4
+        },
+        "status": "complete",
+        "valid_rate": 1.0,
+        "accuracy": 0.95,
+        "p95_ms": 818.9009999811649,
+        "invalid_reasons": [],
+        "selection_eligible": false,
+        "max_abs_score_difference_from_sequential": 0.007053933302692106,
+        "parity_tolerance": 1e-06
+      },
+      {
+        "file": "distilbert_wasm_threads4_batch1.json",
+        "sha256": "036f5c4faeb25f39c98f75c0327b2260bc4b096f0b368e6e7774a860544ea8ef",
+        "model": "distilbert",
+        "settings": {
+          "threads": 4,
+          "batch": 1
+        },
+        "status": "complete",
+        "valid_rate": 1.0,
+        "accuracy": 0.95,
+        "p95_ms": 360.39199998676764,
+        "invalid_reasons": [],
+        "selection_eligible": true,
+        "max_abs_score_difference_from_sequential": 0.0,
+        "parity_tolerance": 1e-06
+      },
+      {
+        "file": "distilbert_wasm_threads4_batch4.json",
+        "sha256": "01e8dbb9832e54b35364b5ecbf0f419cc35f716bd4c8d61e9c4da3dc329fbe30",
+        "model": "distilbert",
+        "settings": {
+          "threads": 4,
+          "batch": 4
+        },
+        "status": "complete",
+        "valid_rate": 1.0,
+        "accuracy": 0.95,
+        "p95_ms": 567.6737499833107,
+        "invalid_reasons": [],
+        "selection_eligible": false,
+        "max_abs_score_difference_from_sequential": 0.007053933302692106,
+        "parity_tolerance": 1e-06
+      }
+    ],
+    "selected_llm_trial": {
+      "file": "llm_webgpu_candidatellama_draft2_cap128_threads4_batch1.json",
+      "sha256": "a176067f0c82a8e1617e3aeb7d91279ea007d31750d02027b41f363619d03072",
+      "model": "llm",
+      "settings": {
+        "candidate": "llama",
+        "draft": 2,
+        "cap": 128,
+        "threads": 4,
+        "batch": 1
+      },
+      "status": "complete",
+      "valid_rate": 0.6,
+      "accuracy": 0.5,
+      "p95_ms": 2476.4337500184765,
+      "invalid_reasons": [
+        {
+          "id": "4219711b0a04033b9a015d50",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "998cfcca6da3a6fc8e012c03",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "6552fe9ec6ab590bf72d9200",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "94201e0ea022cd672f1319ba",
+          "reason": "Unterminated string starting at: line 4 column 12 (char 46)"
+        },
+        {
+          "id": "4aa1a8ed88632c2279f3978b",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "2bc18ebe0a4d426407446e59",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "cad03f58fba127efeeec771e",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "7c7955956dcc1436ba7c3da0",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "36a50d9d56fd287b8abdd67d",
+          "reason": "Unterminated string starting at: line 1 column 36 (char 35)"
+        },
+        {
+          "id": "80e4c644e6752052152987a3",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "65db1eeb958e4ef3889952da",
+          "reason": "reason_not_confident_English_or_too_short"
+        },
+        {
+          "id": "ad8b5f36121e7ee923b00f7d",
+          "reason": "reason_not_confident_English_or_too_short"
+        },
+        {
+          "id": "7b29231533444eb403549ad7",
+          "reason": "Unterminated string starting at: line 4 column 12 (char 46)"
+        },
+        {
+          "id": "3da4139e36cbd3acfaa8e1c2",
+          "reason": "Unterminated string starting at: line 4 column 11 (char 43)"
+        },
+        {
+          "id": "cd6aa7c34904c8bf29858945",
+          "reason": "Unterminated string starting at: line 4 column 12 (char 46)"
+        },
+        {
+          "id": "b701fb324d765b9068a1ebdf",
+          "reason": "Unterminated string starting at: line 4 column 15 (char 55)"
+        }
+      ],
+      "selection_eligible": true
+    },
+    "selected_distilbert_trial": {
+      "file": "distilbert_wasm_threads4_batch1.json",
+      "sha256": "036f5c4faeb25f39c98f75c0327b2260bc4b096f0b368e6e7774a860544ea8ef",
+      "model": "distilbert",
+      "settings": {
+        "threads": 4,
+        "batch": 1
+      },
+      "status": "complete",
+      "valid_rate": 1.0,
+      "accuracy": 0.95,
+      "p95_ms": 360.39199998676764,
+      "invalid_reasons": [],
+      "selection_eligible": true,
+      "max_abs_score_difference_from_sequential": 0.0,
+      "parity_tolerance": 1e-06
+    },
+    "prompt_sha256": "d4b8f6c7572d9dbd58c3468dc268efb4ee9029ad13dd7492f7f3002d0e30abbe",
+    "runtime": {
+      "candidate": "llama",
+      "draft": 2,
+      "max_new_tokens": 128,
+      "wasm_threads": 4,
+      "distil_batch_size": 1
+    },
+    "development_cohort_sha256": "078a41aabe877cbe5e318fab9c7db129e359d4ba2464d35dbfa87b42feec2f9d",
+    "test_examples_used": 0,
+    "development_latency_is_not_final_browser_benchmark": true,
+    "gates_and_weights_unchanged": true,
+    "development_cohort_reference": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\data\\prepared\\development.jsonl",
+    "selection_origin": "Carried forward unchanged from prior validation-only development; its reported quality is not an independent evaluation.",
+    "parent_selection_sha256": "60912823b7a1690d9f4be75e74a2fe0e5cfe49aac77413246045b6bbb65145c8",
+    "no_new_test_scores_used": true
+  },
+  "calibrations": {
+    "tfidf_lr": {
+      "at_utc": "2026-10-23T16:36:58.114877+00:00",
+      "model": "tfidf_lr",
+      "mapping": {
+        "kind": "monotonic_sigmoid",
+        "slope": 2.8391359102904223,
+        "intercept": -0.2610483825710062,
+        "epsilon": 1e-06
+      },
+      "cross_validation": {
+        "status": "cross_validated",
+        "valid_fit_rows": 1000,
+        "folds": [
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 2.692708657883551,
+              "intercept": -0.4727858465115374,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.08821211435689146,
+            "sigmoid_log_loss": 0.036704959979913916
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 2.7221172532692495,
+              "intercept": -0.15174698202548983,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.06385817963645553,
+            "sigmoid_log_loss": 0.01935376478442166
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 3.4555794336460126,
+              "intercept": 0.14682076822818185,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.06939302830534903,
+            "sigmoid_log_loss": 0.05375039665904083
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 2.814437988377873,
+              "intercept": -0.36589462945046825,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.07282132198809299,
+            "sigmoid_log_loss": 0.03302188844636905
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 2.7776553263002026,
+              "intercept": -0.4061640053438635,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.05658439742677812,
+            "sigmoid_log_loss": 0.018317882510592652
+          }
+        ],
+        "identity_log_loss": 0.07017380834271343,
+        "sigmoid_log_loss": 0.03222977847606762,
+        "identity_brier": 0.013507953604140541,
+        "sigmoid_brier": 0.008455039628971714,
+        "selection_uses": "out_of_fold_log_loss_only; diagnostics never select tests or thresholds"
+      },
+      "thresholds": {
+        "0.02": 0.6196111742515448,
+        "0.005": 0.9905255947759682
+      },
+      "prediction_hashes": {
+        "calibration": "91c06e82b9e892298864eb4309e5e41c9928ed474ab84aa6b4d660e2e8d8d396",
+        "threshold": "86af10229a8d245220d3cb6143962d2d7e9dcd8dafebd90766848027518dcc7e"
+      },
+      "cohort_hashes": {
+        "calibration": "9d1ed5057462f67a61a51b214ee1a18857f47af48b2086c9b33768022ea12fab",
+        "threshold": "79cae235010bc36cda891e8b9376cc6de97927d3171b7d1c9b0a63f302d2ea9e"
+      },
+      "invalid_after_calibration": "safe_probability_zero_invalid",
+      "threshold_metrics": {
+        "0.02": {
+          "recall": 0.983,
+          "fpr": 0.02,
+          "precision": 0.9800598205383848,
+          "f1": 0.9815277084373439,
+          "mcc": 0.9630043335292513,
+          "roc_auc": 0.998029,
+          "pr_auc": 0.998058874796965,
+          "ece": 0.01110920913438152,
+          "valid_output_rate": 1.0,
+          "accuracy": 0.9815,
+          "tp": 983,
+          "fp": 20,
+          "tn": 980,
+          "fn": 17
+        },
+        "0.005": {
+          "recall": 0.908,
+          "fpr": 0.005,
+          "precision": 0.9945235487404163,
+          "f1": 0.9492943021432305,
+          "mcc": 0.9064369264251722,
+          "roc_auc": 0.998029,
+          "pr_auc": 0.998058874796965,
+          "ece": 0.01110920913438152,
+          "valid_output_rate": 1.0,
+          "accuracy": 0.9515,
+          "tp": 908,
+          "fp": 5,
+          "tn": 995,
+          "fn": 92
+        }
+      },
+      "fitted_on": "calibration_role_only",
+      "threshold_selected_on": "threshold_role_only",
+      "test_data_used": false
+    },
+    "distilbert": {
+      "at_utc": "2026-10-23T16:38:28.377515+00:00",
+      "model": "distilbert",
+      "mapping": {
+        "kind": "monotonic_sigmoid",
+        "slope": 0.39850161532406014,
+        "intercept": -1.0901389300923883,
+        "epsilon": 1e-06
+      },
+      "cross_validation": {
+        "status": "cross_validated",
+        "valid_fit_rows": 1000,
+        "folds": [
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.42171858288008457,
+              "intercept": -1.211346586037637,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.42488425165167015,
+            "sigmoid_log_loss": 0.1824429082621281
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.3894286107297877,
+              "intercept": -1.0382333802262373,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.2505850781994696,
+            "sigmoid_log_loss": 0.11641081235371482
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.3790535827643618,
+              "intercept": -0.9414974307115973,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.18629409630464036,
+            "sigmoid_log_loss": 0.0835722273528513
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.40278728425397115,
+              "intercept": -1.1147926054004573,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.3297402708578271,
+            "sigmoid_log_loss": 0.14672515237082995
+          },
+          {
+            "fit_rows": 800,
+            "validation_rows": 200,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.40509213599504634,
+              "intercept": -1.1871844902862776,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 0.27892969625242103,
+            "sigmoid_log_loss": 0.1307227367685044
+          }
+        ],
+        "identity_log_loss": 0.2940866786532057,
+        "sigmoid_log_loss": 0.13197476742160574,
+        "identity_brier": 0.04112247748482386,
+        "sigmoid_brier": 0.03425621842052654,
+        "selection_uses": "out_of_fold_log_loss_only; diagnostics never select tests or thresholds"
+      },
+      "thresholds": {
+        "0.02": 0.9437535358176138,
+        "0.005": 0.9722182844266513
+      },
+      "prediction_hashes": {
+        "calibration": "ad4958327155935ea5a9fda45b8177453d6d512b27c58f19b8676095cdf755ba",
+        "threshold": "0fe990012425a216748a23f12ac631bfb2b76887b3fac8b0d5b249e354a88424"
+      },
+      "cohort_hashes": {
+        "calibration": "9d1ed5057462f67a61a51b214ee1a18857f47af48b2086c9b33768022ea12fab",
+        "threshold": "79cae235010bc36cda891e8b9376cc6de97927d3171b7d1c9b0a63f302d2ea9e"
+      },
+      "invalid_after_calibration": "safe_probability_zero_invalid",
+      "threshold_metrics": {
+        "0.02": {
+          "recall": 0.854,
+          "fpr": 0.02,
+          "precision": 0.977116704805492,
+          "f1": 0.9114194236926361,
+          "mcc": 0.8407001774062537,
+          "roc_auc": 0.984992,
+          "pr_auc": 0.9606766313896612,
+          "ece": 0.01397715943241319,
+          "valid_output_rate": 1.0,
+          "accuracy": 0.917,
+          "tp": 854,
+          "fp": 20,
+          "tn": 980,
+          "fn": 146
+        },
+        "0.005": {
+          "recall": 0.0,
+          "fpr": 0.005,
+          "precision": 0.0,
+          "f1": 0.0,
+          "mcc": -0.05006261743217589,
+          "roc_auc": 0.984992,
+          "pr_auc": 0.9606766313896612,
+          "ece": 0.01397715943241319,
+          "valid_output_rate": 1.0,
+          "accuracy": 0.4975,
+          "tp": 0,
+          "fp": 5,
+          "tn": 995,
+          "fn": 1000
+        }
+      },
+      "fitted_on": "calibration_role_only",
+      "threshold_selected_on": "threshold_role_only",
+      "test_data_used": false
+    },
+    "llm": {
+      "at_utc": "2026-10-23T17:47:00.537333+00:00",
+      "model": "llm",
+      "mapping": {
+        "kind": "monotonic_sigmoid",
+        "slope": 0.0,
+        "intercept": -0.06753519411423524,
+        "epsilon": 1e-06
+      },
+      "cross_validation": {
+        "status": "cross_validated",
+        "valid_fit_rows": 474,
+        "folds": [
+          {
+            "fit_rows": 379,
+            "validation_rows": 95,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.0,
+              "intercept": -0.06863226910276901,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 6.581399752423743,
+            "sigmoid_log_loss": 0.6926521961733678
+          },
+          {
+            "fit_rows": 379,
+            "validation_rows": 95,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.0,
+              "intercept": -0.0686288261171325,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 6.3837902541338245,
+            "sigmoid_log_loss": 0.692652191485978
+          },
+          {
+            "fit_rows": 379,
+            "validation_rows": 95,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.0,
+              "intercept": -0.0686276949663476,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 6.346826771363667,
+            "sigmoid_log_loss": 0.6926521899466388
+          },
+          {
+            "fit_rows": 379,
+            "validation_rows": 95,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.0,
+              "intercept": -0.06862820633054315,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 6.3665248902275,
+            "sigmoid_log_loss": 0.6926521906424948
+          },
+          {
+            "fit_rows": 380,
+            "validation_rows": 94,
+            "parameters": {
+              "kind": "monotonic_sigmoid",
+              "slope": 0.0,
+              "intercept": -0.06317838635649876,
+              "epsilon": 1e-06
+            },
+            "identity_log_loss": 6.1804857019394275,
+            "sigmoid_log_loss": 0.692301815178641
+          }
+        ],
+        "identity_log_loss": 6.372209102228772,
+        "sigmoid_log_loss": 0.6925827080388139,
+        "identity_brier": 0.48023671097046416,
+        "sigmoid_brier": 0.2497178149626052,
+        "selection_uses": "out_of_fold_log_loss_only; diagnostics never select tests or thresholds"
+      },
+      "thresholds": {
+        "0.02": 0.4831226157997432,
+        "0.005": 0.4831226157997432
+      },
+      "prediction_hashes": {
+        "calibration": "3cefc877aa3f439eb0dfb65c70d153f657a793365451985e7beec67363852a88",
+        "threshold": "0b452c4a411b4c35322a0274de1ec0f00b613a233bedcac5ddee88f8b011f45c"
+      },
+      "cohort_hashes": {
+        "calibration": "9d1ed5057462f67a61a51b214ee1a18857f47af48b2086c9b33768022ea12fab",
+        "threshold": "79cae235010bc36cda891e8b9376cc6de97927d3171b7d1c9b0a63f302d2ea9e"
+      },
+      "invalid_after_calibration": "safe_probability_zero_invalid",
+      "threshold_metrics": {
+        "0.02": {
+          "recall": 0.0,
+          "fpr": 0.0,
+          "precision": null,
+          "f1": 0.0,
+          "mcc": null,
+          "roc_auc": 0.482,
+          "pr_auc": 0.49133891213389125,
+          "ece": 0.2709326103522773,
+          "valid_output_rate": 0.478,
+          "accuracy": 0.5,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1000,
+          "fn": 1000
+        },
+        "0.005": {
+          "recall": 0.0,
+          "fpr": 0.0,
+          "precision": null,
+          "f1": 0.0,
+          "mcc": null,
+          "roc_auc": 0.482,
+          "pr_auc": 0.49133891213389125,
+          "ece": 0.2709326103522773,
+          "valid_output_rate": 0.478,
+          "accuracy": 0.5,
+          "tp": 0,
+          "fp": 0,
+          "tn": 1000,
+          "fn": 1000
+        }
+      },
+      "fitted_on": "calibration_role_only",
+      "threshold_selected_on": "threshold_role_only",
+      "test_data_used": false
+    }
+  },
+  "browser_latency": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\browser_latency.json",
+  "stage_run_records": [
+    {
+      "path": "results\\run_records\\test-2026-10-23T174743388298_0000.json",
+      "sha256": "09514c80513c2d666580e8222e2bfaf5393b817ce3a0ff9cd02587c87181bebc"
+    },
+    {
+      "path": "results\\run_records\\timing-2026-10-23T184030297972_0000.json",
+      "sha256": "00f32f08f443b73170029810c3029dcc4f9cdfdded595a7f4053fafabfd3a928"
+    },
+    {
+      "path": "results\\run_records\\validation-2026-10-23T163648848193_0000.json",
+      "sha256": "f1f6c433619f47d50613fe20e79c74cc1d93b5030e6eff6de55ce156cdc45d10"
+    }
+  ],
+  "prediction_hashes": {
+    "results\\predictions\\distilbert\\calibration.jsonl": "ad4958327155935ea5a9fda45b8177453d6d512b27c58f19b8676095cdf755ba",
+    "results\\predictions\\distilbert\\real_phishing_challenge.jsonl": "80931a2db3d1ec63be501dde97447519c3594d957f57d3b13f2f8d1492fe9db4",
+    "results\\predictions\\distilbert\\test_id.jsonl": "23c157669b0016b0dc2944e8bc47ead67416be1a38a34949c9897e19aee4a6da",
+    "results\\predictions\\distilbert\\threshold.jsonl": "0fe990012425a216748a23f12ac631bfb2b76887b3fac8b0d5b249e354a88424",
+    "results\\predictions\\llm\\calibration.jsonl": "3cefc877aa3f439eb0dfb65c70d153f657a793365451985e7beec67363852a88",
+    "results\\predictions\\llm\\real_phishing_challenge.jsonl": "c0bcaae431659d5b3650d8f1d114f6a9da5247224cde08e66d26cedf3ae4ae37",
+    "results\\predictions\\llm\\test_id.jsonl": "84abe4fea3ef29a8359adf7e0dec8be841f0a90e940f0fd84ee95fb3d18ba8fd",
+    "results\\predictions\\llm\\threshold.jsonl": "0b452c4a411b4c35322a0274de1ec0f00b613a233bedcac5ddee88f8b011f45c",
+    "results\\predictions\\tfidf_lr\\calibration.jsonl": "91c06e82b9e892298864eb4309e5e41c9928ed474ab84aa6b4d660e2e8d8d396",
+    "results\\predictions\\tfidf_lr\\real_phishing_challenge.jsonl": "cae7959805634e066e3837fc85b6b6da98ac3f917d5e90ae9f786768943122b2",
+    "results\\predictions\\tfidf_lr\\test_id.jsonl": "5e21a116d91c3788f883d1efa9fade31f33025dbb1f6bd3290c46771f718263d",
+    "results\\predictions\\tfidf_lr\\threshold.jsonl": "86af10229a8d245220d3cb6143962d2d7e9dcd8dafebd90766848027518dcc7e"
+  },
+  "human_review": {
+    "selected": 30,
+    "completed_human_reviews": 0,
+    "completed_human_ratings": 0,
+    "available_explanations": 12,
+    "missing_explanations": 18,
+    "missing_explanations_reviewed": 0,
+    "uncertain_reviewed": 0,
+    "unreviewed": 30,
+    "status": "pending",
+    "availability_rate": 0.4,
+    "missing_explanation_rate": 0.6,
+    "review_completion_rate": 0.0,
+    "set_counts": {
+      "threshold": 21,
+      "test_id": 8,
+      "real_phishing_challenge": 1
+    },
+    "score_statistics": {
+      "correctness": {
+        "n": 0,
+        "sum": 0,
+        "mean": null,
+        "median": null,
+        "distribution": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        }
+      },
+      "grounding": {
+        "n": 0,
+        "sum": 0,
+        "mean": null,
+        "median": null,
+        "distribution": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        }
+      },
+      "helpfulness": {
+        "n": 0,
+        "sum": 0,
+        "mean": null,
+        "median": null,
+        "distribution": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0
+        }
+      }
+    },
+    "quality_denominator": "Only available explanations with a human score for that dimension; missing and uncertain scores are excluded, never zero-filled.",
+    "interpretation": "Descriptive ordinal-scale means and medians for this fixed borderline sample and submitted reviewer judgments; no independent second review or inter-rater agreement was collected. No confidence intervals or gate changes are inferred from these ratings.",
+    "eligible_borderline": 30,
+    "human_scores_generated_by_AI": 0
+  },
+  "decision": {
+    "models": {
+      "tfidf_lr": {
+        "gates": [
+          {
+            "gate": "test_id_fpr",
+            "value": 0.01,
+            "limit": 0.03,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "test_id_recall",
+            "value": 0.982,
+            "limit": 0.9,
+            "direction": "min",
+            "status": "pass"
+          },
+          {
+            "gate": "test_ood_fpr",
+            "value": null,
+            "limit": 0.15,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_ood_recall",
+            "value": null,
+            "limit": 0.7,
+            "direction": "min",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_adv_fpr",
+            "value": null,
+            "limit": 0.15,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_id_ece",
+            "value": 0.006618790306161457,
+            "limit": 0.1,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "valid_output_rate",
+            "value": 1.0,
+            "limit": 1.0,
+            "direction": "min",
+            "status": "pass"
+          },
+          {
+            "gate": "p95_ms_worst_required_case",
+            "value": 1.6104999661445611,
+            "limit": 100,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "cold_ms_worst_required_case",
+            "value": 313.4850000143051,
+            "limit": 1000,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "required_download_bytes",
+            "value": 1336903,
+            "limit": 5000000,
+            "direction": "max",
+            "status": "pass"
+          }
+        ],
+        "qualified": false,
+        "status": "not_qualified_missing_evidence"
+      },
+      "distilbert": {
+        "gates": [
+          {
+            "gate": "test_id_fpr",
+            "value": 0.012,
+            "limit": 0.03,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "test_id_recall",
+            "value": 0.834,
+            "limit": 0.9,
+            "direction": "min",
+            "status": "fail"
+          },
+          {
+            "gate": "test_ood_fpr",
+            "value": null,
+            "limit": 0.15,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_ood_recall",
+            "value": null,
+            "limit": 0.7,
+            "direction": "min",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_adv_fpr",
+            "value": null,
+            "limit": 0.15,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_id_ece",
+            "value": 0.023470146729293782,
+            "limit": 0.1,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "valid_output_rate",
+            "value": 1.0,
+            "limit": 1.0,
+            "direction": "min",
+            "status": "pass"
+          },
+          {
+            "gate": "p95_ms_worst_required_case",
+            "value": 1682.338750040531,
+            "limit": 500,
+            "direction": "max",
+            "status": "fail"
+          },
+          {
+            "gate": "cold_ms_worst_required_case",
+            "value": 4450.340000033379,
+            "limit": 3000,
+            "direction": "max",
+            "status": "fail"
+          },
+          {
+            "gate": "required_download_bytes",
+            "value": 95857448,
+            "limit": 100000000,
+            "direction": "max",
+            "status": "pass"
+          }
+        ],
+        "qualified": false,
+        "status": "fail"
+      },
+      "llm": {
+        "gates": [
+          {
+            "gate": "test_id_fpr",
+            "value": 0.0,
+            "limit": 0.03,
+            "direction": "max",
+            "status": "pass"
+          },
+          {
+            "gate": "test_id_recall",
+            "value": 0.0,
+            "limit": 0.9,
+            "direction": "min",
+            "status": "fail"
+          },
+          {
+            "gate": "test_ood_fpr",
+            "value": null,
+            "limit": 0.15,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_ood_recall",
+            "value": null,
+            "limit": 0.7,
+            "direction": "min",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_adv_fpr",
+            "value": null,
+            "limit": 0.15,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "test_id_ece",
+            "value": 0.2745169972732786,
+            "limit": 0.1,
+            "direction": "max",
+            "status": "fail"
+          },
+          {
+            "gate": "valid_output_rate",
+            "value": 0.473,
+            "limit": 0.99,
+            "direction": "min",
+            "status": "fail"
+          },
+          {
+            "gate": "p95_ms_worst_required_case",
+            "value": 5968.805000028014,
+            "limit": 5000,
+            "direction": "max",
+            "status": "fail"
+          },
+          {
+            "gate": "cold_ms_worst_required_case",
+            "value": 17801.99500000477,
+            "limit": 15000,
+            "direction": "max",
+            "status": "fail"
+          },
+          {
+            "gate": "required_download_bytes",
+            "value": 1128990755,
+            "limit": 1500000000,
+            "direction": "max",
+            "status": "not_assessed"
+          },
+          {
+            "gate": "consistency",
+            "value": 0.48,
+            "limit": 0.95,
+            "direction": "min",
+            "status": "fail"
+          }
+        ],
+        "qualified": false,
+        "status": "fail"
+      }
+    },
+    "survivors": [],
+    "qualified_winner": null,
+    "ranking": "not_applicable_no_full_gate_survivors",
+    "weight_sensitivity": "not_applicable_no_survivors; frozen +/-10 point shifts cannot repair missing hard-gate evidence",
+    "weights": {
+      "recall": 0.3,
+      "robustness": 0.25,
+      "latency": 0.2,
+      "reliability": 0.15,
+      "size": 0.1
+    }
+  },
+  "Graph_sha256": "d18212416978d6e65eef99ee8010b9437a900a9a632eb6357d1e59826ee76804",
+  "synthetic_messages": 0,
+  "AI_human_ratings": 0,
+  "qualitative_error_reading_record": {
+    "at_utc": "2026-10-23T18:41:18.400095+00:00",
+    "reviewer_type": "AI engineering agent qualitative error reading",
+    "independent_human_explanation_ratings": false,
+    "binary_truth_label_changes": 0,
+    "model_or_threshold_changes": 0,
+    "observations_sha256": "b4465f8818b085c49a7a153ac593cfa51c58457ae58f28ef15f5268482026df8",
+    "files": {
+      "tfidf_lr.private.jsonl": {
+        "sha256": "1fc69a6f9a5e2c078477196f3b74f46d45228617e2793f2ca88e2fd399d37818",
+        "read_ids": [
+          "027e35017b7f647dbfc66efb",
+          "a4c8e4b53be1e222d4b13090",
+          "477faaeb37d40910d2384058",
+          "02ece2375fbb6e1e130c8c11",
+          "93d9ce3e68997658010faf4f",
+          "1c8bb5502460075bc224445c",
+          "af362cb4d28cb9fb2f9b242f",
+          "2ec2f9c07a6a77efa747da48",
+          "02562f4be2b5d9059f4eb203",
+          "0cffdad56c93c226b072b6e7",
+          "2f3090c05df1593911d07886",
+          "a5ee15e81c62b557603f04fc",
+          "8ccca5eedbb7bcf9ba2e1244",
+          "ff23e29cfa222a32694a12ba"
+        ]
+      },
+      "tfidf_lr_real_phishing.private.jsonl": {
+        "sha256": "b8cf2cf4997f99b569fbe9a129060a18fa54d2911a85e627268a3bb9e5ce42ba",
+        "read_ids": [
+          "nazario-994ba0023d99edbe9acd841c",
+          "nazario-82bf086a063a08feb73e735b",
+          "nazario-61bc01b7e8f19a3f92a9a4cf",
+          "nazario-977ca345360edc960e1584ad",
+          "nazario-9a1e51d55b0a83c55c373fff",
+          "nazario-f8ffeac0689ba88703d57684",
+          "nazario-7a68f19aac92cf4a6547b34b",
+          "nazario-74087579c30792666e71ea33"
+        ]
+      },
+      "distilbert.private.jsonl": {
+        "sha256": "093adb5b86ff71c5d559ce66eaa1ea3cd57db2cb397147098b4c3f2de4840a25",
+        "read_ids": [
+          "249293d207f4d9604df6d72f",
+          "02ece2375fbb6e1e130c8c11",
+          "64ce13b3a7d37081451797aa",
+          "027e35017b7f647dbfc66efb",
+          "ff85221a96312082d75e63ae",
+          "2a088305e2d0871db94852cf",
+          "32f0881d2fcec9d2655bd294",
+          "ad92b0f91216710cc82155d7",
+          "b59a64f964e478df3c7c6a1f",
+          "6dae7e9c769d3e52fd710345",
+          "810b1218f7622e131e3ba677",
+          "2298cd19734345893f9b96a5",
+          "ab39493132ce027fc195f153",
+          "c25f03f465b5211e52cbc2fa",
+          "451cad54ad8a862238a67b60",
+          "0824228b455811ea165dff54",
+          "4c9d8b632959a20ff5f5db4e",
+          "ba1b651932969d2a154b2f46",
+          "e66a3b315f447ee880bbafcc",
+          "c0711ac161db97bb86ad63f9",
+          "cef720e43be14598b0afa6b4",
+          "a752f8338257219820dea9bb",
+          "aec07c5e11465b6a7f24aea5",
+          "1c8bb5502460075bc224445c",
+          "ff23e29cfa222a32694a12ba",
+          "9cf496b157e2deaca913399c",
+          "6a74e5513901efadd6a71c84",
+          "16034f76f459d6bda35c3491",
+          "95b15cdcd4bc720a1500b692",
+          "984487aae3df84fb87fcaaab",
+          "86823d4455310af70282d433"
+        ]
+      },
+      "distilbert_real_phishing.private.jsonl": {
+        "sha256": "0457eb416343315fccbcf08b8266d74e02812797856b814b3d3d27bea4519fec",
+        "read_ids": [
+          "nazario-28e445f06f6506668195c7fd",
+          "nazario-82bf086a063a08feb73e735b",
+          "nazario-e12f15340673107aed787955",
+          "nazario-a350a0fe1a15cb7fc2a5aac1",
+          "nazario-9a1e51d55b0a83c55c373fff",
+          "nazario-1d2704fe16ffae145369dbd7",
+          "nazario-abbf02b7d4ac2d048646d62d",
+          "nazario-12b2c50302173acccc77c308",
+          "nazario-994ba0023d99edbe9acd841c",
+          "nazario-0d2429f3635fbdc4095ed58b",
+          "nazario-85b3ca3312e43916ad2af73f",
+          "nazario-a1aab28c683ed4e7bb0e3b4d",
+          "nazario-f8ffeac0689ba88703d57684",
+          "nazario-74087579c30792666e71ea33",
+          "nazario-42d7ed4dcf89e4803e35ea8f",
+          "nazario-a16034ee8ae7f2ecb1a9b83d",
+          "nazario-fd81df761205abbed5bf05ee",
+          "nazario-9133754dea39dd01a0ce80d6",
+          "nazario-a1e5b6d4291e095c2615ad90",
+          "nazario-50dadce5a65e4ecf5a1e0e16",
+          "nazario-977ca345360edc960e1584ad",
+          "nazario-71e004eb266727a30e827109",
+          "nazario-4f035c5d8f69f4fcb46010d8",
+          "nazario-506a84de00606dab0c45d7cf",
+          "nazario-07f25f37f5dff0d8d3eeb866"
+        ]
+      },
+      "llm.private.jsonl": {
+        "sha256": "7cdb6b14145022ec335f366ee897767cfed4b5145ac40affd045e24d65bfa868",
+        "read_ids": [
+          "d6db35683b1e3c019fb4969b",
+          "ba1b651932969d2a154b2f46",
+          "58d7e304127d5f91b4cd9958",
+          "71ba4501da7ce848c09de3c0",
+          "e6e61ddce6d0f116f9fd51ba",
+          "77ea67fd56c38fa1f6c18c72",
+          "4f16e66a6623c71fdcd649f7",
+          "0382a66a7f59d5a8daf106f2",
+          "c69a49687df2f0d0e27a1044",
+          "34bf3dfcfa58ef9fd70ec403",
+          "16034f76f459d6bda35c3491",
+          "7c44a24827369dcb170d9242",
+          "9203b865a9af875d8d09524d",
+          "d287d384cbe6126ed6332d7f",
+          "5888091e69b2f9fbe49b0990",
+          "c82a71f1d0e39eeb3d15c423",
+          "13df7310b54468e90f1f1342",
+          "2c52f6aec306152630016941",
+          "c31d9116b47aeb03cc40cbfd",
+          "06588cdda0a73ed3a9c36d16",
+          "45cdd8526158eecc02e9aa4b",
+          "e175738bfea06fe7e7c89f26",
+          "4360170356f48c254d65d70f",
+          "6dae7e9c769d3e52fd710345",
+          "67f77862caa4e91405dea6e9"
+        ]
+      },
+      "llm_real_phishing.private.jsonl": {
+        "sha256": "d2f95bb70d482a3f887bbb503b474659b9330aa7a0298855805226eccd85bc0e",
+        "read_ids": [
+          "nazario-e26410062fed3613cd87e51f",
+          "nazario-e12f15340673107aed787955",
+          "nazario-62962fc0be788fb72052c9de",
+          "nazario-0829a3fe800a99137fc8094e",
+          "nazario-4dac2a6e7ac50e5939a016ae",
+          "nazario-782d3a7fd03cf4327d8193ad",
+          "nazario-6a434d5bd3e8d01574e67f84",
+          "nazario-a212a14dd34bd398d3f1b04d",
+          "nazario-fcd97de1239c00888416b1c8",
+          "nazario-85b3ca3312e43916ad2af73f",
+          "nazario-994ba0023d99edbe9acd841c",
+          "nazario-17dc8f2b59251f03d6c5aa28",
+          "nazario-9961b138b9b9fea3004fc641",
+          "nazario-24bb8d4874096f0d72393f1e",
+          "nazario-4f035c5d8f69f4fcb46010d8",
+          "nazario-9133754dea39dd01a0ce80d6",
+          "nazario-f6e15dae2338c2205099a9c5",
+          "nazario-7d4c6ba124c4ff914b0200a4",
+          "nazario-8997bc840c889b31734a25fb",
+          "nazario-4e56481f69c7f0bf398340d1",
+          "nazario-c1056c946b6f9d7c14366dcc",
+          "nazario-7533d396b50992596d09a1e6",
+          "nazario-af3ec44a0cd0fb902049d28b",
+          "nazario-977ca345360edc960e1584ad",
+          "nazario-f5446e7f70df1826df809bf8"
+        ]
+      }
+    }
+  },
+  "post_test_output_diagnostics": {
+    "path": "results/output_contract_diagnostics.json",
+    "sha256": "8221ae05cb5bff8bc9685c8c723331c3aa3048c435e82a8659fbbb2d9b190e1f"
+  },
+  "real_phishing_challenge": {
+    "status": "registered_positive_only",
+    "definition": {
+      "at_utc": "2026-10-23T16:53:15.150009+00:00",
+      "status": "admitted_publisher_positive_recall_only",
+      "name": "real_phishing_challenge",
+      "source": "Nazario original phishing-2025 mailbox",
+      "source_url": "https://monkey.org/~jose/phishing/",
+      "publisher_label_definition": "1: publisher hand-classified phishing; possible annotation errors acknowledged by the collector.",
+      "license": "CC BY 4.0, declared by the original mailbox publisher",
+      "rows": 100,
+      "positive_examples": 100,
+      "negative_examples": 0,
+      "groups": 93,
+      "claimed_date_year": 2025,
+      "date_limit": "Header date is a claimed message date, not proof of content novelty or authenticated receipt.",
+      "source_candidates": 371,
+      "year_eligible": 367,
+      "date_exclusions": [
+        {
+          "id": "nazario-4d344007961066c9875cce99",
+          "claimed_year": 2024
+        },
+        {
+          "id": "nazario-14e7a4043fe1863798825ed0",
+          "claimed_year": null
+        },
+        {
+          "id": "nazario-f5c39824a47b02037f1b24bb",
+          "claimed_year": null
+        },
+        {
+          "id": "nazario-c372d18a4dd92c0ee419383f",
+          "claimed_year": null
+        }
+      ],
+      "additional_checkpoint_shared_passage_pairs": [],
+      "excluded_complete_groups": [],
+      "eligible_after_all_checks": 367,
+      "selection": "Whole groups, sorted input IDs, seed42, target100 positives; no score-based selection.",
+      "truncated": 11,
+      "source_binary_labels_changed": false,
+      "synthetic_messages": 0,
+      "translations": 0,
+      "source_checks": "Full original Kaggle exact/near/passage quarantine; all public checkpoint email splits excluded by exact/near/group evidence; additional publisher-to-candidate shared-passage quarantine.",
+      "model_test_predictions_before_registration": 0,
+      "purpose": "Estimate recall on collected English publisher-phishing examples, with grouped bootstrap uncertainty.",
+      "cannot_estimate": [
+        "FPR",
+        "population precision",
+        "ROC-AUC",
+        "PR-AUC",
+        "population ECE",
+        "balanced-accuracy robustness"
+      ],
+      "original_test_ood": "Incomplete; no admitted independent negative population. This challenge does not fill a missing negative arm.",
+      "original_test_adv": "Unassessed; natural structural flags are not human-certified evasion intent or genuine bank/OTP controls.",
+      "hashes": {
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\data\\prepared\\checkpoint_clean_pool.audit.jsonl": "e11b9d882513ce1064ffb6d4542d3c821b0a495cb8d4a0725168a1624eff83b3",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\results\\checkpoint_clean_pool_audit.json": "fb58ceedb3de41b6a981eb25feb13d5e91398bb832b21cee30f830648da3aa85",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4\\data\\prepared\\checkpoint_training_emails.audit.jsonl": "fbc6c4588486a294eb3e23f1957a96fa069cab0dd7ab0f521ca51dca14ce7798",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\data\\raw\\nazario\\phishing-2025": "f1fa7e0fe35c9a16f36d9aa20ade7e1d3908d1d0c1d917b8c53c8aa799ec1c8f",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\data\\raw\\nazario\\README.txt": "4589b63a4149bff0b65e82c2110baaebee36e5d9219009a31cc78bb6ab597fab",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\data\\raw\\nazario\\LICENSE.txt": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\data\\prepared\\real_phishing_challenge.jsonl": "948fae6ccb7965b819fb261292aabfadea397f0b64281c2d98f96f77494766d3",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\data\\prepared\\real_phishing_challenge.audit.jsonl": "e94035c62f0f293039b5be99aef4617f0009ca21a0e6ff30f1d42f59ca9d36c4",
+        "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\scripts\\real_phishing_challenge.py": "817702c02e295c3c1f7cbc8693a29583d0328e3d97c44a5eb086a888f699c00b"
+      }
+    },
+    "models": {
+      "tfidf_lr": {
+        "recall": {
+          "value": 0.92,
+          "ci_lower": 0.8556701030927835,
+          "ci_upper": 0.97,
+          "valid_bootstrap_reps": 2000
+        },
+        "valid_output_rate": {
+          "value": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "tp": {
+          "value": 92,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fn": {
+          "value": 8,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        }
+      },
+      "distilbert": {
+        "recall": {
+          "value": 0.17,
+          "ci_lower": 0.09374269859813084,
+          "ci_upper": 0.2500584112149529,
+          "valid_bootstrap_reps": 2000
+        },
+        "valid_output_rate": {
+          "value": 1.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "tp": {
+          "value": 17,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fn": {
+          "value": 83,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        }
+      },
+      "llm": {
+        "recall": {
+          "value": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "valid_bootstrap_reps": 2000
+        },
+        "valid_output_rate": {
+          "value": 0.45,
+          "ci_lower": 0.3535204991087344,
+          "ci_upper": 0.5520833333333334,
+          "valid_bootstrap_reps": 2000
+        },
+        "tp": {
+          "value": 0,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        },
+        "fn": {
+          "value": 100,
+          "ci_lower": null,
+          "ci_upper": null,
+          "valid_bootstrap_reps": 0
+        }
+      }
+    }
+  }
+}

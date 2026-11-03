@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="864pt" height="367.2pt" viewBox="0 0 864 367.2" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-27T21:46:41.826831</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 367.2 
+L 864 367.2 
+L 864 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 112.32 290.952 
+L 301.32 290.952 
+L 301.32 101.952 
+L 112.32 101.952 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 112.32 101.952 
+L 206.82 101.952 
+L 206.82 196.452 
+L 112.32 196.452 
+z
+" clip-path="url(#p0378d57ff2)" style="fill: #dcefe9; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 206.82 101.952 
+L 301.32 101.952 
+L 301.32 196.452 
+L 206.82 196.452 
+z
+" clip-path="url(#p0378d57ff2)" style="fill: #f8e2df; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 112.32 196.452 
+L 206.82 196.452 
+L 206.82 290.952 
+L 112.32 290.952 
+z
+" clip-path="url(#p0378d57ff2)" style="fill: #f8e2df; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 206.82 196.452 
+L 301.32 196.452 
+L 301.32 290.952 
+L 206.82 290.952 
+z
+" clip-path="url(#p0378d57ff2)" style="fill: #dcefe9; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1"/>
+     <g id="text_1">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #5a6d7d" x="159.57" y="306.550438" transform="rotate(-0 159.57 306.550438)">Predicted safe</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2"/>
+     <g id="text_2">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #5a6d7d" x="254.07" y="306.550438" transform="rotate(-0 254.07 306.550438)">Predicted alert</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_3"/>
+     <g id="text_3">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="104.32" y="153.001219" transform="rotate(-0 104.32 153.001219)">Source negative</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_4"/>
+     <g id="text_4">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: end; fill: #172c40" x="104.32" y="247.501219" transform="rotate(-0 104.32 247.501219)">Source positive</text>
+     </g>
+    </g>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="159.57" y="145.986375" transform="rotate(-0 159.57 145.986375)">5</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="159.57" y="174.220242" transform="rotate(-0 159.57 174.220242)">Correctly safe</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="254.07" y="145.986375" transform="rotate(-0 254.07 145.986375)">125</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="254.07" y="174.220242" transform="rotate(-0 254.07 174.220242)">False alarm</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="159.57" y="240.486375" transform="rotate(-0 159.57 240.486375)">0</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="159.57" y="268.720242" transform="rotate(-0 159.57 268.720242)">Missed positive</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="254.07" y="240.486375" transform="rotate(-0 254.07 240.486375)">173</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="254.07" y="268.720242" transform="rotate(-0 254.07 268.720242)">Detected positive</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 14.4px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #087f78" x="206.82" y="85.952" transform="rotate(-0 206.82 85.952)">TF-IDF + LR</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_7">
+    <path d="M 380.7 290.952 
+L 569.7 290.952 
+L 569.7 101.952 
+L 380.7 101.952 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 380.7 101.952 
+L 475.2 101.952 
+L 475.2 196.452 
+L 380.7 196.452 
+z
+" clip-path="url(#pae5e29e1d8)" style="fill: #dcefe9; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 475.2 101.952 
+L 569.7 101.952 
+L 569.7 196.452 
+L 475.2 196.452 
+z
+" clip-path="url(#pae5e29e1d8)" style="fill: #f8e2df; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 380.7 196.452 
+L 475.2 196.452 
+L 475.2 290.952 
+L 380.7 290.952 
+z
+" clip-path="url(#pae5e29e1d8)" style="fill: #f8e2df; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 475.2 196.452 
+L 569.7 196.452 
+L 569.7 290.952 
+L 475.2 290.952 
+z
+" clip-path="url(#pae5e29e1d8)" style="fill: #dcefe9; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_3">
+     <g id="line2d_5"/>
+     <g id="text_14">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #5a6d7d" x="427.95" y="306.550437" transform="rotate(-0 427.95 306.550437)">Predicted safe</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_6"/>
+     <g id="text_15">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #5a6d7d" x="522.45" y="306.550437" transform="rotate(-0 522.45 306.550437)">Predicted alert</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_3">
+     <g id="line2d_7"/>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_8"/>
+    </g>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="427.95" y="145.986375" transform="rotate(-0 427.95 145.986375)">130</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="427.95" y="174.220242" transform="rotate(-0 427.95 174.220242)">Correctly safe</text>
+   </g>
+   <g id="text_18">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="522.45" y="145.986375" transform="rotate(-0 522.45 145.986375)">0</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="522.45" y="174.220242" transform="rotate(-0 522.45 174.220242)">False alarm</text>
+   </g>
+   <g id="text_20">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="427.95" y="240.486375" transform="rotate(-0 427.95 240.486375)">100</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="427.95" y="268.720242" transform="rotate(-0 427.95 268.720242)">Missed positive</text>
+   </g>
+   <g id="text_22">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="522.45" y="240.486375" transform="rotate(-0 522.45 240.486375)">73</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="522.45" y="268.720242" transform="rotate(-0 522.45 268.720242)">Detected positive</text>
+   </g>
+   <g id="text_24">
+    <text style="font-weight: 700; font-size: 14.4px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #536dc2" x="475.2" y="85.952" transform="rotate(-0 475.2 85.952)">DistilBERT</text>
+   </g>
+  </g>
+  <g id="axes_3">
+   <g id="patch_12">
+    <path d="M 649.08 290.952 
+L 838.08 290.952 
+L 838.08 101.952 
+L 649.08 101.952 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 649.08 101.952 
+L 743.58 101.952 
+L 743.58 196.452 
+L 649.08 196.452 
+z
+" clip-path="url(#pc727b2bd33)" style="fill: #dcefe9; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 743.58 101.952 
+L 838.08 101.952 
+L 838.08 196.452 
+L 743.58 196.452 
+z
+" clip-path="url(#pc727b2bd33)" style="fill: #f8e2df; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 649.08 196.452 
+L 743.58 196.452 
+L 743.58 290.952 
+L 649.08 290.952 
+z
+" clip-path="url(#pc727b2bd33)" style="fill: #f8e2df; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 743.58 196.452 
+L 838.08 196.452 
+L 838.08 290.952 
+L 743.58 290.952 
+z
+" clip-path="url(#pc727b2bd33)" style="fill: #dcefe9; stroke: #ffffff; stroke-width: 4; stroke-linejoin: miter"/>
+   </g>
+   <g id="matplotlib.axis_5">
+    <g id="xtick_5">
+     <g id="line2d_9"/>
+     <g id="text_25">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #5a6d7d" x="696.33" y="306.550438" transform="rotate(-0 696.33 306.550438)">Predicted safe</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_10"/>
+     <g id="text_26">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #5a6d7d" x="790.83" y="306.550438" transform="rotate(-0 790.83 306.550438)">Predicted alert</text>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_6">
+    <g id="ytick_5">
+     <g id="line2d_11"/>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_12"/>
+    </g>
+   </g>
+   <g id="text_27">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="696.33" y="145.986375" transform="rotate(-0 696.33 145.986375)">130</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="696.33" y="174.220242" transform="rotate(-0 696.33 174.220242)">Correctly safe</text>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="790.83" y="145.986375" transform="rotate(-0 790.83 145.986375)">0</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="790.83" y="174.220242" transform="rotate(-0 790.83 174.220242)">False alarm</text>
+   </g>
+   <g id="text_31">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="696.33" y="240.486375" transform="rotate(-0 696.33 240.486375)">173</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="696.33" y="268.720242" transform="rotate(-0 696.33 268.720242)">Missed positive</text>
+   </g>
+   <g id="text_33">
+    <text style="font-weight: 700; font-size: 24px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="790.83" y="240.486375" transform="rotate(-0 790.83 240.486375)">0</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #172c40" x="790.83" y="268.720242" transform="rotate(-0 790.83 268.720242)">Detected positive</text>
+   </g>
+   <g id="text_35">
+    <text style="font-weight: 700; font-size: 14.4px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: middle; fill: #b45a35" x="743.58" y="85.952" transform="rotate(-0 743.58 85.952)">Llama 3.2 1B</text>
+   </g>
+  </g>
+  <g id="text_36">
+   <text style="font-weight: 700; font-size: 21px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #172c40" x="34.56" y="28.808719" transform="rotate(-0 34.56 28.808719)">What each model got right and wrong</text>
+  </g>
+  <g id="text_37">
+   <text style="font-size: 11px; font-family: 'DejaVu Sans', 'Arial', sans-serif; text-anchor: start; fill: #5a6d7d" x="34.56" y="38.835881" transform="rotate(-0 34.56 38.835881)">Constructed functional set · 303 inputs per model · counts, not percentages</text>
+  </g>
+  <g id="text_38">
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; fill: #5a6d7d" transform="translate(34.56 342.613945)">All requested outputs are counted. Invalid LLM outputs become safe predictions under the frozen fail-open rule.</text>
+   <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Arial', sans-serif; fill: #5a6d7d" transform="translate(34.56 354.61668)">These labels describe constructed scenarios; the set is not authentic bank or adversarial email coverage.</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p0378d57ff2">
+   <rect x="112.32" y="101.952" width="189" height="189"/>
+  </clipPath>
+  <clipPath id="pae5e29e1d8">
+   <rect x="380.7" y="101.952" width="189" height="189"/>
+  </clipPath>
+  <clipPath id="pc727b2bd33">
+   <rect x="649.08" y="101.952" width="189" height="189"/>
+  </clipPath>
+ </defs>
+</svg>
