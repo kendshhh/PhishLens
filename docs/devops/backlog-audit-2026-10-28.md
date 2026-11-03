@@ -1,11 +1,14 @@
 # DevOps backlog audit — October 28, 2026
 
-This audit maps the five currently open issues assigned to Kendra to the verified
-course playbooks, the sprint planning sheet, repository state, and live delivery
+This October 28 audit maps the five issues then open and assigned to Kendra to the
+verified course playbooks, the sprint planning sheet, repository state, and live delivery
 evidence. It is a work plan and evidence update; it does not close issues or record
 team decisions that have not happened.
 
-## Latest refresh — October 29, 2026 00:31 UTC
+The current Kendra issue register is in [the November 4 DevOps status](kendra-devops-status-2026-11-04.md);
+the snapshots below retain their original dates.
+
+## October 29 snapshot — 2026-10-29 00:31 UTC
 
 PR [#86](https://github.com/kendshhh/PhishLens/pull/86) merged at 00:11 UTC
 as `1344fcb061272bac93ced5911f1ab8fbb3b6785d`. Production deployment
@@ -165,3 +168,4 @@ Security sources: [certifi advisory GHSA-6q48-6c7w-9gw2](https://github.com/advi
   remains a proposed, date-unconfirmed plan.
 - Did not change GitHub issue statuses, protected environment settings, Neon
   database roles, production/staging rows, or team-event records.
+
