@@ -163,6 +163,38 @@ test("late detail response cannot replace the most recently opened analysis", as
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "B");
 });
 
+test("starting Analyze and save invalidates an older pending detail response", async () => {
+  let resolveOldDetail;
+  let resolveCreate;
+  const older = record("older", "Older report");
+  const saved = record("created", "New analysis");
+  const client = {
+    ...createInMemoryAnalysisClient(),
+    getAnalysis(recordId) {
+      if (recordId === "older") return new Promise(resolve => { resolveOldDetail = resolve; });
+      return Promise.resolve(saved);
+    },
+    createAnalysis() { return new Promise(resolve => { resolveCreate = resolve; }); },
+    async listAnalyses() { return [saved]; }
+  };
+  const { ui, controller } = setup(client);
+  const openingOlder = controller.loadDetail("older");
+  ui.get("create-body").value = "Synthetic email body";
+  const creating = ui.get("create-form").fire("submit");
+  await Promise.resolve();
+
+  resolveOldDetail(older);
+  await openingOlder;
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("detail-content").children.length, 0);
+  assert.equal(ui.get("edit-form").classList.contains("hidden"), true);
+  assert.equal(ui.get("delete-confirm").classList.contains("hidden"), true);
+
+  resolveCreate(saved);
+  await creating;
+  assert.equal(ui.get("detail-content").children[0].children[1].textContent, "New analysis");
+});
+
 test("older history response cannot erase a newly created analysis", async () => {
   let resolveOldList;
   let listCalls = 0;

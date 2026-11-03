@@ -170,6 +170,15 @@ export function createPopupController(client, doc = document) {
     }
   }
 
+  function invalidatePendingDetail() {
+    detailRequest++;
+    selected = null;
+    ui.detailContent.replaceChildren();
+    show(ui.detail, false);
+    show(ui.editForm, false);
+    show(ui.deleteConfirm, false);
+  }
+
   async function refresh() {
     const request = ++listRequest;
     show(ui.loading, true);
@@ -241,6 +250,7 @@ export function createPopupController(client, doc = document) {
       ui.body.focus();
       return;
     }
+    invalidatePendingDetail();
     setBusy(true);
     const createGeneration = ++listRequest;
     setStatus("Analyzing and saving your report…", "info");
