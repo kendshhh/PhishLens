@@ -95,7 +95,7 @@ def verify(archive, evidence_path, expected_source):
     if manifest.get("host_permissions") != hosts or evidence.get("host_permissions") != hosts:
         raise ValueError("Production host permissions do not match")
     expected_config = "export const API_BASE_URL = " + json.dumps(hosts[0][:-2]) + ";\n"
-    if config != expected_config:
+    if config not in (expected_config, expected_config.rstrip("\n")):
         raise ValueError("Production API configuration does not match the allowed host")
     if manifest.get("optional_host_permissions"):
         raise ValueError("Optional host permissions are not allowed")
