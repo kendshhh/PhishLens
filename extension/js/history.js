@@ -29,7 +29,7 @@ export async function loadHistory(baseUrl) {
 
             const result = document.createElement("p");
             result.textContent = "Prediction: " +
-                (analysis.prediction || "Pending");
+                (analysis.review_status === 'uncertain' ? 'Uncertain — local review not confirmed' : analysis.prediction || "Pending");
 
             const risk = document.createElement("p");
             risk.textContent = "Risk: " +

@@ -93,6 +93,8 @@ function isValidAnalysis(analysis) {
     if (!isValidUtcTimestamp(analysis.created_at)) {
         return false;
     }
+    if (analysis.review_status !== undefined && analysis.review_status !== null &&
+        !['released', 'uncertain'].includes(analysis.review_status)) return false;
 
     return true;
 }
@@ -102,7 +104,7 @@ export async function getAnalyses(baseUrl) {
 
     const response = await fetch(
         `${cleanBaseUrl}/api/analyses`,
-        { signal: AbortSignal.timeout(10000) }
+        { signal: AbortSignal.timeout(10000), redirect: 'error' }
     );
 
     if (!response.ok) {
@@ -124,7 +126,7 @@ export async function getAnalyses(baseUrl) {
     return data.items;
 }
 
-export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000 } = {}) {
+export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel } = {}) {
     if (!Number.isSafeInteger(createTimeoutMs) || createTimeoutMs < 1 || createTimeoutMs > 2147483647) {
         throw new Error('Create timeout must be a positive integer in milliseconds');
     }
@@ -132,7 +134,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
     const pendingCreateKeys = new Map();
 
     async function request(path, method, expectedStatus, body, timeoutMs = 10000, headers = {}) {
-        const options = { method, signal: AbortSignal.timeout(timeoutMs) };
+        const options = { method, signal: AbortSignal.timeout(timeoutMs), redirect: 'error' };
         if (body !== undefined) {
             options.headers = { 'Content-Type': 'application/json', ...headers };
             options.body = JSON.stringify(body);
@@ -142,7 +144,9 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
             let message = 'Request failed (HTTP ' + response.status + ')';
             try {
                 const errorBody = await response.json();
-                if (typeof errorBody?.detail === 'string') message = errorBody.detail;
+                if (typeof errorBody?.detail === 'string' && errorBody.detail.trim()) {
+                    message = errorBody.detail;
+                }
             } catch {
                 // Some servers return an empty or non-JSON error body.
             }
@@ -189,7 +193,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
             return checkRecord(await request(recordUrl(id), 'GET', 200), true);
         },
         async createAnalysis(input, { idempotencyKey } = {}) {
-            const fingerprint = JSON.stringify([input?.subject ?? '', input?.body]);
+            const fingerprint = JSON.stringify([input?.subject ?? '', input?.body, input?.local_review ?? null]);
             const automaticKey = idempotencyKey === undefined;
             const key = idempotencyKey ?? pendingCreateKeys.get(fingerprint) ?? globalThis.crypto.randomUUID();
             if (automaticKey) pendingCreateKeys.set(fingerprint, key);
@@ -202,7 +206,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                         201,
                         input,
                         createTimeoutMs,
-                        { 'Idempotency-Key': key }
+                        { 'Idempotency-Key': key, ...(requiredModel ? { 'X-PhishLens-Model': requiredModel } : {}) }
                     ),
                     true
                 );

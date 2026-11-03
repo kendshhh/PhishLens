@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.secretary.preview import (  # noqa: E402
+from scripts.secretary.preview import (
     render_request,
     verify_environment,
     verify_service,
@@ -60,7 +60,10 @@ def main() -> None:
     )
     deploy_id = deploy["id"]
     print(f"Waiting for staging deployment {deploy_id} of {commit}", flush=True)
-    deadline = time.monotonic() + 900
+    # Render can spend up to 15 minutes waiting for a web service to bind a
+    # port. Leave time for its failure event to reach the deploy API before the
+    # hosted-staging job's own timeout expires.
+    deadline = time.monotonic() + 1200
     while time.monotonic() < deadline:
         status = render_request(f"services/{service_id}/deploys/{deploy_id}")
         if status["status"] == "live":

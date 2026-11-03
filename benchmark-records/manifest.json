@@ -1,0 +1,657 @@
+{
+  "snapshot_date_manila": "2026-10-29",
+  "source_checkout": "D:\\Phishlens\\PhishLens",
+  "copied_at_utc": "2026-10-29T07:43:17.732652+00:00",
+  "integration_base": "1344fcb061272bac93ced5911f1ab8fbb3b6785d",
+  "scope": "Public report snapshot; no raw mail, predictions or private fixtures",
+  "files": [
+    {
+      "file": "academic_pilot_v2/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\academic_pilot_v2\\config.yaml",
+      "bytes": 4325,
+      "sha256": "360625ae5f3a5810bb0e8364aaac2ab3bfd86698c32ea9838649996103b3290d"
+    },
+    {
+      "file": "real_email_v3/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\config.yaml",
+      "bytes": 4345,
+      "sha256": "4c010e556b3b39ae075f65ea76fb012563d2d5c175cebf4f21370bdb196ba836"
+    },
+    {
+      "file": "real_email_v3/summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\summary.md",
+      "bytes": 16020,
+      "sha256": "400fd043c2037ea4b5349bf1a51531d488bc1ae386700048a4f416cc0b86fa22"
+    },
+    {
+      "file": "real_email_v3/Graph.csv",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\Graph.csv",
+      "bytes": 465624,
+      "sha256": "fc47b163a3765d4e5db98363c22d9fded5495549e94d321a6282cef5faf128f6"
+    },
+    {
+      "file": "real_email_v3/metrics.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\metrics.json",
+      "bytes": 15317,
+      "sha256": "ed5e7d3909e2f28b6b515e59956ca68305fbf5fbe55a28d3b7dbb9f922c94c0b"
+    },
+    {
+      "file": "real_email_v3/run_record.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\run_record.json",
+      "bytes": 223077,
+      "sha256": "6167694609c4f03be79350667ebc7c8673734c2efad4fad90a6097e3d8adb1b5"
+    },
+    {
+      "file": "real_email_v3/verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\verification.json",
+      "bytes": 1277,
+      "sha256": "11b36d4b91523e0f0309e574cb1411cd97dfce006e7bd8d8dc21ce9b378da6ec"
+    },
+    {
+      "file": "real_email_v3/charts/accuracy_vs_speed.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\charts\\accuracy_vs_speed.png",
+      "bytes": 50523,
+      "sha256": "554b51c6816338d4d1d36473a8f788333b8819be0cef9dc7a9d45f1de1da5238"
+    },
+    {
+      "file": "real_email_v3/charts/confusion_matrices.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\charts\\confusion_matrices.png",
+      "bytes": 89245,
+      "sha256": "dd27ce39a27344a3ca6a4225b409e093c3a4ffb426bc3b3859471dc1c063ea3b"
+    },
+    {
+      "file": "real_email_v3/charts/id_to_real_ood_drop.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\charts\\id_to_real_ood_drop.png",
+      "bytes": 60213,
+      "sha256": "44bfefaebd22bbe1942506c18e42fb5bd71e1292b7e402cc4997e8a0b10a99dc"
+    },
+    {
+      "file": "real_email_v3/charts/latency_boxplots.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\charts\\latency_boxplots.png",
+      "bytes": 96722,
+      "sha256": "66cbd25c03a395ad382b4adafba713e93b798126ef993435b2cb31c0466dd0bb"
+    },
+    {
+      "file": "real_email_v3/charts/roc_pr_curves.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_email_v3\\results\\charts\\roc_pr_curves.png",
+      "bytes": 176695,
+      "sha256": "d3cd451434dc99f369f861b35d2bb7bec9d31f12bab94a12d8fdcf93d5c49deb"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\config.yaml",
+      "bytes": 5665,
+      "sha256": "710c09872def12e6b1939ad2f352fd180fc86fdca379092c5c7840d3a9c8eef9"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\summary.md",
+      "bytes": 13716,
+      "sha256": "83931a19aed946640136afe939141246f8a9ac7e22790c53c45cd4120f31a3b8"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/Graph.csv",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\Graph.csv",
+      "bytes": 849077,
+      "sha256": "d18212416978d6e65eef99ee8010b9437a900a9a632eb6357d1e59826ee76804"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/metrics.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\metrics.json",
+      "bytes": 13843,
+      "sha256": "fe434c2671d74f16cfced3138f6e23479118a5135d77bad3e1544ccb7f7f69cb"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/run_record.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\run_record.json",
+      "bytes": 92070,
+      "sha256": "02247f3647f8b583dff69525f33176a9cc32defa8f764069ee2bbcfc4182e797"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\verification.json",
+      "bytes": 4166,
+      "sha256": "c48f759711c61e206b1c0d9da9ec2112cedb602a539365eb1d0785293be702d7"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/accuracy_vs_speed.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\accuracy_vs_speed.png",
+      "bytes": 28461,
+      "sha256": "0a3c58eab836ba9f3f3fdf5c8403d34079e1ecc4f8110a27497185ce66d1de4c"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/confusion_matrices.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\confusion_matrices.png",
+      "bytes": 30966,
+      "sha256": "d30806d56588de0c97e5e24c8f001355fc73c07aeaa965ccc324e7341b1c2706"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/id_and_collected_phishing_recall.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\id_and_collected_phishing_recall.png",
+      "bytes": 57662,
+      "sha256": "e612ace7678a31b44af9e555a85fdec6218778b15bee89fd4542a1de85fad680"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/id_to_ood_drop.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\id_to_ood_drop.png",
+      "bytes": 21181,
+      "sha256": "5600a2b862585056fe8766a19737e9b540f02e059fa3d8b6f41b303119bf9c05"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/latency_boxplots.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\latency_boxplots.png",
+      "bytes": 87573,
+      "sha256": "cff2576abe3529d04744b69f2940b3fdaeb8c25e807cbfbe91b8e19ec9d47282"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/risk_calibration.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\risk_calibration.png",
+      "bytes": 169346,
+      "sha256": "f607402219c72f716544e6ce097e983bb5bc517c59a1393b8d434555ab5b6b11"
+    },
+    {
+      "file": "english_real_v4_checkpoint_clean/charts/roc_pr_curves.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\english_real_v4_checkpoint_clean\\results\\charts\\roc_pr_curves.png",
+      "bytes": 66038,
+      "sha256": "86817f7ec303344985f273ee463a7fbfea8679d111ad279a9e6c3fb5b66d745e"
+    },
+    {
+      "file": "real_readiness_v10/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\config.yaml",
+      "bytes": 1417,
+      "sha256": "0ecc03c65288c986d40108cd2d8127cfa632f586f9b6b7101cd3d3774929ae85"
+    },
+    {
+      "file": "real_readiness_v10/summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\summary.md",
+      "bytes": 4215,
+      "sha256": "ac86df45283f84ddadae0b1c82bd4d0d59a11521979e1731c739b090900af643"
+    },
+    {
+      "file": "real_readiness_v10/terminology.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\terminology.md",
+      "bytes": 2020,
+      "sha256": "9867deb9c44e7a06fe3c19c82038b04487a7a6f54c999d4d031be0cd6e47f43e"
+    },
+    {
+      "file": "real_readiness_v10/Graph.csv",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\Graph.csv",
+      "bytes": 276465,
+      "sha256": "122546b964ba590b9e58c47d51fb653fc8c364ab2d72890e634cf77ac0ba863a"
+    },
+    {
+      "file": "real_readiness_v10/metrics.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\metrics.json",
+      "bytes": 19633,
+      "sha256": "c2394ea817a1344bd9bb0f73dad3026be2ea22d38d09c57fc211112d4642a90e"
+    },
+    {
+      "file": "real_readiness_v10/run_record.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\run_record.json",
+      "bytes": 4055,
+      "sha256": "e1f8a4177c48d5802e8b2fe85aa2d366667001f29b3d310ac39046f429790361"
+    },
+    {
+      "file": "real_readiness_v10/verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\verification.json",
+      "bytes": 5648,
+      "sha256": "a01654fa99860ca49f574d7fd044bf2c0430561487733e7fb72241afb3a1da82"
+    },
+    {
+      "file": "real_readiness_v10/visual_report.html",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\visual_report.html",
+      "bytes": 3463,
+      "sha256": "717a817e6da2b95f246595569ddd113e23c162a98dc25c70bd37be877308e825"
+    },
+    {
+      "file": "real_readiness_v10/charts/confusion_matrices.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\confusion_matrices.png",
+      "bytes": 63547,
+      "sha256": "b71c032c1e3a43a4ae387f80562c80d009ccde24be636022c1840114e2a54af3"
+    },
+    {
+      "file": "real_readiness_v10/charts/confusion_matrices.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\confusion_matrices.svg",
+      "bytes": 48246,
+      "sha256": "de5b3427ff7c2cbc8490da0dfa5128f5fd1e4c4bdc61d590b783b21f2183934e"
+    },
+    {
+      "file": "real_readiness_v10/charts/observed_latency.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\observed_latency.png",
+      "bytes": 39323,
+      "sha256": "ff165509b5b3a7cd4cc5c5836acf321173a215ae2ccbbff64348777b5a332ebe"
+    },
+    {
+      "file": "real_readiness_v10/charts/observed_latency.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\observed_latency.svg",
+      "bytes": 36612,
+      "sha256": "ef8eead302309a745cda80fce8580ac423af847bf20cc34728ecfedd421118ac"
+    },
+    {
+      "file": "real_readiness_v10/charts/recall_and_false_alarms.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\recall_and_false_alarms.png",
+      "bytes": 78586,
+      "sha256": "ab59a0d1d3f4e1b3172677436fd786f2232431cdeff2daf22cd0fd6309359862"
+    },
+    {
+      "file": "real_readiness_v10/charts/recall_and_false_alarms.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\recall_and_false_alarms.svg",
+      "bytes": 58382,
+      "sha256": "ce032f7afab53b13e2a04000ccd27cfe690fa03f1fa4323498b4fbfa1b801623"
+    },
+    {
+      "file": "real_readiness_v10/charts/roc_pr.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\roc_pr.png",
+      "bytes": 82422,
+      "sha256": "6a169cfea11cb625a12c5f485d42945640f0958bd6cecf7e6d033d9e7bd330c0"
+    },
+    {
+      "file": "real_readiness_v10/charts/roc_pr.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\real_readiness_v10\\results\\charts\\roc_pr.svg",
+      "bytes": 51366,
+      "sha256": "32c3787622bdcd90d5965ca2a9af0d8ff2f4d17f77ca7092b2b2e33433869f9a"
+    },
+    {
+      "file": "compact_classifiers_v11/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\config.yaml",
+      "bytes": 2230,
+      "sha256": "edd9cc021625f22c7aa1ba1f4e3611908858fa697ae4725192f257e903932ff2"
+    },
+    {
+      "file": "compact_classifiers_v11/summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\summary.md",
+      "bytes": 13288,
+      "sha256": "c8440511a9dc636d16ad8adb530a3ad9bbfc20f553c94377e75ec8f9d29ef6c4"
+    },
+    {
+      "file": "compact_classifiers_v11/decision_summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\decision_summary.md",
+      "bytes": 6761,
+      "sha256": "6bdb817be86ac37989b8c1c58f506858550ef223ee57c3996822b49d701feefe"
+    },
+    {
+      "file": "compact_classifiers_v11/terminology.html",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\terminology.html",
+      "bytes": 2966,
+      "sha256": "532a4936b9075fe7d7ee52340247b22ccf78cb6436feda2669b6b83e58ddb38d"
+    },
+    {
+      "file": "compact_classifiers_v11/Graph.csv",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\Graph.csv",
+      "bytes": 789763,
+      "sha256": "a7a319e4476860e2fa419682429daa9e41af09a61fe0b7724caa2d76c23942f8"
+    },
+    {
+      "file": "compact_classifiers_v11/metrics.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\metrics.json",
+      "bytes": 44903,
+      "sha256": "2b6d7f46e458ad1e5764c752794aa88ced29413fd3c58fd5ce9b79f7d0e5d1e2"
+    },
+    {
+      "file": "compact_classifiers_v11/run_record.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\run_record.json",
+      "bytes": 13338,
+      "sha256": "25412c8dcdecf392d2429d3f429b9df28704bd7709567cc053c064c98f11b577"
+    },
+    {
+      "file": "compact_classifiers_v11/verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\verification.json",
+      "bytes": 1109,
+      "sha256": "d153f123f5504060da3305db5b343068fe9f9228cc0e296bab9983c4abf1abce"
+    },
+    {
+      "file": "compact_classifiers_v11/visual_report.html",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\visual_report.html",
+      "bytes": 8974,
+      "sha256": "c6019612814395444e0b5801584d83794334aa370f2aa06499b334cc503ace10"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/confusion_matrices.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\confusion_matrices.png",
+      "bytes": 166436,
+      "sha256": "a79c637849177c0069c7b8ef826951fe8e71f693b8ba8372870c3a561d39ff09"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/confusion_matrices.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\confusion_matrices.svg",
+      "bytes": 96795,
+      "sha256": "267179156185c29ce0afeba2ef9774cb9464f77b3daf89ee8f98ba9d20dfa2a6"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/latency.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\latency.png",
+      "bytes": 111846,
+      "sha256": "f07cb470579c2c09ee6a9125742a52d6ee0a2a8bce9d9ef9adee5b534af38f70"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/latency.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\latency.svg",
+      "bytes": 107011,
+      "sha256": "1fb31c1835ba2abb042664acbc31f9e5ed770df914aa765618e00ea01f235d3f"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/operational_rates.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\operational_rates.png",
+      "bytes": 88085,
+      "sha256": "ba2352d253a3c50f51bd1edcda63678e6db3d9a2a3b4ca2e2002c2ce34c9548a"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/operational_rates.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\operational_rates.svg",
+      "bytes": 85612,
+      "sha256": "0d77962e1ca5f56dd03ec4def905e5e234f909cb63ca716e7f2e5a536a076050"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/precision_followup_rates.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\precision_followup_rates.png",
+      "bytes": 85915,
+      "sha256": "7115e173df3c43e3f275f73b78db5cffefeec8c519e0de8ba1eb249d2d927419"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/precision_followup_rates.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\precision_followup_rates.svg",
+      "bytes": 73553,
+      "sha256": "2d92e2f26e47c17025ac48b0b7e28b6db314ac2804f915245aab378c44f5569e"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/quality_and_speed.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\quality_and_speed.png",
+      "bytes": 95215,
+      "sha256": "b54edf85b4011513b8e6dd9eed402d24fb2e6b3868e199fc9ec21052be617c6b"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/quality_and_speed.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\quality_and_speed.svg",
+      "bytes": 70203,
+      "sha256": "31e903344a26d74d4bb2fae102e2b2d40d763dd4a92564f31675e44ade434a61"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/roc_pr.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\roc_pr.png",
+      "bytes": 194026,
+      "sha256": "062eeaea645980697989345a07ee71d6511151bd9ca29ed4f5c9de22ade756e8"
+    },
+    {
+      "file": "compact_classifiers_v11/charts/roc_pr.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\compact_classifiers_v11\\results\\charts\\roc_pr.svg",
+      "bytes": 117527,
+      "sha256": "af7d7bc564b58c06ce771fd49c056d4e0bd97ae5c5160ea885d1ba2af17e2bdd"
+    },
+    {
+      "file": "tfidf_false_alarm_v12/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12\\config.yaml",
+      "bytes": 2002,
+      "sha256": "78c692f52e0abe06514d48b21b9d26a77799ccd3261d38673b2c1e0b88c753f6"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/config.yaml",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\config.yaml",
+      "bytes": 1507,
+      "sha256": "fb069aefd7eec46ebbf3b51f4e3468cb4a63843bdabbc48b07958472b6d26290"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\summary.md",
+      "bytes": 13821,
+      "sha256": "a41d05ae77aca82cc6472159a6f270f8a315e3866565e8607a161a74754e24e1"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/terminology.html",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\terminology.html",
+      "bytes": 6472,
+      "sha256": "4c28a3671efbef3bc9017df35644aa660c5a64cddde11a75ac3c0f4133005021"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/Graph.csv",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\Graph.csv",
+      "bytes": 981723,
+      "sha256": "4225fdb5fb549bc68a60d8a83513834d360b53206345e9c32d378e67c7139e4d"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/metrics.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\metrics.json",
+      "bytes": 18824,
+      "sha256": "3eef2d2a58035c1c15c3d1899a54e38b81949c809511e5632e7ff2fec5ef7351"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/run_record.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\run_record.json",
+      "bytes": 20160,
+      "sha256": "088e011604d4ec7c81035fc6657fc1804a8eb5b1075c3459c74d90b9fb0fdde0"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/final_lock.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\final_lock.json",
+      "bytes": 6019,
+      "sha256": "3e91a3ab354758821055e9439e1de6fdf283dcb43612bf7072040c53c00663d4"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/final_verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\final_verification.json",
+      "bytes": 904,
+      "sha256": "b7217497a73186d50e90d0565ea6065f4fb0b83f6a9da1341eb47b4f76d42037"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/integration_verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\integration_verification.json",
+      "bytes": 590,
+      "sha256": "bc74c41ea643584debdd60da407abfd026d26bdab109bf38e3d7c08ab0647414"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/parity_verification.json",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\parity_verification.json",
+      "bytes": 1044,
+      "sha256": "c6c25330dd9b29d5e1903552a2e17c0514454d4137ee84baaa5b403585b674da"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/visual_report.html",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\visual_report.html",
+      "bytes": 12023,
+      "sha256": "005b9848f0bce9c49cfeffa86550c51401f435dbf5c98c915c2fabbcb7ff004b"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/accuracy_speed.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\accuracy_speed.png",
+      "bytes": 63290,
+      "sha256": "a6e5da66e1ce718618c0b6bebc922cd3222db6fa8fafe5f26429cd4d3f3d0ca4"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/accuracy_speed.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\accuracy_speed.svg",
+      "bytes": 16154,
+      "sha256": "d479439f7abefe212613342c0f0cbfeb081e14401379248e54d7bbf942512479"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/browser_latency.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\browser_latency.png",
+      "bytes": 150228,
+      "sha256": "6f2c2f36fb1194d3f7da8e137b63c8be7b32528ac521ce6f1a603968736f5f10"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/browser_latency.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\browser_latency.svg",
+      "bytes": 80429,
+      "sha256": "019ef9ddea41c25de9ff0932a68b65571af7baa786662ab264d72cfc6cd39221"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/confusion_matrices.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\confusion_matrices.png",
+      "bytes": 52925,
+      "sha256": "becdfdd90ffe8742ccc262f821adf8e6432560703822de5edfd6fdf93b90f28c"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/confusion_matrices.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\confusion_matrices.svg",
+      "bytes": 17892,
+      "sha256": "3644f1e63272e25747a77e6351910dd6ee1ac6c89bb16f13335fc971f11e1e07"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/development_policy.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\development_policy.png",
+      "bytes": 110999,
+      "sha256": "d9b9b4147a3cc8eb28514e61ad2d01beff12ea947afa7f80a1c39e58774f42ae"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/development_policy.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\development_policy.svg",
+      "bytes": 23353,
+      "sha256": "0166ccbeb35aa5b178ce9ae7d66e0c2ef7b5057de154982d9f9b312628ce1969"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/fresh_recall_false_alerts.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\fresh_recall_false_alerts.png",
+      "bytes": 85793,
+      "sha256": "87ced91f34723385a5a92f6d15723fd57d75b9230c0caf91de59152322ea69a0"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/fresh_recall_false_alerts.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\fresh_recall_false_alerts.svg",
+      "bytes": 25334,
+      "sha256": "a8421d3b2c112f48d8aa34bd8e8a48ea83063e0e9ae17a056ce98227ed320cb0"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/roc_pr.png",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\roc_pr.png",
+      "bytes": 95777,
+      "sha256": "d3b184f099c11708104883f116efc302aa8695d3f4bdd73b987bd238f007edf9"
+    },
+    {
+      "file": "tfidf_false_alarm_v12a/charts/roc_pr.svg",
+      "source": "D:\\Phishlens\\PhishLens\\benchmarks\\tfidf_false_alarm_v12a\\results\\charts\\roc_pr.svg",
+      "bytes": 30102,
+      "sha256": "283b9ef6f97f0f547a822847765e06e7a21820332ae9fbc90099e87d1894a59d"
+    },
+    {
+      "file": "history/2026-10-22-comparison/report.md",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmarks\\2026-10-22-comparison\\report.md",
+      "bytes": 11035,
+      "sha256": "42985dc58a94a755ec5ee607eb29e67b25692573f484448907447bf497274b14"
+    },
+    {
+      "file": "history/local-20261023/TEAM_HANDOFF.md",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmarks\\local-20261023\\TEAM_HANDOFF.md",
+      "bytes": 1687,
+      "sha256": "bde27a60d9a478c70a7b220e6f6450e3c76903822d7d5dcea3702556b08577ee"
+    },
+    {
+      "file": "history/kaggle-free-20261022/summary.md",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmarks\\kaggle-free-20261022\\summary.md",
+      "bytes": 10712,
+      "sha256": "1ec4c6596719b43630f238c4cd4d1458dc720ae1645fcde29de977fdefd8c72b"
+    },
+    {
+      "file": "history/benchmark-explained-20261029/walkthrough.html",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-explained-20261029\\walkthrough.html",
+      "bytes": 44304,
+      "sha256": "27717d13b2e4a05b86ed195d22bbcc24a1c8c906edc8ce89817084fd7e618ac2"
+    },
+    {
+      "file": "history/benchmark-history-20261027/visual_report.html",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\visual_report.html",
+      "bytes": 165251,
+      "sha256": "520f0ee26447ecf5ebe30b4fd7162dd20b79456ddd2061e0f208b444a41ba05a"
+    },
+    {
+      "file": "history/benchmark-history-20261027/terminology.html",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\terminology.html",
+      "bytes": 39574,
+      "sha256": "ab0b8eab961cc5a5b5585e17da8b276ec6d1c3c2467c2a02579ca0ffd7f53930"
+    },
+    {
+      "file": "history/benchmark-history-20261027/benchmark_history.csv",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\benchmark_history.csv",
+      "bytes": 2065840,
+      "sha256": "9e74ffe767aa37f93421242aa9e383db74203b409692dec0a7786d7bf94422ff"
+    },
+    {
+      "file": "history/benchmark-history-20261027/visual_chart_data.json",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\visual_chart_data.json",
+      "bytes": 283184,
+      "sha256": "e6fedf0e962d004c017fac7f63188360eb6bc56b9c239234e432f0f726e4f2d5"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/browser_latency.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\browser_latency.png",
+      "bytes": 171638,
+      "sha256": "c754b4b0f2cc0ec9804d3729fb352736c532fc1b7635c5bfc952853a0840c3f4"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/browser_latency.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\browser_latency.svg",
+      "bytes": 28181,
+      "sha256": "31ab2fd7d6d5c66b3c4146b141bd33f79f95360c43956258aaa358beaab3eeaa"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/constructed_confusion.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\constructed_confusion.png",
+      "bytes": 141738,
+      "sha256": "f71f3041466bb056bb84b0b8e0fe4942b6193aff106db848ba423cda71d497ca"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/constructed_confusion.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\constructed_confusion.svg",
+      "bytes": 15308,
+      "sha256": "f2bb7849134e646d4a99528f9c14e8d49a0f5bf795a9fdb74c5a99e1d6c9ae00"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/constructed_quality.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\constructed_quality.png",
+      "bytes": 121246,
+      "sha256": "bf297eb7f71b02727e6e79984f35f0e675682d70b9618f9202425b194ed63b1e"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/constructed_quality.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\constructed_quality.svg",
+      "bytes": 22772,
+      "sha256": "08db21619d28f10d87e959e10df79ee2ac177e94009bd381b6f620576d7d3a33"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/main_confusion.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\main_confusion.png",
+      "bytes": 147790,
+      "sha256": "83229eef7992e5d8d4c7f18f5fcb57efccb57d090be63a79ca96ea07a674c475"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/main_confusion.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\main_confusion.svg",
+      "bytes": 15302,
+      "sha256": "b05633377cd2860d5d279f668ac5e1271cb183c1f2fc0417ca9e618124f53b90"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/main_quality.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\main_quality.png",
+      "bytes": 131812,
+      "sha256": "2e65c700ce2ad3bab74211d9b30f8659a826363f93c18356eb5496cdb88026a7"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/main_quality.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\main_quality.svg",
+      "bytes": 23050,
+      "sha256": "168fa3d035b13e2b9c80564d7f7dab219eaa9bdd5aefb547ce2764b0617364c2"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/milestones_and_setbacks.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\milestones_and_setbacks.png",
+      "bytes": 320525,
+      "sha256": "6781aecd505237fdcae48e3d6e2a6b92bff961bb0191b3843a725576846aba7d"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/milestones_and_setbacks.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\milestones_and_setbacks.svg",
+      "bytes": 18048,
+      "sha256": "46b7ae34e11e4178849232f05cddbd63f0fb9d1fd4e93ca8b86dcd60fe5c410c"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/qualification_gates.png",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\qualification_gates.png",
+      "bytes": 187388,
+      "sha256": "becf00fe3ef5abc3d52fafe64665fa562809054082f9217694dd9ccae617297a"
+    },
+    {
+      "file": "history/benchmark-history-20261027/charts/qualification_gates.svg",
+      "source": "D:\\Phishlens\\PhishLens\\output\\benchmark-history-20261027\\charts\\qualification_gates.svg",
+      "bytes": 23014,
+      "sha256": "b623cb78b1c816627c7694a6cef453eb647bdc89c2c6b611b98606f88611e68f"
+    }
+  ]
+}

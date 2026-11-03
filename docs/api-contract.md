@@ -1,7 +1,7 @@
 
 # PhishLens History API Contract
 
-Status: Contract awaiting agreement with Trixia and Andrei. Backend behavior below is implemented locally; approval and deployed integration are not claimed.
+Historical Week 1 history handoff. For the reviewed saved CRUD routes, client setup, current errors and synthetic identity behavior, see [API reference](api-reference.md). The dated local results and outstanding sign-offs below are retained as history, not current deployment status.
 
 ## Endpoint
 

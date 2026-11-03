@@ -474,6 +474,15 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
+      - name: Check out the bounded blob client from the exact PR head
+        if: steps.staging-final-preflight.outputs.current == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
+          sparse-checkout: scripts/secretary/github_api.py
+          sparse-checkout-cone-mode: false
       - name: Verify deployed merge identity and package staging assets
         id: staging-finalize
         if: steps.staging-final-preflight.outputs.current == 'true'
@@ -486,11 +495,21 @@ jobs:
         run: |
           python - <<'PY'
           import datetime as dt
+          import importlib.util
           import json
           import os
+          import sys
           from pathlib import Path
-          from scripts.secretary.github_api import APIError, GitHub
           from scripts.secretary.preview import package, smoke
+
+          helper_path = Path('pr-source/scripts/secretary/github_api.py')
+          helper_spec = importlib.util.spec_from_file_location('staging_github_api', helper_path)
+          if helper_spec is None or helper_spec.loader is None:
+              raise RuntimeError('Could not load the bounded GitHub blob client')
+          helper = importlib.util.module_from_spec(helper_spec)
+          helper_spec.loader.exec_module(helper)
+          APIError = helper.APIError
+          GitHub = helper.GitHub
 
           config = json.loads(Path('.github/secretary.json').read_text())
           if os.environ['STAGING_BASE_URL'].rstrip('/') != config['staging_origin']:
@@ -501,6 +520,7 @@ jobs:
           api = GitHub()
           output = Path('output/hosted-staging')
           def stop_without_artifact(reason):
+              print(f'Hosted staging stopped: {reason}', file=sys.stderr)
               with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
                   result.write('current=false\n')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
