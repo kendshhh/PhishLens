@@ -17,6 +17,8 @@ def saved_summary_from_record(
     if record.created_at is None or record.created_at.tzinfo is None:
         raise ValueError("Saved analysis timestamp must include a timezone")
 
+    review = (record.analysis_provenance or {}).get("local_review", {})
+    status = review.get("status") if isinstance(review, dict) else None
     return SavedAnalysisSummary(
         id=record.id,
         subject=record.subject,
@@ -30,6 +32,7 @@ def saved_summary_from_record(
         threat_indicators=record.indicators or [],
         explanation=record.explanation,
         created_at=record.created_at.astimezone(UTC),
+        review_status=status if status in {"released", "uncertain"} else None,
     )
 
 

@@ -34,7 +34,8 @@ def test_saved_history():
         risk_level="high",
         indicators=[{"type": "link", "detail": "Demo link"}],
         explanation="Synthetic test email",
-        created_at=datetime(2026, 10, 14, tzinfo=UTC)
+        created_at=datetime(2026, 10, 14, tzinfo=UTC),
+        analysis_provenance=None,
     )
 
     db.scalars.return_value.all.return_value = [analysis]
@@ -60,6 +61,7 @@ def test_history_http_saved():
         indicators=[{"type": "link", "detail": "Demo link"}],
         explanation="Synthetic test email",
         created_at=datetime(2026, 10, 14, tzinfo=UTC),
+        analysis_provenance=None,
     )]
 
     def override_db():
@@ -104,6 +106,35 @@ def test_history_http_empty():
 
     assert response.status_code == 200
     assert response.json() == {"items": []}
+
+
+@pytest.mark.parametrize("prediction", ["phishing", "legitimate"])
+@pytest.mark.parametrize("review_status", [None, "released", "uncertain"])
+def test_history_http_preserves_review_status_and_legacy_records(prediction, review_status):
+    db = Mock()
+    db.scalar.return_value = SimpleNamespace(id=uuid4())
+    provenance = {"local_review": {"status": review_status}} if review_status else None
+    db.scalars.return_value.all.return_value = [SimpleNamespace(
+        id=uuid4(), subject="Software review fixture", prediction=prediction,
+        confidence=None, risk_level="low", indicators=[], explanation="Software fixture.",
+        created_at=datetime(2026, 10, 31, tzinfo=UTC), analysis_provenance=provenance,
+    )]
+    previous_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/analyses")
+    finally:
+        app.dependency_overrides = previous_overrides
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["prediction"] == prediction  # Keep the server-owned primary label.
+    if review_status is None:
+        assert "review_status" not in item
+    else:
+        assert item["review_status"] == review_status
+    assert "analysis_provenance" not in item
+    assert "body" not in item
 
 
 @pytest.mark.parametrize("failed_query", ["scalar", "scalars"])

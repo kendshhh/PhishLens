@@ -20,6 +20,10 @@ def _build_provider(
 ) -> AIProvider:
     if mode == "mock":
         return MockProvider()
+    if mode == "tfidf":
+        from backend.ai.tfidf_provider import TfidfProvider
+
+        return TfidfProvider()
 
     if mode == "gemini" and api_key and model:
         return GeminiProvider(

@@ -27,10 +27,10 @@ def get_ai_config() -> tuple[str, str | None, str | None]:
     load_dotenv(ENV_FILE, override=False)
     mode = os.getenv("AI_MODE", "mock").strip().lower()
 
-    if mode in {"mock", "local"}:
+    if mode in {"mock", "local", "tfidf"}:
         return mode, None, None
     if mode != "gemini":
-        raise RuntimeError("AI_MODE must be 'mock', 'gemini', or 'local'")
+        raise RuntimeError("AI_MODE must be 'mock', 'gemini', 'local', or 'tfidf'")
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     model = os.getenv("GEMINI_MODEL", "").strip()

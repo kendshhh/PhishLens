@@ -1,0 +1,114 @@
+{
+  "started_at_utc": "2026-10-28T07:52:04.756700+00:00",
+  "client_date_manila": "2026-10-28",
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "windows": [
+    "11",
+    "10.0.26300",
+    "SP0",
+    "Multiprocessor Free"
+  ],
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpu_observed": "Intel(R) Core(TM) i5-14450HX",
+  "logical_cpus": 16,
+  "physical_cpus": 10,
+  "memory_bytes": 34049417216,
+  "power": {
+    "plugged": true,
+    "percent": 51
+  },
+  "libraries": {
+    "numpy": "2.5.4",
+    "PyYAML": "6.0.3",
+    "psutil": "7.1.3"
+  },
+  "seed": 42,
+  "validation_fpr_target": 0.02,
+  "new_training_runs": 0,
+  "test_recalibration": false,
+  "model_reference": "english_real_v4_checkpoint_clean",
+  "manifest_sha256": "ff65890ca214689f4812ed0979fa068f822ee10120acce35298783eba3865d24",
+  "config_sha256": "0ecc03c65288c986d40108cd2d8127cfa632f586f9b6b7101cd3d3774929ae85",
+  "execution_lock_sha256": "3ae7fe543df87891e85e72e33132f9d07c96fdd908a24fdea859f8a2d9d2bbfc",
+  "finished_at_utc": "2026-10-28T08:58:14.038510+00:00",
+  "new_primary_predictions": 870,
+  "additional_llm_repeat_attempts": 120,
+  "distinct_primary_inputs": 290,
+  "actual_role_leakage_status": "PASS_NEW_COHORT_ACTUAL_ROLE_DISJOINT",
+  "active_execution_lock_sha256": "61f0f7b9b453d53b79e425d8a6ad73dd6d7a10f76ce3358e8025d96059c393fa",
+  "transport_amendment_before_first_prediction": {
+    "at_utc": "2026-10-28T07:58:26.138257+00:00",
+    "model_predictions_before_amendment": 0,
+    "reason": "Cross-command Windows loopback isolation; keep server and Chrome in the same process family. Scoring, data, models and thresholds unchanged.",
+    "prior_lock_sha256": "3ae7fe543df87891e85e72e33132f9d07c96fdd908a24fdea859f8a2d9d2bbfc"
+  },
+  "power_after": {
+    "plugged": true,
+    "percent": 91
+  },
+  "qualified_winner": null,
+  "synthetic_primary_rows": 0,
+  "exact_commands": [
+    ".venv/Scripts/python.exe benchmarks/real_readiness_v10/scripts/prepare.py",
+    ".venv/Scripts/python.exe -m unittest discover -s benchmarks/real_readiness_v10/tests -v",
+    ".venv/Scripts/python.exe benchmarks/real_readiness_v10/scripts/orchestrate.py",
+    ".venv/Scripts/python.exe benchmarks/real_readiness_v10/scripts/report.py"
+  ],
+  "runtime_libraries": {
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.7.2",
+    "lingua-language-detector": "2.2.0"
+  },
+  "git_head": "00d0bf60deb4f90544435e2af24563b3a5b376fe",
+  "git_worktree_had_uncommitted_changes": true,
+  "model_specs": {
+    "tfidf_lr": {
+      "kind": "tfidf_lr",
+      "word_ngram_range": [
+        1,
+        2
+      ],
+      "max_features": 18000,
+      "min_df": 2,
+      "sublinear_tf": true,
+      "C": 1,
+      "max_iter": 1000,
+      "class_weight": null
+    },
+    "distilbert": {
+      "kind": "onnx_classifier",
+      "model_id": "onnx-community/phishing-email-detection-distilbert_v2.4.1-ONNX",
+      "revision": "d2a92d9e2830eddb1c4600adc3c04f8b577e6597",
+      "artifact": "onnx/model_quantized.onnx",
+      "phishing_indices": [
+        1,
+        3
+      ],
+      "legitimate_indices": [
+        0,
+        2
+      ],
+      "label_evidence": "https://huggingface.co/cybersectony/phishing-email-detection-distilbert_v2.4.1",
+      "max_tokens": 512,
+      "chunk_aggregation": "maximum_phishing_probability_over_nonoverlapping_content_windows"
+    },
+    "llm": {
+      "kind": "onnx_causal_lm",
+      "model_id": "onnx-community/Llama-3.2-1B-Instruct-ONNX",
+      "revision": "14007543b6dc92de88daf96a9aa85d2f95ace6ef",
+      "artifact": "onnx/model_q4f16.onnx",
+      "temperature": 0,
+      "runtime_seed": 42,
+      "repeats": 5,
+      "max_new_tokens": 128,
+      "confidence_semantics": "probability_of_phishing_not_certainty_of_predicted_label",
+      "local_directory": "llama"
+    }
+  },
+  "chrome_versions": {
+    "tfidf_lr": "155.0.8059.86",
+    "distilbert": "155.0.8059.86",
+    "llm": "155.0.8059.86"
+  }
+}

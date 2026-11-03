@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-10-28T16:27:47.379354+00:00",
+  "status": "PASS",
+  "systems": {
+    "reference_frozen": {
+      "records": 52,
+      "max_margin_delta": 1.2434497875801753e-14,
+      "max_probability_delta": 2.0816681711721685e-16,
+      "max_feature_contribution_delta": 4.440892098500626e-16,
+      "all_decisions_identical": true
+    },
+    "reference_recalibrated": {
+      "records": 52,
+      "max_margin_delta": 1.2434497875801753e-14,
+      "max_probability_delta": 3.0531133177191805e-16,
+      "max_feature_contribution_delta": 4.440892098500626e-16,
+      "all_decisions_identical": true
+    },
+    "tfidf_v12a": {
+      "records": 52,
+      "max_margin_delta": 2.042810365310288e-14,
+      "max_probability_delta": 4.2674197509029455e-16,
+      "max_feature_contribution_delta": 8.326672684688674e-17,
+      "all_decisions_identical": true
+    }
+  },
+  "quote_spans_verified": 525,
+  "fresh_test_used": false,
+  "actual_worker_failure_exercised": true,
+  "sender_authentication_claimed": false
+}
