@@ -493,6 +493,19 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
+      - name: Check out the exact-head synthetic acceptance runner and blob client
+        if: steps.staging-final-preflight.outputs.current == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
+          sparse-checkout: |
+            package.json
+            extension/js/api.js
+            scripts/verify_crud.mjs
+            scripts/secretary/github_api.py
+          sparse-checkout-cone-mode: false
       - name: Verify saved report synthetic AI and CRUD checklist
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
@@ -501,19 +514,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging
-          node scripts/verify_crud.mjs \
+          node pr-source/scripts/verify_crud.mjs \
             --base-url "$STAGING_BASE_URL" --environment staging \
             --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
             | tee output/hosted-staging/saved-report-crud.json
-      - name: Check out the bounded blob client from the exact PR head
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr-source
-          persist-credentials: false
-          sparse-checkout: scripts/secretary/github_api.py
-          sparse-checkout-cone-mode: false
       - name: Verify deployed merge identity and package staging assets
         id: staging-finalize
         if: steps.staging-final-preflight.outputs.current == 'true'
