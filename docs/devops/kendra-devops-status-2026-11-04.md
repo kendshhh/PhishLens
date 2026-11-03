@@ -12,7 +12,7 @@ advances the tasks; it does not satisfy the remaining external acceptance gates.
 | Issue | Kendra work recorded | Remaining acceptance |
 |---|---|---|
 | [#36](https://github.com/kendshhh/PhishLens/issues/36) — shared contract and carryover | Contract proposals, owner map, and sprint requirements are documented. | API/client/AI owner acknowledgement, instructor scope decision, integrated demonstration, and board/sprint-log update. Keep proposals labelled until accepted. |
-| [#37](https://github.com/kendshhh/PhishLens/issues/37) — environments and package | The exact PR #99 staging artifact was installed in Chrome 156.0.8078.79 on October 31; staging-only site access, popup, and context-menu entry were checked. Later bounded package/history scans are recorded in the issue. | Browser save/history CRUD and privacy/history classification remain incomplete. The production app role still has excess privileges; the approved grant change needs an owner-managed database connection with sufficient rights. Hosted secret and credential scopes also need owner review. |
+| [#37](https://github.com/kendshhh/PhishLens/issues/37) — environments and package | The exact PR #99 staging artifact was installed in Chrome 156.0.8078.79 on October 31; staging-only site access, popup, and context-menu entry were checked. Later bounded package/history scans are recorded in the issue. On November 4, read-only production catalog checks confirmed `phishlens_dev_app` owns `users`, `analyzed_emails`, and `alembic_version`, has extra table rights, and inherits `CREATE` on `public`. The single-transaction ownership/grant fix was rejected by Neon role-grant permissions and rolled back without changes. | Browser save/history CRUD and privacy/history classification remain incomplete. The production app role still has excess privileges; the approved grant change needs an owner-managed database connection with sufficient role-management rights. Hosted secret and credential scopes also need owner review. |
 | [#39](https://github.com/kendshhh/PhishLens/issues/39) — automatic production delivery | Closed October 31. | No open Kendra action is recorded for this issue. |
 | [#40](https://github.com/kendshhh/PhishLens/issues/40) — optimization and recovery | The October 31 staging-only rollback/restore took 200.753 seconds to return Live and 233.408 seconds to independent verification. The `n=2` cache comparison showed no whole-job gain. | A comparable end-to-end optimization is not demonstrated. Production and schema/model rollback compatibility remain unmeasured; do not induce a production failure to fill this gap. |
 | [#41](https://github.com/kendshhh/PhishLens/issues/41) — consultation and team evidence | Consultation materials and technical evidence are prepared. | Later standups, retrospective, whole-team rehearsal, consultation attendance, instructor decisions, and resulting follow-ups need records from the actual events. |
@@ -29,9 +29,11 @@ infer final release or demo acceptance from this status record.
    confirm its provider, model, budget guard, target, and reviewer path, and the
    staging environment has its approved gate. After approval, dispatch it from
    `main` against the exact SHA reported by staging.
-2. Update #37 only after the database administrator, secret-scope owner, and
-   browser acceptance evidence are available; do not change production access
-   from the current limited SQL role.
+2. Finish #37 with browser acceptance evidence, hosted secret-scope review,
+   and an owner-managed Neon SQL connection with sufficient role-management
+   rights. The `neondb_owner` connector could not grant the membership required
+   for the approved table-ownership transfer; its transaction rolled back, and
+   production ownership, grants, and data remain unchanged.
 3. Record future optimization and recovery samples with comparable coverage,
    sample sizes, full timing boundaries, and compatibility details. Do not call
    the existing cache experiment a speedup.
