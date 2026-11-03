@@ -14,6 +14,37 @@ The identified staging package was built for `b294a91eb19f46f8434ff5b987931911e5
 
 The local/package checks and staging API run documented below are historical snapshots from source `23e2973dcc4f4030cc9f58e894116179cb992365`; the older 2026-10-22 PR screenshots came from source `f8691e6c5b4e16bea99982a8c9b466b13ddb5e17`. The reviewed PR head at the time was `5c217fad69067574894e844c5e0ed4ef8d1aafc`, followed by popup code-fix commit `454754c`. The four screenshots supplied on 2026-11-02 and embedded below replace those older images in the PR presentation. Their source/package identity is not visible and is not inferred. They show visible UI states only; they do not establish persistence or deletion after reopening the popup.
 
+## New Chrome screenshots supplied 2026-11-03
+
+The following screenshots were supplied by the tester and copied into this evidence directory. The matching preview evidence identifies PR #61 source SHA `efed115457dc4fdc212f6205199096266a71e9f1`; its preview smoke and the supplied staging `/version` both report that same SHA. The staging deployment identifier was `dep-dbkvbjjncjis73feqai0`. These values identify the reported build, but the extension ZIP itself was not present in this checkout or Downloads, so its inner ZIP SHA-256 is **not recorded**. Do not treat the screenshot set as package-hash verification.
+
+The tester reported Windows 11 64-bit, Chrome Update stream Early Access, Core `138.0.6044.65`, and Chromium `154.0.8037.99`. Confirm the exact browser version from `chrome://version` before final acceptance. The package metadata says `package_status: partial` and excludes `model-assets/llama/`; the local LLM judge was unavailable or unusable in the captured result. This is local scan/UI evidence, not real local Llama or complete AI acceptance.
+
+| Screenshot | What it shows | SHA-256 |
+|---|---|---|
+| [Local scan overview](evidence/pr61-2026-11-03/01-local-scan-overview.png) | PR #61 staging banner with source SHA; uncertain result; TF-IDF v12a score and alert threshold | `498290e5fdc3f18cfc446ae7f2c26e09abe42302ca90f2821144909496f6afe6` |
+| [Local LLM and model results](evidence/pr61-2026-11-03/02-local-llm-and-model-results.png) | Local LLM unavailable; three-model reevaluation panel | `047e72c5c8ed74f7c472cbd8ff348b55ee4d101f10a536b7e56e52ba068fa839` |
+| [Save report form](evidence/pr61-2026-11-03/03-save-report-form.png) | Optional report form before save, with consent unchecked | `80c3837fc56a6ea6203eba7bb33cbf5c0d8479c65ce0d1ce10b9a404541ecea6` |
+| [Save timeout](evidence/pr61-2026-11-03/04-save-timeout.png) | `PR61 test`, consent checked, save signal timed out; no automatic retry | `22888b8d2c2bca77afc20e22a5b055cb948f81b22e6ee66049445607d185c371` |
+
+The tester also reported that saving is disabled until the server has the matching TF-IDF v12a model. The save attempt therefore does not establish a created report. Retry is expected to reuse the same request key, including after reopening; no retry was made. Screenshots do not show the saved-analysis create/view/edit/delete flow, notes/feedback persistence after reopening, deletion absence after reopening, or DevTools Network details. No Network capture was supplied, so redacted Network results remain pending. Treat the Chrome/package hash and the requested persistence/deletion acceptance as **incomplete** until those checks are captured against a runnable matching package.
+
+### Current acceptance snapshot
+
+| Field | Reported evidence |
+|---|---|
+| PR source SHA | `efed115457dc4fdc212f6205199096266a71e9f1` |
+| Staging `/version` SHA immediately before the supplied run | `efed115457dc4fdc212f6205199096266a71e9f1` (tester supplied) |
+| Preview smoke / deployment | Passed for that SHA; deployment `dep-dbkvbjjncjis73feqai0` |
+| Extension inner ZIP SHA-256 | Not available; matching ZIP was not found locally |
+| Browser version | Tester reported Core `138.0.6044.65`, Chromium `154.0.8037.99`; confirm at `chrome://version` |
+| Selected-text analysis | Local scan/result UI captured; full review not confirmed; local LLM unavailable |
+| Save / CRUD | Save was blocked/timed out; successful create/view/edit/delete not evidenced |
+| Notes/feedback persistence and deleted-record absence after reopen | Pending |
+| Redacted Network results | Pending; no Network capture supplied |
+
+This update records supplied browser observations only. It does not claim the reviewer’s requested Chrome CRUD/reopen/Network acceptance is complete and does not request re-review yet.
+
 | Evidence | Status | Recorded value |
 |---|---|---|
 | Source revision for recorded local/package checks | Historical snapshot | `23e2973dcc4f4030cc9f58e894116179cb992365` |
