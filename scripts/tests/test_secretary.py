@@ -6,8 +6,9 @@ import json
 import os
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 from zipfile import ZipFile
 
 from scripts.secretary.core import (
@@ -19,7 +20,7 @@ from scripts.secretary.core import (
     render,
     safe,
 )
-from scripts.secretary.github_api import GitHub
+from scripts.secretary.github_api import APIError, GitHub
 from scripts.secretary.preview import (
     completed_event,
     eligibility,
@@ -234,6 +235,32 @@ class GitHubPaginationTests(unittest.TestCase):
         api = GitHub(repo="kendshhh/PhishLens", token="synthetic")
         with self.assertRaises(ValueError):
             api.pages("pulls/123/files", per_page=101)
+
+    def test_get_retries_transient_github_server_errors(self):
+        api = GitHub(repo="kendshhh/PhishLens", token="synthetic")
+
+        def http_error(status):
+            return urllib.error.HTTPError("https://api.github.com/test", status, "temporary", {}, io.BytesIO())
+
+        with patch("urllib.request.urlopen", side_effect=[
+            http_error(500), http_error(504), io.BytesIO(b'{"ok":true}')
+        ]) as network, patch("scripts.secretary.github_api.time.sleep") as sleep:
+            self.assertEqual(api.request("contents/extension/popup.js"), {"ok": True})
+
+        self.assertEqual(network.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(0.25), call(0.5)])
+
+    def test_non_get_requests_are_not_retried(self):
+        api = GitHub(repo="kendshhh/PhishLens", token="synthetic")
+        error = urllib.error.HTTPError("https://api.github.com/test", 500, "temporary", {}, io.BytesIO())
+
+        with patch("urllib.request.urlopen", side_effect=error) as network, \
+                patch("scripts.secretary.github_api.time.sleep") as sleep, \
+                self.assertRaisesRegex(APIError, "GitHub HTTP 500"):
+            api.request("deployments", data={"environment": "staging"})
+
+        network.assert_called_once()
+        sleep.assert_not_called()
 
 
 class PreviewTests(unittest.TestCase):
