@@ -22,6 +22,8 @@ Follow-up identity check on 2026-11-04 (Asia/Manila): the downloaded inner ZIP w
 
 The package was then loaded in Chrome. Selected-text analysis was performed on a synthetic email selection from a local `data:` page. The context-menu action opened the extension result, whose banner identified PR #61/source `efed115457dc4fdc212f6205199096266a71e9f1`; TF-IDF returned `99.94%` against the frozen `88.71%` threshold and the result clearly reported that the local LLM judge was unavailable or unusable. This verifies that the selected-text action and result view work in Chrome for this package. It does not establish a reviewed verdict, model acceptance, saved-report success, or CRUD. No Chrome screenshot file or Network capture was saved for this follow-up. The popup is at the Save an analysis form; CRUD submission and persistence/deletion after reopening remain pending.
 
+One synthetic **Save an analysis** create attempt returned: `Could not save analysis: The matching TF-IDF save service is unavailable. Your input is still here.` No record ID or success state was produced; the input remained in the form. No retry was made. This blocks create/view/edit/delete and the subsequent reopen persistence/deletion checks. Staging must restore the matching TF-IDF save service before another create attempt. A screenshot and Network capture of this error were not saved.
+
 The tester initially reported Windows 11 64-bit, Chrome Update stream Early Access, Core `138.0.6044.65`, and Chromium `154.0.8037.99`. A later direct `chrome://version` check for this acceptance run reported Google Chrome `156.0.8078.80` (Official Build, 64-bit), Windows 11 25H2. The package metadata says `package_status: partial` and excludes `model-assets/llama/`; the local LLM judge was unavailable or unusable in the captured result. This is local scan/UI evidence, not real local Llama or complete AI acceptance.
 
 | Screenshot | What it shows | SHA-256 |
@@ -43,7 +45,7 @@ The tester also reported that saving is disabled until the server has the matchi
 | Extension inner ZIP SHA-256 | `221bb5c3c36089ecee3568d378f30cc66d273ff40ae0054770d8636348f994b8` |
 | Browser version | Chrome `156.0.8078.80` Official Build (64-bit), confirmed at `chrome://version`; Windows 11 25H2 |
 | Selected-text analysis | Chrome action/result passed for synthetic text; TF-IDF `99.94%`, local LLM unavailable; screenshot still needed |
-| Save / CRUD | Save was blocked/timed out; successful create/view/edit/delete not evidenced |
+| Save / CRUD | Chrome create attempt blocked: matching TF-IDF save service unavailable; no record created; no retry; view/edit/delete not run |
 | Notes/feedback persistence and deleted-record absence after reopen | Pending |
 | Redacted Network results | Pending; no Network capture supplied |
 
