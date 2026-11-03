@@ -83,7 +83,7 @@ pydantic-core==2.50.1
     # via pydantic
 pygments==2.21.0
     # via pytest
-pytest==9.1.1
+pytest==9.2.0
     # via -r requirements-dev.in
 python-dotenv==1.2.4
     # via -r requirements.in
@@ -110,7 +110,6 @@ truststore==0.10.5
 typing-extensions==4.16.0
     # via
     #   alembic
-    #   anyio
     #   fastapi
     #   google-genai
     #   opentelemetry-api
