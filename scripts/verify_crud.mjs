@@ -49,10 +49,12 @@ function assertSummaryMatches(actual, expected) {
     // notes, and feedback are available only from the detail endpoint.
     for (const field of [
         'id', 'subject', 'prediction', 'confidence', 'risk_level',
-        'threat_indicators', 'explanation', 'created_at'
+        'threat_indicators', 'explanation'
     ]) {
         assert.deepEqual(actual[field], expected[field], 'Summary differs in ' + field);
     }
+    assert.equal(Date.parse(actual.created_at), Date.parse(expected.created_at),
+        'Summary differs in created_at');
 }
 
 export async function verifyTarget(baseUrl, options) {

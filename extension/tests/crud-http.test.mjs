@@ -41,7 +41,7 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
                 risk_level: record.risk_level,
                 threat_indicators: record.threat_indicators,
                 explanation: record.explanation,
-                created_at: record.created_at
+                created_at: record.created_at.replace(/Z$/, '+00:00')
             }));
             return send(200, { items });
         }
