@@ -106,6 +106,29 @@ test("late detail response cannot replace the most recently opened analysis", as
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "B");
 });
 
+test("starting Analyze and save invalidates an older pending detail response", async () => {
+  let resolveOldDetail;
+  const older = record("older", "Older report");
+  const saved = record("created", "New analysis");
+  const client = { ...createInMemoryAnalysisClient(), getAnalysis(recordId) {
+    if (recordId === "older") return new Promise(resolve => { resolveOldDetail = resolve; });
+    return Promise.resolve(saved);
+  } };
+  const { ui, controller } = setup(client);
+  const openingOlder = controller.loadDetail("older");
+  assert.equal(controller.beginSave(), true);
+  resolveOldDetail(older);
+  await openingOlder;
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("detail-content").children.length, 0);
+  assert.equal(ui.get("edit-form").classList.contains("hidden"), true);
+  assert.equal(ui.get("delete-confirm").classList.contains("hidden"), true);
+
+  controller.acceptSavedReport({ saved, detail: saved, history: [saved] });
+  controller.endSave();
+  assert.equal(ui.get("detail-content").children[0].children[1].textContent, "New analysis");
+});
+
 test("older history response cannot erase a newly created analysis", async () => {
   let resolveOldList;
   let listCalls = 0;
@@ -156,11 +179,38 @@ test("unknown AI provenance stays explicitly unknown", async () => {
   assert.match(ui.get("detail-content").children[9].children[1].textContent, /unknown/i);
 });
 
-test("real AI provenance is labeled as real", async () => {
-  const data = record(id); data.analysis_mode = "real";
+test("saved report uncertainty and missing results are described without inventing a verdict", async () => {
+  const data = record(id);
+  data.prediction = null;
+  data.confidence = null;
+  data.risk_level = null;
+  data.explanation = null;
+  data.threat_indicators = [];
+  data.analysis_mode = "unknown";
+  data.analysis_provenance = { provider_mode: "unknown", model: "fixture-model" };
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
-  assert.match(ui.get("detail-content").children[9].children[1].textContent, /Real AI/);
+  const detail = ui.get("detail-content");
+  assert.equal(detail.children[3].children[1].textContent, "Not analyzed yet");
+  assert.match(detail.children[2].children[1].textContent, /not been analyzed/i);
+  assert.match(detail.children[4].children[1].textContent, /not assessed/i);
+  assert.match(detail.children[5].children[1].textContent, /Not provided/);
+  assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
+  assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
+  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
+});
+
+test("provider provenance is labeled explicitly", async () => {
+  const data = record(id);
+  data.analysis_mode = "real";
+  data.analysis_provenance = { provider_mode: "gemini", model: "fixture-gemini-model", model_revision: "fixture-revision" };
+  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+  await controller.loadDetail(id);
+  const text = ui.get("detail-content").children[9].children[1].textContent;
+  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Provider: Gemini/);
+  assert.match(text, /Model: fixture-gemini-model/);
+  assert.match(text, /fixture-revision/);
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
