@@ -44,6 +44,17 @@ function assertReportMatches(actual, expected) {
     }
 }
 
+function assertSummaryMatches(actual, expected) {
+    // The history endpoint deliberately exposes summaries. Provenance, body,
+    // notes, and feedback are available only from the detail endpoint.
+    for (const field of [
+        'id', 'subject', 'prediction', 'confidence', 'risk_level',
+        'threat_indicators', 'explanation', 'created_at'
+    ]) {
+        assert.deepEqual(actual[field], expected[field], 'Summary differs in ' + field);
+    }
+}
+
 export async function verifyTarget(baseUrl, options) {
     const { environment, expectedSha, allowWrites } = options;
     if (allowWrites !== true) throw new Error('Explicit write permission is required');
@@ -107,8 +118,7 @@ export async function verifyCrud(baseUrl, options = {}) {
         const records = await client.listAnalyses();
         const listed = records.find(record => record.id === created.id);
         assert.ok(listed, 'Created report must persist in history');
-        assertReportProvenance(listed);
-        assertReportMatches(listed, created);
+        assertSummaryMatches(listed, created);
         const createdAt = Date.parse(created.created_at);
         assert.ok(Number.isFinite(createdAt), 'Created report timestamp is invalid');
         await client.updateAnalysis(created.id, { notes: 'CRUD verification', feedback: 'false_positive' });

@@ -32,7 +32,19 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
             records.set(record.id, record);
             return send(201, record);
         }
-        if (req.url === '/api/analyses' && req.method === 'GET') return send(200, { items: [...records.values()] });
+        if (req.url === '/api/analyses' && req.method === 'GET') {
+            const items = [...records.values()].map(record => ({
+                id: record.id,
+                subject: record.subject,
+                prediction: record.prediction,
+                confidence: record.confidence,
+                risk_level: record.risk_level,
+                threat_indicators: record.threat_indicators,
+                explanation: record.explanation,
+                created_at: record.created_at
+            }));
+            return send(200, { items });
+        }
         const id = req.url.split('/').pop();
         const record = records.get(id);
         if (!record) return send(404, { detail: 'Analysis not found' });
