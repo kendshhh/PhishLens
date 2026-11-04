@@ -23,11 +23,15 @@ class PackageVerificationTests(unittest.TestCase):
         self.hosts = ["https://phishlens-api-ocvt.onrender.com/*"]
         self.build()
 
-    def build(self, extra=False, hosts=None):
+    def build(self, extra=False, hosts=None, config_newline=True):
         manifest = json.dumps({"manifest_version": 3, "version": "0.1.0",
                                "host_permissions": hosts or self.hosts}).encode()
         files = {name: b"synthetic asset" for name in ASSETS}
         files["manifest.json"] = manifest
+        files["js/config.js"] = (
+            b'export const API_BASE_URL = "https://phishlens-api-ocvt.onrender.com";'
+            + (b"\n" if config_newline else b"")
+        )
         with ZipFile(self.archive, "w") as package:
             for name, content in files.items():
                 package.writestr(name, content)
@@ -51,6 +55,10 @@ class PackageVerificationTests(unittest.TestCase):
         return verify(self.archive, self.sidecar, "a" * 40)
 
     def test_matching_package_passes(self):
+        self.assertEqual(self.check()["files_verified"], len(ASSETS))
+
+    def test_config_without_final_newline_passes(self):
+        self.build(config_newline=False)
         self.assertEqual(self.check()["files_verified"], len(ASSETS))
 
     def test_stale_source_rejected(self):

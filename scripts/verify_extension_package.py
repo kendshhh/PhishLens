@@ -86,6 +86,7 @@ def verify(archive, evidence_path, expected_source):
             if name in pinned_models and hashes[name] != pinned_models[name]:
                 raise ValueError("Model bytes differ from pinned asset manifest")
         manifest = json.loads(package.read("manifest.json"))
+        config = package.read("js/config.js").decode("utf-8")
     if not isinstance(manifest, dict) or manifest.get("manifest_version") != 3:
         raise ValueError("Expected a Manifest V3 object")
     if manifest.get("version") != evidence.get("extension_version"):
@@ -93,6 +94,9 @@ def verify(archive, evidence_path, expected_source):
     hosts = ["https://phishlens-api-ocvt.onrender.com/*"]
     if manifest.get("host_permissions") != hosts or evidence.get("host_permissions") != hosts:
         raise ValueError("Production host permissions do not match")
+    expected_config = "export const API_BASE_URL = " + json.dumps(hosts[0][:-2]) + ";\n"
+    if config not in (expected_config, expected_config.rstrip("\n")):
+        raise ValueError("Production API configuration does not match the allowed host")
     if manifest.get("optional_host_permissions"):
         raise ValueError("Optional host permissions are not allowed")
     return {"source_commit": expected_source, "environment": "production",
@@ -111,7 +115,7 @@ def main():
         parser.exit(1, f"Package rejected: {exc}\n")
     print(json.dumps(result, indent=2))
     print("Integrity verified; source identity is asserted by the sidecar, not signed.")
-    print("Installed Chrome acceptance remains a separate manual check.")
+    print("Packaged browser scenarios run automatically in CI; this command verifies package identity only.")
 
 
 if __name__ == "__main__":

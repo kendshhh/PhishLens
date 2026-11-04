@@ -13,7 +13,7 @@ jobs:
   extension:
     name: Extension checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -56,6 +56,7 @@ jobs:
         run: npm run validate
 
       - name: Package extension
+        id: package_extension
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run package
@@ -69,7 +70,25 @@ jobs:
           output/extension/evidence.json
           --expected-source "$SOURCE_COMMIT"
 
+      - name: Install Chromium for browser acceptance
+        run: npx playwright install --with-deps chromium
+
+      - name: Test packaged extension in isolated Chromium
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run test:browser
+
+      - name: Upload browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Extension-Browser-Acceptance
+          path: output/extension/browser-acceptance.json
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Upload extension package
+        if: always() && steps.package_extension.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: PhishLens-Extension
@@ -474,15 +493,31 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
-      - name: Check out the bounded blob client from the exact PR head
+      - name: Check out the exact-head synthetic acceptance runner and blob client
         if: steps.staging-final-preflight.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr-source
           persist-credentials: false
-          sparse-checkout: scripts/secretary/github_api.py
+          sparse-checkout: |
+            package.json
+            extension/js/api.js
+            scripts/verify_crud.mjs
+            scripts/secretary/github_api.py
           sparse-checkout-cone-mode: false
+      - name: Verify saved report synthetic AI and CRUD checklist
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          STAGING_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p output/hosted-staging
+          node pr-source/scripts/verify_crud.mjs \
+            --base-url "$STAGING_BASE_URL" --environment staging \
+            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
+            | tee output/hosted-staging/saved-report-crud.json
       - name: Verify deployed merge identity and package staging assets
         id: staging-finalize
         if: steps.staging-final-preflight.outputs.current == 'true'
@@ -542,6 +577,18 @@ jobs:
           if superseded():
               raise SystemExit(0)
           evidence = smoke(config['staging_origin'], deploy_sha)
+          crud = json.loads((output / 'saved-report-crud.json').read_text())
+          provenance = crud.get('analysisProvenance')
+          provider_mode = provenance.get('providerMode') if isinstance(provenance, dict) else None
+          analysis_mode = crud.get('analysisMode')
+          valid_provenance = (
+              analysis_mode == 'mock' and provider_mode == 'mock'
+          ) or (
+              analysis_mode == 'real' and provider_mode in {'gemini', 'local', 'tfidf'}
+          )
+          if (crud.get('result') != 'passed' or crud.get('cleanedUp') is not True
+                  or not valid_provenance):
+              raise RuntimeError('The staging CRUD check requires consistent provider provenance and confirmed cleanup.')
           if superseded():
               raise SystemExit(0)
           try:
@@ -555,15 +602,41 @@ jobs:
               'pr': number, 'sha': pr_head_sha, 'deployed_commit': deploy_sha,
               'migration_revision': os.environ['STAGING_MIGRATION_REVISION'],
               'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
-              'chrome_manual_test': 'not performed',
+              'automated_checklist': {
+              'saved_report_crud': {
+                      'result': 'passed',
+                      'analysis_mode': crud['analysisMode'],
+                  'provider_mode': provider_mode,
+                  'cleaned_up': crud['cleanedUp'],
+              },
+              'real_ai_acceptance': {
+                  'result': 'passed' if analysis_mode == 'real' else 'not_verified',
+                  'analysis_mode': analysis_mode,
+                  'provider_mode': provider_mode,
+                      'model': crud['analysisProvenance']['model'],
+                      'model_revision': crud['analysisProvenance']['modelRevision'],
+                      'prompt_version': crud['analysisProvenance']['promptVersion'],
+                  },
+                  'packaged_extension_browser': {
+                      'result': 'passed',
+                      'source_commit': pr_head_sha,
+                      'tested_commit': deploy_sha,
+                      'artifact': 'Extension-Browser-Acceptance',
+                  },
+              },
           })
           (output / 'evidence.json').write_text(json.dumps(evidence, indent=2))
           with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
               result.write('current=true\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
-              summary.write('Health, readiness, version, synthetic history and staging package passed. ')
-              summary.write('Download PhishLens-Staging-Extension for the required manual Chrome test.\n')
+              summary.write('- [x] Health, readiness, version, seeded history, and staging package passed.\n')
+              summary.write(f"- [x] Synthetic saved-report CRUD/provenance passed (`{provider_mode}` provider; record cleaned up).\n")
+              if analysis_mode == 'real':
+                  summary.write(f"- [x] Non-mock AI acceptance passed with `{provider_mode}`.\n")
+              else:
+                  summary.write('- [ ] Real AI acceptance is not checked: staging used `mock`. Mock output is not AI acceptance.\n')
+              summary.write(f'- [x] Packaged extension browser checklist passed for `{pr_head_sha}` in `Extension-Browser-Acceptance` (tested checkout `{deploy_sha}`).\n')
           PY
       - name: Preserve hosted staging evidence and extension
         if: steps.staging-finalize.outputs.current == 'true'
@@ -573,3 +646,4 @@ jobs:
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+
