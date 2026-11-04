@@ -33,8 +33,21 @@ def preview_state(api, config, sha):
     latest = max(deployments, key=lambda d: d["id"])
     statuses = api.request(f"deployments/{latest['id']}/statuses?per_page=1")
     status = statuses[0] if statuses else {}
-    return {"sha": latest["sha"], "current": latest["sha"] == sha,
-            "state": status.get("state", "pending"), "log_url": status.get("log_url"), "deployment_id": latest["id"]}
+    result = {"sha": latest["sha"], "current": latest["sha"] == sha,
+              "state": status.get("state", "pending"), "log_url": status.get("log_url"), "deployment_id": latest["id"]}
+    match = re.fullmatch(
+        r"secretary-crud=(passed|failed);analysis=(mock|real);"
+        r"provider=(mock|gemini|local|tfidf);cleanup=(confirmed|unconfirmed)",
+        status.get("description", ""),
+    )
+    if match:
+        result.update({
+            "saved_report_crud": match.group(1),
+            "analysis_mode": match.group(2),
+            "provider_mode": match.group(3),
+            "record_cleanup": match.group(4),
+        })
+    return result
 
 
 def snapshot(api, number, config):
@@ -170,3 +183,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

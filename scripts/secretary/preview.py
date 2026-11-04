@@ -6,6 +6,7 @@ import html
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -15,7 +16,7 @@ from urllib.parse import quote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .core import application_change
-from .github_api import GitHub
+from .github_api import APIError, GitHub
 from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -142,11 +143,46 @@ def smoke(origin, sha):
             assert values["/version"]["commit"] == sha
             assert values["/version"]["environment"] == "staging"
             assert any(x["subject"] == "Synthetic account notice" for x in values["/api/analyses"]["items"])
-            return {"health": "passed", "ready": "passed", "version": sha, "history": "passed", "ai": "not exercised"}
+            return {"health": "passed", "ready": "passed", "version": sha, "history": "passed"}
         except Exception:  # noqa: BLE001 -- bounded retry of startup/contract evidence
             if time.monotonic() >= deadline:
                 raise RuntimeError("Staging smoke failed: health/readiness/version/seeded history not established") from None
             time.sleep(5)
+
+
+def verify_saved_report(origin, sha):
+    """Verify exact-staging CRUD/provenance; preserve whether its provider is mock."""
+    command = [
+        "node", str(ROOT / "scripts/verify_crud.mjs"),
+        "--base-url", origin, "--environment", "staging",
+        "--expected-sha", sha, "--allow-writes",
+    ]
+    try:
+        completed = subprocess.run(
+            command, check=False, capture_output=True, text=True, timeout=180
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("Synthetic saved-report verification could not complete") from exc
+    if completed.returncode != 0:
+        raise RuntimeError("Synthetic saved-report AI/CRUD verification failed")
+    try:
+        result = json.loads(completed.stdout)
+        provenance = result["analysisProvenance"]
+        passed = result.get("result") == "passed" and result.get("cleanedUp") is True
+        analysis_mode = result.get("analysisMode")
+        provider_mode = provenance.get("providerMode")
+    except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as exc:
+        raise RuntimeError("Synthetic saved-report verification returned invalid evidence") from exc
+    if not passed:
+        raise RuntimeError("Synthetic saved-report verification did not confirm cleanup and provider mode")
+    valid_provenance = (
+        analysis_mode == "mock" and provider_mode == "mock"
+    ) or (
+        analysis_mode == "real" and provider_mode in {"gemini", "local", "tfidf"}
+    )
+    if not valid_provenance:
+        raise RuntimeError("Synthetic saved-report verification returned inconsistent AI provenance")
+    return result
 
 
 def package(api, sha, number, config, output):
@@ -239,6 +275,32 @@ def eligibility(pr, files, run, repo):
     return "deploy", "CI passed; exact-head staging requested"
 
 
+def associated_pr_numbers(api, run):
+    """Find every PR linked to this CI commit without scanning open PR pages."""
+    linked = run.get("pull_requests") or []
+    numbers = {
+        row.get("number")
+        for row in linked
+        if isinstance(row, dict)
+        and isinstance(row.get("number"), int)
+        and row["number"] > 0
+    }
+    try:
+        linked = api.pages(f"commits/{run['head_sha']}/pulls")
+    except APIError:
+        if not numbers:
+            raise
+    else:
+        numbers.update(
+            row["number"]
+            for row in linked
+            if isinstance(row, dict)
+            and isinstance(row.get("number"), int)
+            and row["number"] > 0
+        )
+    return sorted(numbers)
+
+
 def current_pr_head_matches(pr, expected_head_sha):
     """Whether the open PR still matches the head captured by this CI run."""
     return (
@@ -259,7 +321,7 @@ def invalidate_previous(api, config, sha):
         for check in checks:
             if check.get("app", {}).get("slug") == "github-actions" and check.get("conclusion") == "success":
                 api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": "action_required",
-                    "output": {"title": "Shared staging replaced", "summary": "Another PR is deploying. Rerun CI for this PR before manual testing; previous preview evidence is stale."}}, "PATCH")
+                    "output": {"title": "Shared staging replaced", "summary": "Another PR is deploying. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
 
 
 def completed_event(api, config, run):
@@ -289,13 +351,13 @@ def main():
     if run.get("event") != "pull_request":
         print("Not a PR CI completion; ignored")
         return
-    candidates = api.pages("pulls?state=open", maximum=2)
+    candidates = associated_pr_numbers(api, run)
     assess = "--assess" in sys.argv
     if assess:
         with open(os.environ["GITHUB_OUTPUT"], "a") as output:
             output.write("deploy=false\n")
-    for candidate in candidates:
-        pr = api.request(f"pulls/{candidate['number']}")
+    for number in candidates:
+        pr = api.request(f"pulls/{number}")
         if not current_pr_head_matches(pr, run["head_sha"]):
             continue
         files = api.pull_request_files(pr["number"])
@@ -306,9 +368,11 @@ def main():
                 continue  # An older completion must not override a newer CI attempt.
             if any(jobs.get(name, {}).get("conclusion") != "success" for name in config["required_ci_jobs"]):
                 action, message = "failure", "Required CI jobs are missing, pending or unsuccessful"
-            elif completed_event(api, config, run):
-                print("Identical CI completion already has the current verified preview; no redeployment")
-                continue
+            else:
+                message = "Required CI jobs passed; exact-head staging requested"
+                if completed_event(api, config, run):
+                    print("Identical CI completion already has the current verified preview; no redeployment")
+                    continue
         if action == "stale":
             continue
         if assess and action == "deploy":
@@ -335,7 +399,7 @@ def main():
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "in_progress", "log_url": log, "auto_inactive": False})
                 deployed = render_request(f"services/{config['staging_service']}/deploys", {"commitId": run["head_sha"]})
                 evidence["render_deployment"] = deployed["id"]
-                deadline = time.monotonic() + 900
+                deadline = time.monotonic() + 1200
                 while True:
                     live = render_request(f"services/{config['staging_service']}/deploys/{deployed['id']}")
                     if live["status"] == "live":
@@ -357,10 +421,39 @@ def main():
                         "description": "Deployment passed; PR head advanced, so this preview is superseded",
                         "log_url": log, "auto_inactive": False})
                 else:
-                    package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
-                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "log_url": log,
-                        "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
-                    action, message = "success", "Exact commit live; health, readiness, version, seeded history and extension package passed. AI and Chrome manual testing not performed."
+                    crud = verify_saved_report(config["staging_origin"], run["head_sha"])
+                    evidence["saved_report_ai_crud"] = crud
+                    evidence["packaged_browser_acceptance"] = {
+                        "result": "passed",
+                        "ci_run_id": run["id"],
+                        "source_commit": run["head_sha"],
+                        "artifact": "Extension-Browser-Acceptance",
+                    }
+                    current = api.request(f"pulls/{pr['number']}")
+                    if not current_pr_head_matches(current, run["head_sha"]):
+                        action = "action_required"
+                        message = "PR head advanced during staging verification; the latest CI run must own staging."
+                        api.request(f"deployments/{deployment['id']}/statuses", {"state": "success",
+                            "description": "Verification passed; PR head advanced, so this preview is superseded",
+                            "log_url": log, "auto_inactive": False})
+                    else:
+                        package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
+                        description = (
+                            f"secretary-crud=passed;analysis={crud['analysisMode']};"
+                            f"provider={crud['analysisProvenance']['providerMode']};cleanup=confirmed"
+                        )
+                        api.request(f"deployments/{deployment['id']}/statuses", {"state": "success", "description": description, "log_url": log,
+                            "environment_url": config["staging_origin"] + "/docs", "auto_inactive": True})
+                        provider_mode = crud["analysisProvenance"]["providerMode"]
+                        analysis_mode = crud["analysisMode"]
+                        action = "success"
+                        message = "- [x] Exact PR SHA live; health, readiness, version, and seeded history passed.\n"
+                        message += f"- [x] Synthetic saved-report provenance and CRUD lifecycle passed (`{provider_mode}` provider); record cleaned up.\n"
+                        if analysis_mode == "real":
+                            message += f"- [x] Non-mock AI acceptance passed with `{provider_mode}`.\n"
+                        else:
+                            message += "- [ ] Real AI acceptance is not checked: staging used `mock`. Mock output is not AI acceptance.\n"
+                        message += f"- [x] Packaged extension browser acceptance passed in CI run `{run['id']}`; see `Extension-Browser-Acceptance`."
         except Exception as exc:  # noqa: BLE001 -- fail the exact-SHA check without exposing API bodies
             action = "failure"
             # Only controlled errors are exposed, not upstream exception bodies.
@@ -383,4 +476,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
