@@ -312,13 +312,20 @@ The baseline was a docs-only PR run on the current main workflow, source head
 ran from `2026-11-03T23:47:07.093Z` to `23:48:05.853Z`: 58.76 seconds
 (`n=1`). Its two pip install steps took 8.35 and 2.62 seconds.
 
-Draft PR #119 replaces that with pinned uv. Backend job
-[126290854493](https://github.com/kendshhh/PhishLens/actions/runs/41743549407/job/126290854493)
-tested source `a9d13dec40cd9b7d1118365da4502db186c36a24` from
-`2026-11-04T00:00:49.702Z` to `00:01:42.139Z`: 52.44 seconds
-(`n=1`). The pinned setup-uv step took 1.00 second and the uv install step
-0.78 seconds. Backend checks, Extension checks, and Staging integration passed;
-the hosted deployment was skipped because the PR is draft. No test coverage was
-removed. The observed 6.32-second difference is one sample per condition and
-does not establish a stable end-to-end gain; another candidate sample is needed
-before claiming improvement or closing #40.
+Draft PR #119 replaces those installs with pinned uv. Two candidate samples:
+
+| Candidate | Source | Backend job | Time (UTC) | Duration | Install notes |
+|---|---|---|---|---:|---|
+| 1 | `a9d13dec40cd9b7d1118365da4502db186c36a24` | [126290854493](https://github.com/kendshhh/PhishLens/actions/runs/41743549407/job/126290854493) | 00:00:49.702–00:01:42.139 | 52.44 s | setup-uv 1.00 s; uv install 0.78 s |
+| 2 | `4e6c06dac623811c78cae7dd2683b791f868b59e` | [126292223108](https://github.com/kendshhh/PhishLens/actions/runs/41743953474/job/126292223108) | 00:03:57.536–00:05:01.964 | 64.43 s | setup-uv about 0.99 s; uv install about 0.90 s; no Actions cache hit |
+
+Both candidate runs passed Backend checks, Extension checks and Staging
+integration. Hosted staging was skipped because PR #119 is draft. No test
+coverage was removed.
+
+Candidate median is 58.44 seconds (`n=2`) versus the single baseline sample
+of 58.76 seconds (`n=1`), a 0.33-second (0.55%) difference. This small,
+uneven sample does not demonstrate a reliable end-to-end improvement; the
+pinned uv candidate remains an unmerged experiment. Do not close #40 based on
+these measurements. Production deploy totals and schema/model rollback
+compatibility remain separate measurements or acceptance evidence.
