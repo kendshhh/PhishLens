@@ -303,3 +303,22 @@ The npm-cache trial passed Extension checks on PR #86 runs
 demonstrated; the cache and instrumentation were removed. This small sample does
 not establish that the cache caused the longer warm job.
 
+## November 4 draft backend-install comparison
+
+The baseline was a docs-only PR run on the current main workflow, source head
+`d3872972fb868eac137fc66e1c7d0f7792336564` based on main
+`6b0e97f6c2b88a469614b0ce3aaf6773a501fd7a`. Backend job
+[126285015665](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126285015665)
+ran from `2026-11-03T23:47:07.093Z` to `23:48:05.853Z`: 58.76 seconds
+(`n=1`). Its two pip install steps took 8.35 and 2.62 seconds.
+
+Draft PR #119 replaces that with pinned uv. Backend job
+[126290854493](https://github.com/kendshhh/PhishLens/actions/runs/41743549407/job/126290854493)
+tested source `a9d13dec40cd9b7d1118365da4502db186c36a24` from
+`2026-11-04T00:00:49.702Z` to `00:01:42.139Z`: 52.44 seconds
+(`n=1`). The pinned setup-uv step took 1.00 second and the uv install step
+0.78 seconds. Backend checks, Extension checks, and Staging integration passed;
+the hosted deployment was skipped because the PR is draft. No test coverage was
+removed. The observed 6.32-second difference is one sample per condition and
+does not establish a stable end-to-end gain; another candidate sample is needed
+before claiming improvement or closing #40.
