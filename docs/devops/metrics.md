@@ -354,3 +354,29 @@ steps together, a 0.20-second (2.0%) step-level difference. This small sample
 does not demonstrate a whole-job improvement; job setup/database/test variance
 is larger than the install-step difference. The candidate remains an
 unmerged experiment and should not be described as a verified optimization.
+
+
+## November 4 cached uv backend-job comparison
+
+A second, cache-hit comparison used the pinned uv workflow from source
+`4e6c06dac623811c78cae7dd2683b791f868b59e`. The test commands and Backend
+checks stayed unchanged. Both baseline and candidate used restored dependency
+caches; all measured Backend checks jobs passed. The candidate run also passed
+Staging integration. Hosted staging was skipped while PR #119 was draft.
+
+| Sample | Source/workflow | Run/job | Backend job UTC | Duration | Cache |
+|---|---|---|---|---:|---|
+| Baseline 1 | main pip workflow | [41741824199 / 126285015665](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126285015665) | 23:47:07.089–23:48:05.853 | 58.76 s | pip hit |
+| Baseline 2 | same main pip workflow | [41741824199 / 126311833476](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126311833476) | 00:50:36.895–00:51:41.177 | 64.28 s | pip hit |
+| Candidate 1 | pinned uv; source `4e6c06d` | [41743953474 / 126317649176](https://github.com/kendshhh/PhishLens/actions/runs/41743953474/job/126317649176) | 01:05:22.953–01:06:13.187 | 50.23 s | uv hit |
+| Candidate 2 | same pinned uv workflow | [41743953474 / 126318609442](https://github.com/kendshhh/PhishLens/actions/runs/41743953474/job/126318609442) | 01:07:46.986–01:08:38.587 | 51.60 s | uv hit |
+
+The baseline median is 61.52 seconds (`n=2`); the cached uv median is 50.92
+seconds (`n=2`), 10.61 seconds (17.2%) lower. These are Backend job durations,
+not complete PR workflow wall times. The small sample is an encouraging
+measured candidate, not a guarantee for every run. Earlier uncached and mixed
+uv trials remain separately reported above and are not included in this
+cache-hit comparison.
+
+The current PR branch now uses the same pinned uv setup and cache dependency
+globs. Its new-head CI must pass before treating the updated PR head as verified.
