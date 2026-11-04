@@ -197,6 +197,10 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
 
       # The generated dev lock pins runtime, transitive, test, and lint packages.
       # pip check below validates the installed dependency graph.
