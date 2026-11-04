@@ -329,3 +329,28 @@ uneven sample does not demonstrate a reliable end-to-end improvement; the
 pinned uv candidate remains an unmerged experiment. Do not close #40 based on
 these measurements. Production deploy totals and schema/model rollback
 compatibility remain separate measurements or acceptance evidence.
+
+
+## November 4 cache-matched backend install comparison
+
+This comparison isolates Backend checks job execution. The two baseline samples
+use the current-main pip-cache workflow; the two candidate samples use PR #119
+head `33e942625f69bcc7bd2f4ed259817b59b17a81a9`, with the same pip cache and
+cache dependency paths. All four runs report a restored/hit cache and passed
+the Backend checks job. Candidate PR CI also passed Extension checks and
+Staging integration; Hosted staging was skipped because PR #119 was draft.
+
+| Sample | Source | Run/job | Backend job UTC | Whole job | Install step(s) |
+|---|---|---|---|---:|---:|
+| Baseline 1 | `d3872972fb868eac137fc66e1c7d0f7792336564` | [41741824199 / 126285015665](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126285015665) | 23:47:07.089–23:48:05.853 | 58.76 s | 8.35 s + 2.62 s |
+| Baseline 2 (job rerun) | same source | [41741824199 / 126311833476](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126311833476) | 00:50:36.895–00:51:41.177 | 64.28 s | 7.22 s + 2.05 s |
+| Candidate 1 | `33e942625f69bcc7bd2f4ed259817b59b17a81a9` | [41749865555 / 126312057648](https://github.com/kendshhh/PhishLens/actions/runs/41749865555/job/126312057648) | 00:51:10.725–00:52:10.318 | 59.59 s | 9.91 s |
+| Candidate 2 (job rerun) | same source | [41749865555 / 126313726898](https://github.com/kendshhh/PhishLens/actions/runs/41749865555/job/126313726898) | 00:55:23.356–00:56:28.560 | 65.20 s | 9.92 s |
+
+Baseline median is 61.52 seconds (`n=2`); candidate median is 62.40 seconds
+(`n=2`), 0.88 seconds (1.42%) slower. The single pinned `--no-deps` install
+step median is 9.92 seconds versus 10.12 seconds for both baseline install
+steps together, a 0.20-second (2.0%) step-level difference. This small sample
+does not demonstrate a whole-job improvement; job setup/database/test variance
+is larger than the install-step difference. The candidate remains an
+unmerged experiment and should not be described as a verified optimization.
