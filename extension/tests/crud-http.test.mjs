@@ -22,12 +22,29 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
             const record = {
                 id: crypto.randomUUID(), ...input, prediction: null, confidence: null,
                 risk_level: null, threat_indicators: [], explanation: null,
-                created_at: new Date().toISOString(), notes: null, feedback: 'none', analysis_mode: 'mock'
+                created_at: new Date().toISOString(), notes: null, feedback: 'none', analysis_mode: 'mock',
+                analysis_provenance: {
+                    provider_mode: 'mock', model: null, model_revision: null,
+                    prompt_version: null, explanation_source: 'mock',
+                    input_truncated: false, windows_processed: null
+                }
             };
             records.set(record.id, record);
             return send(201, record);
         }
-        if (req.url === '/api/analyses' && req.method === 'GET') return send(200, { items: [...records.values()] });
+        if (req.url === '/api/analyses' && req.method === 'GET') {
+            const items = [...records.values()].map(record => ({
+                id: record.id,
+                subject: record.subject,
+                prediction: record.prediction,
+                confidence: record.confidence,
+                risk_level: record.risk_level,
+                threat_indicators: record.threat_indicators,
+                explanation: record.explanation,
+                created_at: record.created_at.replace(/Z$/, '+00:00')
+            }));
+            return send(200, { items });
+        }
         const id = req.url.split('/').pop();
         const record = records.get(id);
         if (!record) return send(404, { detail: 'Analysis not found' });
@@ -46,10 +63,19 @@ test('CRUD acceptance runner works over HTTP against a local substitute', async 
     try {
         const result = await verifyCrud('http://127.0.0.1:' + server.address().port, { environment: 'disposable', expectedSha: 'a'.repeat(40), allowWrites: true });
         assert.equal(result.result, 'passed');
+        assert.deepEqual(result.analysisProvenance, {
+            providerMode: 'mock', model: null, modelRevision: null, promptVersion: null
+        });
         assert.deepEqual(methods.slice(0, 3), ['GET', 'GET', 'POST']);
         assert.equal(records.size, 0);
         assert.ok(methods.includes('POST') && methods.includes('PATCH') && methods.includes('DELETE'));
+        await assert.rejects(verifyCrud(
+            'http://127.0.0.1:' + server.address().port,
+            { environment: 'disposable', expectedSha: 'a'.repeat(40), allowWrites: true, requireRealAI: true }
+        ), /Mock output is not AI acceptance/);
+        assert.equal(records.size, 0, 'A rejected mock report must still be cleaned up');
     } finally {
         await new Promise(resolve => server.close(resolve));
     }
 });
+

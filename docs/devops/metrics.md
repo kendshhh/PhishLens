@@ -303,3 +303,80 @@ The npm-cache trial passed Extension checks on PR #86 runs
 demonstrated; the cache and instrumentation were removed. This small sample does
 not establish that the cache caused the longer warm job.
 
+## November 4 draft backend-install comparison
+
+The baseline was a docs-only PR run on the current main workflow, source head
+`d3872972fb868eac137fc66e1c7d0f7792336564` based on main
+`6b0e97f6c2b88a469614b0ce3aaf6773a501fd7a`. Backend job
+[126285015665](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126285015665)
+ran from `2026-11-03T23:47:07.093Z` to `23:48:05.853Z`: 58.76 seconds
+(`n=1`). Its two pip install steps took 8.35 and 2.62 seconds.
+
+Draft PR #119 replaces those installs with pinned uv. Two candidate samples:
+
+| Candidate | Source | Backend job | Time (UTC) | Duration | Install notes |
+|---|---|---|---|---:|---|
+| 1 | `a9d13dec40cd9b7d1118365da4502db186c36a24` | [126290854493](https://github.com/kendshhh/PhishLens/actions/runs/41743549407/job/126290854493) | 00:00:49.702–00:01:42.139 | 52.44 s | setup-uv 1.00 s; uv install 0.78 s |
+| 2 | `4e6c06dac623811c78cae7dd2683b791f868b59e` | [126292223108](https://github.com/kendshhh/PhishLens/actions/runs/41743953474/job/126292223108) | 00:03:57.536–00:05:01.964 | 64.43 s | setup-uv about 0.99 s; uv install about 0.90 s; no Actions cache hit |
+
+Both candidate runs passed Backend checks, Extension checks and Staging
+integration. Hosted staging was skipped because PR #119 is draft. No test
+coverage was removed.
+
+Candidate median is 58.44 seconds (`n=2`) versus the single baseline sample
+of 58.76 seconds (`n=1`), a 0.33-second (0.55%) difference. This small,
+uneven sample does not demonstrate a reliable end-to-end improvement; the
+pinned uv candidate remains an unmerged experiment. Do not close #40 based on
+these measurements. Production deploy totals and schema/model rollback
+compatibility remain separate measurements or acceptance evidence.
+
+
+## November 4 cache-matched backend install comparison
+
+This comparison isolates Backend checks job execution. The two baseline samples
+use the current-main pip-cache workflow; the two candidate samples use PR #119
+head `33e942625f69bcc7bd2f4ed259817b59b17a81a9`, with the same pip cache and
+cache dependency paths. All four runs report a restored/hit cache and passed
+the Backend checks job. Candidate PR CI also passed Extension checks and
+Staging integration; Hosted staging was skipped because PR #119 was draft.
+
+| Sample | Source | Run/job | Backend job UTC | Whole job | Install step(s) |
+|---|---|---|---|---:|---:|
+| Baseline 1 | `d3872972fb868eac137fc66e1c7d0f7792336564` | [41741824199 / 126285015665](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126285015665) | 23:47:07.089–23:48:05.853 | 58.76 s | 8.35 s + 2.62 s |
+| Baseline 2 (job rerun) | same source | [41741824199 / 126311833476](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126311833476) | 00:50:36.895–00:51:41.177 | 64.28 s | 7.22 s + 2.05 s |
+| Candidate 1 | `33e942625f69bcc7bd2f4ed259817b59b17a81a9` | [41749865555 / 126312057648](https://github.com/kendshhh/PhishLens/actions/runs/41749865555/job/126312057648) | 00:51:10.725–00:52:10.318 | 59.59 s | 9.91 s |
+| Candidate 2 (job rerun) | same source | [41749865555 / 126313726898](https://github.com/kendshhh/PhishLens/actions/runs/41749865555/job/126313726898) | 00:55:23.356–00:56:28.560 | 65.20 s | 9.92 s |
+
+Baseline median is 61.52 seconds (`n=2`); candidate median is 62.40 seconds
+(`n=2`), 0.88 seconds (1.42%) slower. The single pinned `--no-deps` install
+step median is 9.92 seconds versus 10.12 seconds for both baseline install
+steps together, a 0.20-second (2.0%) step-level difference. This small sample
+does not demonstrate a whole-job improvement; job setup/database/test variance
+is larger than the install-step difference. The candidate remains an
+unmerged experiment and should not be described as a verified optimization.
+
+
+## November 4 cached uv backend-job comparison
+
+A second, cache-hit comparison used the pinned uv workflow from source
+`4e6c06dac623811c78cae7dd2683b791f868b59e`. The test commands and Backend
+checks stayed unchanged. Both baseline and candidate used restored dependency
+caches; all measured Backend checks jobs passed. The candidate run also passed
+Staging integration. Hosted staging was skipped while PR #119 was draft.
+
+| Sample | Source/workflow | Run/job | Backend job UTC | Duration | Cache |
+|---|---|---|---|---:|---|
+| Baseline 1 | main pip workflow | [41741824199 / 126285015665](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126285015665) | 23:47:07.089–23:48:05.853 | 58.76 s | pip hit |
+| Baseline 2 | same main pip workflow | [41741824199 / 126311833476](https://github.com/kendshhh/PhishLens/actions/runs/41741824199/job/126311833476) | 00:50:36.895–00:51:41.177 | 64.28 s | pip hit |
+| Candidate 1 | pinned uv; source `4e6c06d` | [41743953474 / 126317649176](https://github.com/kendshhh/PhishLens/actions/runs/41743953474/job/126317649176) | 01:05:22.953–01:06:13.187 | 50.23 s | uv hit |
+| Candidate 2 | same pinned uv workflow | [41743953474 / 126318609442](https://github.com/kendshhh/PhishLens/actions/runs/41743953474/job/126318609442) | 01:07:46.986–01:08:38.587 | 51.60 s | uv hit |
+
+The baseline median is 61.52 seconds (`n=2`); the cached uv median is 50.92
+seconds (`n=2`), 10.61 seconds (17.2%) lower. These are Backend job durations,
+not complete PR workflow wall times. The small sample is an encouraging
+measured candidate, not a guarantee for every run. Earlier uncached and mixed
+uv trials remain separately reported above and are not included in this
+cache-hit comparison.
+
+The current PR branch now uses the same pinned uv setup and cache dependency
+globs. Its new-head CI must pass before treating the updated PR head as verified.
