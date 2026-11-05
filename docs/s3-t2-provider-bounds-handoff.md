@@ -155,23 +155,40 @@ pg_isready: 127.0.0.1:5432 - no response (exit 2)
 The 31 skipped cases require PostgreSQL; this run deliberately unset
 `RUN_DATABASE_TESTS`. PostgreSQL was started locally, and the current-SHA
 database check reported `0003_saved_analysis_idempotency (head)` for
-`phishlens_s3_t2_test`. Its guarded acceptance command and actual result were:
+`phishlens_s3_t2_test`. After pushing the reconciled code, PR #107 head
+`724953f9ecc501c97197fdbbe7580b1adc708589` was tested again against this
+disposable database. The guarded acceptance command and actual result were:
 
 ```sh
 DATABASE_URL='postgresql://127.0.0.1:5432/phishlens_s3_t2_test' SAVED_CREATE_TEST_DATABASE=phishlens_s3_t2_test RUN_DATABASE_TESTS=1 /Users/trixia/Documents/PhishLens/.venv/bin/python -m pytest backend/tests/test_saved_create_postgres.py -q -p no:cacheprovider
 ```
 
 ```text
-31 passed in 9.13s
+31 passed in 9.12s
 ```
 
 The earlier 30-pass PostgreSQL run remains historical evidence for its
-November 2 working tree. No staging write or real-provider request was made.
+November 2 working tree; the 31-pass result above is for the updated PR head.
+No staging write or real-provider request was made.
 The implementation and deterministic coverage reviewed here include TF-IDF
 as the primary saved path, the retained Gemini timeout/one-attempt regression,
 single-process inference admission, 15/20-second budgets, controlled failures,
 no-save-on invalid inference, healthy follow-up, and idempotent ambiguous-commit
 replay.
+
+### Hosted/provider coordination status
+
+Kendra's prior PR #58 confirmation identified Render staging's Neon target as
+`pr-58-staging` / `phishlens_dev`, with migration
+`0003_saved_analysis_idempotency` applied. She described that branch as
+separate for writes but cloned from a development snapshot. That confirmation
+was scoped to PR #58 and does not prove that this Issue #96 head is deployed,
+identify the provider/model configured for it, or authorize a hosted/provider
+write. Before that check, request Kendra's current deployed full SHA, current
+Neon target and migration revision, matching artifact if client checks are
+included, provider/model configuration, and explicit authorization for the
+specific synthetic request. Until then, hosted/provider verification remains
+pending and no staging records should be written.
 
 ## Remaining acceptance evidence
 
