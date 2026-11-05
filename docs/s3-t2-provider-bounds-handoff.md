@@ -124,9 +124,54 @@ INFO  [alembic.runtime.migration] Will assume transactional DDL.
 (1 row)
 ```
 
-Local PostgreSQL acceptance is **passed** for this working tree. No Neon
-database or live AI provider was used; staging and real-provider evidence remain
-pending.
+Local PostgreSQL acceptance was **passed** for the November 2 working tree
+described above. No Neon database or live AI provider was used; staging and
+real-provider evidence remain pending.
+
+### Reconciled branch verification (November 5, 2026)
+
+After merging the latest `origin/main`, the Issue #96 worktree is at
+`4bfbf4d9564f7d987fe1b6746400825471f9dbe0` on
+`feat/96-bounded-inference`. The merge completed without conflicts. The auth
+prototype worktree was not touched.
+
+The following checks were run from the reconciled worktree using the project
+virtual environment at `/Users/trixia/Documents/PhishLens/.venv`:
+
+```sh
+/Users/trixia/Documents/PhishLens/.venv/bin/python -m ruff check --no-cache backend/ai/gemini_provider.py backend/app/analysis_deadlines.py backend/app/analysis_execution.py backend/app/analysis_service.py backend/app/routers/saved_create.py backend/tests/test_ai_providers.py backend/tests/test_analysis_deadlines.py backend/tests/test_analysis_execution.py backend/tests/test_analysis_execution_process.py backend/tests/test_analysis_worker.py backend/tests/test_analysis_persistence.py backend/tests/test_saved_create.py backend/tests/test_saved_create_postgres.py backend/tests/test_tfidf_provider.py
+env -u RUN_DATABASE_TESTS /Users/trixia/Documents/PhishLens/.venv/bin/python -m pytest backend/tests/test_ai_providers.py backend/tests/test_analysis_deadlines.py backend/tests/test_analysis_execution.py backend/tests/test_analysis_execution_process.py backend/tests/test_analysis_worker.py backend/tests/test_analysis_persistence.py backend/tests/test_saved_create.py backend/tests/test_saved_create_postgres.py backend/tests/test_tfidf_provider.py -q -p no:cacheprovider
+pg_isready -h 127.0.0.1 -p 5432
+```
+
+Actual results:
+
+```text
+Ruff: All checks passed!
+Pytest: 110 passed, 31 skipped in 3.61s
+pg_isready: 127.0.0.1:5432 - no response (exit 2)
+```
+
+The 31 skipped cases require PostgreSQL; this run deliberately unset
+`RUN_DATABASE_TESTS`. PostgreSQL was started locally, and the current-SHA
+database check reported `0003_saved_analysis_idempotency (head)` for
+`phishlens_s3_t2_test`. Its guarded acceptance command and actual result were:
+
+```sh
+DATABASE_URL='postgresql://127.0.0.1:5432/phishlens_s3_t2_test' SAVED_CREATE_TEST_DATABASE=phishlens_s3_t2_test RUN_DATABASE_TESTS=1 /Users/trixia/Documents/PhishLens/.venv/bin/python -m pytest backend/tests/test_saved_create_postgres.py -q -p no:cacheprovider
+```
+
+```text
+31 passed in 9.13s
+```
+
+The earlier 30-pass PostgreSQL run remains historical evidence for its
+November 2 working tree. No staging write or real-provider request was made.
+The implementation and deterministic coverage reviewed here include TF-IDF
+as the primary saved path, the retained Gemini timeout/one-attempt regression,
+single-process inference admission, 15/20-second budgets, controlled failures,
+no-save-on invalid inference, healthy follow-up, and idempotent ambiguous-commit
+replay.
 
 ## Remaining acceptance evidence
 
