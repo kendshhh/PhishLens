@@ -31,9 +31,9 @@ The simulated checks cover the supported unavailable, timeout, quota, malformed-
 
 A separate staging-only deployment rollback and restore rehearsal is recorded in the [deployment and recovery runbook](runbook.md). It restored the staging service in 200.753 seconds, with independent verification at 233.408 seconds. That was an infrastructure recovery rehearsal, not an AI-provider failure drill; do not combine the timings.
 
-## Repeatable local UI demonstration
+## Repeatable local API demonstration
 
-The [AI failure demo guide](../ai-failure-demo.md) describes how to run the backend with Gemini mode selected but credentials intentionally unset. The expected result is a controlled `503 analysis_unavailable` response and the extension's unavailable state, before any provider network call. It uses the analysis-only endpoint and does not persist a saved report. The demo has not been represented here as a completed browser run.
+The [AI failure demo guide](../ai-failure-demo.md) demonstrates the missing-provider-configuration path by sending a fixed synthetic request directly to `POST /analyses`. With Gemini mode selected and credentials intentionally unset, the API is expected to return a controlled `503 analysis_unavailable` response before a provider network call. This is a local API demonstration only; it does not exercise the extension UI, reproduce a live provider outage, or persist a saved report.
 
 ## Stop and recovery steps
 
@@ -50,8 +50,6 @@ The [AI failure demo guide](../ai-failure-demo.md) describes how to run the back
 - **Staging owner:** confirm target identity, protected-environment approval, quota/cost limit, and whether an AI-specific staging failure injection is supported.
 
 To complete the AI-specific drill, record its exact source, backend deployment and model revisions; identify each live or simulated failure; record sample count and measured detection/recovery times where an actual staging event occurs; and keep unavailable timings marked as not measured. Obtain the required review before marking issue #95 complete.
-
-
 
 ## Artifact archive confirmed - November 5, 2026
 
