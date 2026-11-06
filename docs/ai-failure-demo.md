@@ -10,25 +10,43 @@ database write is used.
 
 1. Install the backend dependencies using the
    [README setup instructions](../README.md#local-setup).
-2. From the repository root in PowerShell, run:
+2. From the repository root in Windows PowerShell 5.1 or PowerShell 7, run:
 
    ```powershell
    .\scripts\demo_ai_failure.ps1
    ```
 
-   The script temporarily sets process-local `AI_MODE=gemini` and blank Gemini
-   key/model values, then starts the API on its local development address. It
-   does not edit `.env` and restores the shell's prior environment values when
-   the server exits.
+   The script temporarily sets process-local `AI_MODE=gemini` and whitespace-
+   only Gemini key/model overrides. The values trim to empty, while remaining
+   present in the process environment so Windows PowerShell 5.1 cannot remove
+   them and let Python reload credentials from `.env`. The script does not edit
+   `.env` and restores the shell's prior environment values when the server
+   exits.
 
 ## Demo
 
-Keep the server running. In a second PowerShell window, submit the fixed
-synthetic request:
+Keep the server running. In a second PowerShell window, create a temporary
+UTF-8 JSON file and submit that file as the request body. This avoids
+PowerShell 5.1's native-command quoting issue with inline JSON:
 
 ```powershell
-$payload = '{"subject":"Synthetic PhishLens provider smoke","sender":"smoke@example.invalid","text":"Synthetic test message only. Visit https://example.invalid/verify to confirm this fictional account. No real person or account is involved."}'
-curl.exe -i -X POST http://127.0.0.1:8000/analyses -H "Content-Type: application/json" -H "Accept: application/json" --data-binary $payload
+$payload = [ordered]@{
+    subject = "Synthetic PhishLens provider smoke"
+    sender = "smoke@example.invalid"
+    text = "Synthetic test message only. Visit https://example.invalid/verify to confirm this fictional account. No real person or account is involved."
+} | ConvertTo-Json -Compress
+
+$payloadPath = Join-Path ([System.IO.Path]::GetTempPath()) ("phishlens-ai-failure-" + [guid]::NewGuid().ToString("N") + ".json")
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+try {
+    [System.IO.File]::WriteAllText($payloadPath, $payload, $utf8NoBom)
+    & curl.exe --include --silent --show-error --request POST "http://127.0.0.1:8000/analyses" --header "Content-Type: application/json" --header "Accept: application/json" --data-binary "@$payloadPath"
+    if ($LASTEXITCODE -ne 0) {
+        throw "curl.exe request failed with exit code $LASTEXITCODE"
+    }
+} finally {
+    Remove-Item -LiteralPath $payloadPath -Force -ErrorAction SilentlyContinue
+}
 ```
 
 The expected response is HTTP `503` with this error body:
