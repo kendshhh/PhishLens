@@ -195,37 +195,55 @@ evidence; it does not establish failure-path behavior, model accuracy, or
 browser acceptance. Evidence was recorded on Issues #90 and #96. No extension
 artifact was required for this server-side check.
 
-## Remaining acceptance evidence
+## Current review and verification status (November 7, 2026)
 
-- Wilberr approved PR #107 head `dca326fa3d051be106c6b4ed8012d4a733a98c00` on November 5. In a later PR comment, he requested one additional regression for a TF-IDF model-hash mismatch before storage or idempotency replay. That follow-up is implemented locally below, but is not yet included in the PR; it still needs to be pushed, checked by CI, and re-reviewed.
-- Required checks passed on the current PR head: CI run #556 (`42004387427`), plus the current lint and dependency-review runs. The earlier CI run #555 is historical evidence.
-- Kendra's reported hosted TF-IDF lifecycle satisfies the successful save/read/delete/cleanup path for the reported dca326 deployment. Keep it distinct from deterministic failure-path tests and provider/model evaluation sign-off.
-- Wilberr's later requested wrong-model-hash regression is implemented locally below but still needs to be pushed, checked by CI, and reviewed on the new head. Obtain any additional provider/model evaluation sign-off he requires separately; the prior approval was for the earlier head.
-- Keep mocked/unit, local PostgreSQL, and deployed evidence distinct. A matching extension artifact is only needed for client/browser acceptance, not this API-only lifecycle.
+Current PR #107 head is
+`9b54c5adb1c9c6718ccca7bb28364bf1e4390642`. Wilberr's requested TF-IDF
+wrong-model-hash regression is pushed in this head, and Wilberr confirmed the
+test and re-reviewed this exact change. CI run [#42213225007](https://github.com/kendshhh/PhishLens/actions/runs/42213225007)
+passed for this head. The associated workflow-lint and dependency-review runs
+also succeeded.
 
-Issue #96 should remain open until the follow-up regression is integrated and reviewed, required CI passes on that head, and provider/model evaluation sign-off and all other acceptance evidence are reconciled.
+The regression is
+`backend/tests/test_saved_create.py::test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay`.
+It sends a valid synthetic request with `AI_MODE=tfidf`, a valid
+`Idempotency-Key`, and a deliberately different 64-character hexadecimal
+`X-PhishLens-Model`. It expects HTTP 503 with:
 
-### Follow-up regression for Wilberr (November 6, 2026)
-
-Added locally in `backend/tests/test_saved_create.py`:
-`test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay`.
-With TF-IDF configured and a deliberately mismatched 64-character model hash,
-the test expects HTTP 503 `analysis_unavailable` and asserts that database
-configuration, idempotency lookup/replay, and saved-analysis service invocation
-do not occur. Existing coverage continues to allow a missing model header for
-generic saved creation.
-
-Focused command and actual result:
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 /Users/trixia/Documents/PhishLens/.venv/bin/python -m pytest backend/tests/test_saved_create.py::test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay -q -p no:cacheprovider
+```json
+{"detail":"The matching TF-IDF save service is unavailable","code":"analysis_unavailable"}
 ```
 
-```text
-1 passed in 0.91s
-```
+The test asserts that `get_database_url`,
+`find_idempotent_saved_analysis`, and `create_saved_analysis` are never
+called. The mismatch guard therefore rejects before database setup,
+idempotency replay lookup, inference, or persistence. Header omission remains
+compatible for generic saved creation; the model comparison runs when the
+header is supplied. An overlong header remains a request-validation 422 case.
 
-This is local, uncommitted evidence on `feat/96-bounded-inference`; it is not
-part of PR #107's remote head and does not replace required CI or Wilberr's
-follow-up review. It does not change the separate pending hosted-provider
-verification.
+This check supplements rather than replaces the existing Gemini persistent
+create regression: Gemini remains an optional provider and must retain its
+15,000 ms SDK timeout and one-attempt behavior for saved creation. The
+unsaved route keeps its separate 30,000 ms SDK timeout.
+
+## Earlier evidence (kept tied to its original SHA)
+
+- The November 5 deterministic/local PostgreSQL results and the November 6
+  hosted TF-IDF success-path lifecycle above belong to their explicitly stated
+  earlier SHAs. They are historical evidence and are not presented as tests
+  performed on the current head.
+- The hosted lifecycle was the successful TF-IDF path (create/read/delete and
+  cleanup). It does not establish this wrong-hash failure path, browser
+  acceptance, or model-accuracy sign-off.
+- Current-head evidence for the focused wrong-hash regression is CI run
+  #42213225007 and Wilberr's re-review. Keep mock/unit, local PostgreSQL, and
+  deployed evidence labeled separately.
+
+## Remaining Issue #96 work
+
+The requested PR #107 regression, CI, and Wilberr review are complete for head
+`9b54c5adb1c9c6718ccca7bb28364bf1e4390642`. Keep Issue #96 open until its
+remaining acceptance evidence is reconciled, including any provider/model
+evaluation sign-off and failure scenarios not covered by the current tests.
+Do not treat the earlier successful staging lifecycle as proof of those
+separate checks.
