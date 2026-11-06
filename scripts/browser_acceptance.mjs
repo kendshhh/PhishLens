@@ -226,8 +226,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 """
 worker_path.write_text(worker, encoding="utf-8")
 `;
-  const python = process.platform === "win32" ? "py" : (process.env.PYTHON ?? "python3");
-  const pythonArgs = process.platform === "win32" ? ["-3.12"] : [];
+  const python = process.env.PHISHLENS_PYTHON ??
+    (process.platform === "win32" ? "py" : (process.env.PYTHON ?? "python3"));
+  const pythonArgs = process.env.PHISHLENS_PYTHON ? [] :
+    (process.platform === "win32" ? ["-3.12"] : []);
   execFileSync(python, [...pythonArgs, "-c", prepare, archivePath, destination, apiOrigin, evidencePath], { stdio: "inherit" });
 }
 
@@ -383,7 +385,7 @@ async function run() {
     await reopenedPage.locator("#empty-state").waitFor({ state: "visible" });
     await reopenedPage.locator("#load-history").click();
     await reopenedPage.locator("#history-list li").getByText("Synthetic browser CRUD").waitFor();
-    await reopenedPage.locator("#history-list li").getByRole("button", { name: "View details" }).click();
+    await reopenedPage.locator("#history-list li").getByRole("button", { name: "View Synthetic browser CRUD" }).click();
     await reopenedPage.locator("#detail-panel").waitFor({ state: "visible" });
     await reopenedPage.locator("#detail-content").getByRole("button", { name: "Edit notes and feedback" }).waitFor();
     await reopenedPage.locator("#detail-content").getByText("Synthetic browser note", { exact: true }).waitFor();
@@ -402,8 +404,8 @@ async function run() {
     await finalPage.goto(`chrome-extension://${extensionId}/popup.html`);
     await finalPage.locator("#empty-state").waitFor({ state: "visible" });
     await finalPage.locator("#load-history").click();
-    await finalPage.locator("#empty").waitFor({ state: "visible" });
-    assert.equal(await finalPage.locator("#history-list li").count(), 0);
+    await finalPage.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    assert.equal(await finalPage.locator("#history-list li").getByText("Synthetic browser CRUD", { exact: true }).count(), 0);
     evidence.tests.push("deleted synthetic analysis stays absent after popup reopen");
 
     await setState(apiOrigin, { historyMode: "empty" });
