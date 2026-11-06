@@ -16,7 +16,8 @@ const expectedTests = [
   "synthetic analysis shows a clearly labeled local result or readable error",
   "Clear during a local scan prevents a stale result from returning",
   "synthetic saved analysis can be created and viewed",
-  "synthetic saved analysis can be edited and deleted",
+  "synthetic saved analysis edit survives popup reopen and reread",
+  "deleted synthetic analysis stays absent after popup reopen",
   "empty history and history API failure states render clearly",
 ];
 let sourceCommit = process.env.SOURCE_COMMIT ?? null;
@@ -375,20 +376,43 @@ async function run() {
     await page.getByText("Changes saved successfully.").waitFor();
     assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
     assert.equal(records.get(createdRecordId).feedback, "false_positive");
+    await page.close();
 
-    await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
-    await page.locator("#confirm-delete").click();
-    await page.getByText("Analysis deleted successfully.").waitFor();
+    const reopenedPage = await context.newPage();
+    await reopenedPage.goto(`chrome-extension://${extensionId}/popup.html`);
+    await reopenedPage.locator("#empty-state").waitFor({ state: "visible" });
+    await reopenedPage.locator("#load-history").click();
+    await reopenedPage.locator("#history-list li").getByText("Synthetic browser CRUD").waitFor();
+    await reopenedPage.locator("#history-list li").getByRole("button", { name: "View details" }).click();
+    await reopenedPage.locator("#detail-panel").waitFor({ state: "visible" });
+    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Edit notes and feedback" }).waitFor();
+    await reopenedPage.locator("#detail-content").getByText("Synthetic browser note", { exact: true }).waitFor();
+    await reopenedPage.locator("#detail-content").getByText("False positive", { exact: true }).waitFor();
+    assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
+    assert.equal(records.get(createdRecordId).feedback, "false_positive");
+    evidence.tests.push("synthetic saved analysis edit survives popup reopen and reread");
+
+    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
+    await reopenedPage.locator("#confirm-delete").click();
+    await reopenedPage.getByText("Analysis deleted successfully.").waitFor();
     assert.equal(records.has(createdRecordId), false, "Synthetic delete must remove the local API record");
-    evidence.tests.push("synthetic saved analysis can be edited and deleted");
+    await reopenedPage.close();
+
+    const finalPage = await context.newPage();
+    await finalPage.goto(`chrome-extension://${extensionId}/popup.html`);
+    await finalPage.locator("#empty-state").waitFor({ state: "visible" });
+    await finalPage.locator("#load-history").click();
+    await finalPage.locator("#empty").waitFor({ state: "visible" });
+    assert.equal(await finalPage.locator("#history-list li").count(), 0);
+    evidence.tests.push("deleted synthetic analysis stays absent after popup reopen");
 
     await setState(apiOrigin, { historyMode: "empty" });
-    await page.locator("#load-history").click();
-    await page.locator("#empty").waitFor({ state: "visible" });
+    await finalPage.locator("#load-history").click();
+    await finalPage.locator("#empty").waitFor({ state: "visible" });
 
     await setState(apiOrigin, { historyMode: "error" });
-    await page.locator("#load-history").click();
-    await page.locator("#crud-status").getByText(/Saved analyses are unavailable/).waitFor();
+    await finalPage.locator("#load-history").click();
+    await finalPage.locator("#crud-status").getByText(/Saved analyses are unavailable/).waitFor();
     evidence.tests.push("empty history and history API failure states render clearly");
 
     evidence.browser_version = context.browser()?.version() ?? "unknown";

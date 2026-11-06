@@ -5,6 +5,38 @@ Branch: `test/47-verify-installed-browser-crud`
 PR: [#61](https://github.com/kendshhh/PhishLens/pull/61)
 Owner: Andrei (`JupitraxNeptuna`)
 
+## November 6 coordination and acceptance status
+
+Trixia requested a repeat installed-Chrome run using the extension artifact matched
+to the deployed backend SHA. Leyan is invited to review the resulting client/API
+evidence. The latest supplied run reports that Save was blocked because the
+matching TF-IDF save service was unavailable; consequently no synthetic record
+was created and full CRUD, reopen persistence/deletion, and Network evidence are
+still incomplete. No current staging SHA or artifact pairing is asserted here.
+
+Before any record-changing run, Kendra must confirm staging readiness and
+explicitly authorize the synthetic write. At that point, record the full backend
+`/version` SHA and environment, CI artifact/run and source SHA, extension ZIP
+SHA-256, Chrome version, and timestamp. Stop if backend and artifact identities
+do not match or `/ready` fails. Confirm `/model-info` reports `provider_mode` as
+`tfidf`, `accepts_tfidf_reports` as true, and the exact bundled TF-IDF model SHA;
+if not, do not attempt Save. Manual create/view/edit/delete behavior requires the
+service to accept the extension's required model header too.
+
+On the matched installed artifact, use only synthetic content and one uniquely
+identifiable test record. Capture create and detail, edit notes/feedback and
+reread, close and reopen the popup and confirm the edits remain, delete, then
+close/reopen and confirm the deleted record is absent. Capture screenshots and
+redacted DevTools Network evidence for the relevant GET/POST/PATCH/DELETE
+requests and statuses. Remove credentials, cookies, authorization headers,
+tokens, and personal data. Attach the artifacts to PR #61 and ask Leyan to review
+the client/API evidence. The CI Playwright scenarios use a local synthetic API;
+they improve regression coverage but do not replace this installed-Chrome run or
+prove staging database persistence.
+
+Until these observations and evidence exist, the installed CRUD acceptance stays
+pending and the matching-model failure remains an environment readiness blocker.
+
 ## Evidence status
 
 ## Pre-test staging change — 2026-11-03
