@@ -169,37 +169,63 @@ DATABASE_URL='postgresql://127.0.0.1:5432/phishlens_s3_t2_test' SAVED_CREATE_TES
 
 The earlier 30-pass PostgreSQL run remains historical evidence for its
 November 2 working tree; the 31-pass result above is for the updated PR head.
-No staging write or real-provider request was made.
 The implementation and deterministic coverage reviewed here include TF-IDF
 as the primary saved path, the retained Gemini timeout/one-attempt regression,
 single-process inference admission, 15/20-second budgets, controlled failures,
 no-save-on invalid inference, healthy follow-up, and idempotent ambiguous-commit
 replay.
 
-### Hosted/provider coordination status
+### Hosted/provider verification (reported November 6, 2026)
 
-Kendra's prior PR #58 confirmation identified Render staging's Neon target as
-`pr-58-staging` / `phishlens_dev`, with migration
-`0003_saved_analysis_idempotency` applied. She described that branch as
-separate for writes but cloned from a development snapshot. That confirmation
-was scoped to PR #58 and does not prove that this Issue #96 head is deployed,
-identify the provider/model configured for it, or authorize a hosted/provider
-write. Before that check, request Kendra's current deployed full SHA, current
-Neon target and migration revision, matching artifact if client checks are
-included, provider/model configuration, and explicit authorization for the
-specific synthetic request. Until then, hosted/provider verification remains
-pending and no staging records should be written.
+Kendra reported the approved PR #107 head
+`dca326fa3d051be106c6b4ed8012d4a733a98c00` live on staging, with `/ready`
+connected and `/model-info` reporting TF-IDF, model
+`word_plus_char_wb_C1p0`, SHA-256
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`, and
+`accepts_tfidf_reports: true`. The confirmed Neon target was
+`pr-58-staging` / `phishlens_dev`, revision
+`0003_saved_analysis_idempotency`.
+
+Kendra then reported the explicitly authorized synthetic TF-IDF saved-analysis
+lifecycle succeeded: create 201, list/detail 200, detail provenance matched
+TF-IDF and the model SHA, delete 204, follow-up detail 404, and the list
+returned to its pre-run count of two. Record ID:
+`6df7bd80-5f44-42d9-aa8f-b3b6f0071aaf`. This is reported hosted success-path
+evidence; it does not establish failure-path behavior, model accuracy, or
+browser acceptance. Evidence was recorded on Issues #90 and #96. No extension
+artifact was required for this server-side check.
 
 ## Remaining acceptance evidence
 
-- Wilberr review/sign-off for the bounded provider behavior and failure mapping.
-- Required CI on the reviewed branch.
-- A bounded real-provider staging check only after DevOps confirms the current
-  deployed SHA, matching extension artifact if client verification is included,
-  database target, and explicit write authorization. No staging write has been
-  performed or is authorized by this handoff.
-- Record exact commands, result counts, source SHA, provider/model identity,
-  failure shape, persistence outcome, reviewer, and any remaining limitations.
+- Wilberr approved PR #107 head `dca326fa3d051be106c6b4ed8012d4a733a98c00` on November 5. In a later PR comment, he requested one additional regression for a TF-IDF model-hash mismatch before storage or idempotency replay. That follow-up is implemented locally below, but is not yet included in the PR; it still needs to be pushed, checked by CI, and re-reviewed.
+- Required checks passed on the current PR head: CI run #556 (`42004387427`), plus the current lint and dependency-review runs. The earlier CI run #555 is historical evidence.
+- Kendra's reported hosted TF-IDF lifecycle satisfies the successful save/read/delete/cleanup path for the reported dca326 deployment. Keep it distinct from deterministic failure-path tests and provider/model evaluation sign-off.
+- Wilberr's later requested wrong-model-hash regression is implemented locally below but still needs to be pushed, checked by CI, and reviewed on the new head. Obtain any additional provider/model evaluation sign-off he requires separately; the prior approval was for the earlier head.
+- Keep mocked/unit, local PostgreSQL, and deployed evidence distinct. A matching extension artifact is only needed for client/browser acceptance, not this API-only lifecycle.
 
-Evidence categories must stay distinct: mocked/unit and local PostgreSQL tests
-are not real-provider or deployed staging evidence.
+Issue #96 should remain open until the follow-up regression is integrated and reviewed, required CI passes on that head, and provider/model evaluation sign-off and all other acceptance evidence are reconciled.
+
+### Follow-up regression for Wilberr (November 6, 2026)
+
+Added locally in `backend/tests/test_saved_create.py`:
+`test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay`.
+With TF-IDF configured and a deliberately mismatched 64-character model hash,
+the test expects HTTP 503 `analysis_unavailable` and asserts that database
+configuration, idempotency lookup/replay, and saved-analysis service invocation
+do not occur. Existing coverage continues to allow a missing model header for
+generic saved creation.
+
+Focused command and actual result:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 /Users/trixia/Documents/PhishLens/.venv/bin/python -m pytest backend/tests/test_saved_create.py::test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay -q -p no:cacheprovider
+```
+
+```text
+1 passed in 0.91s
+```
+
+This is local, uncommitted evidence on `feat/96-bounded-inference`; it is not
+part of PR #107's remote head and does not replace required CI or Wilberr's
+follow-up review. It does not change the separate pending hosted-provider
+verification.
