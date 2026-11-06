@@ -13,8 +13,11 @@ foreach ($name in $names) {
 
 try {
     $env:AI_MODE = "gemini"
-    $env:GEMINI_API_KEY = ""
-    $env:GEMINI_MODEL = ""
+    # Keep these variables present in Windows PowerShell 5.1, where assigning
+    # an empty string removes them and can let python-dotenv reload a .env key.
+    # The backend trims whitespace, so both values remain effectively unset.
+    $env:GEMINI_API_KEY = " "
+    $env:GEMINI_MODEL = " "
     Write-Host "Starting local PhishLens API with Gemini credentials intentionally unset."
     Write-Host "POST /analyses will return a controlled 503 without contacting Gemini."
     Write-Host "Press Ctrl+C to stop the server."
