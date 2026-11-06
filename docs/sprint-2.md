@@ -98,3 +98,18 @@ Sprint 4/final: resilience/security hardening; complete setup/API/schema/archite
 
 Planning/board setup alone completes none of these delivery checkboxes. Authority: [CSP221A guide](https://csp221a.vercel.app/). API defaults and target dates are team recommendations.
 
+
+## Kendra Week 2 closeout status — 2026-11-04
+
+The Sprint 2 board was checked on November 4 after PR #119 merged. Current board and issue states:
+
+| Kendra DevOps issue | Board status | GitHub issue state | Current result | Next handoff |
+| --- | --- | --- | --- | --- |
+| [#36: shared-contract/carryover audit](https://github.com/kendshhh/PhishLens/issues/36) | In Progress | Open | Audit and requirement mapping are recorded. API/client/AI owner acknowledgement and instructor scope acceptance remain unrecorded; integrated UI CRUD is still an acceptance gap. | Kendra: present the recorded contract/gaps to the API, client and AI owners and instructor; capture actual decisions and demo evidence when available. No decision date is recorded. |
+| [#37: environments/package](https://github.com/kendshhh/PhishLens/issues/37) | In Progress | Open | Staging/production targets and the extension package are documented. Production DB ownership/least privilege, hosted secret-scope confirmation, and the repository-history email finding remain unresolved. No production grants or data were changed. | Kendra with the authorized Neon project admin: review production role membership/ownership and make an approved least-privilege change; record hosted secret scopes and get an owner decision on the historical email finding. No admin owner/date is recorded. |
+| [#38: PostgreSQL CI gate](https://github.com/kendshhh/PhishLens/issues/38) | Done | Closed | Completed. | — |
+| [#39: main-to-production delivery](https://github.com/kendshhh/PhishLens/issues/39) | Done | Closed | Completed. | — |
+| [#40: pipeline improvement/recovery](https://github.com/kendshhh/PhishLens/issues/40) | Done | Closed | PR [#119](https://github.com/kendshhh/PhishLens/pull/119) was approved by `inaki3023`, passed Backend, Extension, Staging integration and Hosted staging in [run 41800496921](https://github.com/kendshhh/PhishLens/actions/runs/41800496921), and merged as `98dd0dc13136f16c1159a9aedee870a84be066a3`. Cache-hit Backend job median was 50.92 s for pinned uv versus 61.52 s for pip (`n=2` each); this is not a whole-PR timing claim. | — |
+| [#41: Consultation 2 evidence/requirements audit](https://github.com/kendshhh/PhishLens/issues/41) | In Progress | Open | Requirements audit and DevOps materials are prepared. Actual standups, retrospective, whole-team rehearsal, and instructor feedback are not available in the record and have not been fabricated. | Kendra and actual participants: append dated standup/retro/rehearsal/instructor records only if and when they occur or are supplied. No participant confirmation/date is recorded. |
+
+The open rows stay open until their stated evidence or decisions exist. Week 2 technical staging evidence is SHA-bound and historical; this note does not assert the current shared staging SHA. Append real event records only after the events occur.
