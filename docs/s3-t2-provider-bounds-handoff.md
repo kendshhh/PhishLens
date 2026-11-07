@@ -195,14 +195,24 @@ evidence; it does not establish failure-path behavior, model accuracy, or
 browser acceptance. Evidence was recorded on Issues #90 and #96. No extension
 artifact was required for this server-side check.
 
-## Current review and verification status (November 7, 2026)
+## Review and verification status (audited November 7, 2026)
 
-Current PR #107 head is
-`9b54c5adb1c9c6718ccca7bb28364bf1e4390642`. Wilberr's requested TF-IDF
-wrong-model-hash regression is pushed in this head, and Wilberr confirmed the
-test and re-reviewed this exact change. CI run [#42213225007](https://github.com/kendshhh/PhishLens/actions/runs/42213225007)
-passed for this head. The associated workflow-lint and dependency-review runs
-also succeeded.
+The audited PR #107 head was
+`4c6d548b3999cc37ebc121ac89747deccb716c1a`. Its final commit changed
+only this handoff. The TF-IDF wrong-model-hash regression was pushed in code
+commit `9b54c5adb1c9c6718ccca7bb28364bf1e4390642`, and Wilberr confirmed
+the test on that revision. [CI run #42213225007](https://github.com/kendshhh/PhishLens/actions/runs/42213225007)
+passed for the code commit. Wilberr's latest formal review is still
+`CHANGES_REQUESTED`; his earlier approvals were dismissed after later pushes.
+Request a fresh formal review after the handoff and PR description are
+reconciled. The discussion confirmation is not an approval of the audited head.
+
+[CI run #42252109389](https://github.com/kendshhh/PhishLens/actions/runs/42252109389)
+passed for source head `4c6d548b3999cc37ebc121ac89747deccb716c1a`.
+Its backend job reported 281 passed and 1 skipped, including 13 required
+disposable-PostgreSQL cases. Workflow lint #42252109380 and dependency review
+#42252109281 also passed. Ordinary backend CI used `AI_MODE=mock`; the tests
+simulate provider failures and do not make live Gemini calls.
 
 The regression is
 `backend/tests/test_saved_create.py::test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay`.
@@ -235,15 +245,51 @@ unsaved route keeps its separate 30,000 ms SDK timeout.
 - The hosted lifecycle was the successful TF-IDF path (create/read/delete and
   cleanup). It does not establish this wrong-hash failure path, browser
   acceptance, or model-accuracy sign-off.
-- Current-head evidence for the focused wrong-hash regression is CI run
-  #42213225007 and Wilberr's re-review. Keep mock/unit, local PostgreSQL, and
-  deployed evidence labeled separately.
+- Exact-head CI evidence for the focused wrong-hash regression and the broader
+  deterministic suite is run #42252109389. Wilberr's discussion confirmation
+  and run #42213225007 apply to code head `9b54c5a`. Keep mock/unit, CI
+  disposable PostgreSQL, and deployed evidence labeled separately.
+
+## Failure-case coverage at audited head `4c6d548`
+
+- Unavailable configuration/provider: `test_bad_ai_configuration_never_calls_service`,
+  `test_provider_initialization_failure_is_safe`, and
+  `test_failed_inference_does_not_save` cover safe API/worker behavior and no
+  PostgreSQL row. The wrong-model-hash regression rejects before database
+  setup and idempotency replay lookup.
+- Timeout and bounds: `test_busy_worker_rejects_new_request`,
+  `test_timeout_terminates_worker`,
+  `test_timeout_kills_worker_if_termination_is_insufficient`,
+  `test_late_result_is_rejected`, and
+  `test_database_lock_timeout_does_not_save` cover admission, cleanup,
+  deadline, and no-row behavior. The saved-create Gemini test checks a
+  15,000 ms SDK timeout and one attempt.
+- Quota: `test_daily_quota_is_distinct_from_a_temporary_rate_limit` and
+  `test_provider_errors_return_only_safe_status` cover provider and worker
+  mapping. There is no single saved-create API plus PostgreSQL test that
+  injects a quota response and asserts the response and zero rows; generic
+  unavailable-error tests cover the later persistence boundary.
+- Malformed/unsupported output: `test_bad_google_output_is_not_a_safe_verdict`,
+  `test_invalid_provider_result_is_rejected`, and
+  `test_invalid_evidence_does_not_save_and_next_request_succeeds` cover
+  validation, no row, and recovery across layers. A raw malformed Gemini
+  response is not carried through one saved-create/PostgreSQL test.
+- Database-save failure: `test_invalid_saved_response_rolls_back_insert`,
+  `test_create_recovers_after_database_constraint_failure`, and
+  `test_database_lock_timeout_does_not_save` use disposable PostgreSQL to
+  confirm controlled errors, no partial successful row, and recovery.
+
+The CI hosted-staging job checked a synthetic saved-report lifecycle on its
+merge candidate, but this handoff does not contain a bounded hosted failure
+drill for each scenario. It also does not prove what is deployed now. Any new
+staging write requires a freshly confirmed target and explicit authorization.
 
 ## Remaining Issue #96 work
 
-The requested PR #107 regression, CI, and Wilberr review are complete for head
-`9b54c5adb1c9c6718ccca7bb28364bf1e4390642`. Keep Issue #96 open until its
-remaining acceptance evidence is reconciled, including any provider/model
-evaluation sign-off and failure scenarios not covered by the current tests.
+The requested regression and exact-head CI are complete for the audited
+revision. Formal re-review and the remaining Issue #96 acceptance evidence
+are pending, including the bounded hosted failure drill and any separate
+provider/model evaluation sign-off. Keep Issue #96 open until those results
+are recorded against their tested revisions.
 Do not treat the earlier successful staging lifecycle as proof of those
 separate checks.
