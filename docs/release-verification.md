@@ -1,5 +1,10 @@
 # Release verification
 
+Current reconciliation: [November 7 client integration audit](client-integration-audit.md).
+The dated sections below retain their historical status. PRs #99, #103, #106 and #125 are now merged;
+their former open-review statements are not current blockers. Later TF-IDF staging CRUD and synthetic
+packaged-browser checks do not by themselves complete installed-Chrome or final-demo acceptance.
+
 Planning source: Daily Tasks PDF, Week 4 — Final, W4-D1-Leyan through W4-D5-Leyan.
 Dates remain TBD and the schedule is proposed. Tracked in [#105](https://github.com/kendshhh/PhishLens/issues/105)
 and [#106](https://github.com/kendshhh/PhishLens/pull/106); release and demo acceptance remain pending.
