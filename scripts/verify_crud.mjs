@@ -79,9 +79,9 @@ export async function verifyTarget(baseUrl, options) {
         return fetch(address, { ...init, redirect: 'error' });
     };
     // Render can report the requested commit live just before its public
-    // routing has fully converged. Retry the exact identity check, while
-    // keeping all writes blocked until the approved environment and SHA match.
-    const identityDeadline = Date.now() + 180000;
+    // routing has fully converged. Retry only on the approved hosted staging
+    // origin, and block every write until the exact environment and SHA match.
+    const identityDeadline = staging ? Date.now() + 180000 : Date.now();
     let identityMatches = false;
     while (!identityMatches) {
         try {
@@ -94,15 +94,23 @@ export async function verifyTarget(baseUrl, options) {
                 const identity = await response.json();
                 identityMatches = identity.environment === environment &&
                     identity.commit === expectedSha;
+                if (!identityMatches && !staging) {
+                    throw new Error('Target environment or backend SHA does not match');
+                }
+            } else if (!staging) {
+                throw new Error('Target identity check failed');
             }
-        } catch {
-            // Treat transient routing failures during deployment like a
-            // mismatched identity; neither case permits the CRUD writes.
+        } catch (error) {
+            // Only the remote staging rollout gets bounded retries. Local
+            // fixtures and every other target retain immediate failure.
+            if (!staging) throw error;
         }
         if (identityMatches) break;
         const remaining = identityDeadline - Date.now();
         if (remaining <= 0) {
-            throw new Error('Target environment or backend SHA did not match after waiting for staging to converge');
+            throw new Error(staging
+                ? 'Target environment or backend SHA did not match after waiting for staging to converge'
+                : 'Target identity check failed');
         }
         await new Promise(resolve => setTimeout(resolve, Math.min(5000, remaining)));
     }
