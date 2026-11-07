@@ -59,6 +59,23 @@ test('opening popup and showing a scan makes no network request', async () => {
   assert.match(dom.get('threshold').textContent, /88.71%/);
   assert.match(dom.get('evidence').textContent, /protective|not to disclose/i);
   assert.doesNotMatch(dom.get('evidence').textContent, /undefined/);
+  assert.equal(dom.get('selection-content').textContent, scan.selectedText);
+  assert.equal(dom.get('selection-preview').classList.contains('hidden'), false);
+  assert.equal(dom.get('selection-instructions').classList.contains('hidden'), true);
+});
+
+test('a new highlighted selection shows its original text during loading, failure and completion', async () => {
+  const { app, dom } = await popup();
+  const text = '  Highlighted <img src=x> email\nOriginal spacing.  ';
+  for (const status of ['loading', 'error', 'success']) {
+    app.render({ ...scan, selectedText: text, status, error: 'Synthetic model failure' });
+    assert.equal(dom.get('selection-content').textContent, text);
+    assert.equal(dom.get('selection-preview').classList.contains('hidden'), false);
+  }
+  assert.equal(dom.get('paste-panel').open, false);
+  app.render(undefined);
+  assert.equal(dom.get('selection-preview').classList.contains('hidden'), true);
+  assert.equal(dom.get('selection-content').textContent, '');
 });
 test('report navigation explicitly loads history and returning to checking retains the draft', async () => {
   let calls = 0;

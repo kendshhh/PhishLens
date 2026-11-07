@@ -411,15 +411,22 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         const stateBeforeRender = state;
         const changed = state?.scanId !== current?.scanId || state?.status !== current?.status;
         state = current;
+        show('selection-instructions', !current);
+        const selectedText = typeof current?.selectedText === 'string' ? current.selectedText : '';
+        show('selection-preview', Boolean(selectedText));
+        text('selection-content', selectedText);
+        text('selection-heading', current?.status === 'success' ? 'Analyzed email text' : 'Email text being checked');
         for (const name of ['empty', 'loading', 'error', 'result']) show(name + '-state', false);
         if (changed) { text('save-status', ''); $('save-consent').checked = false; }
         if (changed && current?.scanId !== stateBeforeRender?.scanId) $('report-subject').value = '';
         if (!current) {
             show('empty-state', true);
-            if (stateBeforeRender) $('scan-body').focus();
+            if (stateBeforeRender) $('show-check').focus();
             return;
         }
         if (current.status === 'loading') {
+            selectView('check');
+            $('paste-panel').open = false;
             text('workflow-progress', (current.stage || 'Preparing local review') +
                 (Number.isFinite(current.progress) ? ' — ' + Math.round(current.progress * 100) + '%' : ''));
             show('loading-state', true); return;

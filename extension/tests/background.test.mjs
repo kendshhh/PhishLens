@@ -10,9 +10,9 @@ function deferred() {
   let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; });
   return { promise, resolve, reject };
 }
-function worker({ firstWrite } = {}) {
+function worker({ firstWrite, popupFailure = false } = {}) {
   let listener, clicks, writes = 0;
-  const requests = [], state = { analysis: undefined, badge: '' };
+  const requests = [], popups = [], state = { analysis: undefined, badge: '' };
   const storage = {};
   const context = vm.createContext({
     console, crypto: globalThis.crypto,
@@ -31,11 +31,14 @@ function worker({ firstWrite } = {}) {
         },
         async remove(key) { delete storage[key]; state.analysis = storage.veriqoAnalysis; }
       } },
-      action: { async setBadgeText({ text }) { state.badge = text; } }
+      action: { async setBadgeText({ text }) { state.badge = text; }, async openPopup(options) {
+        popups.push({ options, status: state.analysis?.status, text: state.analysis?.selectedText });
+        if (popupFailure) throw Error('Popup unavailable');
+      } }
     }
   });
   vm.runInContext(source, context);
-  return { state, requests, storage, clicks,
+  return { state, requests, storage, clicks, popups,
     analyze: text => context.analyzeSelectedText(text),
     message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
     clear: () => new Promise(resolve => {
@@ -43,6 +46,25 @@ function worker({ firstWrite } = {}) {
     })
   };
 }
+test('right-click opens the popup in the source window after storing the selection, before inference finishes', async () => {
+  const app = worker();
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected <img src=x> text' }, { windowId: 7 });
+  await settle();
+  assert.equal(app.popups.length, 1);
+  assert.equal(app.popups[0].options.windowId, 7);
+  assert.equal(app.popups[0].status, 'loading');
+  assert.equal(app.popups[0].text, 'Selected <img src=x> text');
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
+  assert.equal(app.state.analysis.status, 'success');
+});
+test('popup failure does not prevent selected-text analysis or lose its result', async () => {
+  const app = worker({ popupFailure: true });
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' });
+  await settle();
+  app.requests[0].resolve({ alert: true, workflow: { released: true } }); await scan;
+  assert.equal(app.state.analysis.selectedText, 'Selected text');
+  assert.equal(app.state.analysis.status, 'success');
+});
 for (const outcome of ['success', 'error']) {
   test('latest scan wins over an older ' + outcome, async () => {
     const app = worker(), older = app.analyze('A'); await settle();

@@ -1,19 +1,26 @@
 # Extension analysis and saved-report journey
 
-The extension supports highlighted email text and pasted email text. Both use
+The primary flow is highlighted email text followed by **Analyze selection with
+PhishLens** in the right-click menu. It automatically opens the Chrome action
+popup in the source window, showing the original selection and scan progress.
+Chrome 127 or later is required for programmatic action popups. If Chrome cannot
+open the popup, analysis continues and the toolbar popup retains the result.
+The secondary **Or paste email text** option is collapsed by default. Both use
 the existing local analysis workflow. The separate **Analyze and save on the
 server** form uploads its input immediately when submitted.
 
 ## Local analysis
 
-The popup opens in **Check email**. **Saved reports** explicitly loads history
+The popup opens in **Check email** with selection instructions or the current
+highlighted text and outcome. **Saved reports** explicitly loads history
 from the API; switching back keeps the current draft and local result. Plain
 language results and next actions lead the screen. Wording observations, model
 scores/review details, and checked text are expandable. Below-threshold results
 explicitly do not confirm authenticity; incomplete reviews remain uncertain.
 
 1. Highlight the complete visible email and choose **Analyze selection with
-   PhishLens**, or paste it into **Email text** and select **Check this email**.
+   PhishLens**. The popup opens automatically. Alternatively, expand **Or paste
+   email text**, paste into **Email text**, and select **Check this email**.
 2. Wait for the outcome. Closing the popup does not cancel the background scan.
    The pasted draft is kept in Chrome session storage and restored when the
    popup reopens; it is not persisted across browser sessions. Deleting its text
@@ -48,9 +55,13 @@ explicitly do not confirm authenticity; incomplete reviews remain uncertain.
 Popup tests cover exact local input, draft reopening, duplicate-submit blocking,
 worker failures, titled retry keys, confirmed saves despite local marker failure,
 and CRUD/uncertainty rendering. `npm run test:browser` loads the packaged extension
-in Chromium with a disposable synthetic API and exercises pasted analysis,
+in Chromium with a disposable synthetic API and invokes the production selection
+handler with synthetic highlighted text, verifies an actual Chrome action popup
+context, checks original-text display and the secondary pasted-analysis flow,
 local-report saving/reopening without duplicate creation, CRUD, and focus.
 
+The operating system's native right-click menu still needs a manual check; the
+automated test invokes its registered handler rather than clicking that menu.
 These tests do not prove hosted PostgreSQL behavior. For installed-Chrome staging
 acceptance, use the workflow's `PhishLens-Staging-Extension` artifact, compare its
 deployed commit with `/version`, confirm `/ready` and `/model-info`, and follow

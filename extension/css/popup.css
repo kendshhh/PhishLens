@@ -86,6 +86,11 @@ details[open] > summary { margin-bottom: 12px; }
 .empty-symbol { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e5edf6; color: #526e94; margin-bottom: 8px; }
 .empty-state h2 { font-size: 13px; letter-spacing: 0; }
 .empty-state p { color: #617189; font-size: 11px; margin: 5px 0; }
+.selection-steps { padding-left: 22px; margin: 14px 0 0; color: #53657c; }
+.selection-steps li { padding: 0 0 12px 5px; }
+.selection-steps li::marker { color: #2055a2; font-weight: 700; }
+.selection-steps li:last-child { padding-bottom: 0; }
+.selection-content { max-height: 150px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid #b8ceeb; border-radius: 0 8px 8px 0; background: #f4f7fc; padding: 12px; margin: 12px 0; }
 .empty-message { padding: 16px 0 4px; color: #617189; text-align: center; }
 .shared-notice { padding: 10px 12px; background: #fff8e8; border: 1px solid #f1dfb7; border-radius: 9px; color: #735620; font-size: 11px; }
 .verdict-panel { border-top: 4px solid #b47c22; background: #fffcf4; }

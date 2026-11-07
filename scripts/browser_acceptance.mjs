@@ -14,6 +14,7 @@ const packagePath = path.join(root, "output", "extension", "PhishLens-Extension.
 const evidencePath = path.join(root, "output", "extension", "browser-acceptance.json");
 const expectedTests = [
   "packaged popup loads synthetic history in the browser",
+  "selection handler opens the action popup with the highlighted text",
   "synthetic analysis shows a clearly labeled local result or readable error",
   "local scan saves once and keeps its title and save marker after popup reload",
   "Clear during a local scan prevents a stale result from returning",
@@ -215,6 +216,8 @@ manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
 )
 worker_path = target / "background.js"
 worker = worker_path.read_text(encoding="utf-8")
+worker = worker.replace("chrome.contextMenus.onClicked.addListener(",
+    "chrome.contextMenus.onClicked.addListener(globalThis.__phishlensTestSelection = ", 1)
 worker += """
 // Test-only delayed completion to exercise the production Clear generation guard.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -339,9 +342,12 @@ async function run() {
     evidence.tests.push("packaged popup loads synthetic history in the browser");
 
     await page.locator("#show-check").click();
-    await page.locator("#scan-body").fill("Synthetic test: account closes today; enter your password at example.invalid");
-    await page.locator("#scan-button").click();
+    await worker.evaluate(() => {
+      void globalThis.__phishlensTestSelection({ menuItemId: 'phishlens-analyze-selection',
+        selectionText: 'Synthetic test: account closes today; enter your password at example.invalid' });
+    });
     await page.locator("#loading-state").waitFor({ state: "visible" });
+    assert.match(await page.locator("#selection-content").textContent(), /Synthetic test: account closes today/);
     await page.waitForFunction(() => {
       const result = document.querySelector("#result-state");
       const error = document.querySelector("#error-state");
@@ -359,6 +365,13 @@ async function run() {
     evidence.tests.push("synthetic analysis shows a clearly labeled local result or readable error");
 
     assert.equal(await page.locator("#result-state").isVisible(), true, "Packaged TF-IDF scan must produce a local result, including uncertainty");
+    assert.match(await page.locator("#selection-content").textContent(), /Synthetic test: account closes today/);
+    const popupContexts = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['POPUP'] }));
+    assert.ok(popupContexts.length > 0, 'The selection handler must open the real Chrome action popup');
+    evidence.tests.push("selection handler opens the action popup with the highlighted text");
+    await page.bringToFront();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(root, "output", "extension", "ui-selection.png") });
     await page.locator("#classification").focus();
     await page.locator("#result-state").evaluate(element => element.scrollIntoView({ block: "start" }));
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-result.png") });
@@ -372,7 +385,6 @@ async function run() {
     await page.locator("#save-status").getByText(/already saved/).waitFor();
     assert.equal(await page.locator("#report-subject").inputValue(), "Synthetic local scan report");
     assert.equal(await page.locator("#save-consent").isChecked(), false);
-    assert.match(await page.locator("#scan-body").inputValue(), /Synthetic test/);
     await page.locator("#save-consent").check();
     await page.locator("#save-report").click();
     await page.locator("#save-status").getByText(/already saved/).waitFor();
@@ -397,6 +409,13 @@ async function run() {
     await page.locator("#empty-state").waitFor({ state: "visible" });
     assert.equal(await page.locator("#result-state").isVisible(), false);
     evidence.tests.push("Clear during a local scan prevents a stale result from returning");
+
+    await page.locator("#paste-panel > summary").click();
+    await page.locator("#scan-body").fill("Synthetic pasted email: review the meeting agenda.");
+    await page.locator("#scan-button").click();
+    await page.locator("#loading-state").waitFor({ state: "visible" });
+    await page.locator("#result-state").waitFor({ state: "visible", timeout: 120000 });
+    assert.equal(await page.locator("#selection-content").textContent(), "Synthetic pasted email: review the meeting agenda.");
 
     await page.locator("#show-reports").click();
     await page.locator("#server-create > summary").click();

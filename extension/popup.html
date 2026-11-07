@@ -7,21 +7,15 @@
 <nav class="view-nav" aria-label="Main navigation"><button id="show-check" type="button" aria-controls="check-view" aria-pressed="true">Check email</button><button id="show-reports" type="button" aria-controls="reports-view" aria-pressed="false">Saved reports</button></nav>
 <p id="save-status" class="save-message" role="status"></p>
 <section id="check-view" aria-label="Check an email">
-<section class="panel" aria-labelledby="scan-heading">
- <p class="eyebrow">EMAIL CHECK</p><h2 id="scan-heading">Something look suspicious?</h2>
- <p class="intro">Paste the email below. We’ll check the wording and explain what deserves a closer look.</p>
- <form id="scan-form">
-  <label for="scan-body">Email text</label>
-  <textarea id="scan-body" maxlength="30000" rows="5" required placeholder="Paste the complete email here…" aria-describedby="scan-help"></textarea>
-  <p id="scan-help" class="field-help">Checked on your device. Your draft stays for this browser session.</p>
-  <button id="scan-button" class="primary full-width" type="submit">Check this email <span aria-hidden="true">→</span></button>
- </form>
- <p id="scan-status" role="status"></p>
- <details class="selection-help"><summary>Prefer to highlight an email?</summary><p>Select its complete visible text, right-click, and choose <strong>Analyze selection with PhishLens</strong>.</p></details>
+<section id="selection-instructions" class="panel" aria-labelledby="scan-heading">
+ <p class="eyebrow">CHECK AN EMAIL</p><h2 id="scan-heading">Highlight. Right-click. Check.</h2>
+ <p class="intro">Get a second opinion without leaving your inbox.</p>
+ <ol class="selection-steps"><li>Highlight the email text you want to check.</li><li>Right-click and choose <strong>Analyze selection with PhishLens</strong>.</li><li>This popup opens with your selected text and the result.</li></ol>
 </section>
+<section id="selection-preview" class="panel hidden" aria-labelledby="selection-heading"><p class="eyebrow">YOUR SELECTION</p><h2 id="selection-heading">Email text being checked</h2><p id="selection-content" class="selection-content"></p><p class="field-help">This is the original highlighted or pasted text. Checking it does not upload it.</p></section>
 <section id="empty-state" class="empty-state"><span class="empty-symbol" aria-hidden="true">✓</span><h2>Your email stays with you</h2><p>Checking an email doesn’t upload it. You choose whether to save a report.</p></section>
 <section id="loading-state" class="panel loading-panel hidden" role="status"><span class="spinner" aria-hidden="true"></span><h2>Taking a closer look…</h2><p id="workflow-progress">Preparing the local review.</p><p class="field-help">The first check can take longer while the local model loads. You can clear the scan to cancel.</p></section>
-<section id="error-state" class="panel error-panel hidden" role="alert"><p class="eyebrow">CHECK INCOMPLETE</p><h2>We couldn’t assess this email</h2><p id="error-message"></p><p class="field-help">Your text is still available above. Try checking it again.</p></section>
+<section id="error-state" class="panel error-panel hidden" role="alert"><p class="eyebrow">CHECK INCOMPLETE</p><h2>We couldn’t assess this email</h2><p id="error-message"></p><p class="field-help">Your text is still available above. Highlight it again to retry, or use the paste option below.</p></section>
 <section id="result-state" class="hidden" aria-live="polite">
  <div class="panel verdict-panel"><p class="eyebrow">YOUR RESULT</p><h2 id="classification" tabindex="-1"></h2><p id="assessment"></p><p class="field-help">A text check cannot verify the sender, hidden links, or attachments.</p></div>
  <div class="panel"><h2>What to do next</h2><ul id="recommendations" class="advice-list"></ul><details class="inline-details"><summary>What this check can’t tell you</summary><ul id="limitations"></ul></details></div>
@@ -34,6 +28,15 @@
  <details class="panel"><summary>Checked text and highlights</summary><p class="field-help">Quotes refer to the normalized, redacted model input.</p><p id="analysis-text"></p></details>
 </section>
 <button id="clear-button" class="secondary full-width" type="button">Clear local scan</button>
+<details id="paste-panel" class="panel"><summary>Or paste email text</summary>
+ <form id="scan-form">
+  <label for="scan-body">Email text</label>
+  <textarea id="scan-body" maxlength="30000" rows="5" required placeholder="Paste the complete email here…" aria-describedby="scan-help"></textarea>
+  <p id="scan-help" class="field-help">Checked on your device. Your draft stays for this browser session.</p>
+  <button id="scan-button" class="primary full-width" type="submit">Check this email <span aria-hidden="true">→</span></button>
+ </form>
+ <p id="scan-status" role="status"></p>
+</details>
 </section>
 <section id="reports-view" class="hidden" aria-label="Saved reports">
     <section class="panel history-panel" aria-labelledby="history-heading">

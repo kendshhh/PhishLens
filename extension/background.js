@@ -51,19 +51,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.contextMenus.onClicked.addListener(info => {
+chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === MENU_ID && typeof info.selectionText === 'string') {
-    analyzeSelectedText(info.selectionText).catch(() => {
+    return analyzeSelectedText(info.selectionText, { onStarted: async () => {
+      try {
+        await chrome.action.openPopup(Number.isInteger(tab?.windowId) ? { windowId: tab.windowId } : {});
+      } catch {
+        console.warn('PhishLens could not open the popup. Open it from the toolbar to view this scan.');
+      }
+    } }).catch(() => {
       console.error('PhishLens could not save the local scan state.');
     });
   }
 });
 
-async function analyzeSelectedText(selectedText) {
+async function analyzeSelectedText(selectedText, { onStarted } = {}) {
   const generation = ++analysisGeneration;
   cancelJudge();
   const jobId = crypto.randomUUID(); activeJob = { generation, jobId, selectedText };
   await updateAnalysis(generation, { status: 'loading', selectedText, stage: 'TF-IDF v12a', result: null, error: null }, '...');
+  if (generation !== analysisGeneration) return;
+  if (onStarted) await onStarted();
   if (generation !== analysisGeneration) return;
   try {
     const debug = await chrome.storage.session.get('phishlensDebugFailNext');
