@@ -6,6 +6,16 @@
 <header><h1>PhishLens</h1><p class="subtitle">TF-IDF v12a · local LLM judge · KRR + LightGBM</p></header>
 <p>Scans stay in Chrome. Highlight the complete visible email text, right-click,
 and choose <strong>Analyze selection with PhishLens</strong>.</p>
+<section class="panel" aria-labelledby="scan-heading">
+ <h2 id="scan-heading">Or paste email text</h2>
+ <form id="scan-form">
+  <label for="scan-body">Email text to check locally</label>
+  <textarea id="scan-body" maxlength="30000" rows="4" required aria-describedby="scan-help"></textarea>
+  <p id="scan-help">Analysis stays in Chrome. Your draft is kept for this browser session. Saving a report is a separate upload.</p>
+  <button id="scan-button" type="submit">Analyze locally</button>
+ </form>
+ <p id="scan-status" role="status"></p>
+</section>
 <section id="empty-state" class="panel"><h2>No scan yet</h2><p>No email text is uploaded when you scan.</p></section>
 <section id="loading-state" class="panel hidden"><h2>Checking locally…</h2><p id="workflow-progress">Preparing the local review.</p><p>First use loads a large local LLM. Clear cancels this scan.</p></section>
 <section id="error-state" class="panel hidden" role="alert"><h2>Unable to assess</h2><p id="error-message"></p></section>
@@ -27,7 +37,7 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
 </section>
 <button id="clear-button" type="button">Clear local scan</button>
     <section class="panel" aria-labelledby="create-heading">
-      <h2 id="create-heading">Save an analysis</h2>
+      <h2 id="create-heading">Analyze and save on the server</h2>
       <p>Saving uploads the text you enter to the team’s API and shared demo history. Only save material you are authorized to share.</p>
       <form id="create-form">
         <label for="create-subject">Subject <span class="muted">(optional)</span></label>

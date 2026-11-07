@@ -330,7 +330,11 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const client = createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
     let state, stateGeneration = 0;
     const controller = createPopupController(client, documentImpl, {
-        onBusyChange(value) { $('save-report').disabled = value; },
+        onBusyChange(value) {
+            $('save-report').disabled = value;
+            $('report-subject').disabled = value;
+            $('save-consent').disabled = value;
+        },
         async onDeleted(id) {
             try {
                 const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');
@@ -346,6 +350,44 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const show = (id, visible) => $(id).classList.toggle('hidden', !visible);
     const text = (id, value) => { $(id).textContent = value; };
     const message = error => error instanceof Error ? error.message : 'The operation failed. Please retry.';
+    let scanDraftGeneration = 0;
+    let draftWrites = Promise.resolve();
+    function storeScanDraft() {
+        const body = $('scan-body').value;
+        draftWrites = draftWrites.catch(() => {}).then(() =>
+            chromeImpl.storage.session.set({ phishlensScanDraft: body }));
+        return draftWrites;
+    }
+    $('scan-body').addEventListener('input', () => {
+        ++scanDraftGeneration;
+        storeScanDraft().catch(() => text('scan-status', 'The draft could not be kept for reopening. Your text is still here.'));
+    });
+    chromeImpl.storage.session.get('phishlensScanDraft').then(data => {
+        if (scanDraftGeneration === 0 && typeof data.phishlensScanDraft === 'string') {
+            $('scan-body').value = data.phishlensScanDraft;
+        }
+    }).catch(() => text('scan-status', 'The previous draft could not be restored. You can paste text to start a new scan.'));
+    let submittingScan = false;
+    $('scan-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (submittingScan) return;
+        const body = $('scan-body').value;
+        if (!body.trim() || body.length > 30000) {
+            text('scan-status', 'Enter email text up to 30,000 characters.');
+            $('scan-body').focus(); return;
+        }
+        submittingScan = true;
+        $('scan-button').disabled = true;
+        text('scan-status', 'Starting the local scan…');
+        try {
+            await storeScanDraft();
+            const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-analyze-text', text: body });
+            text('scan-status', response?.ok ? 'Local scan finished. Review the outcome below.' :
+                'The local scan could not start. Your text is retained; try again.');
+        } catch {
+            text('scan-status', 'The local scan could not start. Your text is retained; try again.');
+        } finally { submittingScan = false; $('scan-button').disabled = false; }
+    });
     function rows(id, values) {
         $(id).replaceChildren();
         for (const value of values) {
@@ -355,10 +397,12 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         }
     }
     function render(current) {
+        const stateBeforeRender = state;
         const changed = state?.scanId !== current?.scanId || state?.status !== current?.status;
         state = current;
         for (const name of ['empty', 'loading', 'error', 'result']) show(name + '-state', false);
         if (changed) { text('save-status', ''); $('save-consent').checked = false; }
+        if (changed && current?.scanId !== stateBeforeRender?.scanId) $('report-subject').value = '';
         if (!current) { show('empty-state', true); return; }
         if (current.status === 'loading') {
             text('workflow-progress', (current.stage || 'Preparing local review') +
@@ -450,9 +494,13 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
                 client, baseUrl: API_BASE_URL, modelSha: MODEL_SHA256, input,
                 idempotencyKey: attempt.key, fetchImpl
             });
-            await chromeImpl.storage.session.set({ phishlensReportAttempt: { ...attempt, savedId: outcome.saved.id } });
+            let markerStored = true;
+            try {
+                await chromeImpl.storage.session.set({ phishlensReportAttempt: { ...attempt, savedId: outcome.saved.id } });
+            } catch { markerStored = false; }
             if (state?.scanId === snapshot.scanId) {
-                text('save-status', outcome.refreshErrors.length ? 'Saved. Some refreshes failed; use Load / refresh history.' :
+                text('save-status', !markerStored ? 'Saved. The local save marker could not be updated. Check history before saving again.' :
+                    outcome.refreshErrors.length ? 'Saved. Some refreshes failed; use Load / refresh history.' :
                     'Saved and reread successfully.');
             }
             controller.acceptSavedReport(outcome);
@@ -466,8 +514,18 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             ++stateGeneration; render(changes.veriqoAnalysis.newValue);
         }
     });
-    chromeImpl.storage.session.get('veriqoAnalysis').then(data => {
-        if (stateGeneration === 0) render(data.veriqoAnalysis);
+    Promise.all([
+        chromeImpl.storage.session.get('veriqoAnalysis'),
+        chromeImpl.storage.session.get('phishlensReportAttempt').catch(() => ({}))
+    ]).then(([data, saved]) => {
+        if (stateGeneration === 0) {
+            render(data.veriqoAnalysis);
+            const attempt = saved.phishlensReportAttempt;
+            if (state?.scanId && attempt?.scanId === state.scanId && typeof attempt.subject === 'string') {
+                $('report-subject').value = attempt.subject;
+                if (attempt.savedId) text('save-status', 'This report was already saved. Load history to open it.');
+            }
+        }
     }).catch(() => {
         if (stateGeneration === 0) render({ status: 'error', error: 'Local state could not be read. Reload the extension.' });
     });

@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { MODEL_SHA256 } from "../extension/ai/local-analyzer.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = path.join(root, "output", "extension", "PhishLens-Extension.zip");
@@ -14,6 +15,7 @@ const evidencePath = path.join(root, "output", "extension", "browser-acceptance.
 const expectedTests = [
   "packaged popup loads synthetic history in the browser",
   "synthetic analysis shows a clearly labeled local result or readable error",
+  "local scan saves once and keeps its title and save marker after popup reload",
   "Clear during a local scan prevents a stale result from returning",
   "synthetic saved analysis can be created and viewed",
   "synthetic saved analysis can be edited and deleted",
@@ -64,6 +66,11 @@ function sendJson(response, status, body) {
 }
 
 const server = createServer(async (request, response) => {
+  if (request.url === "/model-info" && request.method === "GET") {
+    sendJson(response, 200, { provider_mode: "tfidf", model_sha256: MODEL_SHA256,
+      accepts_tfidf_reports: true, accepts_local_reviews: true });
+    return;
+  }
   if (request.method === "POST" && request.url === "/__test/state") {
     let body = "";
     for await (const chunk of request) body += chunk;
@@ -326,12 +333,8 @@ async function run() {
     assert.match(await page.locator("#history-list li").textContent(), /phishing.*high/i);
     evidence.tests.push("packaged popup loads synthetic history in the browser");
 
-    await page.evaluate(() => {
-      void chrome.runtime.sendMessage({
-        type: "phishlens-analyze-text",
-        text: "Synthetic test: account closes today; enter your password at example.invalid",
-      });
-    });
+    await page.locator("#scan-body").fill("Synthetic test: account closes today; enter your password at example.invalid");
+    await page.locator("#scan-button").click();
     await page.locator("#loading-state").waitFor({ state: "visible" });
     await page.waitForFunction(() => {
       const result = document.querySelector("#result-state");
@@ -348,6 +351,30 @@ async function run() {
       evidence.local_analysis_outcome = "readable error: " + message.slice(0, 240);
     }
     evidence.tests.push("synthetic analysis shows a clearly labeled local result or readable error");
+
+    assert.equal(await page.locator("#result-state").isVisible(), true, "Packaged TF-IDF scan must produce a local result, including uncertainty");
+    await page.locator("#report-subject").fill("Synthetic local scan report");
+    await page.locator("#save-consent").check();
+    await page.locator("#save-report").click();
+    await page.locator("#save-status").getByText("Saved and reread successfully.").waitFor();
+    const localSavedId = createdRecordId;
+    const savedCount = records.size;
+    await page.reload();
+    await page.locator("#save-status").getByText(/already saved/).waitFor();
+    assert.equal(await page.locator("#report-subject").inputValue(), "Synthetic local scan report");
+    assert.equal(await page.locator("#save-consent").isChecked(), false);
+    assert.match(await page.locator("#scan-body").inputValue(), /Synthetic test/);
+    await page.locator("#save-consent").check();
+    await page.locator("#save-report").click();
+    await page.locator("#save-status").getByText(/already saved/).waitFor();
+    assert.equal(records.size, savedCount, "Reopening a saved scan must not create a duplicate report");
+    await page.locator("#load-history").click();
+    await page.locator("#history-list").getByRole("button", { name: "View Synthetic local scan report" }).click();
+    await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
+    await page.locator("#confirm-delete").click();
+    await page.getByText("Analysis deleted successfully.").waitFor();
+    assert.equal(records.has(localSavedId), false);
+    evidence.tests.push("local scan saves once and keeps its title and save marker after popup reload");
 
     await page.evaluate(() => {
       void chrome.runtime.sendMessage({ type: "__phishlens_test_slow_scan" });
