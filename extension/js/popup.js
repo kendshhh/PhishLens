@@ -30,7 +30,7 @@ function show(element, visible) {
   element.classList.toggle("hidden", !visible);
 }
 
-export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {} } = {}) {
+export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {}, onDetailShown = () => {} } = {}) {
   const $ = id => doc.getElementById(id);
   const ui = {
     status: $("crud-status"), list: $("history-list"), empty: $("empty"),
@@ -123,8 +123,9 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       }
     }
     for (const [label, value] of values) {
-      const section = node(doc, "div", "detail-field");
-      section.append(node(doc, "h4", "", label), node(doc, "p", "", value));
+      const collapsed = ["Email body", "AI provenance", "Threat indicators", "Audit source", "Research model score", "Alert threshold"].includes(label);
+      const section = node(doc, collapsed ? "details" : "div", "detail-field");
+      section.append(node(doc, collapsed ? "summary" : "h4", "", label), node(doc, "p", "", value));
       ui.detailContent.append(section);
     }
     const edit = node(doc, "button", "secondary", "Edit notes and feedback");
@@ -139,6 +140,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     ui.notes.value = record.notes || "";
     ui.feedback.value = record.feedback || "none";
     show(ui.detail, true);
+    onDetailShown();
   }
 
   function renderList() {
@@ -330,6 +332,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const client = createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
     let state, stateGeneration = 0;
     const controller = createPopupController(client, documentImpl, {
+        onDetailShown() { selectView('reports'); $('server-create').open = false; },
         onBusyChange(value) {
             $('save-report').disabled = value;
             $('report-subject').disabled = value;
@@ -350,6 +353,14 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const show = (id, visible) => $(id).classList.toggle('hidden', !visible);
     const text = (id, value) => { $(id).textContent = value; };
     const message = error => error instanceof Error ? error.message : 'The operation failed. Please retry.';
+    function selectView(view) {
+        show('check-view', view === 'check');
+        show('reports-view', view === 'reports');
+        $('show-check').setAttribute('aria-pressed', String(view === 'check'));
+        $('show-reports').setAttribute('aria-pressed', String(view === 'reports'));
+    }
+    $('show-check').addEventListener('click', () => selectView('check'));
+    $('show-reports').addEventListener('click', () => { selectView('reports'); void controller.refresh(); });
     let scanDraftGeneration = 0;
     let draftWrites = Promise.resolve();
     function storeScanDraft() {
@@ -403,7 +414,11 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         for (const name of ['empty', 'loading', 'error', 'result']) show(name + '-state', false);
         if (changed) { text('save-status', ''); $('save-consent').checked = false; }
         if (changed && current?.scanId !== stateBeforeRender?.scanId) $('report-subject').value = '';
-        if (!current) { show('empty-state', true); return; }
+        if (!current) {
+            show('empty-state', true);
+            if (stateBeforeRender) $('scan-body').focus();
+            return;
+        }
         if (current.status === 'loading') {
             text('workflow-progress', (current.stage || 'Preparing local review') +
                 (Number.isFinite(current.progress) ? ' — ' + Math.round(current.progress * 100) + '%' : ''));
@@ -415,8 +430,15 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             text('error-message', current.error || 'Invalid local scan. Reload the extension and scan again.');
             show('error-state', true); return;
         }
-        text('classification', r.workflow?.released ? (r.alert ? 'Suspicious — review before acting' : 'Below alert threshold') : 'Uncertain — full review not confirmed');
-        text('assessment', r.assessment);
+        $('result-state').setAttribute('data-tone', !r.workflow?.released ? 'uncertain' : r.alert ? 'suspicious' : 'below');
+        text('classification', r.workflow?.released ? (r.alert ? 'Suspicious — review before acting' : 'No strong warning signs') : 'Uncertain — check before acting');
+        text('assessment', !r.workflow?.released
+            ? (r.workflow?.judge?.code === 'model_assets_missing'
+                ? 'The local review model isn’t installed, so this check is incomplete. Verify the email independently before taking action.'
+                : 'Some checks could not finish or did not agree. Verify the email independently before taking action.')
+            : r.alert ? 'The wording raises warning signs. Avoid links or requests in this email until you verify them through a trusted contact.'
+                : 'The checked wording is below the alert thresholds. This does not confirm the email is genuine; verify unexpected requests independently.');
+        text('model-assessment', r.assessment);
         text('risk-score', (100 * r.score).toFixed(2) + '%');
         text('threshold', 'Frozen alert threshold: ' + (100 * r.alert_threshold_score).toFixed(2) +
             '%. A score above 50% alone does not trigger an alert.');
@@ -456,6 +478,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         }
         $('analysis-text').append(documentImpl.createTextNode(r.analysis_text.slice(offset)));
         show('result-state', true);
+        if (stateBeforeRender?.status === 'loading') $('classification').focus();
     }
     $('load-history').addEventListener('click', controller.refresh);
     $('clear-button').addEventListener('click', async () => {

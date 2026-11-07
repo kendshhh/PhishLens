@@ -60,6 +60,31 @@ test('opening popup and showing a scan makes no network request', async () => {
   assert.match(dom.get('evidence').textContent, /protective|not to disclose/i);
   assert.doesNotMatch(dom.get('evidence').textContent, /undefined/);
 });
+test('report navigation explicitly loads history and returning to checking retains the draft', async () => {
+  let calls = 0;
+  const { dom } = await popup(async () => { calls++; return ok({ items: [] }); });
+  dom.get('scan-body').value = 'Synthetic draft';
+  await dom.get('show-reports').click(); await settle();
+  assert.equal(calls, 1);
+  assert.equal(dom.get('reports-view').classList.contains('hidden'), false);
+  assert.equal(dom.get('check-view').classList.contains('hidden'), true);
+  assert.equal(dom.get('show-reports')['aria-pressed'], 'true');
+  await dom.get('show-check').click();
+  assert.equal(dom.get('check-view').classList.contains('hidden'), false);
+  assert.equal(dom.get('scan-body').value, 'Synthetic draft');
+  assert.equal(calls, 1);
+});
+
+test('result summaries explain uncertainty and below-threshold outcomes without a safe verdict', async () => {
+  const { app, dom } = await popup();
+  app.render({ ...scan, result: { ...r, alert: false, workflow: { ...r.workflow, released: true } } });
+  assert.equal(dom.get('classification').textContent, 'No strong warning signs');
+  assert.match(dom.get('assessment').textContent, /does not confirm.*genuine/);
+  app.render({ ...scan, result: { ...r, workflow: { ...r.workflow, released: false,
+    judge: { valid: false, code: 'model_assets_missing' } } } });
+  assert.match(dom.get('classification').textContent, /Uncertain/);
+  assert.match(dom.get('assessment').textContent, /isn’t installed.*incomplete/);
+});
 test('history is explicit, keeps untrusted strings as text and opens detail', async () => {
   const calls = []; const { dom } = await popup(async (url, options) => {
     calls.push([url, options]); return ok(url.endsWith(record.id) ? record : { items: [record] });

@@ -6,9 +6,14 @@ server** form uploads its input immediately when submitted.
 
 ## Local analysis
 
+The popup opens in **Check email**. **Saved reports** explicitly loads history
+from the API; switching back keeps the current draft and local result. Plain
+language results and next actions lead the screen. Wording observations, model
+scores/review details, and checked text are expandable. Below-threshold results
+explicitly do not confirm authenticity; incomplete reviews remain uncertain.
+
 1. Highlight the complete visible email and choose **Analyze selection with
-   PhishLens**, or paste it into **Or paste email text** and select **Analyze
-   locally**.
+   PhishLens**, or paste it into **Email text** and select **Check this email**.
 2. Wait for the outcome. Closing the popup does not cancel the background scan.
    The pasted draft is kept in Chrome session storage and restored when the
    popup reopens; it is not persisted across browser sessions. Deleting its text

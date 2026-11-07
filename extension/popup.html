@@ -3,42 +3,52 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PhishLens</title><link rel="stylesheet" href="css/popup.css"></head>
 <body><main class="container">
-<header><h1>PhishLens</h1><p class="subtitle">TF-IDF v12a · local LLM judge · KRR + LightGBM</p></header>
-<p>Scans stay in Chrome. Highlight the complete visible email text, right-click,
-and choose <strong>Analyze selection with PhishLens</strong>.</p>
+<header class="app-header"><div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6v5.5c0 4.2 3.1 7.8 7.5 9.5 4.4-1.7 7.5-5.3 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.5 12 2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h1>PhishLens</h1><p class="subtitle">A second look before you click.</p></div></div><span class="privacy-badge">On-device scanning</span></header>
+<nav class="view-nav" aria-label="Main navigation"><button id="show-check" type="button" aria-controls="check-view" aria-pressed="true">Check email</button><button id="show-reports" type="button" aria-controls="reports-view" aria-pressed="false">Saved reports</button></nav>
+<p id="save-status" class="save-message" role="status"></p>
+<section id="check-view" aria-label="Check an email">
 <section class="panel" aria-labelledby="scan-heading">
- <h2 id="scan-heading">Or paste email text</h2>
+ <p class="eyebrow">EMAIL CHECK</p><h2 id="scan-heading">Something look suspicious?</h2>
+ <p class="intro">Paste the email below. We’ll check the wording and explain what deserves a closer look.</p>
  <form id="scan-form">
-  <label for="scan-body">Email text to check locally</label>
-  <textarea id="scan-body" maxlength="30000" rows="4" required aria-describedby="scan-help"></textarea>
-  <p id="scan-help">Analysis stays in Chrome. Your draft is kept for this browser session. Saving a report is a separate upload.</p>
-  <button id="scan-button" type="submit">Analyze locally</button>
+  <label for="scan-body">Email text</label>
+  <textarea id="scan-body" maxlength="30000" rows="5" required placeholder="Paste the complete email here…" aria-describedby="scan-help"></textarea>
+  <p id="scan-help" class="field-help">Checked on your device. Your draft stays for this browser session.</p>
+  <button id="scan-button" class="primary full-width" type="submit">Check this email <span aria-hidden="true">→</span></button>
  </form>
  <p id="scan-status" role="status"></p>
+ <details class="selection-help"><summary>Prefer to highlight an email?</summary><p>Select its complete visible text, right-click, and choose <strong>Analyze selection with PhishLens</strong>.</p></details>
 </section>
-<section id="empty-state" class="panel"><h2>No scan yet</h2><p>No email text is uploaded when you scan.</p></section>
-<section id="loading-state" class="panel hidden"><h2>Checking locally…</h2><p id="workflow-progress">Preparing the local review.</p><p>First use loads a large local LLM. Clear cancels this scan.</p></section>
-<section id="error-state" class="panel hidden" role="alert"><h2>Unable to assess</h2><p id="error-message"></p></section>
+<section id="empty-state" class="empty-state"><span class="empty-symbol" aria-hidden="true">✓</span><h2>Your email stays with you</h2><p>Checking an email doesn’t upload it. You choose whether to save a report.</p></section>
+<section id="loading-state" class="panel loading-panel hidden" role="status"><span class="spinner" aria-hidden="true"></span><h2>Taking a closer look…</h2><p id="workflow-progress">Preparing the local review.</p><p class="field-help">The first check can take longer while the local model loads. You can clear the scan to cancel.</p></section>
+<section id="error-state" class="panel error-panel hidden" role="alert"><p class="eyebrow">CHECK INCOMPLETE</p><h2>We couldn’t assess this email</h2><p id="error-message"></p><p class="field-help">Your text is still available above. Try checking it again.</p></section>
 <section id="result-state" class="hidden" aria-live="polite">
- <div class="panel"><h2 id="classification"></h2><p id="assessment"></p>
- <p>Primary TF-IDF score: <strong id="risk-score"></strong></p><p id="threshold"></p>
- <p id="coverage"></p><p class="muted">The score is calibrated on the research data. It is not a guaranteed probability for your inbox.</p></div>
- <div class="panel"><h2>What the text says</h2><p>Observations are checks of wording, not proof of phishing.</p><ul id="evidence"></ul></div>
- <div class="panel"><h2>Local LLM review</h2><p id="judge-review"></p><p id="workflow-status"></p></div>
- <div class="panel"><h2>Three-model reevaluation</h2><ul id="reevaluator-list"></ul><p>Each percentage belongs to that model. Agreement does not authenticate the sender.</p></div>
- <details class="panel"><summary>Model feature details</summary><p>Partial word-feature contributions; character features also affect the result.</p><ul id="drivers"></ul></details>
- <div class="panel"><h2>What to do next</h2><ul id="recommendations"></ul><ul id="limitations"></ul></div>
- <details class="panel"><summary>Checked text and highlights</summary><p>Quotes refer to this normalized, redacted model input.</p><p id="analysis-text"></p></details>
- <div class="panel"><h2>Optional: save a report</h2><p>Saving uploads the <strong>original selected text</strong> to the team's API and shared demo history.
- Only save material you are authorized to share. The server replays classifier checks; the LLM audit is recorded as a browser-reported review.</p>
- <label>Report title <input id="report-subject" maxlength="320" placeholder="Optional title"></label>
- <label class="consent"><input id="save-consent" type="checkbox"> I agree to upload this selection to shared history.</label>
- <button id="save-report" type="button">Save report</button><p id="save-status" role="status"></p></div>
+ <div class="panel verdict-panel"><p class="eyebrow">YOUR RESULT</p><h2 id="classification" tabindex="-1"></h2><p id="assessment"></p><p class="field-help">A text check cannot verify the sender, hidden links, or attachments.</p></div>
+ <div class="panel"><h2>What to do next</h2><ul id="recommendations" class="advice-list"></ul><details class="inline-details"><summary>What this check can’t tell you</summary><ul id="limitations"></ul></details></div>
+ <details class="panel"><summary>Why this result?</summary><p class="field-help">These observations describe wording; they are not proof of phishing.</p><ul id="evidence"></ul></details>
+ <div class="panel save-panel"><p class="eyebrow">KEEP A RECORD</p><h2>Save this report</h2><p class="intro">Saving uploads the <strong>original email text</strong> to shared demo history. Only save text you’re allowed to share.</p>
+ <label for="report-subject">Report title <span class="muted">(optional)</span></label><input id="report-subject" maxlength="320" placeholder="e.g. Account verification email">
+ <label class="consent"><input id="save-consent" type="checkbox"><span>I agree to upload this email text to shared history.</span></label>
+ <button id="save-report" class="full-width" type="button">Save report</button></div>
+ <details class="panel model-details"><summary>Technical analysis</summary><p id="model-assessment"></p><p id="workflow-status" class="result-note"></p><h3>Primary model</h3><p>TF-IDF score: <strong id="risk-score"></strong></p><p id="threshold"></p><p id="coverage"></p><p class="field-help">Calibrated on research data, not a guaranteed probability for your inbox.</p><h3>Local LLM review</h3><p id="judge-review"></p><h3>Three-model reevaluation</h3><ul id="reevaluator-list"></ul><p class="field-help">Each score belongs to its model. Agreement does not authenticate the sender.</p><h3>Word features</h3><p class="field-help">Partial contributions; character features also affect the result.</p><ul id="drivers"></ul><p class="field-help">The server replays classifier checks when saving. The LLM audit is recorded as a browser-reported review.</p></details>
+ <details class="panel"><summary>Checked text and highlights</summary><p class="field-help">Quotes refer to the normalized, redacted model input.</p><p id="analysis-text"></p></details>
 </section>
-<button id="clear-button" type="button">Clear local scan</button>
-    <section class="panel" aria-labelledby="create-heading">
-      <h2 id="create-heading">Analyze and save on the server</h2>
-      <p>Saving uploads the text you enter to the team’s API and shared demo history. Only save material you are authorized to share.</p>
+<button id="clear-button" class="secondary full-width" type="button">Clear local scan</button>
+</section>
+<section id="reports-view" class="hidden" aria-label="Saved reports">
+    <section class="panel history-panel" aria-labelledby="history-heading">
+      <p class="eyebrow">YOUR RECORDS</p><h2 id="history-heading">Saved reports</h2>
+      <p class="intro">Revisit a check, add a note, or remove a report.</p>
+      <p class="shared-notice"><strong>Shared demo history</strong><br>Reports are visible to the team. Use synthetic or approved demo text.</p>
+      <button id="load-history" class="secondary full-width" type="button">Load / refresh history</button>
+      <p id="loading" class="hidden" role="status">Loading reports…</p>
+      <p id="empty" class="hidden empty-message">No reports yet. Check an email and save its result to get started.</p>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+    <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
+    <details id="server-create" class="panel" aria-labelledby="create-heading">
+      <summary id="create-heading">Analyze and save on the server</summary>
+      <p class="field-help">Alternative to a local check: this uploads your text immediately to the team’s API and shared demo history.</p>
       <form id="create-form">
         <label for="create-subject">Subject <span class="muted">(optional)</span></label>
         <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
@@ -46,16 +56,7 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
         <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
         <button id="create-button" type="submit">Save analysis</button>
       </form>
-    </section>
-    <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
-    <section class="panel" aria-labelledby="history-heading">
-      <h2 id="history-heading">Saved analyses</h2>
-      <p>Loading history uses the API. Local scanning works while it is unavailable.</p>
-      <button id="load-history" type="button">Load / refresh history</button>
-      <p id="loading" class="hidden">Loading analyses…</p>
-      <p id="empty" class="hidden">No saved analyses yet.</p>
-      <ul id="history-list" class="history-list"></ul>
-    </section>
+    </details>
     <section id="detail-panel" class="panel hidden" aria-labelledby="detail-heading">
       <h2 id="detail-heading" tabindex="-1">Analysis details</h2>
       <div id="detail-content"></div>
@@ -84,5 +85,6 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
         </div>
       </form>
     </section>
-<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>Built with Llama. LLM weights run locally; no email is sent to an AI provider.</p></footer>
+</section>
+<footer><p>A second opinion, not a safety guarantee.</p><p>Built with Llama · Local analysis</p></footer>
 </main><script type="module" src="popup.js"></script></body></html>
