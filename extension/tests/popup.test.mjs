@@ -29,7 +29,7 @@ class Element {
   }
 }
 
-const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-heading", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-heading", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
+const ids = ["clear-report-search", "reset-report-search", "edit-correction", "reports-list-view", "report-search", "report-count", "no-report-matches", "back-to-reports", "history-heading", "report-mode-warning", "crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-heading", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-heading", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
 function setup(client) {
   const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status"].includes(id) ? "hidden" : "")]));
   const doc = { getElementById: id => elements.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
@@ -182,6 +182,64 @@ test("unknown AI provenance stays explicitly unknown", async () => {
   assert.match(ui.get("detail-content").children[9].children[1].textContent, /unknown/i);
 });
 
+test('library search filters loaded reports and back navigation preserves the query', async () => {
+  const first = record(id, 'Account notice');
+  const second = record('00000000-0000-4000-8000-000000000002', 'Meeting agenda');
+  const memory = createInMemoryAnalysisClient([first, second]);
+  const { ui, controller } = setup(memory);
+  await controller.refresh();
+  ui.get('report-search').value = 'ACCOUNT';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('history-list').children.length, 1);
+  assert.equal(ui.get('report-count').textContent, '1 of 2 reports');
+  await controller.loadDetail(id);
+  assert.equal(ui.get('reports-list-view').classList.contains('hidden'), true);
+  await ui.get('back-to-reports').fire('click');
+  assert.equal(ui.get('reports-list-view').classList.contains('hidden'), false);
+  assert.equal(ui.get('detail-panel').classList.contains('hidden'), true);
+  assert.equal(ui.get('report-search').value, 'ACCOUNT');
+  ui.get('report-search').value = 'No matching title';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('history-list').children.length, 0);
+  assert.equal(ui.get('no-report-matches').classList.contains('hidden'), false);
+  assert.equal((await memory.listAnalyses()).length, 2);
+});
+
+test('returning to the library invalidates a pending detail response', async () => {
+  let finish;
+  const data = record(id);
+  const { ui, controller } = setup({ ...createInMemoryAnalysisClient([data]),
+    getAnalysis: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = controller.loadDetail(id);
+  controller.showLibrary();
+  finish(data); await pending;
+  assert.equal(ui.get('detail-panel').classList.contains('hidden'), true);
+  assert.equal(ui.get('reports-list-view').classList.contains('hidden'), false);
+});
+
+test('search tolerates extra spaces and clears from no results without losing loaded reports', async () => {
+  const first = { ...record(id, 'Account notice'), explanation: 'Review the payment\n\nrequest.' };
+  const second = record('00000000-0000-4000-8000-000000000002', 'Meeting agenda');
+  const { ui, controller } = setup(createInMemoryAnalysisClient([first, second]));
+  await controller.refresh();
+  ui.get('report-search').value = '  PAYMENT   account  ';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('history-list').children.length, 1);
+  assert.equal(ui.get('clear-report-search').classList.contains('hidden'), false);
+  ui.get('report-search').value = 'No matching report';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('no-report-matches').classList.contains('hidden'), false);
+  await ui.get('reset-report-search').fire('click');
+  assert.equal(ui.get('history-list').children.length, 2);
+  assert.equal(ui.get('report-search').focused, true);
+  assert.equal(ui.get('clear-report-search').classList.contains('hidden'), true);
+  ui.get('report-search').value = 'Meeting';
+  await ui.get('report-search').fire('input');
+  await ui.get('report-search').fire('keydown', { key: 'Escape' });
+  assert.equal(ui.get('history-list').children.length, 2);
+  assert.equal(ui.get('report-search').value, '');
+});
+
 test("saved report uncertainty and missing results are described without inventing a verdict", async () => {
   const data = record(id);
   data.prediction = null;
@@ -199,8 +257,8 @@ test("saved report uncertainty and missing results are described without inventi
   assert.match(detail.children[4].children[1].textContent, /not assessed/i);
   assert.match(detail.children[5].children[1].textContent, /Not provided/);
   assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
-  assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
-  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
+  assert.match(detail.children[9].children[1].textContent, /source unknown/i);
+  assert.doesNotMatch(detail.children[9].children[1].textContent, /fixture-model/);
 });
 
 test("provider provenance is labeled explicitly", async () => {
@@ -210,10 +268,8 @@ test("provider provenance is labeled explicitly", async () => {
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
-  assert.match(text, /Provider-backed AI analysis/);
-  assert.match(text, /Provider: Gemini/);
-  assert.match(text, /Model: fixture-gemini-model/);
-  assert.match(text, /fixture-revision/);
+  assert.match(text, /Automated analysis/);
+  assert.doesNotMatch(text, /fixture-gemini-model|fixture-revision/);
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
@@ -243,9 +299,9 @@ test("editing notes alone preserves null feedback", async () => {
   const { ui, controller } = setup(memory);
   await controller.refresh();
   await controller.loadDetail(id);
-  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Unspecified");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "No feedback provided");
   await ui.get("detail-content").children.at(-2).fire("click");
-  assert.equal(ui.get("edit-feedback").value, "null");
+  assert.equal(ui.get("edit-feedback").value, "none");
   ui.get("edit-notes").value = "Notes only";
   await ui.get("edit-form").fire("submit");
   const updated = await memory.getAnalysis(id);
@@ -259,6 +315,25 @@ test("unknown feedback is labeled unavailable", async () => {
   const { ui, controller } = setup(createInMemoryAnalysisClient([invalid]));
   await controller.loadDetail(id);
   assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Feedback unavailable");
+});
+
+test('the single no-feedback choice clears a correction and remains unchanged for notes-only edits', async () => {
+  const original = { ...record(id), feedback: 'false_positive' };
+  const memory = createInMemoryAnalysisClient([original]);
+  const { ui, controller } = setup(memory);
+  await controller.loadDetail(id);
+  await ui.get('detail-content').children.at(-2).fire('click');
+  assert.equal(ui.get('edit-correction').open, true);
+  ui.get('edit-feedback').value = 'none';
+  await ui.get('edit-form').fire('submit');
+  assert.equal((await memory.getAnalysis(id)).feedback, 'none');
+  await ui.get('detail-content').children.at(-2).fire('click');
+  assert.equal(ui.get('edit-correction').open, false);
+  ui.get('edit-notes').value = 'Contacted the sender.';
+  await ui.get('edit-form').fire('submit');
+  const updated = await memory.getAnalysis(id);
+  assert.equal(updated.feedback, 'none');
+  assert.equal(updated.prediction, original.prediction);
 });
 
 test("notes and feedback stay disabled until edit save settles", async () => {

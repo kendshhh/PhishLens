@@ -26,6 +26,17 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return;
+  if (message?.type === 'phishlens-cancel-analysis') {
+    const job = activeJob;
+    if (!job) { sendResponse({ ok: true }); return; }
+    activeJob = undefined;
+    cancelJudge();
+    updateAnalysis(++analysisGeneration, { status: 'cancelled', selectedText: job.selectedText,
+      result: null, error: null }, '').then(
+      () => sendResponse({ ok: true }), () => sendResponse({ ok: false })
+    );
+    return true;
+  }
   if (message?.type === 'phishlens-clear-analysis') {
     activeJob = undefined;
     cancelJudge();
@@ -51,9 +62,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+// Read the visible selection before the popup takes focus. Context-menu text
+// can flatten paragraph breaks; accept the page value only for the same words.
+async function readSelectedText(info, tab) {
+  if (!Number.isInteger(tab?.id)) return info.selectionText;
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, frameIds: [Number.isInteger(info.frameId) ? info.frameId : 0] },
+      injectImmediately: true,
+      func: () => {
+        const field = document.activeElement;
+        if ((field?.tagName === 'TEXTAREA' || (field?.tagName === 'INPUT' &&
+            ['text', 'search', 'email', 'url', 'tel'].includes(field.type))) &&
+            Number.isInteger(field.selectionStart) && field.selectionEnd > field.selectionStart) {
+          return field.value.slice(field.selectionStart, field.selectionEnd);
+        }
+        return globalThis.getSelection()?.toString() || '';
+      }
+    });
+    const selected = results[0]?.result;
+    const words = value => value.replace(/\s+/g, ' ').trim();
+    if (typeof selected === 'string' && selected.trim() && words(selected) === words(info.selectionText)) return selected;
+  } catch {
+    // Restricted pages/frames can deny access; their menu selection still works.
+  }
+  return info.selectionText;
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === MENU_ID && typeof info.selectionText === 'string') {
-    return analyzeSelectedText(info.selectionText, { onStarted: async () => {
+    const request = ++analysisGeneration;
+    const selectedText = await readSelectedText(info, tab);
+    if (request !== analysisGeneration) return;
+    return analyzeSelectedText(selectedText, { onStarted: async () => {
       try {
         await chrome.action.openPopup(Number.isInteger(tab?.windowId) ? { windowId: tab.windowId } : {});
       } catch {
@@ -92,6 +133,8 @@ async function analyzeSelectedText(selectedText, { onStarted } = {}) {
       status: 'error', selectedText, result: null,
       error: error instanceof Error ? error.message : 'Unable to assess. Reload the extension and retry.'
     }, '?');
+  } finally {
+    if (activeJob?.generation === generation) activeJob = undefined;
   }
 }
 

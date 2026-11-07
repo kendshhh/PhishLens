@@ -6,6 +6,8 @@
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
     "contextMenus",
+    "activeTab",
+    "scripting",
     "storage",
     "offscreen"
   ],
