@@ -305,6 +305,146 @@ jobs:
       - name: Check Python compilation
         run: python -m compileall -q backend/app
 
+  issue-90-readonly-hosted:
+    name: Issue 90 read-only staging package
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'codex/issue-90-readonly-artifact-v2-20261106'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    concurrency:
+      group: phishlens-hosted-staging
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - name: Check out workflow source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Read current staging identity, readiness, and model
+        id: read-staging
+        env:
+          STAGING_URL: https://phishlens-staging.onrender.com
+          EXPECTED_MODEL_SHA: a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          import re
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+
+          base = os.environ['STAGING_URL'].rstrip('/')
+          def get(path):
+              request = Request(base + path, headers={
+                  'Accept': 'application/json',
+                  'Cache-Control': 'no-cache',
+              })
+              with urlopen(request, timeout=30) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f'{path} returned HTTP {response.status}')
+                  return json.load(response)
+
+          version = get('/version')
+          ready = get('/ready')
+          model = get('/model-info')
+          observed_sha = version.get('commit')
+          if not isinstance(observed_sha, str) or re.fullmatch(r'[0-9a-f]{40}', observed_sha) is None:
+              raise RuntimeError(f'Staging returned an invalid commit identity: {version}')
+          if version.get('environment') != 'staging':
+              raise RuntimeError(f'Expected the staging environment: {version}')
+          if ready.get('status') != 'ready' or ready.get('database') != 'connected':
+              raise RuntimeError(f'Staging readiness check failed: {ready}')
+          if (model.get('provider_mode') != 'tfidf'
+                  or model.get('model_sha256') != os.environ['EXPECTED_MODEL_SHA']
+                  or model.get('accepts_tfidf_reports') is not True
+                  or model.get('accepts_local_reviews') is not True):
+              raise RuntimeError(f'TF-IDF model identity check failed: {model}')
+
+          evidence = {
+              'recorded_at': dt.datetime.now(dt.timezone.utc).isoformat(),
+              'backend_source_commit': observed_sha,
+              'extension_source_commit': observed_sha,
+              'environment': 'staging',
+              'version': version,
+              'ready': ready,
+              'model_info': model,
+              'saved_analysis_crud_performed': False,
+              'production_writes_performed': False,
+          }
+          output_dir = Path('output/issue-90-readonly')
+          output_dir.mkdir(parents=True, exist_ok=True)
+          (output_dir / 'staging-readonly-evidence.json').write_text(
+              json.dumps(evidence, indent=2) + '\n', encoding='utf-8'
+          )
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as result:
+              result.write(f'commit={observed_sha}\n')
+          print(json.dumps(evidence, indent=2))
+          PY
+      - name: Check out the exact observed staging source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.read-staging.outputs.commit }}
+          path: staging-source
+          persist-credentials: false
+      - name: Build and verify a staging-only extension package
+        env:
+          STAGING_BASE_URL: https://phishlens-staging.onrender.com
+          STAGING_EXPECTED_SHA: ${{ steps.read-staging.outputs.commit }}
+        run: |
+          set -euo pipefail
+          python scripts/package_staging_extension.py \
+            --source-root staging-source \
+            --expected-staging "$STAGING_EXPECTED_SHA" \
+            --output output/issue-90-readonly/PhishLens-Staging-Extension.zip \
+            --evidence output/issue-90-readonly/package-evidence.json
+          python scripts/verify_staging_extension_package.py \
+            output/issue-90-readonly/PhishLens-Staging-Extension.zip \
+            output/issue-90-readonly/package-evidence.json \
+            --expected-staging "$STAGING_EXPECTED_SHA" \
+            --staging-evidence output/issue-90-readonly/staging-readonly-evidence.json
+      - name: Recheck staging identity before upload
+        env:
+          STAGING_URL: https://phishlens-staging.onrender.com
+          STAGING_EXPECTED_SHA: ${{ steps.read-staging.outputs.commit }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from urllib.request import Request, urlopen
+
+          request = Request(os.environ['STAGING_URL'].rstrip('/') + '/version', headers={
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache',
+          })
+          with urlopen(request, timeout=30) as response:
+              observed = json.load(response)
+          expected = os.environ['STAGING_EXPECTED_SHA']
+          if (re.fullmatch(r'[0-9a-f]{40}', expected) is None
+                  or observed.get('environment') != 'staging'
+                  or observed.get('commit') != expected):
+              raise RuntimeError(
+                  f'Staging changed before upload: expected {expected}, observed {observed}'
+              )
+          print(f'Confirmed staging still serves {expected}; package upload may proceed.')
+          PY
+      - name: Upload staging-only Issue 90 package and read-only evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: PhishLens-Issue-90-Staging
+          path: |
+            output/issue-90-readonly/PhishLens-Staging-Extension.zip
+            output/issue-90-readonly/package-evidence.json
+            output/issue-90-readonly/staging-readonly-evidence.json
+          if-no-files-found: error
+          retention-days: 7
+
   staging:
     name: Staging integration
     needs: [extension, backend]
@@ -421,7 +561,7 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
+    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
     needs: [staging, hosted-staging-preflight, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -649,4 +789,5 @@ jobs:
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+
 

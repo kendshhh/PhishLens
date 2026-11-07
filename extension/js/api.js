@@ -126,20 +126,48 @@ export async function getAnalyses(baseUrl) {
     return data.items;
 }
 
-export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel } = {}) {
+export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel, getAccessToken } = {}) {
     if (!Number.isSafeInteger(createTimeoutMs) || createTimeoutMs < 1 || createTimeoutMs > 2147483647) {
         throw new Error('Create timeout must be a positive integer in milliseconds');
+    }
+    if (getAccessToken !== undefined && typeof getAccessToken !== 'function') {
+        throw new TypeError('getAccessToken must be a function');
     }
     const url = baseUrl.replace(/\/+$/, '') + '/api/analyses';
     const pendingCreateKeys = new Map();
 
     async function request(path, method, expectedStatus, body, timeoutMs = 10000, headers = {}) {
+        let authorization;
+        if (getAccessToken !== undefined) {
+            let token;
+            try {
+                token = await getAccessToken();
+            } catch {
+                const error = new Error('Unable to access your session. Try signing in again.');
+                error.code = 'session_unavailable';
+                throw error;
+            }
+            if (typeof token !== 'string' || !/^[A-Za-z0-9._~+/-]+=*$/.test(token)) {
+                const error = new Error('Sign in to access saved analyses.');
+                error.status = 401;
+                error.code = 'authentication_required';
+                throw error;
+            }
+            authorization = { Authorization: 'Bearer ' + token };
+        }
         const options = { method, signal: AbortSignal.timeout(timeoutMs), redirect: 'error' };
+        if (authorization) options.headers = authorization;
         if (body !== undefined) {
-            options.headers = { 'Content-Type': 'application/json', ...headers };
+            options.headers = { 'Content-Type': 'application/json', ...headers, ...authorization };
             options.body = JSON.stringify(body);
         }
         const response = await fetchImpl(path, options);
+        if (getAccessToken !== undefined && response.status === 401) {
+            const error = new Error('Your session has expired. Sign in again.');
+            error.status = 401;
+            error.code = 'authentication_required';
+            throw error;
+        }
         if (!response.ok) {
             let message = 'Request failed (HTTP ' + response.status + ')';
             try {

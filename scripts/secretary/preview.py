@@ -124,8 +124,8 @@ def verify_environment(rows):
         raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
     if migration.username == database.username:
         raise RuntimeError("Staging migration and runtime credentials must use separate roles")
-    if values.get("APP_ENV") != "staging" or values.get("AI_MODE", "mock") != "mock":
-        raise RuntimeError("Pilot requires APP_ENV=staging and AI_MODE=mock; no live provider costs")
+    if values.get("APP_ENV") != "staging" or values.get("AI_MODE", "mock") not in {"mock", "tfidf"}:
+        raise RuntimeError("Pilot requires APP_ENV=staging and AI_MODE=mock or tfidf; external providers are blocked")
 
 
 def smoke(origin, sha):
