@@ -107,3 +107,10 @@ Sprint 3/4 planning once scope is agreed.
 
 Before closing #41, attach actual process/rehearsal/consultation evidence, bring
 the board current, pass required PR review/checks, and refresh this snapshot.
+
+
+## Kendra feedback and evidence refresh — 2026-11-07
+
+Kendra reports the instructor verbally advised the team to continue benchmarking the AI. Kendra also reports the instructor said the DevOps work earned points for an automated secretary with a manual checklist for a human. This records a paraphrase of feedback; the exact points and rubric entry were not supplied. Continue AI benchmarking; no metric, threshold, or target date was specified in the feedback.
+
+The merged preparation and technical PRs do not document actual Week 2 standups, a retrospective, whole-team rehearsal, or attendance. Those records remain pending; no event is inferred from CI or staging evidence.
