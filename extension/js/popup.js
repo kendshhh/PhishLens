@@ -30,12 +30,13 @@ function show(element, visible) {
   element.classList.toggle("hidden", !visible);
 }
 
-export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {} } = {}) {
+export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {}, onDetailShown = () => {} } = {}) {
   const $ = id => doc.getElementById(id);
   const ui = {
     status: $("crud-status"), list: $("history-list"), empty: $("empty"),
     loading: $("loading"), createForm: $("create-form"), subject: $("create-subject"),
-    body: $("create-body"), detail: $("detail-panel"), detailContent: $("detail-content"),
+    body: $("create-body"), detail: $("detail-panel"), detailHeading: $("detail-heading"),
+    detailContent: $("detail-content"), deleteHeading: $("delete-heading"),
     editForm: $("edit-form"), notes: $("edit-notes"), feedback: $("edit-feedback"),
     deleteConfirm: $("delete-confirm"), deleteSubject: $("delete-subject"),
     deleteButton: $("confirm-delete"), cancelDelete: $("cancel-delete"),
@@ -46,6 +47,8 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   let busy = false;
   let detailRequest = 0;
   let listRequest = 0;
+  let editTrigger;
+  let deleteTrigger;
 
   function setStatus(message, kind = "info") {
     ui.status.textContent = message;
@@ -120,8 +123,9 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       }
     }
     for (const [label, value] of values) {
-      const section = node(doc, "div", "detail-field");
-      section.append(node(doc, "h4", "", label), node(doc, "p", "", value));
+      const collapsed = ["Email body", "AI provenance", "Threat indicators", "Audit source", "Research model score", "Alert threshold"].includes(label);
+      const section = node(doc, collapsed ? "details" : "div", "detail-field");
+      section.append(node(doc, collapsed ? "summary" : "h4", "", label), node(doc, "p", "", value));
       ui.detailContent.append(section);
     }
     const edit = node(doc, "button", "secondary", "Edit notes and feedback");
@@ -130,10 +134,13 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const remove = node(doc, "button", "danger", "Delete analysis");
     remove.type = "button";
     remove.addEventListener("click", openDelete);
+    editTrigger = edit;
+    deleteTrigger = remove;
     ui.detailContent.append(edit, remove);
     ui.notes.value = record.notes || "";
     ui.feedback.value = record.feedback || "none";
     show(ui.detail, true);
+    onDetailShown();
   }
 
   function renderList() {
@@ -180,7 +187,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     }
   }
 
-  async function loadDetail(id, { announce = true } = {}) {
+  async function loadDetail(id, { announce = true, focus = announce } = {}) {
     if (busy) return;
     const request = ++detailRequest;
     selected = null;
@@ -196,6 +203,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       renderDetail(selected);
       show(ui.editForm, false);
       show(ui.deleteConfirm, false);
+      if (focus) ui.detailHeading.focus();
       if (announce) setStatus("Analysis details loaded.", "success");
     } catch (error) {
       if (request !== detailRequest) return;
@@ -216,7 +224,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     if (busy || !selected) return;
     ui.deleteSubject.textContent = selected.subject || "Untitled analysis";
     show(ui.deleteConfirm, true);
-    ui.cancelDelete.focus();
+    ui.deleteHeading.focus();
   }
 
   ui.createForm.addEventListener("submit", async event => {
@@ -244,7 +252,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
         ? "The server returned a malformed result. Your input is still here."
         : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
     } finally { setBusy(false); }
-    if (created) await loadDetail(created.id, { announce: false });
+    if (created) await loadDetail(created.id, { announce: false, focus: true });
   });
 
   ui.editForm.addEventListener("submit", async event => {
@@ -260,6 +268,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       records = records.map(record => record.id === selected.id ? selected : record);
       renderList();
       renderDetail(selected);
+      editTrigger.focus();
       const refreshed = await refresh();
       if (refreshed) setStatus("Changes saved successfully.", "success");
     } catch (error) {
@@ -268,8 +277,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
         : `Could not save changes: ${error.message}. Your edits are still here.`, "error");
     } finally { setBusy(false); }
   });
-  ui.cancelEdit.addEventListener("click", () => { show(ui.editForm, false); if (selected) renderDetail(selected); });
-  ui.cancelDelete.addEventListener("click", () => show(ui.deleteConfirm, false));
+  ui.cancelEdit.addEventListener("click", () => {
+    show(ui.editForm, false);
+    if (selected) { renderDetail(selected); editTrigger.focus(); }
+  });
+  ui.cancelDelete.addEventListener("click", () => {
+    show(ui.deleteConfirm, false);
+    deleteTrigger?.focus();
+  });
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
@@ -299,6 +314,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     renderList();
     selected = outcome.detail || outcome.saved;
     renderDetail(selected);
+    ui.detailHeading.focus();
     show(ui.editForm, false);
     show(ui.deleteConfirm, false);
   }
@@ -316,7 +332,12 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const client = createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
     let state, stateGeneration = 0;
     const controller = createPopupController(client, documentImpl, {
-        onBusyChange(value) { $('save-report').disabled = value; },
+        onDetailShown() { selectView('reports'); $('server-create').open = false; },
+        onBusyChange(value) {
+            $('save-report').disabled = value;
+            $('report-subject').disabled = value;
+            $('save-consent').disabled = value;
+        },
         async onDeleted(id) {
             try {
                 const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');
@@ -332,6 +353,52 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const show = (id, visible) => $(id).classList.toggle('hidden', !visible);
     const text = (id, value) => { $(id).textContent = value; };
     const message = error => error instanceof Error ? error.message : 'The operation failed. Please retry.';
+    function selectView(view) {
+        show('check-view', view === 'check');
+        show('reports-view', view === 'reports');
+        $('show-check').setAttribute('aria-pressed', String(view === 'check'));
+        $('show-reports').setAttribute('aria-pressed', String(view === 'reports'));
+    }
+    $('show-check').addEventListener('click', () => selectView('check'));
+    $('show-reports').addEventListener('click', () => { selectView('reports'); void controller.refresh(); });
+    let scanDraftGeneration = 0;
+    let draftWrites = Promise.resolve();
+    function storeScanDraft() {
+        const body = $('scan-body').value;
+        draftWrites = draftWrites.catch(() => {}).then(() =>
+            chromeImpl.storage.session.set({ phishlensScanDraft: body }));
+        return draftWrites;
+    }
+    $('scan-body').addEventListener('input', () => {
+        ++scanDraftGeneration;
+        storeScanDraft().catch(() => text('scan-status', 'The draft could not be kept for reopening. Your text is still here.'));
+    });
+    chromeImpl.storage.session.get('phishlensScanDraft').then(data => {
+        if (scanDraftGeneration === 0 && typeof data.phishlensScanDraft === 'string') {
+            $('scan-body').value = data.phishlensScanDraft;
+        }
+    }).catch(() => text('scan-status', 'The previous draft could not be restored. You can paste text to start a new scan.'));
+    let submittingScan = false;
+    $('scan-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (submittingScan) return;
+        const body = $('scan-body').value;
+        if (!body.trim() || body.length > 30000) {
+            text('scan-status', 'Enter email text up to 30,000 characters.');
+            $('scan-body').focus(); return;
+        }
+        submittingScan = true;
+        $('scan-button').disabled = true;
+        text('scan-status', 'Starting the local scan…');
+        try {
+            await storeScanDraft();
+            const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-analyze-text', text: body });
+            text('scan-status', response?.ok ? 'Local scan finished. Review the outcome below.' :
+                'The local scan could not start. Your text is retained; try again.');
+        } catch {
+            text('scan-status', 'The local scan could not start. Your text is retained; try again.');
+        } finally { submittingScan = false; $('scan-button').disabled = false; }
+    });
     function rows(id, values) {
         $(id).replaceChildren();
         for (const value of values) {
@@ -341,12 +408,25 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         }
     }
     function render(current) {
+        const stateBeforeRender = state;
         const changed = state?.scanId !== current?.scanId || state?.status !== current?.status;
         state = current;
+        show('selection-instructions', !current);
+        const selectedText = typeof current?.selectedText === 'string' ? current.selectedText : '';
+        show('selection-preview', Boolean(selectedText));
+        text('selection-content', selectedText);
+        text('selection-heading', current?.status === 'success' ? 'Analyzed email text' : 'Email text being checked');
         for (const name of ['empty', 'loading', 'error', 'result']) show(name + '-state', false);
         if (changed) { text('save-status', ''); $('save-consent').checked = false; }
-        if (!current) { show('empty-state', true); return; }
+        if (changed && current?.scanId !== stateBeforeRender?.scanId) $('report-subject').value = '';
+        if (!current) {
+            show('empty-state', true);
+            if (stateBeforeRender) $('show-check').focus();
+            return;
+        }
         if (current.status === 'loading') {
+            selectView('check');
+            $('paste-panel').open = false;
             text('workflow-progress', (current.stage || 'Preparing local review') +
                 (Number.isFinite(current.progress) ? ' — ' + Math.round(current.progress * 100) + '%' : ''));
             show('loading-state', true); return;
@@ -357,8 +437,15 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             text('error-message', current.error || 'Invalid local scan. Reload the extension and scan again.');
             show('error-state', true); return;
         }
-        text('classification', r.workflow?.released ? (r.alert ? 'Suspicious — review before acting' : 'Below alert threshold') : 'Uncertain — full review not confirmed');
-        text('assessment', r.assessment);
+        $('result-state').setAttribute('data-tone', !r.workflow?.released ? 'uncertain' : r.alert ? 'suspicious' : 'below');
+        text('classification', r.workflow?.released ? (r.alert ? 'Suspicious — review before acting' : 'No strong warning signs') : 'Uncertain — check before acting');
+        text('assessment', !r.workflow?.released
+            ? (r.workflow?.judge?.code === 'model_assets_missing'
+                ? 'The local review model isn’t installed, so this check is incomplete. Verify the email independently before taking action.'
+                : 'Some checks could not finish or did not agree. Verify the email independently before taking action.')
+            : r.alert ? 'The wording raises warning signs. Avoid links or requests in this email until you verify them through a trusted contact.'
+                : 'The checked wording is below the alert thresholds. This does not confirm the email is genuine; verify unexpected requests independently.');
+        text('model-assessment', r.assessment);
         text('risk-score', (100 * r.score).toFixed(2) + '%');
         text('threshold', 'Frozen alert threshold: ' + (100 * r.alert_threshold_score).toFixed(2) +
             '%. A score above 50% alone does not trigger an alert.');
@@ -398,6 +485,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         }
         $('analysis-text').append(documentImpl.createTextNode(r.analysis_text.slice(offset)));
         show('result-state', true);
+        if (stateBeforeRender?.status === 'loading') $('classification').focus();
     }
     $('load-history').addEventListener('click', controller.refresh);
     $('clear-button').addEventListener('click', async () => {
@@ -436,9 +524,13 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
                 client, baseUrl: API_BASE_URL, modelSha: MODEL_SHA256, input,
                 idempotencyKey: attempt.key, fetchImpl
             });
-            await chromeImpl.storage.session.set({ phishlensReportAttempt: { ...attempt, savedId: outcome.saved.id } });
+            let markerStored = true;
+            try {
+                await chromeImpl.storage.session.set({ phishlensReportAttempt: { ...attempt, savedId: outcome.saved.id } });
+            } catch { markerStored = false; }
             if (state?.scanId === snapshot.scanId) {
-                text('save-status', outcome.refreshErrors.length ? 'Saved. Some refreshes failed; use Load / refresh history.' :
+                text('save-status', !markerStored ? 'Saved. The local save marker could not be updated. Check history before saving again.' :
+                    outcome.refreshErrors.length ? 'Saved. Some refreshes failed; use Load / refresh history.' :
                     'Saved and reread successfully.');
             }
             controller.acceptSavedReport(outcome);
@@ -452,8 +544,18 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             ++stateGeneration; render(changes.veriqoAnalysis.newValue);
         }
     });
-    chromeImpl.storage.session.get('veriqoAnalysis').then(data => {
-        if (stateGeneration === 0) render(data.veriqoAnalysis);
+    Promise.all([
+        chromeImpl.storage.session.get('veriqoAnalysis'),
+        chromeImpl.storage.session.get('phishlensReportAttempt').catch(() => ({}))
+    ]).then(([data, saved]) => {
+        if (stateGeneration === 0) {
+            render(data.veriqoAnalysis);
+            const attempt = saved.phishlensReportAttempt;
+            if (state?.scanId && attempt?.scanId === state.scanId && typeof attempt.subject === 'string') {
+                $('report-subject').value = attempt.subject;
+                if (attempt.savedId) text('save-status', 'This report was already saved. Load history to open it.');
+            }
+        }
     }).catch(() => {
         if (stateGeneration === 0) render({ status: 'error', error: 'Local state could not be read. Reload the extension.' });
     });

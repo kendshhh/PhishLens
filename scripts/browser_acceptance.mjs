@@ -7,13 +7,16 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { MODEL_SHA256 } from "../extension/ai/local-analyzer.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = path.join(root, "output", "extension", "PhishLens-Extension.zip");
 const evidencePath = path.join(root, "output", "extension", "browser-acceptance.json");
 const expectedTests = [
   "packaged popup loads synthetic history in the browser",
+  "selection handler opens the action popup with the highlighted text",
   "synthetic analysis shows a clearly labeled local result or readable error",
+  "local scan saves once and keeps its title and save marker after popup reload",
   "Clear during a local scan prevents a stale result from returning",
   "synthetic saved analysis can be created and viewed",
   "synthetic saved analysis can be edited and deleted",
@@ -64,6 +67,11 @@ function sendJson(response, status, body) {
 }
 
 const server = createServer(async (request, response) => {
+  if (request.url === "/model-info" && request.method === "GET") {
+    sendJson(response, 200, { provider_mode: "tfidf", model_sha256: MODEL_SHA256,
+      accepts_tfidf_reports: true, accepts_local_reviews: true });
+    return;
+  }
   if (request.method === "POST" && request.url === "/__test/state") {
     let body = "";
     for await (const chunk of request) body += chunk;
@@ -208,6 +216,8 @@ manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
 )
 worker_path = target / "background.js"
 worker = worker_path.read_text(encoding="utf-8")
+worker = worker.replace("chrome.contextMenus.onClicked.addListener(",
+    "chrome.contextMenus.onClicked.addListener(globalThis.__phishlensTestSelection = ", 1)
 worker += """
 // Test-only delayed completion to exercise the production Clear generation guard.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -281,6 +291,8 @@ async function run() {
 
     const launchOptions = {
       headless: true,
+      viewport: { width: 380, height: 600 },
+      deviceScaleFactor: 2,
       ignoreDefaultArgs: ["--disable-extensions"],
       args: [
         `--disable-extensions-except=${extensionPath}`,
@@ -321,18 +333,21 @@ async function run() {
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
 
     await page.locator("#empty-state").waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.screenshot({ path: path.join(root, "output", "extension", "ui-check.png") });
+    await page.locator("#show-reports").click();
     await page.locator("#load-history").click();
     await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
     assert.match(await page.locator("#history-list li").textContent(), /phishing.*high/i);
     evidence.tests.push("packaged popup loads synthetic history in the browser");
 
-    await page.evaluate(() => {
-      void chrome.runtime.sendMessage({
-        type: "phishlens-analyze-text",
-        text: "Synthetic test: account closes today; enter your password at example.invalid",
-      });
+    await page.locator("#show-check").click();
+    await worker.evaluate(() => {
+      void globalThis.__phishlensTestSelection({ menuItemId: 'phishlens-analyze-selection',
+        selectionText: 'Synthetic test: account closes today; enter your password at example.invalid' });
     });
     await page.locator("#loading-state").waitFor({ state: "visible" });
+    assert.match(await page.locator("#selection-content").textContent(), /Synthetic test: account closes today/);
     await page.waitForFunction(() => {
       const result = document.querySelector("#result-state");
       const error = document.querySelector("#error-state");
@@ -340,7 +355,7 @@ async function run() {
     }, undefined, { timeout: 120000 });
     if (await page.locator("#result-state").isVisible()) {
       const label = (await page.locator("#classification").textContent()).trim();
-      assert.match(label, /Suspicious|Below alert threshold|Uncertain/i);
+      assert.match(label, /Suspicious|No strong warning signs|Uncertain/i);
       evidence.local_analysis_outcome = label;
     } else {
       const message = (await page.locator("#error-message").textContent()).trim();
@@ -349,6 +364,41 @@ async function run() {
     }
     evidence.tests.push("synthetic analysis shows a clearly labeled local result or readable error");
 
+    assert.equal(await page.locator("#result-state").isVisible(), true, "Packaged TF-IDF scan must produce a local result, including uncertainty");
+    assert.match(await page.locator("#selection-content").textContent(), /Synthetic test: account closes today/);
+    const popupContexts = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['POPUP'] }));
+    assert.ok(popupContexts.length > 0, 'The selection handler must open the real Chrome action popup');
+    evidence.tests.push("selection handler opens the action popup with the highlighted text");
+    await page.bringToFront();
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(root, "output", "extension", "ui-selection.png") });
+    await page.locator("#classification").focus();
+    await page.locator("#result-state").evaluate(element => element.scrollIntoView({ block: "start" }));
+    await page.screenshot({ path: path.join(root, "output", "extension", "ui-result.png") });
+    await page.locator("#report-subject").fill("Synthetic local scan report");
+    await page.locator("#save-consent").check();
+    await page.locator("#save-report").click();
+    await page.locator("#save-status").getByText("Saved and reread successfully.").waitFor();
+    const localSavedId = createdRecordId;
+    const savedCount = records.size;
+    await page.reload();
+    await page.locator("#save-status").getByText(/already saved/).waitFor();
+    assert.equal(await page.locator("#report-subject").inputValue(), "Synthetic local scan report");
+    assert.equal(await page.locator("#save-consent").isChecked(), false);
+    await page.locator("#save-consent").check();
+    await page.locator("#save-report").click();
+    await page.locator("#save-status").getByText(/already saved/).waitFor();
+    assert.equal(records.size, savedCount, "Reopening a saved scan must not create a duplicate report");
+    await page.locator("#show-reports").click();
+    await page.locator("#load-history").click();
+    await page.locator("#history-list").getByRole("button", { name: "View Synthetic local scan report" }).click();
+    await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
+    await page.locator("#confirm-delete").click();
+    await page.getByText("Analysis deleted successfully.").waitFor();
+    assert.equal(records.has(localSavedId), false);
+    evidence.tests.push("local scan saves once and keeps its title and save marker after popup reload");
+
+    await page.locator("#show-check").click();
     await page.evaluate(() => {
       void chrome.runtime.sendMessage({ type: "__phishlens_test_slow_scan" });
     });
@@ -360,15 +410,33 @@ async function run() {
     assert.equal(await page.locator("#result-state").isVisible(), false);
     evidence.tests.push("Clear during a local scan prevents a stale result from returning");
 
+    await page.locator("#paste-panel > summary").click();
+    await page.locator("#scan-body").fill("Synthetic pasted email: review the meeting agenda.");
+    await page.locator("#scan-button").click();
+    await page.locator("#loading-state").waitFor({ state: "visible" });
+    await page.locator("#result-state").waitFor({ state: "visible", timeout: 120000 });
+    assert.equal(await page.locator("#selection-content").textContent(), "Synthetic pasted email: review the meeting agenda.");
+
+    await page.locator("#show-reports").click();
+    await page.locator("#server-create > summary").click();
     await page.locator("#create-subject").fill("Synthetic browser CRUD");
     await page.locator("#create-body").fill("Synthetic browser acceptance. No personal data or credentials.");
     await page.locator("#create-button").click();
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     assert.equal(await page.locator("#detail-content").getByText("Synthetic browser CRUD").count(), 1);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "detail-heading");
+    await page.locator("#detail-panel").evaluate(element => element.scrollIntoView({ block: "start" }));
     assert.ok(createdRecordId && records.has(createdRecordId), "Synthetic create must reach the local API");
     evidence.tests.push("synthetic saved analysis can be created and viewed");
 
+    await page.locator("#history-list").getByRole("button", { name: "View Synthetic browser CRUD" }).click();
+    await page.locator("#detail-heading").waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "detail-heading");
+    await page.locator("#detail-panel").evaluate(element => element.scrollIntoView({ block: "start" }));
+    await page.screenshot({ path: path.join(root, "output", "extension", "ui-detail.png") });
+
     await page.locator("#detail-content").getByRole("button", { name: "Edit notes and feedback" }).click();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "edit-notes");
     await page.locator("#edit-notes").fill("Synthetic browser note");
     await page.locator("#edit-feedback").selectOption("false_positive");
     await page.locator("#save-edit").click();
@@ -376,6 +444,10 @@ async function run() {
     assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
     assert.equal(records.get(createdRecordId).feedback, "false_positive");
 
+    await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "delete-heading");
+    await page.locator("#cancel-delete").click();
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Delete analysis");
     await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
     await page.locator("#confirm-delete").click();
     await page.getByText("Analysis deleted successfully.").waitFor();
@@ -385,6 +457,8 @@ async function run() {
     await setState(apiOrigin, { historyMode: "empty" });
     await page.locator("#load-history").click();
     await page.locator("#empty").waitFor({ state: "visible" });
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(root, "output", "extension", "ui-history.png") });
 
     await setState(apiOrigin, { historyMode: "error" });
     await page.locator("#load-history").click();

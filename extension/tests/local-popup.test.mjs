@@ -36,7 +36,7 @@ class Element {
   async fire(name) { return this.handlers[name]?.({ preventDefault() {} }); }
   async click() { return this.fire('click'); }
 }
-async function popup(fetchImpl = async () => { throw Error('Unexpected API call'); }, shared = { veriqoAnalysis: scan }) {
+async function popup(fetchImpl = async () => { throw Error('Unexpected API call'); }, shared = { veriqoAnalysis: scan }, overrides = {}) {
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   const elements = new Map([...html.matchAll(/id="([^"]+)"/g)].map(m => [m[1], new Element()]));
   let onChanged;
@@ -46,6 +46,8 @@ async function popup(fetchImpl = async () => { throw Error('Unexpected API call'
       onChanged: { addListener(fn) { onChanged = fn; } } },
     runtime: { async sendMessage() { onChanged({ veriqoAnalysis: { newValue: undefined } }, 'session'); return { ok: true }; } }
   };
+  if (overrides.sendMessage) chromeImpl.runtime.sendMessage = overrides.sendMessage;
+  if (overrides.setSession) chromeImpl.storage.session.set = overrides.setSession;
   const app = initializePopup({ documentImpl: { getElementById: id => elements.get(id),
     createElement: () => new Element(), createTextNode: value => ({ textContent: value }) }, chromeImpl, fetchImpl });
   await settle(); return { app, dom: elements, shared };
@@ -57,6 +59,48 @@ test('opening popup and showing a scan makes no network request', async () => {
   assert.match(dom.get('threshold').textContent, /88.71%/);
   assert.match(dom.get('evidence').textContent, /protective|not to disclose/i);
   assert.doesNotMatch(dom.get('evidence').textContent, /undefined/);
+  assert.equal(dom.get('selection-content').textContent, scan.selectedText);
+  assert.equal(dom.get('selection-preview').classList.contains('hidden'), false);
+  assert.equal(dom.get('selection-instructions').classList.contains('hidden'), true);
+});
+
+test('a new highlighted selection shows its original text during loading, failure and completion', async () => {
+  const { app, dom } = await popup();
+  const text = '  Highlighted <img src=x> email\nOriginal spacing.  ';
+  for (const status of ['loading', 'error', 'success']) {
+    app.render({ ...scan, selectedText: text, status, error: 'Synthetic model failure' });
+    assert.equal(dom.get('selection-content').textContent, text);
+    assert.equal(dom.get('selection-preview').classList.contains('hidden'), false);
+  }
+  assert.equal(dom.get('paste-panel').open, false);
+  app.render(undefined);
+  assert.equal(dom.get('selection-preview').classList.contains('hidden'), true);
+  assert.equal(dom.get('selection-content').textContent, '');
+});
+test('report navigation explicitly loads history and returning to checking retains the draft', async () => {
+  let calls = 0;
+  const { dom } = await popup(async () => { calls++; return ok({ items: [] }); });
+  dom.get('scan-body').value = 'Synthetic draft';
+  await dom.get('show-reports').click(); await settle();
+  assert.equal(calls, 1);
+  assert.equal(dom.get('reports-view').classList.contains('hidden'), false);
+  assert.equal(dom.get('check-view').classList.contains('hidden'), true);
+  assert.equal(dom.get('show-reports')['aria-pressed'], 'true');
+  await dom.get('show-check').click();
+  assert.equal(dom.get('check-view').classList.contains('hidden'), false);
+  assert.equal(dom.get('scan-body').value, 'Synthetic draft');
+  assert.equal(calls, 1);
+});
+
+test('result summaries explain uncertainty and below-threshold outcomes without a safe verdict', async () => {
+  const { app, dom } = await popup();
+  app.render({ ...scan, result: { ...r, alert: false, workflow: { ...r.workflow, released: true } } });
+  assert.equal(dom.get('classification').textContent, 'No strong warning signs');
+  assert.match(dom.get('assessment').textContent, /does not confirm.*genuine/);
+  app.render({ ...scan, result: { ...r, workflow: { ...r.workflow, released: false,
+    judge: { valid: false, code: 'model_assets_missing' } } } });
+  assert.match(dom.get('classification').textContent, /Uncertain/);
+  assert.match(dom.get('assessment').textContent, /isn’t installed.*incomplete/);
 });
 test('history is explicit, keeps untrusted strings as text and opens detail', async () => {
   const calls = []; const { dom } = await popup(async (url, options) => {
@@ -146,6 +190,75 @@ test('Clear removes the displayed scan', async () => {
   assert.equal(dom.get('result-state').classList.contains('hidden'), true);
 });
 
+test('pasted analysis runs locally, preserves the exact draft and blocks duplicate submissions', async () => {
+  const shared = {}, messages = [];
+  let finish;
+  const { dom } = await popup(undefined, shared, { sendMessage: message => {
+    messages.push(message); return new Promise(resolve => { finish = resolve; });
+  } });
+  dom.get('scan-body').value = '  Synthetic pasted email\nKeep original spacing.  ';
+  const running = dom.get('scan-form').fire('submit');
+  await settle();
+  assert.equal(dom.get('scan-button').disabled, true);
+  await dom.get('scan-form').fire('submit');
+  assert.deepEqual(messages, [{ type: 'phishlens-analyze-text', text: dom.get('scan-body').value }]);
+  finish({ ok: true }); await running;
+  assert.equal(dom.get('scan-button').disabled, false);
+  const reopened = await popup(undefined, shared);
+  assert.equal(reopened.dom.get('scan-body').value, dom.get('scan-body').value);
+});
+
+test('blank pasted text does not start analysis and runtime failure retains the draft', async () => {
+  let calls = 0;
+  const { dom } = await popup(undefined, {}, { sendMessage: async () => { calls++; throw Error('worker unavailable'); } });
+  dom.get('scan-body').value = ' ';
+  await dom.get('scan-form').fire('submit');
+  assert.equal(calls, 0);
+  dom.get('scan-body').value = 'Synthetic draft';
+  await dom.get('scan-form').fire('submit');
+  assert.equal(calls, 1);
+  assert.equal(dom.get('scan-body').value, 'Synthetic draft');
+  assert.match(dom.get('scan-status').textContent, /retained/);
+  assert.equal(dom.get('scan-button').disabled, false);
+});
+
+test('a titled uncertain save restores the title and same request key on reopening', async () => {
+  const shared = { veriqoAnalysis: scan }, keys = [];
+  const fetcher = async (url, options) => {
+    if (url.endsWith('/model-info')) return ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true,
+      accepts_local_reviews: true, model_sha256: MODEL_SHA256 });
+    keys.push(options.headers['Idempotency-Key']); throw Error('Connection lost');
+  };
+  const first = await popup(fetcher, shared);
+  first.dom.get('report-subject').value = 'My synthetic report';
+  first.dom.get('save-consent').checked = true;
+  await first.dom.get('save-report').click();
+  const second = await popup(fetcher, shared);
+  assert.equal(second.dom.get('report-subject').value, 'My synthetic report');
+  assert.equal(second.dom.get('save-consent').checked, false);
+  second.dom.get('save-consent').checked = true;
+  await second.dom.get('save-report').click();
+  assert.equal(keys.length, 2); assert.equal(keys[0], keys[1]);
+});
+
+test('a confirmed save is displayed even when persisting its local marker fails', async () => {
+  const shared = { veriqoAnalysis: scan };
+  const { dom } = await popup(async (url, options = {}) => {
+    if (url.endsWith('/model-info')) return ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true,
+      accepts_local_reviews: true, model_sha256: MODEL_SHA256 });
+    if (options.method === 'POST') return ok(record, 201);
+    return ok(url.endsWith(record.id) ? record : { items: [record] });
+  }, shared, { setSession: async data => {
+    if (data.phishlensReportAttempt?.savedId) throw Error('Storage unavailable');
+    Object.assign(shared, data);
+  } });
+  dom.get('save-consent').checked = true;
+  await dom.get('save-report').click();
+  assert.match(dom.get('save-status').textContent, /^Saved\./);
+  assert.match(dom.get('save-status').textContent, /marker/);
+  assert.equal(dom.get('detail-panel').classList.contains('hidden'), false);
+});
+
 test('saving a local scan blocks manual creation until the shared operation finishes', async () => {
   let releaseCapability;
   const calls = [];
@@ -159,6 +272,8 @@ test('saving a local scan blocks manual creation until the shared operation fini
   const saving = dom.get('save-report').click();
   await settle();
   assert.equal(dom.get('create-body').disabled, true);
+  assert.equal(dom.get('report-subject').disabled, true);
+  assert.equal(dom.get('save-consent').disabled, true);
   dom.get('create-body').value = 'Do not submit while the scan is being saved.';
   await dom.get('create-form').fire('submit');
   assert.equal(calls.filter(([, options]) => options.method === 'POST').length, 0);
@@ -167,6 +282,8 @@ test('saving a local scan blocks manual creation until the shared operation fini
   await saving;
   assert.equal(calls.filter(([, options]) => options.method === 'POST').length, 1);
   assert.equal(dom.get('create-body').disabled, false);
+  assert.equal(dom.get('report-subject').disabled, false);
+  assert.equal(dom.get('save-consent').disabled, false);
   assert.equal(dom.get('save-report').disabled, false);
 });
 
