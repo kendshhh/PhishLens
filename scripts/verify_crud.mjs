@@ -78,13 +78,33 @@ export async function verifyTarget(baseUrl, options) {
         if (new URL(address).origin !== url.origin) throw new Error('Cross-origin request refused');
         return fetch(address, { ...init, redirect: 'error' });
     };
-    const response = await safeFetch(url.origin + '/version', {
-        signal: AbortSignal.timeout(10000)
-    });
-    if (response.status !== 200) throw new Error('Target identity check failed');
-    const identity = await response.json();
-    if (identity.environment !== environment || identity.commit !== expectedSha) {
-        throw new Error('Target environment or backend SHA does not match');
+    // Render can report the requested commit live just before its public
+    // routing has fully converged. Retry the exact identity check, while
+    // keeping all writes blocked until the approved environment and SHA match.
+    const identityDeadline = Date.now() + 180000;
+    let identityMatches = false;
+    while (!identityMatches) {
+        try {
+            const response = await safeFetch(url.origin + '/version', {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+                signal: AbortSignal.timeout(10000)
+            });
+            if (response.status === 200) {
+                const identity = await response.json();
+                identityMatches = identity.environment === environment &&
+                    identity.commit === expectedSha;
+            }
+        } catch {
+            // Treat transient routing failures during deployment like a
+            // mismatched identity; neither case permits the CRUD writes.
+        }
+        if (identityMatches) break;
+        const remaining = identityDeadline - Date.now();
+        if (remaining <= 0) {
+            throw new Error('Target environment or backend SHA did not match after waiting for staging to converge');
+        }
+        await new Promise(resolve => setTimeout(resolve, Math.min(5000, remaining)));
     }
     const ready = await safeFetch(url.origin + '/ready', {
         signal: AbortSignal.timeout(10000)
