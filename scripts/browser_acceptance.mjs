@@ -365,10 +365,16 @@ async function run() {
     await page.locator("#create-button").click();
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     assert.equal(await page.locator("#detail-content").getByText("Synthetic browser CRUD").count(), 1);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "detail-heading");
     assert.ok(createdRecordId && records.has(createdRecordId), "Synthetic create must reach the local API");
     evidence.tests.push("synthetic saved analysis can be created and viewed");
 
+    await page.locator("#history-list").getByRole("button", { name: "View Synthetic browser CRUD" }).click();
+    await page.locator("#detail-heading").waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "detail-heading");
+
     await page.locator("#detail-content").getByRole("button", { name: "Edit notes and feedback" }).click();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "edit-notes");
     await page.locator("#edit-notes").fill("Synthetic browser note");
     await page.locator("#edit-feedback").selectOption("false_positive");
     await page.locator("#save-edit").click();
@@ -376,6 +382,10 @@ async function run() {
     assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
     assert.equal(records.get(createdRecordId).feedback, "false_positive");
 
+    await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "delete-heading");
+    await page.locator("#cancel-delete").click();
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Delete analysis");
     await page.locator("#detail-content").getByRole("button", { name: "Delete analysis" }).click();
     await page.locator("#confirm-delete").click();
     await page.getByText("Analysis deleted successfully.").waitFor();

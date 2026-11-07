@@ -35,7 +35,8 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   const ui = {
     status: $("crud-status"), list: $("history-list"), empty: $("empty"),
     loading: $("loading"), createForm: $("create-form"), subject: $("create-subject"),
-    body: $("create-body"), detail: $("detail-panel"), detailContent: $("detail-content"),
+    body: $("create-body"), detail: $("detail-panel"), detailHeading: $("detail-heading"),
+    detailContent: $("detail-content"), deleteHeading: $("delete-heading"),
     editForm: $("edit-form"), notes: $("edit-notes"), feedback: $("edit-feedback"),
     deleteConfirm: $("delete-confirm"), deleteSubject: $("delete-subject"),
     deleteButton: $("confirm-delete"), cancelDelete: $("cancel-delete"),
@@ -46,6 +47,8 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   let busy = false;
   let detailRequest = 0;
   let listRequest = 0;
+  let editTrigger;
+  let deleteTrigger;
 
   function setStatus(message, kind = "info") {
     ui.status.textContent = message;
@@ -130,6 +133,8 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const remove = node(doc, "button", "danger", "Delete analysis");
     remove.type = "button";
     remove.addEventListener("click", openDelete);
+    editTrigger = edit;
+    deleteTrigger = remove;
     ui.detailContent.append(edit, remove);
     ui.notes.value = record.notes || "";
     ui.feedback.value = record.feedback || "none";
@@ -180,7 +185,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     }
   }
 
-  async function loadDetail(id, { announce = true } = {}) {
+  async function loadDetail(id, { announce = true, focus = announce } = {}) {
     if (busy) return;
     const request = ++detailRequest;
     selected = null;
@@ -196,6 +201,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       renderDetail(selected);
       show(ui.editForm, false);
       show(ui.deleteConfirm, false);
+      if (focus) ui.detailHeading.focus();
       if (announce) setStatus("Analysis details loaded.", "success");
     } catch (error) {
       if (request !== detailRequest) return;
@@ -216,7 +222,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     if (busy || !selected) return;
     ui.deleteSubject.textContent = selected.subject || "Untitled analysis";
     show(ui.deleteConfirm, true);
-    ui.cancelDelete.focus();
+    ui.deleteHeading.focus();
   }
 
   ui.createForm.addEventListener("submit", async event => {
@@ -244,7 +250,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
         ? "The server returned a malformed result. Your input is still here."
         : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
     } finally { setBusy(false); }
-    if (created) await loadDetail(created.id, { announce: false });
+    if (created) await loadDetail(created.id, { announce: false, focus: true });
   });
 
   ui.editForm.addEventListener("submit", async event => {
@@ -260,6 +266,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       records = records.map(record => record.id === selected.id ? selected : record);
       renderList();
       renderDetail(selected);
+      editTrigger.focus();
       const refreshed = await refresh();
       if (refreshed) setStatus("Changes saved successfully.", "success");
     } catch (error) {
@@ -268,8 +275,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
         : `Could not save changes: ${error.message}. Your edits are still here.`, "error");
     } finally { setBusy(false); }
   });
-  ui.cancelEdit.addEventListener("click", () => { show(ui.editForm, false); if (selected) renderDetail(selected); });
-  ui.cancelDelete.addEventListener("click", () => show(ui.deleteConfirm, false));
+  ui.cancelEdit.addEventListener("click", () => {
+    show(ui.editForm, false);
+    if (selected) { renderDetail(selected); editTrigger.focus(); }
+  });
+  ui.cancelDelete.addEventListener("click", () => {
+    show(ui.deleteConfirm, false);
+    deleteTrigger?.focus();
+  });
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
@@ -299,6 +312,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     renderList();
     selected = outcome.detail || outcome.saved;
     renderDetail(selected);
+    ui.detailHeading.focus();
     show(ui.editForm, false);
     show(ui.deleteConfirm, false);
   }

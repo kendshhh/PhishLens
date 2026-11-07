@@ -29,7 +29,7 @@ class Element {
   }
 }
 
-const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
+const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-heading", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-heading", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
 function setup(client) {
   const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status"].includes(id) ? "hidden" : "")]));
   const doc = { getElementById: id => elements.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
@@ -52,6 +52,8 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
   }
   assert.match(html, /role="status" aria-live="polite"/);
   assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
+  assert.match(html, /id="detail-heading" tabindex="-1"/);
+  assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
@@ -127,6 +129,7 @@ test("starting Analyze and save invalidates an older pending detail response", a
   controller.acceptSavedReport({ saved, detail: saved, history: [saved] });
   controller.endSave();
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "New analysis");
+  assert.equal(ui.get("detail-heading").focused, true);
 });
 
 test("older history response cannot erase a newly created analysis", async () => {
@@ -217,14 +220,19 @@ test("edit cancel and delete cancel preserve the saved record", async () => {
   const memory = createInMemoryAnalysisClient([record(id)]);
   const { ui, controller } = setup(memory);
   await controller.refresh(); await controller.loadDetail(id);
+  assert.equal(ui.get("detail-heading").focused, true);
   const editButton = ui.get("detail-content").children.at(-2);
   await editButton.fire("click");
+  assert.equal(ui.get("edit-notes").focused, true);
   ui.get("edit-notes").value = "unsaved";
   await ui.get("cancel-edit").fire("click");
+  assert.equal(ui.get("detail-content").children.at(-2).focused, true);
   assert.equal((await memory.getAnalysis(id)).notes, null);
   const deleteButton = ui.get("detail-content").children.at(-1);
   await deleteButton.fire("click");
+  assert.equal(ui.get("delete-heading").focused, true);
   await ui.get("cancel-delete").fire("click");
+  assert.equal(ui.get("detail-content").children.at(-1).focused, true);
   assert.equal((await memory.listAnalyses()).length, 1);
 });
 
@@ -319,6 +327,7 @@ test("create and edit submit through the injected five-method client", async () 
   const saved = (await client.listAnalyses())[0];
   assert.equal(saved.subject, "Test subject");
   assert.equal(saved.body, "Email body");
+  assert.equal(ui.get("detail-heading").focused, true);
   await controller.loadDetail(saved.id);
   const editButton = ui.get("detail-content").children.at(-2);
   await editButton.fire("click");
