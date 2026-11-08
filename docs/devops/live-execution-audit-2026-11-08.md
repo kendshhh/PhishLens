@@ -24,9 +24,15 @@ are recorded separately, while unproven acceptance stays open.
 
 ## Completed or reconfirmed in this pass
 
-- GitHub `main` is protected at `10df92eb7d78229c8e4f93b10fc718f7752827f4`.
-  Its required checks are `Backend checks`, `Extension checks`, `Hosted
-  staging`, and `Staging integration`.
+- Before the repository visibility change, GitHub reported `main` protected at
+  `10df92eb7d78229c8e4f93b10fc718f7752827f4`, with required checks `Backend
+  checks`, `Extension checks`, `Hosted staging`, and `Staging integration`.
+  After the approved change to private, GitHub reports `main` as unprotected
+  (`protected: false`, required-check enforcement off). Both the classic branch
+  protection page and the ruleset creation page say these rules will not be
+  enforced for this private repository until it is moved to a Team or Enterprise
+  organization account. No unenforced ruleset was saved. This is a current
+  release-gate gap; the existing protection was not retained by GitHub.
 - GitHub's release list is empty. No release or final tag is claimed.
 - PR #154 is merged. The current main commit is the source of truth; the local
   checkout is on `codex/devops-backlog-2026-10-28` at `a4ac24db` and contains
@@ -66,7 +72,7 @@ are recorded separately, while unproven acceptance stays open.
   auto-deploy is off and no health-check path is configured. The production
   deployment `dep-dbndo768bjmc73a4vk1g` is reported live at
   `0fcc747725512df13ba8ae0900b6080591425928` from November 7 08:08 UTC; this
-  trails protected GitHub `main` at `10df92eb7d78229c8e4f93b10fc718f7752827f4`.
+  trails current GitHub `main` at `10df92eb7d78229c8e4f93b10fc718f7752827f4`.
   Production auto-deploy is enabled after checks pass, with `/health` configured.
   Both services are on Render's free plan. No deployment was triggered in this
   pass. Render's deploy metadata establishes the deployed commit, but the app's
@@ -88,23 +94,29 @@ are recorded separately, while unproven acceptance stays open.
   Its job reported production unavailable and could not read `/version`,
   `/health`, or `/ready` as JSON. This independently corroborates the current
   endpoint failures; it is not one of the four branch-protection required
-  contexts listed above.
+  contexts that were required before the visibility change.
 - Neon reports project `patient-bird-25428852` on the `free_v3` plan. An attempt
   to protect the production branch was rejected with HTTP 422 because the plan
   has no remaining protected-branch allowance. No branch setting changed, and
   no plan upgrade was made. Production and shared staging currently report
   unprotected. Hard cost/quota guardrails were not verified by the usage
   counters returned for this project.
-- Current GitHub main protection is established, but this does not replace the
-  exact-SHA staging/live checks or the rollback exercise required by #143.
+- The GitHub `main` branch is currently unprotected because this private repo
+  is not in an account tier where its rules can be enforced. Restoring enforced
+  protection requires moving it to a GitHub Team or Enterprise organization
+  account. This does not replace the exact-SHA staging/live checks or rollback
+  exercise required by #143.
 
 ## Remaining acceptance work
 
-- **#133:** reconcile the GitHub staging gate with the prior recorded choice;
-  complete environment/secret-scope and repository history/privacy checks;
-  document and verify enforceable cost/usage limits. Main protection is now
-  evidenced above. Neon production-branch protection is plan-blocked unless an
-  owner chooses a different branch-protection/plan strategy.
+- **#133:** the GitHub staging reviewer gate is restored, but `main` branch
+  protection is not currently enforceable while the repository remains private
+  on the current account. The owner must choose whether to move it to a Team or
+  Enterprise organization, keep it private with this gap, or change visibility.
+  Also complete environment/secret-scope and repository history/privacy checks,
+  and document and verify enforceable cost/usage limits. Neon production-branch
+  protection is separately plan-blocked unless the owner chooses another
+  branch-protection/plan strategy.
 - **#143:** PR #156's required checks pass and Render reports successful builds
   and deploys, but that PR is still open and not an accepted release candidate;
   its running app is not responding to version/health probes. Production is
@@ -131,6 +143,12 @@ are recorded separately, while unproven acceptance stays open.
 - Changed GitHub repository visibility from public to private after the
   owner's confirmation and verified the private setting in GitHub UI and
   repository metadata. GitHub displayed the side effects recorded above.
+- Rechecked GitHub protection after privatizing: the branch endpoint reports
+  `main` unprotected and enforcement off. The GitHub settings UI says branch
+  rules and rulesets will not be enforced for this private repository until it
+  is moved to a Team or Enterprise organization account. No replacement rule
+  was saved because GitHub explicitly marks it unenforceable here. The account
+  and visibility decision is pending the owner's direction on this tradeoff.
 - Read Render service/deployment/event/metrics metadata and checked
   `/version`, `/health`, and `/ready` for both services. The checks timed out;
   no deploy or service setting changed.
