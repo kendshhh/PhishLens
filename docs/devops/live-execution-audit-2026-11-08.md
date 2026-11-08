@@ -102,11 +102,12 @@ are recorded separately, while unproven acceptance stays open.
   `/health`, or `/ready` as JSON. This independently corroborates the current
   endpoint failures; it is not one of the four branch-protection required
   contexts that were required before the visibility change.
-- GitHub Actions ran on the audit PR head `a7731560b9ff51b6d29132632cbd078872d05bc2`:
-  [`CI` run 42431667548](https://github.com/kendshhh/PhishLens/actions/runs/42431667548)
-  has passing backend and extension checks, with staging integration still in
-  progress at the latest check; [`Workflow lint` run 42431667663](https://github.com/kendshhh/PhishLens/actions/runs/42431667663)
-  passed. [`Dependency review` run 42431667459](https://github.com/kendshhh/PhishLens/actions/runs/42431667459)
+- GitHub Actions ran on audit PR head `a8b85b9261a0abd7f13322d21cb4c1643610a821`:
+  [`CI` run 42431835455](https://github.com/kendshhh/PhishLens/actions/runs/42431835455)
+  completed successfully, including backend checks, extension checks, and
+  staging integration. The integration used the isolated CI setup and does not
+  verify the hosted Render service. [`Workflow lint` run 42431835429](https://github.com/kendshhh/PhishLens/actions/runs/42431835429)
+  passed. [`Dependency review` run 42431835431](https://github.com/kendshhh/PhishLens/actions/runs/42431835431)
   failed because GitHub says the action is unsupported unless the dependency
   graph and Advanced Security are enabled. This is a CI/security capability
   gap after the privacy change, not a dependency finding. These checks belong to
