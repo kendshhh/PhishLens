@@ -84,6 +84,27 @@ REQUIRED_FAILURE_PATH_TESTS = frozenset(
 )
 REQUIRED_TESTS = REQUIRED_AI_TESTS | REQUIRED_FAILURE_PATH_TESTS
 SAVED_FAILURE_MODULE = "test_saved_create_postgres"
+
+# Historical reference only; this run is not a model-quality acceptance target.
+DETERMINISTIC_BASELINE = {
+    "workflow_run": "41216421988",
+    "source_sha": "cd5687e7884a13e86d0f7c7a96d48163c6dac316",
+    "selected_test_instances": 87,
+    "passed": 87,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "case_set_version": "synthetic-v1",
+    "case_set_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+}
+# Proposed deterministic blocker, pending AI-owner approval in issue #93.
+BLOCKING_THRESHOLDS = {
+    "missing_required_test_ids": 0,
+    "skipped_required_test_ids": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+}
 # Keep the expected number of cases for parametrized tests explicit so losing
 # one parameter case cannot be hidden by the other cases for the same function.
 REQUIRED_PARAMETRIZED_CASE_COUNTS = {
@@ -182,7 +203,13 @@ def summarize_junit(junit_path: Path, source_sha: str, ai_mode: str) -> dict:
         "expected_case_counts_by_class": dict(sorted(label_counts.items())),
         "scored_predictions": 0,
         "model_quality_threshold_applied": False,
-        "model_quality_threshold_status": "pending AI-owner agreement in issues #49/#92",
+        "deterministic_gate_policy": {
+            "approval_status": "proposed; pending AI-owner review",
+            "owner": "Wilberr (@EnviousCoal), identified in issue #92",
+            "baseline": DETERMINISTIC_BASELINE,
+            "blocking_thresholds": BLOCKING_THRESHOLDS,
+        },
+        "model_quality_threshold_status": "pending AI-owner agreement in issue #93",
         "live_provider_requests": 0,
         "model_weights_downloaded": False,
         "limitations": [
@@ -203,8 +230,11 @@ def summarize_junit(junit_path: Path, source_sha: str, ai_mode: str) -> dict:
     selected = _selected_cases(all_cases)
     ai_coverage = _coverage(all_cases, REQUIRED_AI_TESTS)
     failure_path_coverage = _coverage(all_cases, REQUIRED_FAILURE_PATH_TESTS)
-    required_coverage_passed = not any(
-        coverage["missing_test_ids"] or coverage["skipped_test_ids"]
+    required_coverage_passed = all(
+        len(coverage["missing_test_ids"])
+        <= BLOCKING_THRESHOLDS["missing_required_test_ids"]
+        and len(coverage["skipped_test_ids"])
+        <= BLOCKING_THRESHOLDS["skipped_required_test_ids"]
         for coverage in (ai_coverage, failure_path_coverage)
     )
     if not selected:
@@ -245,9 +275,9 @@ def summarize_junit(junit_path: Path, source_sha: str, ai_mode: str) -> dict:
     status = (
         "passed"
         if required_coverage_passed
-        and counts["failed"] == 0
-        and counts["error"] == 0
-        and counts["skipped"] == 0
+        and counts["failed"] <= BLOCKING_THRESHOLDS["failed"]
+        and counts["error"] <= BLOCKING_THRESHOLDS["errors"]
+        and counts["skipped"] <= BLOCKING_THRESHOLDS["skipped"]
         else "failed"
     )
     return {
