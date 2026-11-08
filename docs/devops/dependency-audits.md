@@ -18,6 +18,11 @@ These audits use the npm and PyPI advisory services and do not need repository
 secrets. They scan the locked dependency trees; they do not reproduce GitHub's
 before/after dependency graph review or license policy checks.
 
+The initial audit found `pyasn1==0.6.4` with CVEs `CVE-2026-119194`,
+`CVE-2026-119195`, `CVE-2026-119196`, and `CVE-2026-119197`. This PR constrains
+and locks `pyasn1` at `0.6.5`, the fixed version reported by the audit. The
+updated lockfile audit must pass before the change is ready to merge.
+
 The GitHub dependency-review action remains available as an optional additional
 check. Set the repository Actions variable `DEPENDENCY_REVIEW_ENABLED` to the
 string `true` only after the private repository has an enabled dependency graph
