@@ -1,22 +1,56 @@
-name: Dependency review
+name: Dependency audit
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
-  dependency-review:
-    name: Dependency review (advisory)
-    # Run the advisory review by default; set the repository variable to
-    # "false" only when dependency metadata is unavailable or the action is
-    # intentionally disabled for the repository.
-    if: vars.DEPENDENCY_REVIEW_ENABLED != 'false'
+  lockfile-audit:
+    name: Lockfile vulnerability audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Audit npm lockfile
+        run: npm audit --audit-level=high --package-lock-only
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned pip-audit
+        run: python -m pip install --disable-pip-version-check "pip-audit==2.10.1"
+
+      - name: Audit pinned Python runtime and development dependencies
+        run: python -m pip_audit --no-deps -r backend/requirements-dev.txt
+
+  dependency-review:
+    name: Dependency graph review (GitHub Advanced Security)
+    # GitHub supports this action on public repositories or private repositories
+    # with a GitHub Advanced Security license. Opt in after that capability is
+    # available; private repositories use the lockfile audit above by default.
+    if: vars.DEPENDENCY_REVIEW_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Review dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
