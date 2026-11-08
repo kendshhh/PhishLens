@@ -4,16 +4,19 @@ from functools import lru_cache
 from urllib.parse import urlsplit
 
 import jwt
+from dotenv import load_dotenv
 from fastapi import Header, HTTPException
 from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWTError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from backend.core import config
 from backend.models import User
 
 
 def auth_mode():
+    load_dotenv(config.ENV_FILE, override=False)
     # Legacy demo remains explicitly selectable during the staged rollout.
     mode = os.getenv("REPORT_AUTH_MODE", "demo")
     if mode not in {"demo", "neon"}:
