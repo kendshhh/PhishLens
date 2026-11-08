@@ -5,6 +5,35 @@
 <body><main class="container">
 <header class="app-header"><div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6v5.5c0 4.2 3.1 7.8 7.5 9.5 4.4-1.7 7.5-5.3 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.5 12 2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h1>PhishLens</h1><p class="subtitle">A second look before you click.</p></div></div><span class="privacy-badge">On-device scanning</span></header>
 <nav class="view-nav" aria-label="Main navigation"><button id="show-check" type="button" aria-controls="check-view" aria-pressed="true">Check email</button><button id="show-reports" type="button" aria-controls="reports-view" aria-pressed="false">Saved reports</button></nav>
+
+<div class="account-bar"><span id="account-identity">Keep scanning without an account</span><button id="show-account" class="secondary compact-button" type="button" aria-controls="account-panel">Sign in</button></div>
+<section id="account-panel" class="panel hidden" aria-label="Your account">
+ <div class="reports-heading"><p class="eyebrow">YOUR ACCOUNT</p><button id="close-account" class="secondary compact-button" type="button" aria-label="Close account">Close</button></div>
+ <p id="account-preview-notice" class="shared-notice hidden">Demo accounts only. No email is sent and no live account or personal report is created. Use fictional details.</p>
+ <p id="account-status" role="status" aria-live="polite"></p>
+ <form id="account-sign-in"><h2 id="account-sign-in-heading" tabindex="-1">Welcome back</h2><p class="intro">Sign in for your personal saved reports. Local scanning works without an account.</p>
+ <label for="account-email">Email</label><input id="account-email" type="email" autocomplete="username" required maxlength="254">
+ <label for="account-password">Password</label><input id="account-password" type="password" autocomplete="current-password" required>
+ <button class="full-width" type="submit">Sign in</button><div class="actions"><button id="open-sign-up" class="link-button" type="button">Create an account</button><button id="open-recover" class="link-button" type="button">Forgot password?</button><button id="open-verify" class="link-button" type="button">Verify email</button></div></form>
+ <form id="account-sign-up" class="hidden"><h2 id="account-sign-up-heading" tabindex="-1">Create your account</h2>
+ <label for="signup-name">Name</label><input id="signup-name" autocomplete="name" required maxlength="100">
+ <label for="signup-email">Email</label><input id="signup-email" type="email" autocomplete="email" required maxlength="254">
+ <label for="signup-password">Password</label><input id="signup-password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="password-help"><p id="password-help" class="field-help">Use at least 8 characters. Live password requirements will follow the account provider.</p>
+ <button class="full-width" type="submit">Create account</button><button id="open-sign-in" class="link-button" type="button">Back to sign in</button></form>
+ <form id="account-verify" class="hidden"><h2 id="account-verify-heading" tabindex="-1">Verify your email</h2><p class="intro">Enter the code sent to your email.</p>
+ <label for="verify-email">Email</label><input id="verify-email" type="email" autocomplete="email" required>
+ <label for="verify-code">Verification code</label><input id="verify-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+ <button class="full-width" type="submit">Verify email</button><button id="resend-code" class="secondary full-width" type="button">Resend code</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
+ <form id="account-recover" class="hidden"><h2 id="account-recover-heading" tabindex="-1">Reset your password</h2><p class="intro">We’ll send recovery instructions if an account exists.</p>
+ <label for="recovery-email">Email</label><input id="recovery-email" type="email" autocomplete="email" required>
+ <button class="full-width" type="submit">Send recovery instructions</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
+ <form id="account-reset" class="hidden"><h2 id="account-reset-heading" tabindex="-1">Choose a new password</h2>
+ <label for="reset-email">Email</label><input id="reset-email" type="email" autocomplete="email" required>
+ <label for="reset-code">Recovery code</label><input id="reset-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+ <label for="reset-password">New password</label><input id="reset-password" type="password" autocomplete="new-password" minlength="8" required>
+ <button class="full-width" type="submit">Update password</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
+ <button id="account-sign-out" class="secondary full-width hidden" type="button">Sign out</button>
+</section>
 <div id="save-notice" class="save-notice"><p id="save-status" class="save-message" role="status" tabindex="-1"></p><button id="view-saved-report" class="secondary hidden" type="button">View report <span aria-hidden="true">→</span></button></div>
 <section id="check-view" aria-label="Check an email">
 <section id="selection-instructions" class="panel" aria-labelledby="scan-heading">
@@ -20,9 +49,9 @@
 <section id="result-state" class="hidden" aria-live="polite">
  <div class="panel verdict-panel"><p class="eyebrow">YOUR RESULT</p><h2 id="classification" tabindex="-1"></h2><p id="assessment"></p><p id="coverage" class="field-help"></p><h3 class="action-label">Recommended next step</h3><p id="next-action" class="next-action"></p><div class="observations"><h3>What stood out</h3><ul id="evidence"></ul><details id="more-observations" class="inline-details hidden"><summary>More observations</summary><ul id="additional-evidence"></ul></details></div><p class="field-help">These are wording clues, not proof. A text check cannot verify the sender, hidden links, or attachments.</p></div>
  <div class="panel"><h2>More ways to verify</h2><ul id="recommendations" class="advice-list"></ul><details class="inline-details"><summary>What this check can’t tell you</summary><ul id="limitations"></ul></details></div>
- <div class="panel save-panel"><p class="eyebrow">KEEP A RECORD</p><h2>Save this report</h2><p id="report-save-state" class="unsaved-warning" role="status">Not saved yet. This result has no confirmed copy in Saved reports.</p><p class="intro">Saving uploads the <strong>original email text</strong> to shared demo history. Only save text you’re allowed to share.</p>
+ <div class="panel save-panel"><p class="eyebrow">KEEP A RECORD</p><h2>Save this report</h2><p id="report-save-state" class="unsaved-warning" role="status">Not saved yet. This result has no confirmed copy in Saved reports.</p><p class="intro">Personal report saving requires sign-in and uploads the <strong>original email text</strong>. Account saving is not connected yet; local scanning remains available.</p>
  <label for="report-subject">Report title <span class="muted">(optional)</span></label><input id="report-subject" maxlength="320" placeholder="e.g. Account verification email">
- <label class="consent"><input id="save-consent" type="checkbox"><span>I agree to upload this email text to shared history.</span></label>
+ <label class="consent"><input id="save-consent" type="checkbox"><span>I agree to upload this email text to save a report.</span></label>
  <button id="save-report" class="full-width" type="button">Save report</button></div>
 </section>
 <button id="clear-button" class="secondary full-width" type="button">Clear local scan</button>
@@ -37,12 +66,14 @@
 </details>
 </section>
 <section id="reports-view" class="hidden" aria-label="Saved reports">
+<section id="reports-account-gate" class="panel"><p class="eyebrow">PERSONAL REPORTS</p><h2>Your reports, in one place</h2><p class="intro">Sign in to view and save personal reports. You can still check email locally without an account.</p><button id="reports-sign-in" class="full-width" type="button">Sign in to view reports</button></section>
+<div id="personal-reports" class="hidden">
     <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
     <div id="reports-list-view">
     <section class="panel history-panel" aria-labelledby="history-heading">
       <p class="eyebrow">REPORT LIBRARY</p><div class="reports-heading"><h2 id="history-heading" tabindex="-1">Saved reports</h2><button id="load-history" class="secondary compact-button" type="button" aria-label="Refresh saved reports">↻ Refresh</button></div>
       <p class="intro">Keep track of checks and your follow-up notes.</p>
-      <p class="shared-notice compact-notice"><strong>Shared demo history</strong> · Visible to the team. Save approved demo text only.</p>
+      <p class="shared-notice compact-notice"><strong>Account reports</strong> · Live account integration is pending. The demo preview uses synthetic records only.</p>
       <label class="search-label" for="report-search">Find a report</label><div class="report-search-control"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="report-search" type="search" placeholder="Search titles or summaries" autocomplete="off" aria-controls="history-list" aria-describedby="report-count"><button id="clear-report-search" class="search-clear hidden" type="button" aria-label="Clear report search">×</button></div>
       <p id="report-count" class="report-count" role="status">Load your saved reports to get started.</p>
       <p id="loading" class="hidden" role="status">Loading reports…</p>
@@ -52,7 +83,7 @@
     </section>
     <details id="server-create" class="panel" aria-labelledby="create-heading">
       <summary id="create-heading">Analyze and save on the server</summary>
-      <p class="field-help">Alternative to a local check: this uploads your text immediately to the team’s API and shared demo history.</p>
+      <p class="field-help">Alternative to a local check: this sends your text for server analysis and saves the result. Live account integration is pending.</p>
       <form id="create-form">
         <label for="create-subject">Subject <span class="muted">(optional)</span></label>
         <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
@@ -95,6 +126,7 @@
         </div>
       </form>
     </section>
+</div>
 </section>
 <footer><p>A second opinion, not a safety guarantee.</p><p>Built with Llama · Local analysis</p></footer>
 </main><script type="module" src="popup.js"></script></body></html>

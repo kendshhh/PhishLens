@@ -194,6 +194,9 @@ def package(api, sha, number, config, output):
     if local_scanner:
         for asset in LOCAL_SCANNER_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
+    if b"./js/account-popup.js" in files["popup.js"]:
+        for asset in ("js/account-popup.js", "js/account-session.js", "js/account-ui.js"):
+            files[asset] = read_extension_asset(api, sha, asset)
 
     origin = config["staging_origin"]
     files["js/config.js"] = ("export const API_BASE_URL = " + json.dumps(origin) + ";\n").encode()
@@ -476,5 +479,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

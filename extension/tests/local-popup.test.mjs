@@ -140,7 +140,7 @@ test('save requires explicit consent and blocks incompatible service without sen
   });
   await dom.get('save-report').click(); assert.equal(calls.length, 0);
   assert.match(dom.get('save-status').textContent, /Report not saved\. To save it, check/);
-  assert.match(dom.get('save-status').textContent, /visible to the team/);
+  assert.match(dom.get('save-status').textContent, /agree to upload this email text/);
   assert.equal(dom.get('save-status').role, 'alert');
   assert.equal(dom.get('save-status').focused, true);
   dom.get('save-consent').checked = true; await dom.get('save-report').click();
