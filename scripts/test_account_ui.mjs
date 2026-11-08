@@ -26,9 +26,21 @@ try {
     externalRequests.push(route.request().url()); return route.abort();
   });
   const page = await context.newPage();
+  page.setDefaultTimeout(5000);
   page.on('pageerror', error => errors.push(error.message));
   await mkdir('output/account-ui', { recursive: true });
   await page.goto(origin);
+  async function assertAccountHeadingVisible(id) {
+    const position = await page.locator('#' + id).evaluate(heading => {
+      const nav = document.querySelector('.view-nav').getBoundingClientRect();
+      const rect = heading.getBoundingClientRect();
+      const point = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { top: rect.top, bottom: rect.bottom, navBottom: nav.bottom,
+        viewport: innerHeight, uncovered: point === heading || heading.contains(point) };
+    });
+    assert.ok(position.top >= position.navBottom, `${id} overlaps sticky navigation: ${JSON.stringify(position)}`);
+    assert.ok(position.bottom <= position.viewport && position.uncovered, `${id} is not fully visible`);
+  }
   await page.getByRole('button', { name: 'Saved reports', exact: true }).click();
   await page.locator('#reports-account-gate').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#personal-reports').isVisible(), false);
@@ -36,11 +48,25 @@ try {
   await page.getByRole('heading', { name: 'Highlight. Right-click. Check.', exact: true }).waitFor();
   checks.push('guest report gate and right-click-first local scanning instructions');
   await page.getByRole('button', { name: 'Create an account', exact: true }).click();
+  await assertAccountHeadingVisible('account-sign-up-heading');
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('<img src=x> Demo');
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill('casey@example.test');
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('Demo-only-123!');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await page.getByRole('heading', { name: 'Verify your email', exact: true }).waitFor();
+  await assertAccountHeadingVisible('account-verify-heading');
+  await page.getByRole('button', { name: 'Close account', exact: true }).click();
+  await page.locator('#show-account').click();
+  await assertAccountHeadingVisible('account-sign-in-heading');
+  await page.locator('#account-email').fill('casey@example.test');
+  await page.locator('#account-password').fill('Demo-only-123!');
+  await page.locator('#account-sign-in').getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('alert').getByText('Verify your email before signing in.').waitFor();
+  await page.locator('#open-verify').click();
+  await assertAccountHeadingVisible('account-verify-heading');
+  assert.equal(await page.locator('#verify-email').inputValue(), 'casey@example.test');
+  await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
+  await page.locator('#open-verify').click();
   await page.getByRole('button', { name: 'Resend code', exact: true }).click();
   await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
@@ -49,7 +75,7 @@ try {
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await page.getByText('Email verified. You are signed in.', { exact: true }).waitFor();
   assert.equal(await page.locator('#signup-password').inputValue(), '');
-  checks.push('signup, OTP resend, invalid code, valid code, cleared password fields');
+  checks.push('signup, blocked unverified login, reopened verification, OTP resend/retry and cleared password fields');
   await page.getByRole('button', { name: 'Saved reports', exact: true }).click();
   await page.locator('#history-list li').waitFor();
   assert.match(await page.locator('#history-list').textContent(), /<img src=x> Demo/);
@@ -72,12 +98,17 @@ try {
   checks.push('sign-out removes old reports; switched account sees only its synthetic reports');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.getByRole('button', { name: 'Forgot password?', exact: true }).click();
+  await assertAccountHeadingVisible('account-recover-heading');
+  await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Forgot password?', exact: true }).click();
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill('bea@example.test');
   await page.getByRole('button', { name: 'Send recovery instructions', exact: true }).click();
+  await assertAccountHeadingVisible('account-reset-heading');
   await page.getByRole('textbox', { name: 'Recovery code', exact: true }).fill('123456');
   await page.getByRole('textbox', { name: 'New password', exact: true }).fill('Different-demo-123!');
   await page.getByRole('button', { name: 'Update password', exact: true }).click();
   await page.getByText('Password updated. Sign in with your new password.', { exact: true }).waitFor();
+  await assertAccountHeadingVisible('account-sign-in-heading');
   await page.locator('#account-email').fill('bea@example.test');
   await page.locator('#account-password').fill('Different-demo-123!');
   await page.locator('#account-sign-in').getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -93,6 +124,21 @@ try {
   assert.equal(await page.locator('#personal-reports').isVisible(), false);
   assert.equal(await page.locator('#history-list').textContent(), '');
   checks.push('expired restored session shows a clear message and no report data');
+  await assertAccountHeadingVisible('account-sign-in-heading');
+  for (const [width, height] of [[380, 600], [320, 500]]) {
+    await page.setViewportSize({ width, height });
+    for (const [button, heading] of [
+      ['#open-sign-up', 'account-sign-up-heading'],
+      ['#open-verify', 'account-verify-heading'],
+      ['#open-recover', 'account-recover-heading']
+    ]) {
+      await page.locator('#close-account').click();
+      await page.locator('#show-account').click();
+      await page.locator(button).click();
+      await assertAccountHeadingVisible(heading);
+    }
+  }
+  checks.push('focused account headings remain below sticky navigation at 380px and 320px widths');
   await page.screenshot({ path: 'output/account-ui/account-preview.png', fullPage: true });
   assert.deepEqual(errors, []); assert.deepEqual(externalRequests, []);
   await writeFile('output/account-ui/results.json', JSON.stringify({ scope: 'local mocked accounts, no live auth', browser: browser.version(), checks, errors, externalRequests }, null, 2) + '\n');

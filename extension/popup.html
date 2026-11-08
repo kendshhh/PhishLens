@@ -14,7 +14,7 @@
  <form id="account-sign-in"><h2 id="account-sign-in-heading" tabindex="-1">Welcome back</h2><p class="intro">Sign in for your personal saved reports. Local scanning works without an account.</p>
  <label for="account-email">Email</label><input id="account-email" type="email" autocomplete="username" required maxlength="254">
  <label for="account-password">Password</label><input id="account-password" type="password" autocomplete="current-password" required>
- <button class="full-width" type="submit">Sign in</button><div class="actions"><button id="open-sign-up" class="link-button" type="button">Create an account</button><button id="open-recover" class="link-button" type="button">Forgot password?</button></div></form>
+ <button class="full-width" type="submit">Sign in</button><div class="actions"><button id="open-sign-up" class="link-button" type="button">Create an account</button><button id="open-recover" class="link-button" type="button">Forgot password?</button><button id="open-verify" class="link-button" type="button">Verify email</button></div></form>
  <form id="account-sign-up" class="hidden"><h2 id="account-sign-up-heading" tabindex="-1">Create your account</h2>
  <label for="signup-name">Name</label><input id="signup-name" autocomplete="name" required maxlength="100">
  <label for="signup-email">Email</label><input id="signup-email" type="email" autocomplete="email" required maxlength="254">
@@ -23,15 +23,15 @@
  <form id="account-verify" class="hidden"><h2 id="account-verify-heading" tabindex="-1">Verify your email</h2><p class="intro">Enter the code sent to your email.</p>
  <label for="verify-email">Email</label><input id="verify-email" type="email" autocomplete="email" required>
  <label for="verify-code">Verification code</label><input id="verify-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
- <button class="full-width" type="submit">Verify email</button><button id="resend-code" class="secondary full-width" type="button">Resend code</button></form>
+ <button class="full-width" type="submit">Verify email</button><button id="resend-code" class="secondary full-width" type="button">Resend code</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
  <form id="account-recover" class="hidden"><h2 id="account-recover-heading" tabindex="-1">Reset your password</h2><p class="intro">We’ll send recovery instructions if an account exists.</p>
  <label for="recovery-email">Email</label><input id="recovery-email" type="email" autocomplete="email" required>
- <button class="full-width" type="submit">Send recovery instructions</button></form>
+ <button class="full-width" type="submit">Send recovery instructions</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
  <form id="account-reset" class="hidden"><h2 id="account-reset-heading" tabindex="-1">Choose a new password</h2>
  <label for="reset-email">Email</label><input id="reset-email" type="email" autocomplete="email" required>
  <label for="reset-code">Recovery code</label><input id="reset-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
  <label for="reset-password">New password</label><input id="reset-password" type="password" autocomplete="new-password" minlength="8" required>
- <button class="full-width" type="submit">Update password</button></form>
+ <button class="full-width" type="submit">Update password</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
  <button id="account-sign-out" class="secondary full-width hidden" type="button">Sign out</button>
 </section>
 <div id="save-notice" class="save-notice"><p id="save-status" class="save-message" role="status" tabindex="-1"></p><button id="view-saved-report" class="secondary hidden" type="button">View report <span aria-hidden="true">→</span></button></div>

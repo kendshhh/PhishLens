@@ -9,9 +9,20 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   }
   function screen(name, focus = true) {
     for (const item of screens) visible('account-' + item, item === name);
-    if (focus && name) $('account-' + name + '-heading').focus();
+    if (focus && name) {
+      const heading = $('account-' + name + '-heading');
+      heading.focus();
+      heading.scrollIntoView({ block: 'start' });
+    }
   }
-  for (const name of screens) $('open-' + name)?.addEventListener('click', () => { message(''); screen(name); });
+  for (const name of screens) $('open-' + name)?.addEventListener('click', () => {
+    message('');
+    if (name === 'verify' && $('account-email').value.trim()) $('verify-email').value = $('account-email').value.trim();
+    screen(name);
+  });
+  for (const button of $('account-panel').querySelectorAll('[data-account-back]')) {
+    button.addEventListener('click', () => { message(''); screen('sign-in'); });
+  }
   $('show-account').addEventListener('click', () => {
     visible('account-panel', true);
     screen(accounts.state.status === 'signed-in' ? null : 'sign-in');
