@@ -102,6 +102,15 @@ are recorded separately, while unproven acceptance stays open.
   `/health`, or `/ready` as JSON. This independently corroborates the current
   endpoint failures; it is not one of the four branch-protection required
   contexts that were required before the visibility change.
+- GitHub Actions ran on the audit PR head `a7731560b9ff51b6d29132632cbd078872d05bc2`:
+  [`CI` run 42431667548](https://github.com/kendshhh/PhishLens/actions/runs/42431667548)
+  has passing backend and extension checks, with staging integration still in
+  progress at the latest check; [`Workflow lint` run 42431667663](https://github.com/kendshhh/PhishLens/actions/runs/42431667663)
+  passed. [`Dependency review` run 42431667459](https://github.com/kendshhh/PhishLens/actions/runs/42431667459)
+  failed because GitHub says the action is unsupported unless the dependency
+  graph and Advanced Security are enabled. This is a CI/security capability
+  gap after the privacy change, not a dependency finding. These checks belong to
+  the documentation PR and do not verify the deployed application.
 - Neon reports project `patient-bird-25428852` on the `free_v3` plan. An attempt
   to protect the production branch was rejected with HTTP 422 because the plan
   has no remaining protected-branch allowance. No branch setting changed, and
@@ -172,5 +181,6 @@ are recorded separately, while unproven acceptance stays open.
   [#153](https://github.com/kendshhh/PhishLens/issues/153#issuecomment-6714927102),
   [#148](https://github.com/kendshhh/PhishLens/issues/148#issuecomment-6714927283).
   All four remain open because their acceptance criteria are not yet met.
-- No tests were run in this audit pass.
+- No local tests were run during this audit. GitHub Actions ran automatically
+  for the audit PR; their observed status is recorded above.
 
