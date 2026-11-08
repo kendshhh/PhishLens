@@ -36,6 +36,7 @@ for asset in (
     "js/account-session.js",
     "js/account-ui.js",
     "js/account-popup.js",
+    "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js", "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
     "js/config.js",
     "js/api.js",
     "js/history.js",

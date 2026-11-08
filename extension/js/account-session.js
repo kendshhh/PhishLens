@@ -45,6 +45,27 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     try { return await accept(await adapter[method](input), version); }
     catch (error) { if (version === revision) publish('signed-out'); throw error; }
   }
+  async function refresh() {
+    const version = revision;
+    if (!session) return;
+    try {
+      const next = await adapter.restore();
+      if (disposed || version !== revision) return;
+      if (!next || next.user?.id !== session.user.id) {
+        await clear('expired', 'Your account changed or signed out. Sign in again.');
+        return;
+      }
+      if (next.user.emailVerified !== true || !Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
+        await clear('expired', 'Your session expired. Sign in again.'); return;
+      }
+      session = next;
+      cancel(timer);
+      timer = schedule(() => { void clear('expired', 'Your session expired. Sign in again.').catch(() => {}); },
+        Math.min(next.expiresAt - now(), 2147483647));
+    } catch {
+      if (version === revision) await clear('expired', 'Your session could not be checked. Sign in again.');
+    }
+  }
   const ready = (async () => {
     const version = revision;
     try { await accept(await adapter.restore(), version); }
@@ -71,7 +92,7 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     };
   }
   return {
-    ready, client: guarded, get state() { return current; },
+    ready, refresh, client: guarded, get state() { return current; },
     subscribe(listener) { listeners.add(listener); listener(current); return () => listeners.delete(listener); },
     signIn: input => authenticate('signIn', input),
     verifyEmail: input => authenticate('verifyEmail', input),

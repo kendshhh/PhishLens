@@ -19,5 +19,15 @@ export function initializeAccountPopup({ documentImpl = document, chromeImpl = g
   popup = initializePopup({ documentImpl, chromeImpl, fetchImpl, clientImpl: accounts.client, reportAccessReady: accounts.ready, canAccessReports: () => accounts.state.status === 'signed-in' });
   accounts.subscribe(() => popup.updateAccountAccess());
   const ui = initializeAccountUI(accounts, documentImpl, { preview });
-  return { accounts, popup, dispose() { accounts.dispose(); ui.dispose(); } };
+  const refresh = () => { void accounts.refresh().catch(() => {}); };
+  const windowImpl = documentImpl.defaultView;
+  let refreshTimer;
+  if (typeof adapter.getAccessToken === 'function') {
+    windowImpl?.addEventListener('focus', refresh);
+    refreshTimer = setInterval(refresh, 60000);
+  }
+  return { accounts, popup, dispose() {
+    clearInterval(refreshTimer); windowImpl?.removeEventListener('focus', refresh);
+    accounts.dispose(); ui.dispose();
+  } };
 }

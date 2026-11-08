@@ -64,6 +64,9 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   submit('account-verify', async () => {
     if (await accounts.verifyEmail({ email: $('verify-email').value.trim(), code: $('verify-code').value.trim() })) {
       screen(null); message('Email verified. You are signed in.');
+    } else {
+      $('account-email').value = $('verify-email').value.trim();
+      screen('sign-in'); message('Email verified. Sign in with your email and password.');
     }
   });
   $('resend-code').addEventListener('click', () => {

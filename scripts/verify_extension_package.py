@@ -10,6 +10,7 @@ from zipfile import BadZipFile, ZipFile
 ASSETS = {
     "manifest.json", "popup.html", "css/popup.css", "js/api.js", "js/config.js",
     "js/history.js", "js/popup.js", "js/account-session.js", "js/account-ui.js", "js/account-popup.js",
+    "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js", "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
     "background.js", "popup.js", "popup.css",
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
     "ai/local-analyzer.mjs", "ai/core.mjs", "ai/observations.mjs",
