@@ -29,7 +29,7 @@ const evidence = {
   source_commit: sourceCommit ?? "unknown",
   tested_commit: testedCommit ?? "unknown",
   environment: "isolated synthetic browser",
-  scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
+  scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. A test-only verified mock session is injected into the disposable copy; this does not verify live authentication. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
   tests: [],
   result: "failed",
 };
@@ -224,6 +224,18 @@ manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
 (target / "js" / "config.js").write_text(
     "export const API_BASE_URL = " + json.dumps(origin) + ";\n", encoding="utf-8"
 )
+# Test-only session and client for this disposable synthetic API. No live auth is claimed.
+(target / "popup.js").write_text("""
+import { initializeAccountPopup } from './js/account-popup.js';
+import { createAnalysisClient } from './js/api.js';
+import { API_BASE_URL } from './js/config.js';
+import { MODEL_SHA256 } from './ai/local-analyzer.mjs';
+initializeAccountPopup({
+  adapter: { async restore() { return { user: { id: 'browser-fixture', name: 'Synthetic account',
+    email: 'browser@example.test', emailVerified: true }, expiresAt: Date.now() + 3600000 }; } },
+  createClient() { return createAnalysisClient(API_BASE_URL, fetch, { requiredModel: MODEL_SHA256 }); }
+});
+""", encoding="utf-8")
 worker_path = target / "background.js"
 worker = worker_path.read_text(encoding="utf-8")
 worker = worker.replace("chrome.contextMenus.onClicked.addListener(",
@@ -246,8 +258,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 """
 worker_path.write_text(worker, encoding="utf-8")
 `;
-  const python = process.platform === "win32" ? "py" : (process.env.PYTHON ?? "python3");
-  const pythonArgs = process.platform === "win32" ? ["-3.12"] : [];
+  const python = process.env.PYTHON ?? (process.platform === "win32" ? "py" : "python3");
+  const pythonArgs = process.platform === "win32" && !process.env.PYTHON ? ["-3.12"] : [];
   execFileSync(python, [...pythonArgs, "-c", prepare, archivePath, destination, apiOrigin, evidencePath], { stdio: "inherit" });
 }
 
@@ -346,6 +358,7 @@ async function run() {
     await page.locator("#empty-state").waitFor({ state: "visible" });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-check.png") });
+    await page.locator("#personal-reports:not(.hidden)").waitFor({ state: "attached" });
     await page.locator("#show-reports").click();
     await page.locator("#load-history").click();
     await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();

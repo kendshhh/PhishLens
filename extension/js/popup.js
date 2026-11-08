@@ -45,6 +45,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     clearSearch: $("clear-report-search"), resetSearch: $("reset-report-search")
   };
   let records = [];
+  let accountVersion = 0;
   let selected = null;
   let busy = false;
   let detailRequest = 0;
@@ -289,45 +290,54 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       return;
     }
     invalidatePendingDetail();
+    const operationVersion = accountVersion;
     setBusy(true);
     let created;
     try {
       created = await client.createAnalysis(input);
+      if (operationVersion !== accountVersion) return;
       records = [created, ...records.filter(record => record.id !== created.id)];
       renderList();
       ui.subject.value = "";
       ui.body.value = "";
       const refreshed = await refresh();
+      if (operationVersion !== accountVersion) return;
       if (refreshed) setStatus("Analysis saved successfully.", "success");
     } catch (error) {
+      if (operationVersion !== accountVersion) return;
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned a malformed result. Your input is still here."
         : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
-    } finally { setBusy(false); }
+    } finally { if (operationVersion === accountVersion) setBusy(false); }
     if (created) await loadDetail(created.id, { announce: false, focus: true });
   });
 
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    const operationVersion = accountVersion;
     setBusy(true);
     try {
-      selected = await client.updateAnalysis(selected.id, {
+      const updated = await client.updateAnalysis(selected.id, {
         notes: ui.notes.value.trim() || null,
         feedback: ui.feedback.value === 'none' && selected.feedback === null ? null : ui.feedback.value
       });
+      if (operationVersion !== accountVersion) return;
+      selected = updated;
       show(ui.editForm, false);
       records = records.map(record => record.id === selected.id ? selected : record);
       renderList();
       renderDetail(selected);
       editTrigger.focus();
       const refreshed = await refresh();
+      if (operationVersion !== accountVersion) return;
       if (refreshed) setStatus("Changes saved successfully.", "success");
     } catch (error) {
+      if (operationVersion !== accountVersion) return;
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned a malformed result. Your edits are still here."
         : `Could not save changes: ${error.message}. Your edits are still here.`, "error");
-    } finally { setBusy(false); }
+    } finally { if (operationVersion === accountVersion) setBusy(false); }
   });
   ui.cancelEdit.addEventListener("click", () => {
     show(ui.editForm, false);
@@ -340,11 +350,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    const operationVersion = accountVersion;
     setBusy(true);
     try {
       const deletedId = selected.id;
       await client.deleteAnalysis(deletedId);
+      if (operationVersion !== accountVersion) return;
       await onDeleted(deletedId);
+      if (operationVersion !== accountVersion) return;
       records = records.filter(record => record.id !== deletedId);
       renderList();
       selected = null;
@@ -353,11 +366,13 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       show(ui.deleteConfirm, false);
       show(ui.editForm, false);
       const refreshed = await refresh();
+      if (operationVersion !== accountVersion) return;
       if (refreshed) setStatus("Report deleted.", "success");
       ui.historyHeading.focus();
     } catch (error) {
+      if (operationVersion !== accountVersion) return;
       setStatus(`Could not delete analysis: ${error.message}`, "error");
-    } finally { setBusy(false); }
+    } finally { if (operationVersion === accountVersion) setBusy(false); }
   });
 
   function acceptSavedReport(outcome, { reveal = true } = {}) {
@@ -373,7 +388,19 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     show(ui.deleteConfirm, false);
   }
 
-  return { refresh, loadDetail, acceptSavedReport, showLibrary,
+  function reset() {
+    ++accountVersion; ++detailRequest; ++listRequest;
+    records = []; selected = null;
+    ui.list.replaceChildren(); ui.detailContent.replaceChildren();
+    ui.detailHeading.textContent = 'Report details'; ui.deleteSubject.textContent = '';
+    ui.count.textContent = ''; ui.modeWarning.textContent = ''; ui.correction.open = false;
+    for (const input of [ui.subject, ui.body, ui.notes, ui.search]) input.value = '';
+    ui.feedback.value = 'none';
+    for (const panel of [ui.detail, ui.editForm, ui.deleteConfirm, ui.loading, ui.empty, ui.noMatches, ui.count]) show(panel, false);
+    show(ui.listView, true);
+    setStatus(''); setBusy(false);
+  }
+  return { refresh, loadDetail, acceptSavedReport, showLibrary, reset,
     openSavedReport(id) {
       if (selected?.id === id) { revealDetail(); ui.detailHeading.focus(); return; }
       return loadDetail(id);
@@ -385,10 +412,10 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
 
 export function initializePopup({ documentImpl = document, chromeImpl = globalThis.chrome,
-    fetchImpl = fetch } = {}) {
+    fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve() } = {}) {
     const $ = id => documentImpl.getElementById(id);
-    const client = createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
-    let state, stateGeneration = 0;
+    const client = clientImpl || createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
+    let state, stateGeneration = 0, accountEpoch = 0;
     let savedReport = null;
     let reportBusy = false;
     let reportSaveState = 'unsaved';
@@ -420,7 +447,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const text = (id, value) => { $(id).textContent = value; };
     function updateSaveControls() {
         const alreadySaved = Boolean(state?.scanId && savedReport?.scanId === state.scanId);
-        for (const id of ['save-report', 'report-subject', 'save-consent']) $(id).disabled = reportBusy || alreadySaved;
+        for (const id of ['save-report', 'report-subject', 'save-consent']) $(id).disabled = reportBusy || alreadySaved || !canAccessReports();
         $('view-saved-report').disabled = reportBusy;
         show('report-save-state', !alreadySaved);
         text('report-save-state', reportSaveState === 'unknown'
@@ -612,12 +639,14 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     });
     $('save-report').addEventListener('click', async () => {
         const snapshot = state;
+        const saveEpoch = accountEpoch;
+        if (!canAccessReports()) { text('save-status', 'Sign in to save a personal report. Your local scan stays on this device.'); return; }
         if (snapshot?.status !== 'success' || !snapshot.result?.valid) return;
         if (savedReport?.scanId === snapshot.scanId) return;
         if (!$('save-consent').checked) {
             $('save-status').setAttribute('data-kind', 'error');
             $('save-status').setAttribute('role', 'alert');
-            text('save-status', 'Report not saved. To save it, check “I agree to upload this email text to shared history,” then select Save report again. The uploaded text will be visible to the team. You can leave it unchecked to keep this result on your device.');
+            text('save-status', 'Report not saved. To save it, check the consent box to agree to upload this email text, then select Save report again. You can leave it unchecked to keep this result on your device.');
             $('save-status').focus();
             return;
         }
@@ -638,6 +667,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         let previousSaveUnconfirmed = false;
         try {
             const stored = await chromeImpl.storage.session.get('phishlensReportAttempt');
+            if (saveEpoch !== accountEpoch) return;
             let attempt = stored.phishlensReportAttempt;
             if (attempt?.scanId !== snapshot.scanId || attempt?.subject !== input.subject) {
                 attempt = { scanId: snapshot.scanId, subject: input.subject, key: globalThis.crypto.randomUUID(), submitted: false };
@@ -656,11 +686,14 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
                 client, baseUrl: API_BASE_URL, modelSha: MODEL_SHA256, input,
                 idempotencyKey: attempt.key, fetchImpl,
                 async beforeCreate() {
+                    if (saveEpoch !== accountEpoch) throw new Error('The account changed before saving.');
                     attempt = { ...attempt, submitted: true };
                     await chromeImpl.storage.session.set({ phishlensReportAttempt: attempt });
+                    if (saveEpoch !== accountEpoch) throw new Error('The account changed before saving.');
                     requestMayHaveBeenSent = true;
                 }
             });
+            if (saveEpoch !== accountEpoch) return;
             let markerStored = true;
             try {
                 await chromeImpl.storage.session.set({ phishlensReportAttempt: { ...attempt, savedId: outcome.saved.id } });
@@ -674,6 +707,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             }
             controller.acceptSavedReport(outcome, { reveal: false });
         } catch (error) {
+            if (saveEpoch !== accountEpoch) return;
             if (state?.scanId === snapshot.scanId) {
                 $('save-status').setAttribute('data-kind', 'error');
                 $('save-status').setAttribute('role', 'alert');
@@ -686,7 +720,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
                 $('save-status').focus();
             }
         } finally {
-            controller.endSave();
+            if (saveEpoch === accountEpoch) controller.endSave();
             if (savedReport?.scanId === snapshot.scanId && state?.scanId === snapshot.scanId) $('view-saved-report').focus();
         }
     });
@@ -695,14 +729,14 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             ++stateGeneration; render(changes.veriqoAnalysis.newValue);
         }
     });
-    Promise.all([
-        chromeImpl.storage.session.get('veriqoAnalysis'),
-        chromeImpl.storage.session.get('phishlensReportAttempt').catch(() => ({}))
-    ]).then(([data, saved]) => {
-        if (stateGeneration === 0) {
-            render(data.veriqoAnalysis);
+    chromeImpl.storage.session.get('veriqoAnalysis').then(async data => {
+        if (stateGeneration === 0) render(data.veriqoAnalysis);
+        await reportAccessReady;
+        const markerEpoch = accountEpoch;
+        const saved = await chromeImpl.storage.session.get('phishlensReportAttempt').catch(() => ({}));
+        if (markerEpoch === accountEpoch) {
             const attempt = saved.phishlensReportAttempt;
-            if (state?.scanId && attempt?.scanId === state.scanId && typeof attempt.subject === 'string') {
+            if (canAccessReports() && state?.scanId && attempt?.scanId === state.scanId && typeof attempt.subject === 'string') {
                 $('report-subject').value = attempt.subject;
                 if (attempt.savedId) {
                     savedReport = { scanId: state.scanId, id: attempt.savedId };
@@ -721,5 +755,15 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     }).catch(() => {
         if (stateGeneration === 0) render({ status: 'error', error: 'Local state could not be read. Reload the extension.' });
     });
-    return { loadHistory: controller.refresh, render, openDetail: controller.loadDetail };
+    return { loadHistory: controller.refresh, render, openDetail: controller.loadDetail, updateAccountAccess: updateSaveControls,
+        resetReports() {
+            ++accountEpoch;
+            controller.reset();
+            savedReport = null; reportSaveState = 'unsaved';
+            show('view-saved-report', false);
+            text('save-status', '');
+            $('report-subject').value = ''; $('save-consent').checked = false;
+            updateSaveControls();
+        }
+    };
 }

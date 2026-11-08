@@ -9,7 +9,8 @@ from zipfile import BadZipFile, ZipFile
 
 ASSETS = {
     "manifest.json", "popup.html", "css/popup.css", "js/api.js", "js/config.js",
-    "js/history.js", "js/popup.js", "background.js", "popup.js", "popup.css",
+    "js/history.js", "js/popup.js", "js/account-session.js", "js/account-ui.js", "js/account-popup.js",
+    "background.js", "popup.js", "popup.css",
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
     "ai/local-analyzer.mjs", "ai/core.mjs", "ai/observations.mjs",
     "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md",

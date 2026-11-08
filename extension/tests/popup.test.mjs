@@ -42,6 +42,31 @@ function record(id, subject = "Example") {
 }
 const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
 
+test('account reset removes report details, notes and confirmation text', async () => {
+  const { ui, controller } = setup(createInMemoryAnalysisClient([record(id, 'Private demo report')]));
+  await controller.refresh(); await controller.loadDetail(id);
+  ui.get('edit-notes').value = 'Previous account note';
+  ui.get('delete-subject').textContent = 'Private demo report';
+  controller.reset();
+  assert.deepEqual(controller.records, []);
+  assert.equal(ui.get('history-list').children.length, 0);
+  assert.equal(ui.get('detail-content').children.length, 0);
+  assert.equal(ui.get('edit-notes').value, '');
+  assert.equal(ui.get('delete-subject').textContent, '');
+});
+
+test('account reset rejects a late create completion without repopulating the library', async () => {
+  let resolve;
+  const { ui, controller } = setup({ ...createInMemoryAnalysisClient(),
+    createAnalysis: () => new Promise(done => { resolve = done; }) });
+  ui.get('create-body').value = 'Synthetic previous account draft';
+  const pending = ui.get('create-form').fire('submit');
+  controller.reset(); resolve(record(id, 'Previous account result')); await pending;
+  assert.deepEqual(controller.records, []);
+  assert.equal(ui.get('history-list').children.length, 0);
+  assert.equal(ui.get('detail-panel').classList.contains('hidden'), true);
+});
+
 test("a local save completed over an open detail restores the report library", async () => {
   const previous = record(id, "Previous report");
   const saved = record("50d073a2-e810-401c-a848-a1d501843bc7", "New local report");
