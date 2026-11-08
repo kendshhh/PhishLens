@@ -42,6 +42,27 @@ function record(id, subject = "Example") {
 }
 const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
 
+test("a local save completed over an open detail restores the report library", async () => {
+  const previous = record(id, "Previous report");
+  const saved = record("50d073a2-e810-401c-a848-a1d501843bc7", "New local report");
+  const { ui, controller } = setup(createInMemoryAnalysisClient([previous]));
+  await controller.loadDetail(previous.id);
+  assert.equal(ui.get("reports-list-view").classList.contains("hidden"), true);
+  assert.equal(controller.beginSave(), true);
+  assert.equal(controller.showLibrary({ focus: false }), false);
+
+  controller.acceptSavedReport({ saved, detail: saved, history: [saved, previous] }, { reveal: false });
+  controller.endSave();
+
+  assert.equal(ui.get("reports-list-view").classList.contains("hidden"), false);
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("history-list").children.length, 2);
+  assert.equal(ui.get("history-list").children[0].children[0].textContent, "New local report");
+  await controller.openSavedReport(saved.id);
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), false);
+  assert.equal(ui.get("detail-heading").textContent, "New local report");
+});
+
  test("HTML provides associated labels, focusable CRUD controls, and a bounded popup", async () => {
   const html = await readFile(new URL("../popup.html", import.meta.url), "utf8");
   const css = await readFile(new URL("../css/popup.css", import.meta.url), "utf8");

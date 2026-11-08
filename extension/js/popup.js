@@ -141,7 +141,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     ui.notes.value = record.notes || "";
     ui.feedback.value = record.feedback || "none";
     if (reveal) revealDetail();
-    else show(ui.detail, false);
+    else { show(ui.detail, false); show(ui.listView, true); }
   }
 
   function renderList() {

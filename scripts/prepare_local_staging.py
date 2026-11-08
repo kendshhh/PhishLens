@@ -1,7 +1,7 @@
 """Refresh a local UI preview targeting staging; never a release acceptance build."""
 
-import hashlib
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -39,7 +39,11 @@ def main():
     if args.include_models:
         command.append('--include-models')
     subprocess.run(command, cwd=ROOT, check=True)
+    target_root = TARGET.resolve()
+    if not target_root.is_relative_to((ROOT / "output").resolve()):
+        raise ValueError("Preview directory escapes the output directory")
     with ZipFile(ROOT / "output/extension/PhishLens-Extension.zip") as archive:
+        expected_files = set(archive.namelist()) | {"local-preview.json"}
         for name in archive.namelist():
             relative = Path(name)
             if relative.is_absolute() or ".." in relative.parts or "\\" in name:
@@ -50,6 +54,13 @@ def main():
             destination.parent.mkdir(parents=True, exist_ok=True)
             write_changed(destination, archive.read(name))
 
+    # Refreshes must match the new package, including when model inclusion changes.
+    for existing in TARGET.rglob("*"):
+        if existing.is_file() and existing.relative_to(TARGET).as_posix() not in expected_files:
+            if not existing.resolve().is_relative_to(target_root):
+                raise ValueError("Stale preview path escapes its output directory")
+            existing.unlink()
+
     manifest_path = TARGET / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["name"] = "PhishLens Staging (Local UI)"
@@ -57,7 +68,7 @@ def main():
     manifest["host_permissions"] = [ORIGIN + "/*"]
     manifest.pop("optional_host_permissions", None)
     write_changed(manifest_path, (json.dumps(manifest, indent=2) + "\n").encode("utf-8"))
-    write_changed(TARGET / "js/config.js", f"export const API_BASE_URL = {json.dumps(ORIGIN)};\n".encode("utf-8"))
+    write_changed(TARGET / "js/config.js", f"export const API_BASE_URL = {json.dumps(ORIGIN)};\n".encode())
 
     popup_path = TARGET / "popup.html"
     popup = popup_path.read_text(encoding="utf-8")
