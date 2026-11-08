@@ -14,6 +14,20 @@ This point-in-time record supports issues [#129](https://github.com/kendshhh/Phi
 | Rollback compatibility and measured delivery | Render recorded the staging deploy of head `46a2b27` from 02:16:50Z to 02:18:05Z (about 75.5 seconds, one sample). The October 31 rollback measurement is available as a prior staging drill. No compatible rollback has been rehearsed for this candidate, and production recovery time is unknown. These samples do not establish a trend or optimization. | Kendra: [#143](https://github.com/kendshhh/PhishLens/issues/143) and [#153](https://github.com/kendshhh/PhishLens/issues/153). |
 | Real team records, public release URL, tag, and changelog | The repository has no GitHub release/tag for this final candidate. The API endpoint is public, but it is not a public extension install package. No current standup, retrospective, Q&A, attendance, or whole-team rehearsal records were supplied; none are reconstructed here. | Kendra: [#41](https://github.com/kendshhh/PhishLens/issues/41), [#148](https://github.com/kendshhh/PhishLens/issues/148), and [#153](https://github.com/kendshhh/PhishLens/issues/153). Team participants must provide records of events that actually occurred. |
 
+## Repository DevOps deliverables
+
+This second map covers the DevOps deliverables listed in the repository's final-deliverables inventory. It does not assert a course grade or replace the linked spreadsheet rubric, which was inaccessible through the connected tools.
+
+| DevOps deliverable | Evidence | Remaining limit |
+|---|---|---|
+| Pipeline configuration | `.github/workflows/` and the workflow changes in this PR; Backend, Extension, Staging integration, dependency audit, and workflow lint pass for the listed head. | Hosted staging for the current docs head awaits the required `inaki3023` approval. GitHub cannot enforce the main-branch rules while this private repo remains on its current account tier. |
+| Pipeline definition and diagram | `PIPELINE.md` documents the pipeline stages and diagram. | Reconcile the diagram with the final merged workflow after PR review. |
+| Pipeline metrics log | `docs/devops/metrics.md` records build/deploy observations and sample counts. This pass measured the staging head deploy at about 75.5 seconds (one sample). | Do not infer trend or speed improvement from one sample; production lead time/health is unverified. |
+| Optimization log | `docs/devops/optimizations.md` records the attempted optimization and before/after samples. | Existing samples do not establish an end-to-end pipeline speedup. |
+| Deploy and rollback runbook | `docs/devops/runbook.md` includes the October 31 staging rollback/restore: 200.753 seconds to restored Live and 233.408 seconds to independent verification. Current candidate migration preflight confirms revision `0003_saved_analysis_idempotency`. | The recorded drill predates this candidate. It establishes the staging procedure and same migration head, but no rollback of this exact candidate or production has been performed. |
+| Incident log and postmortem | `docs/devops/incidents.md` records the October 14 rollback/restoration drill, unknown cause, and follow-up. | No production incident is invented from current endpoint timeouts; production cause remains unidentified. |
+| Environment, release, and recovery controls | This report maps Render, Neon, GitHub environment gates, value-free `.env.example`, release SHA, and gaps. | No hard spending/provider quota guard was verified; no release tag exists; actual standups, retrospectives, and rehearsal records must come from participants. |
+
 ## Environment and control map
 
 | Layer | Verified configuration | Gap or limit |
