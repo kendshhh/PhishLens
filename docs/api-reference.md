@@ -148,6 +148,13 @@ Do not claim authenticated ownership or put database credentials into the extens
 
 ## Verification limits
 
+For an actual FastAPI-to-JavaScript error-contract replay without an external database or provider,
+activate the backend development environment and run `python -m scripts.verify_client_errors`.
+Node must be on PATH, or supplied through NODE_BINARY. This starts only a disposable loopback
+server, substitutes inference/persistence, and checks HTTP 409/422/500/502/503/504, safe messages,
+retained input/idempotency keys, explicit retry-key reuse and absence of automatic POST retries
+or detail/history refresh after failure. See [acceptance status](client-acceptance-status.md).
+
 The local client/HTTP tests and documented examples are preparation.
 October 31 API evidence on #103 is dated mock-mode evidence for its exact earlier SHA, not the
 current release. PR #103 is merged. The November 7 evidence audit records later TF-IDF staging
