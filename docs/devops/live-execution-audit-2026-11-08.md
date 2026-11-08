@@ -32,7 +32,9 @@ are recorded separately, while unproven acceptance stays open.
   protection page and the ruleset creation page say these rules will not be
   enforced for this private repository until it is moved to a Team or Enterprise
   organization account. No unenforced ruleset was saved. This is a current
-  release-gate gap; the existing protection was not retained by GitHub.
+  release-gate gap; the existing protection was not retained by GitHub. The
+  owner chose to keep the repository private and accept this temporary gap; no
+  organization move or visibility reversal was requested.
 - GitHub's release list is empty. No release or final tag is claimed.
 - PR #154 is merged. The current main commit is the source of truth; the local
   checkout is on `codex/devops-backlog-2026-10-28` at `a4ac24db` and contains
@@ -66,6 +68,11 @@ are recorded separately, while unproven acceptance stays open.
   for these paths during 00:10–00:28 or 00:28–00:40 UTC. The results leave
   application-level health/readiness and database connectivity **unverified**;
   they do not by themselves establish that either service is down.
+- At 00:50 UTC on November 8, one additional `/health` GET to each service timed
+  out after 30 seconds with no response bytes. Render recorded no corresponding
+  request or lifecycle event, and service metrics for 00:00–00:49 UTC were
+  empty. This confirms the probe failure from this client but does not identify
+  whether the cause is at the service, routing layer, or elsewhere.
 - Render service metadata reports the staging deployment `dep-dbnr0bs9v7es73dh7uig`
   as live at commit `1853ec90e432510e9709376c1586707d51f240e9`, from open PR #156.
   Its build and deploy succeeded at 23:12–23:13 UTC on November 7. Staging
@@ -111,9 +118,10 @@ are recorded separately, while unproven acceptance stays open.
 
 - **#133:** the GitHub staging reviewer gate is restored, but `main` branch
   protection is not currently enforceable while the repository remains private
-  on the current account. The owner must choose whether to move it to a Team or
-  Enterprise organization, keep it private with this gap, or change visibility.
-  Also complete environment/secret-scope and repository history/privacy checks,
+  on the current account. The owner chose to keep the repository private and
+  accept this temporary gap; enforced protection remains incomplete until it
+  is moved to a Team or Enterprise organization account. Also complete
+  environment/secret-scope and repository history/privacy checks,
   and document and verify enforceable cost/usage limits. Neon production-branch
   protection is separately plan-blocked unless the owner chooses another
   branch-protection/plan strategy.
@@ -148,7 +156,9 @@ are recorded separately, while unproven acceptance stays open.
   rules and rulesets will not be enforced for this private repository until it
   is moved to a Team or Enterprise organization account. No replacement rule
   was saved because GitHub explicitly marks it unenforceable here. The account
-  and visibility decision is pending the owner's direction on this tradeoff.
+  and visibility decision is settled: the owner chose to keep the repository
+  private and accept the temporary enforcement gap. No organization move or
+  visibility reversal was made.
 - Read Render service/deployment/event/metrics metadata and checked
   `/version`, `/health`, and `/ready` for both services. The checks timed out;
   no deploy or service setting changed.
