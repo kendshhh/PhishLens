@@ -1,12 +1,20 @@
-# Dependency audits on private repositories
+# Dependency audits while repository visibility change is pending
 
-The GitHub dependency-review action relies on GitHub's dependency graph and is
-supported for private repositories only when GitHub Advanced Security is
-licensed. In the current private PhishLens setup, the action fails before it
-can inspect dependency changes.
+As of 2026-11-08, GitHub reports PhishLens as public. The owner-approved
+change to private is paused for sudo reauthentication, so the repository should
+not be described as private until GitHub confirms the change. See
+[kendra-release-readiness-2026-11-08.md](kendra-release-readiness-2026-11-08.md)
+for the point-in-time status.
 
-The `.github/workflows/dependency-review.yml` workflow therefore runs two
-lockfile audits on every pull request and push to `main`:
+GitHub's dependency-review action uses the repository dependency graph. It can
+be used on public repositories; private repositories require GitHub Advanced
+Security licensing. The current workflow keeps that action opt-in through the
+`DEPENDENCY_REVIEW_ENABLED` Actions variable. A skipped job reflects that
+workflow setting; it does not mean the repository is currently private or that
+the dependencies have no vulnerabilities.
+
+The `.github/workflows/dependency-review.yml` workflow runs two lockfile
+audits for pull requests and pushes to `main`:
 
 - `npm audit --audit-level=high --package-lock-only` checks the complete npm
   lockfile and fails for high or critical findings.
@@ -23,9 +31,9 @@ The initial audit found `pyasn1==0.6.4` with CVEs `CVE-2026-119194`,
 and locks `pyasn1` at `0.6.5`, the fixed version reported by the audit. The
 updated lockfile audit must pass before the change is ready to merge.
 
-The GitHub dependency-review action remains available as an optional additional
-check. Set the repository Actions variable `DEPENDENCY_REVIEW_ENABLED` to the
-string `true` only after the private repository has an enabled dependency graph
-and GitHub Advanced Security license. When unset or set to `false`, that
-GHAS-only job is skipped and the lockfile audits still run. A skipped
-dependency-review job does not mean the dependencies have no vulnerabilities.
+To run the optional GitHub dependency-review job, set
+`DEPENDENCY_REVIEW_ENABLED` to the string `true` after confirming dependency
+graph access for the repository's current visibility. If the pending private
+visibility change completes, confirm GitHub Advanced Security licensing first.
+When the variable is unset or `false`, the job is skipped while the lockfile
+audits still run.
