@@ -101,6 +101,7 @@ async def persist_saved_analysis(
     mode: ProviderMode,
     deadline: AnalysisDeadline,
     idempotency_key: str | None = None,
+    owner_id=None,
 ) -> SavedAnalysisDetail:
     """Commit one validated record within the remaining operation budget."""
     deadline.inference_remaining()
@@ -121,8 +122,8 @@ async def persist_saved_analysis(
         async with saved_analysis_connection(deadline) as connection:
             deadline.operation_remaining()
             user_cursor = await connection.execute(
-                "SELECT id FROM users WHERE email = %s",
-                (DEMO_USER_EMAIL,),
+                "SELECT id FROM users WHERE id = %s" if owner_id is not None else "SELECT id FROM users WHERE email = %s",
+                (owner_id if owner_id is not None else DEMO_USER_EMAIL,),
             )
             user = await user_cursor.fetchone()
             if user is None:
@@ -177,14 +178,15 @@ async def find_idempotent_saved_analysis(
     idempotency_key: str,
     *,
     deadline: AnalysisDeadline,
+    owner_id=None,
 ) -> SavedAnalysisDetail | None:
     """Return the prior committed result for a matching key, if present."""
     try:
         async with saved_analysis_connection(deadline) as connection:
             deadline.operation_remaining()
             cursor = await connection.execute(
-                _SELECT_IDEMPOTENT_ANALYSIS_FOR_DEMO_USER,
-                (DEMO_USER_EMAIL, idempotency_key),
+                _SELECT_IDEMPOTENT_ANALYSIS if owner_id is not None else _SELECT_IDEMPOTENT_ANALYSIS_FOR_DEMO_USER,
+                (owner_id if owner_id is not None else DEMO_USER_EMAIL, idempotency_key),
             )
             row = await cursor.fetchone()
             if row is None:
