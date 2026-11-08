@@ -315,7 +315,7 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
-      queue: single
+      queue: max
     steps:
       - name: Check out workflow source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -572,8 +572,8 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
-      # Serialize staging and keep only the newest pending candidate.
-      queue: single
+      # Serialize hosted staging while preserving queued PR candidates.
+      queue: max
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
       STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
