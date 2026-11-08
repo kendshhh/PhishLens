@@ -7,7 +7,11 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     $('account-status').textContent = value;
     $('account-status').setAttribute('role', error ? 'alert' : 'status');
   }
+  function clearSecrets() {
+    for (const id of ['account-password', 'signup-password', 'reset-password', 'verify-code', 'reset-code']) $(id).value = '';
+  }
   function screen(name, focus = true) {
+    clearSecrets();
     for (const item of screens) visible('account-' + item, item === name);
     if (focus && name) {
       const heading = $('account-' + name + '-heading');
@@ -27,7 +31,7 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     visible('account-panel', true);
     screen(accounts.state.status === 'signed-in' ? null : 'sign-in');
   });
-  $('close-account').addEventListener('click', () => { visible('account-panel', false); $('show-account').focus(); });
+  $('close-account').addEventListener('click', () => { clearSecrets(); visible('account-panel', false); $('show-account').focus(); });
   $('reports-sign-in').addEventListener('click', () => { visible('account-panel', true); screen('sign-in'); });
   const controls = $('account-panel').querySelectorAll('button, input');
   async function run(action) {
@@ -40,7 +44,7 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     catch (error) { message(error.message || 'This request could not be completed. Try again.', true); }
     finally {
       for (const control of controls) control.disabled = false;
-      for (const id of ['account-password', 'signup-password', 'reset-password', 'verify-code', 'reset-code']) $(id).value = '';
+      clearSecrets();
       $('account-panel').setAttribute('aria-busy', 'false');
       busy = false;
     }
@@ -62,10 +66,13 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
       screen(null); message('Email verified. You are signed in.');
     }
   });
-  $('resend-code').addEventListener('click', () => run(async () => {
-    await accounts.resend({ email: $('verify-email').value.trim() });
-    message(preview ? 'Demo verification code: 123456. No email was sent.' : 'If eligible, a new verification code has been sent.');
-  }));
+  $('resend-code').addEventListener('click', () => {
+    if (!$('verify-email').reportValidity()) return;
+    return run(async () => {
+      await accounts.resend({ email: $('verify-email').value.trim() });
+      message(preview ? 'Demo verification code: 123456. No email was sent.' : 'If eligible, a new verification code has been sent.');
+    });
+  });
   submit('account-recover', async () => {
     await accounts.recover({ email: $('recovery-email').value.trim() });
     $('reset-email').value = $('recovery-email').value.trim();

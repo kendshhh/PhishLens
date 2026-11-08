@@ -26,6 +26,9 @@ http://127.0.0.1:8766/account-preview. Use fictional data only.
   unverified demo account cannot grant report access.
 - Account headings scroll below the sticky navigation when changing screens.
   Browser checks assert the heading is unobscured at 380px and 320px popup widths.
+- Closing or leaving a form clears password/OTP fields. Resend checks that the email
+  field is present and valid before invoking the adapter; email addresses remain
+  available when resuming verification.
 - Open Saved reports, sign out, and sign in as the other demo account. The old
   report list, details, notes, search, save marker and confirmation are cleared.
 - Reload the preview to restore its synthetic session. Demo sessions expire after

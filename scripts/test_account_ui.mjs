@@ -47,8 +47,17 @@ try {
   await page.getByRole('button', { name: 'Check email', exact: true }).click();
   await page.getByRole('heading', { name: 'Highlight. Right-click. Check.', exact: true }).waitFor();
   checks.push('guest report gate and right-click-first local scanning instructions');
+  await page.locator('#account-password').fill('Discarded-demo-password');
+  await page.locator('#close-account').click();
+  assert.equal(await page.locator('#account-password').inputValue(), '');
+  await page.locator('#show-account').click();
   await page.getByRole('button', { name: 'Create an account', exact: true }).click();
   await assertAccountHeadingVisible('account-sign-up-heading');
+  await page.locator('#signup-password').fill('Discarded-signup-password');
+  await page.locator('#open-sign-in').click();
+  assert.equal(await page.locator('#signup-password').inputValue(), '');
+  await page.getByRole('button', { name: 'Create an account', exact: true }).click();
+  checks.push('closing and leaving account forms clears unsubmitted secrets');
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('<img src=x> Demo');
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill('casey@example.test');
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('Demo-only-123!');
@@ -67,7 +76,19 @@ try {
   assert.equal(await page.locator('#verify-email').inputValue(), 'casey@example.test');
   await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
   await page.locator('#open-verify').click();
+  const resendStatus = await page.locator('#account-status').textContent();
+  for (const invalidEmail of ['', 'not-an-email']) {
+    await page.locator('#verify-email').fill(invalidEmail);
+    await page.getByRole('button', { name: 'Resend code', exact: true }).click();
+    assert.equal(await page.locator('#account-status').textContent(), resendStatus);
+    assert.equal(await page.locator('#verify-email').evaluate(input => input.validity.valid), false);
+  }
+  await page.locator('#verify-email').fill('casey@example.test');
   await page.getByRole('button', { name: 'Resend code', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
+  await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
+  assert.equal(await page.locator('#verify-code').inputValue(), '');
+  await page.locator('#open-verify').click();
   await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await page.getByRole('alert').getByText('The demo verification code is incorrect.').waitFor();
@@ -76,6 +97,7 @@ try {
   await page.getByText('Email verified. You are signed in.', { exact: true }).waitFor();
   assert.equal(await page.locator('#signup-password').inputValue(), '');
   checks.push('signup, blocked unverified login, reopened verification, OTP resend/retry and cleared password fields');
+  checks.push('resend rejects missing/malformed email before calling the account adapter');
   await page.getByRole('button', { name: 'Saved reports', exact: true }).click();
   await page.locator('#history-list li').waitFor();
   assert.match(await page.locator('#history-list').textContent(), /<img src=x> Demo/);
