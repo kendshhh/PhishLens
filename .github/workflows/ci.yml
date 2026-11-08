@@ -315,7 +315,7 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
-      queue: max
+      queue: single
     steps:
       - name: Check out workflow source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -498,8 +498,8 @@ jobs:
       - name: Test staging deployment guards
         run: python -m unittest discover -s scripts/tests -v
 
-  # Check before the protected environment so obsolete queued PR runs never ask
-  # for approval or enter the shared Render deployment queue.
+  # Check PR heads before staging so obsolete runs never enter the queue
+  # or deploy code that is no longer the PR head.
   hosted-staging-preflight:
     name: Hosted staging preflight
     if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
@@ -521,7 +521,7 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.12'
-      - name: Check PR head before requesting staging approval
+      - name: Check PR head before entering staging queue
         id: staging-preflight
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -551,7 +551,7 @@ jobs:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
                   reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
-                  summary.write(f'Staging skipped before approval: {reason} The latest PR run owns staging.\n')
+                  summary.write(f'Staging skipped before deployment: {reason} The latest PR run owns staging.\n')
               if skip_reason:
                   raise SystemExit(1)
           PY
@@ -572,8 +572,8 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
-      # Retain waiting deployments while keeping the shared staging service serialized.
-      queue: max
+      # Serialize staging and keep only the newest pending candidate.
+      queue: single
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
       STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
@@ -590,7 +590,7 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Recheck PR head after staging approval
+      - name: Recheck PR head immediately before deployment
         id: staging-final-preflight
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -615,12 +615,12 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'current={str(is_current).lower()}\n')
           if is_current:
-              print(f'PR #{number} is still at the approved head {expected}.')
+              print(f'PR #{number} is still at the expected head {expected}.')
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
                   reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
-                  summary.write(f'Staging skipped after approval: {reason} The latest PR run owns staging.\n')
+                  summary.write(f'Staging skipped before deployment: {reason} The latest PR run owns staging.\n')
               if skip_reason:
                   raise SystemExit(1)
           PY
