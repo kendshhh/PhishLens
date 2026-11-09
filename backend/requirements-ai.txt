@@ -8,7 +8,7 @@ anyio==4.15.1
     # via httpx2
 click==8.5.0
     # via huggingface-hub
-filelock==4.2.4
+filelock==4.2.9
     # via
     #   -r requirements-ai.in
     #   huggingface-hub
@@ -87,6 +87,5 @@ typer==0.27.3
     # via transformers
 typing-extensions==4.16.0
     # via
-    #   anyio
     #   huggingface-hub
     #   torch
