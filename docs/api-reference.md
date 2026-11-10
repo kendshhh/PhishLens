@@ -1,7 +1,7 @@
 # Saved-analysis API reference
 
 Supports API documentation and client resilience tasks #140 and #135.
-Source reviewed: 6ce3b5066c845dc70e7ad0c318cbba3c083ca041, November 7, 2026.
+Source rechecked: fa9a23fbb5d1d60c45d0fc06333c50415d04d57e, November 10, 2026.
 This is a source contract reference, not a live release sign-off.
 
 ## Client setup
@@ -156,6 +156,10 @@ retained input/idempotency keys, explicit retry-key reuse and absence of automat
 or detail/history refresh after failure. See [acceptance status](client-acceptance-status.md).
 
 The local client/HTTP tests and documented examples are preparation.
+On November 10 the six-status FastAPI/client replay passed against the source
+above, along with 81 focused client/HTTP tests and schema validation of all four
+JSON examples. Inference and database faults were controlled substitutes; no
+external record was written. See the acceptance status for remaining live checks.
 October 31 API evidence on #103 is dated mock-mode evidence for its exact earlier SHA, not the
 current release. PR #103 is merged. The November 7 evidence audit records later TF-IDF staging
 CRUD and separate synthetic browser coverage. Installed Chrome against the deployed backend, refresh/redeploy
