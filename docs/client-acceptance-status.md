@@ -1,5 +1,57 @@
 # Client acceptance status
 
+## Current reconciliation — November 10, 2026
+
+Main source checked: `fa9a23fbb5d1d60c45d0fc06333c50415d04d57e`.
+PR #163 is merged; Trixia approved its final head
+`1cc298791f041f6a554191c5a8750e0f300aa1c0`. The scoped gap audit in
+#128 is complete. It identifies the remaining acceptance work rather than
+claiming that work has passed.
+
+Fresh local verification of this main source:
+
+- `python -m scripts.verify_client_errors`: all six real FastAPI/client HTTP
+  status checks passed (409/422/500/502/503/504), with eight explicit POSTs,
+  no automatic retry or refresh after failure, and wrong-target handshake
+  rejection before POST. Database and provider failures were substitutes;
+  there were no external writes.
+- The API reference, client-session, CRUD, local HTTP and report-failure test
+  files passed: 81 tests, zero failures or skips.
+- The four synthetic JSON examples (create, patch, detail and list) validated
+  against this source's backend schemas.
+
+The current main routes still use the shared synthetic demo owner. Backend
+authentication (#157), account/adapter work (#156/#166) and combined
+integration (#168) are separate unmerged changes. A token supplier alone
+does not make shared-demo storage private. Live Auth must not be enabled
+before the Auth/database pairing and supported extension-origin behavior
+are confirmed.
+
+The independent account-startup fix is in #178, targeting #166's feature
+branch. It keeps local scanning usable when account configuration or SDK
+initialization fails, with a safe unavailable message and reports still gated.
+Its five synthetic browser scenarios, 273 extension tests, account/SDK browser
+checks, lint, validation, packaging and packaged-extension checks passed locally.
+The original entry point failed the new regression check. These results are
+separate from this main-source contract replay and do not prove live Auth.
+
+### Remaining acceptance, grouped without duplicate runs
+
+| Scope | Evidence still needed | Boundary / owner |
+|---|---|---|
+| Week 1: #7/#23 | Safe synthetic subject/result change, visible history change and restoration; missing native browser states and required owner sign-offs | Backend owner coordinates the record; frontend/client owners verify display and states |
+| Week 2: #44/#45 | Identified current package with connected create/view/edit/delete, reread/reopen and redacted Network evidence | Client/frontend owners after DevOps confirms the paired synthetic target; historical connected CRUD remains valid for its dated scope |
+| Week 3: #87/#98 | Same saved ID across create/detail/history; nonempty provider evidence and provenance retention; controlled real-backend failures | Client owner with backend/AI fault and model boundaries; reuse the final-candidate run where its steps match |
+| Week 4: #135/#140 | Accepted-candidate error behavior and documentation comparison | Client owner; backend/AI owners supply controlled faults, rather than manufacturing a successful live result |
+| Week 4: #145/#150 | Exact candidate replay, cleanup confirmed by reread, then reproducible deployed demonstration | DevOps identifies package/backend/model/target; client/frontend owners record actual outcomes |
+| Authentication | Real OTP/recovery, cookie/origin support, restoration/renewal/sign-out, account switching and two-user denial | Backend/Auth and frontend/client owners on the confirmed isolated pairing |
+
+Keep production release gate #153 open. No new shared staging write, live
+account, deployment, migration, permission change, native-Chrome pass, release
+or presentation is claimed by this reconciliation.
+
+## Historical audit — November 8, 2026
+
 Audited November 8, 2026. Source: main ec234fe165900bce4d691d79b5da56a85a1b9b19,
 plus the two loopback verifier files in this change. Backend Python sources, api.js and
 report-client.js in the test snapshot were checked against Git blob hashes from that revision.
@@ -57,8 +109,8 @@ worker termination and recovery; they do not constitute a hosted failure drill.
 
 | Issue | Work completed | Remaining evidence / responsible boundary |
 |---|---|---|
-| #128 integration audit | API routes, ownership, CRUD, refresh, provenance, errors and retries mapped; gaps recorded here and in client-integration-audit.md | Review this refresh. An audit identifies gaps; it does not claim the gaps are resolved. |
-| #135 client resilience | Target/redirect guards, malformed/network handling, retry keys and safe errors tested; actual FastAPI statuses replayed above | Review/CI on these files; frontend owner verifies any candidate-specific UI states; backend/AI owners control hosted failure drills. |
+| #128 integration audit | API routes, ownership, CRUD, refresh, provenance, errors and retries mapped; gaps recorded here and in client-integration-audit.md | Completed through reviewed, merged #163. The identified integration gaps remain separate tasks. |
+| #135 client resilience | Target/redirect guards, malformed/network handling, retry keys and safe errors tested; actual FastAPI statuses replayed above | Implementation reviewed and merged in #163; frontend owner verifies candidate-specific UI states; backend/AI owners control hosted failure drills. |
 | #140 API reference | Requests, responses, limits, errors, optional token injection and synthetic ownership documented; examples and error replay tested | Compare with the agreed deployed candidate and record owner acceptance before claiming final live agreement. |
 | #145 exact candidate | Replay/cleanup procedure and evidence fields prepared; historical connected run identified below | DevOps must designate accepted source/package/model and synthetic target; replay that exact candidate with request/status/cleanup evidence. |
 | #150 demonstration | Full journey sequence and API/error explanations prepared in release-verification.md | Demonstrate the accepted deployed package/model; record actual results/questions. No demo attendance or release is inferred. |
