@@ -16,7 +16,8 @@
     "phishlens": "node scripts/phishlens.mjs",
     "doctor": "node scripts/phishlens.mjs doctor",
     "model:check": "node scripts/phishlens.mjs model-check",
-    "test:accounts": "node scripts/test_account_ui.mjs"
+    "test:accounts": "node scripts/test_account_ui.mjs",
+    "test:account-startup": "node scripts/test_account_startup.mjs"
   },
   "repository": {
     "type": "git",

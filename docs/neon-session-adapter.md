@@ -74,6 +74,10 @@ For an approved integration build, set enabled, authUrl, database and apiOrigin
 in an environment-specific configuration. The API origin must match that build,
 the provisioned Auth path must match its database, and an exact Auth host
 permission must be declared. The factory rejects mismatches before initialization.
+If configuration or SDK initialization fails, the popup uses the unavailable
+account adapter, keeps personal reports gated and shows a safe account message.
+Local scanning still opens and accepts text; internal provider diagnostics are
+not displayed. This fallback does not enable anonymous report requests.
 Do not enable this by editing config alone: the production validator deliberately
 restricts current host permissions; prepare/review a dedicated staging artifact
 and its allowlist together after the environment pairing is confirmed.
@@ -115,6 +119,7 @@ node scripts/build_neon_sdk.mjs
 node --test extension/tests/neon-accounts.test.mjs
 npm test
 npm run lint
+npm run test:account-startup
 BROWSER_CHANNEL=chrome npm run test:accounts
 node scripts/test_neon_adapter_browser.mjs
 python3 scripts/package_extension.py
@@ -125,3 +130,18 @@ Still required: provider origin/cookie acceptance, real email verification and
 recovery, correct Auth/database pairing, staged migration/runtime grants, exact
 candidate deployment, refresh/logout across actual clients and two-user API
 denial. Use the combined acceptance checklist after staging is coordinated.
+
+## Startup regression check — November 10, 2026
+
+`npm run test:account-startup` runs the shipped popup entry in a local browser
+with synthetic Chrome APIs. It checks disabled accounts, an invalid Auth URL,
+missing host permission, an API-origin mismatch and SDK initialization failure.
+Each case keeps reports gated and dispatches the original synthetic text to the
+local scan boundary. Failure diagnostics are not exposed and no external
+request is allowed. This check fails with the original popup entry.
+
+All five cases passed in Edge 157.0.4341.42. The complete 273-test extension
+suite, ESLint, account UI browser suite, intercepted-SDK browser suite and
+manifest validation also passed locally. These are local regression results,
+not installed-Chrome or live Neon acceptance. Machine-readable output is
+written to `output/account-startup/results.json`.

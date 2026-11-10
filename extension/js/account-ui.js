@@ -1,4 +1,4 @@
-export function initializeAccountUI(accounts, doc = document, { preview = false } = {}) {
+export function initializeAccountUI(accounts, doc = document, { preview = false, unavailableMessage = '' } = {}) {
   const $ = id => doc.getElementById(id);
   const screens = ['sign-in', 'sign-up', 'verify', 'recover', 'reset'];
   let busy = false;
@@ -93,7 +93,7 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     visible('account-sign-out', signedIn);
     visible('reports-account-gate', !signedIn);
     visible('personal-reports', signedIn);
-    message(state.message, state.status === 'expired');
+    message(state.message || unavailableMessage, state.status === 'expired');
     if (state.status === 'expired') { visible('account-panel', true); screen('sign-in'); }
     if (signedIn) screen(null, false);
   });

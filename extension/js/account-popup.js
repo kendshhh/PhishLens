@@ -4,7 +4,7 @@ import { initializeAccountUI } from './account-ui.js';
 
 export function initializeAccountPopup({ documentImpl = document, chromeImpl = globalThis.chrome,
   adapter = unavailableAccounts, createClient = () => { throw new Error('Live account integration is not connected.'); },
-  fetchImpl = globalThis.fetch, preview = false } = {}) {
+  fetchImpl = globalThis.fetch, preview = false, unavailableMessage = '' } = {}) {
   let popup;
   const accounts = createAccountSession({ adapter, createClient,
     async onChange(userId) {
@@ -18,7 +18,7 @@ export function initializeAccountPopup({ documentImpl = document, chromeImpl = g
   });
   popup = initializePopup({ documentImpl, chromeImpl, fetchImpl, clientImpl: accounts.client, reportAccessReady: accounts.ready, canAccessReports: () => accounts.state.status === 'signed-in' });
   accounts.subscribe(() => popup.updateAccountAccess());
-  const ui = initializeAccountUI(accounts, documentImpl, { preview });
+  const ui = initializeAccountUI(accounts, documentImpl, { preview, unavailableMessage });
   const refresh = () => { void accounts.refresh().catch(() => {}); };
   const windowImpl = documentImpl.defaultView;
   let refreshTimer;
