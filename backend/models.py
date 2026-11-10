@@ -26,7 +26,6 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = "users"
-
     __table_args__ = (
         UniqueConstraint("neon_auth_subject", name="uq_users_neon_auth_subject"),
     )
