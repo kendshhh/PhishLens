@@ -71,7 +71,7 @@ sympy==1.14.0
     # via torch
 tokenizers==0.23.3
     # via transformers
-torch==2.14.1+cpu
+torch==2.15.0+cpu
     # via -r requirements-ai.in
 tqdm==4.70.1
     # via
