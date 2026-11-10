@@ -321,7 +321,21 @@ def invalidate_previous(api, config, sha):
         for check in checks:
             if check.get("app", {}).get("slug") == "github-actions" and check.get("conclusion") == "success":
                 api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": "action_required",
-                    "output": {"title": "Shared staging replaced", "summary": "Another PR is deploying. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
+                    "output": {"title": "Shared staging replaced", "summary": "Another PR successfully replaced shared staging. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
+
+
+def confirm_live_deployment(api, config, live, expected_sha):
+    """Invalidate earlier preview evidence only after Render confirms a live replacement."""
+    if live.get("status") != "live":
+        return False
+    commit = live.get("commit")
+    live_sha = commit.get("id") if isinstance(commit, dict) else None
+    if not isinstance(live_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", live_sha):
+        raise RuntimeError("Render reported the wrong commit")
+    invalidate_previous(api, config, live_sha)
+    if live_sha != expected_sha:
+        raise RuntimeError("Render reported the wrong commit")
+    return True
 
 
 def completed_event(api, config, run):
@@ -391,7 +405,6 @@ def main():
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
                 verify_environment(render_request("services/" + config["staging_service"] + "/env-vars?limit=100"))
-                invalidate_previous(api, config, run["head_sha"])
                 deployment = api.request("deployments", {"ref": run["head_sha"], "environment": config["preview_environment"],
                     "auto_merge": False, "required_contexts": [], "production_environment": False, "transient_environment": True,
                     "description": f"PR #{pr['number']} exact-head staging", "payload": {"secretary": 1, "pr": pr["number"], "run_id": run["id"], "run_attempt": run.get("run_attempt", 1)}})
@@ -403,8 +416,7 @@ def main():
                 while True:
                     live = render_request(f"services/{config['staging_service']}/deploys/{deployed['id']}")
                     if live["status"] == "live":
-                        if live.get("commit", {}).get("id") != run["head_sha"]:
-                            raise RuntimeError("Render reported the wrong commit")
+                        confirm_live_deployment(api, config, live, run["head_sha"])
                         break
                     if live["status"] in {"build_failed", "update_failed", "pre_deploy_failed", "canceled", "deactivated"}:
                         raise RuntimeError("Render staging deployment failed: " + live["status"])
