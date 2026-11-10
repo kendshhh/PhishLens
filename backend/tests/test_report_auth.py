@@ -194,3 +194,25 @@ def test_expiry_claim_is_required(signed):
     with pytest.raises(HTTPException) as error:
         auth.verify_identity(signed(exp=None))
     assert error.value.status_code == 401
+
+
+def test_auth_mode_loads_local_settings_before_first_request(monkeypatch, tmp_path):
+    from backend.core import config
+    settings = tmp_path / "auth-test.env"
+    settings.write_text("REPORT_AUTH_MODE=neon\n")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.setenv("REPORT_AUTH_MODE", "demo")
+    monkeypatch.delenv("REPORT_AUTH_MODE")
+    assert auth.auth_mode() == "neon"
+    with pytest.raises(HTTPException) as error:
+        auth.report_owner(None)
+    assert error.value.status_code == 401
+
+
+def test_deployment_auth_mode_takes_precedence_over_local_file(monkeypatch, tmp_path):
+    from backend.core import config
+    settings = tmp_path / "auth-test.env"
+    settings.write_text("REPORT_AUTH_MODE=demo\n")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.setenv("REPORT_AUTH_MODE", "neon")
+    assert auth.auth_mode() == "neon"
