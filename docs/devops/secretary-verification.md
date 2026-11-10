@@ -29,7 +29,7 @@ may grow as regression coverage is added; use the PR's latest run for acceptance
 | Oversized/binary diff | Coverage gap and blocked recommendation | Real large test PR without private data |
 | Fork PR | Explicit action required, no preview authorization | Fork CI permission behavior and trusted-branch handoff |
 | Preview failure | Failed preview blocks recommendation; controller fails check | Controlled invalid staging start on disposable data |
-| Shared staging conflict | Newer SHA invalidates report and old staging check | Two PRs queue; confirm serialized runs and re-test request |
+| Shared staging conflict | Newer SHA invalidates report and old staging check only after Render reports it live; a failed deploy leaves prior evidence valid | Two PRs queue; confirm serialized runs, then verify a failed deploy preserves the previous check |
 | Production failure | Deduplicated failed-deploy metric; incident boundary implemented | Controlled drill approved by human; do not break production casually |
 | Database isolation | Wrong production host/service rejected | Private Neon host/role and Render env inspection |
 | Extension package | Real local assets have SHA/banner/staging-only permission and valid ZIP | Install freshly generated CI artifact in Chrome |
