@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --test extension/tests/*.test.mjs",
-    "test:browser": "node scripts/browser_acceptance.mjs",
+    "test:browser": "node scripts/browser_acceptance.mjs && node scripts/test_account_startup.mjs",
     "lint": "eslint extension/",
     "validate": "python scripts/validate_extension.py",
     "package": "python scripts/package_extension.py",

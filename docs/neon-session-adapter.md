@@ -134,7 +134,8 @@ denial. Use the combined acceptance checklist after staging is coordinated.
 ## Startup regression check — November 10, 2026
 
 `npm run test:account-startup` runs the shipped popup entry in a local browser
-with synthetic Chrome APIs. It checks disabled accounts, an invalid Auth URL,
+and is also included in `npm run test:browser` for the existing CI browser step.
+It uses synthetic Chrome APIs and checks disabled accounts, an invalid Auth URL,
 missing host permission, an API-origin mismatch and SDK initialization failure.
 Each case keeps reports gated and dispatches the original synthetic text to the
 local scan boundary. Failure diagnostics are not exposed and no external
