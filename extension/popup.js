@@ -1,3 +1,3 @@
-import { initializePopup } from './js/popup.js';
+import { initializeAccountPopup } from './js/account-popup.js';
 
-initializePopup();
+initializeAccountPopup();

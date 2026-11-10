@@ -29,7 +29,7 @@ class Element {
   }
 }
 
-const ids = ["crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
+const ids = ["clear-report-search", "reset-report-search", "edit-correction", "reports-list-view", "report-search", "report-count", "no-report-matches", "back-to-reports", "history-heading", "report-mode-warning", "crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-heading", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-heading", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
 function setup(client) {
   const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status"].includes(id) ? "hidden" : "")]));
   const doc = { getElementById: id => elements.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
@@ -42,6 +42,52 @@ function record(id, subject = "Example") {
 }
 const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
 
+test('account reset removes report details, notes and confirmation text', async () => {
+  const { ui, controller } = setup(createInMemoryAnalysisClient([record(id, 'Private demo report')]));
+  await controller.refresh(); await controller.loadDetail(id);
+  ui.get('edit-notes').value = 'Previous account note';
+  ui.get('delete-subject').textContent = 'Private demo report';
+  controller.reset();
+  assert.deepEqual(controller.records, []);
+  assert.equal(ui.get('history-list').children.length, 0);
+  assert.equal(ui.get('detail-content').children.length, 0);
+  assert.equal(ui.get('edit-notes').value, '');
+  assert.equal(ui.get('delete-subject').textContent, '');
+});
+
+test('account reset rejects a late create completion without repopulating the library', async () => {
+  let resolve;
+  const { ui, controller } = setup({ ...createInMemoryAnalysisClient(),
+    createAnalysis: () => new Promise(done => { resolve = done; }) });
+  ui.get('create-body').value = 'Synthetic previous account draft';
+  const pending = ui.get('create-form').fire('submit');
+  controller.reset(); resolve(record(id, 'Previous account result')); await pending;
+  assert.deepEqual(controller.records, []);
+  assert.equal(ui.get('history-list').children.length, 0);
+  assert.equal(ui.get('detail-panel').classList.contains('hidden'), true);
+});
+
+test("a local save completed over an open detail restores the report library", async () => {
+  const previous = record(id, "Previous report");
+  const saved = record("50d073a2-e810-401c-a848-a1d501843bc7", "New local report");
+  const { ui, controller } = setup(createInMemoryAnalysisClient([previous]));
+  await controller.loadDetail(previous.id);
+  assert.equal(ui.get("reports-list-view").classList.contains("hidden"), true);
+  assert.equal(controller.beginSave(), true);
+  assert.equal(controller.showLibrary({ focus: false }), false);
+
+  controller.acceptSavedReport({ saved, detail: saved, history: [saved, previous] }, { reveal: false });
+  controller.endSave();
+
+  assert.equal(ui.get("reports-list-view").classList.contains("hidden"), false);
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("history-list").children.length, 2);
+  assert.equal(ui.get("history-list").children[0].children[0].textContent, "New local report");
+  await controller.openSavedReport(saved.id);
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), false);
+  assert.equal(ui.get("detail-heading").textContent, "New local report");
+});
+
  test("HTML provides associated labels, focusable CRUD controls, and a bounded popup", async () => {
   const html = await readFile(new URL("../popup.html", import.meta.url), "utf8");
   const css = await readFile(new URL("../css/popup.css", import.meta.url), "utf8");
@@ -52,6 +98,8 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
   }
   assert.match(html, /role="status" aria-live="polite"/);
   assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
+  assert.match(html, /id="detail-heading" tabindex="-1"/);
+  assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
@@ -127,6 +175,7 @@ test("starting Analyze and save invalidates an older pending detail response", a
   controller.acceptSavedReport({ saved, detail: saved, history: [saved] });
   controller.endSave();
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "New analysis");
+  assert.equal(ui.get("detail-heading").focused, true);
 });
 
 test("older history response cannot erase a newly created analysis", async () => {
@@ -179,6 +228,64 @@ test("unknown AI provenance stays explicitly unknown", async () => {
   assert.match(ui.get("detail-content").children[9].children[1].textContent, /unknown/i);
 });
 
+test('library search filters loaded reports and back navigation preserves the query', async () => {
+  const first = record(id, 'Account notice');
+  const second = record('00000000-0000-4000-8000-000000000002', 'Meeting agenda');
+  const memory = createInMemoryAnalysisClient([first, second]);
+  const { ui, controller } = setup(memory);
+  await controller.refresh();
+  ui.get('report-search').value = 'ACCOUNT';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('history-list').children.length, 1);
+  assert.equal(ui.get('report-count').textContent, '1 of 2 reports');
+  await controller.loadDetail(id);
+  assert.equal(ui.get('reports-list-view').classList.contains('hidden'), true);
+  await ui.get('back-to-reports').fire('click');
+  assert.equal(ui.get('reports-list-view').classList.contains('hidden'), false);
+  assert.equal(ui.get('detail-panel').classList.contains('hidden'), true);
+  assert.equal(ui.get('report-search').value, 'ACCOUNT');
+  ui.get('report-search').value = 'No matching title';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('history-list').children.length, 0);
+  assert.equal(ui.get('no-report-matches').classList.contains('hidden'), false);
+  assert.equal((await memory.listAnalyses()).length, 2);
+});
+
+test('returning to the library invalidates a pending detail response', async () => {
+  let finish;
+  const data = record(id);
+  const { ui, controller } = setup({ ...createInMemoryAnalysisClient([data]),
+    getAnalysis: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = controller.loadDetail(id);
+  controller.showLibrary();
+  finish(data); await pending;
+  assert.equal(ui.get('detail-panel').classList.contains('hidden'), true);
+  assert.equal(ui.get('reports-list-view').classList.contains('hidden'), false);
+});
+
+test('search tolerates extra spaces and clears from no results without losing loaded reports', async () => {
+  const first = { ...record(id, 'Account notice'), explanation: 'Review the payment\n\nrequest.' };
+  const second = record('00000000-0000-4000-8000-000000000002', 'Meeting agenda');
+  const { ui, controller } = setup(createInMemoryAnalysisClient([first, second]));
+  await controller.refresh();
+  ui.get('report-search').value = '  PAYMENT   account  ';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('history-list').children.length, 1);
+  assert.equal(ui.get('clear-report-search').classList.contains('hidden'), false);
+  ui.get('report-search').value = 'No matching report';
+  await ui.get('report-search').fire('input');
+  assert.equal(ui.get('no-report-matches').classList.contains('hidden'), false);
+  await ui.get('reset-report-search').fire('click');
+  assert.equal(ui.get('history-list').children.length, 2);
+  assert.equal(ui.get('report-search').focused, true);
+  assert.equal(ui.get('clear-report-search').classList.contains('hidden'), true);
+  ui.get('report-search').value = 'Meeting';
+  await ui.get('report-search').fire('input');
+  await ui.get('report-search').fire('keydown', { key: 'Escape' });
+  assert.equal(ui.get('history-list').children.length, 2);
+  assert.equal(ui.get('report-search').value, '');
+});
+
 test("saved report uncertainty and missing results are described without inventing a verdict", async () => {
   const data = record(id);
   data.prediction = null;
@@ -196,8 +303,8 @@ test("saved report uncertainty and missing results are described without inventi
   assert.match(detail.children[4].children[1].textContent, /not assessed/i);
   assert.match(detail.children[5].children[1].textContent, /Not provided/);
   assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
-  assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
-  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
+  assert.match(detail.children[9].children[1].textContent, /source unknown/i);
+  assert.doesNotMatch(detail.children[9].children[1].textContent, /fixture-model/);
 });
 
 test("provider provenance is labeled explicitly", async () => {
@@ -207,24 +314,27 @@ test("provider provenance is labeled explicitly", async () => {
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
-  assert.match(text, /Provider-backed AI analysis/);
-  assert.match(text, /Provider: Gemini/);
-  assert.match(text, /Model: fixture-gemini-model/);
-  assert.match(text, /fixture-revision/);
+  assert.match(text, /Automated analysis/);
+  assert.doesNotMatch(text, /fixture-gemini-model|fixture-revision/);
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
   const memory = createInMemoryAnalysisClient([record(id)]);
   const { ui, controller } = setup(memory);
   await controller.refresh(); await controller.loadDetail(id);
+  assert.equal(ui.get("detail-heading").focused, true);
   const editButton = ui.get("detail-content").children.at(-2);
   await editButton.fire("click");
+  assert.equal(ui.get("edit-notes").focused, true);
   ui.get("edit-notes").value = "unsaved";
   await ui.get("cancel-edit").fire("click");
+  assert.equal(ui.get("detail-content").children.at(-2).focused, true);
   assert.equal((await memory.getAnalysis(id)).notes, null);
   const deleteButton = ui.get("detail-content").children.at(-1);
   await deleteButton.fire("click");
+  assert.equal(ui.get("delete-heading").focused, true);
   await ui.get("cancel-delete").fire("click");
+  assert.equal(ui.get("detail-content").children.at(-1).focused, true);
   assert.equal((await memory.listAnalyses()).length, 1);
 });
 
@@ -235,9 +345,9 @@ test("editing notes alone preserves null feedback", async () => {
   const { ui, controller } = setup(memory);
   await controller.refresh();
   await controller.loadDetail(id);
-  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Unspecified");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "No feedback provided");
   await ui.get("detail-content").children.at(-2).fire("click");
-  assert.equal(ui.get("edit-feedback").value, "null");
+  assert.equal(ui.get("edit-feedback").value, "none");
   ui.get("edit-notes").value = "Notes only";
   await ui.get("edit-form").fire("submit");
   const updated = await memory.getAnalysis(id);
@@ -251,6 +361,25 @@ test("unknown feedback is labeled unavailable", async () => {
   const { ui, controller } = setup(createInMemoryAnalysisClient([invalid]));
   await controller.loadDetail(id);
   assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Feedback unavailable");
+});
+
+test('the single no-feedback choice clears a correction and remains unchanged for notes-only edits', async () => {
+  const original = { ...record(id), feedback: 'false_positive' };
+  const memory = createInMemoryAnalysisClient([original]);
+  const { ui, controller } = setup(memory);
+  await controller.loadDetail(id);
+  await ui.get('detail-content').children.at(-2).fire('click');
+  assert.equal(ui.get('edit-correction').open, true);
+  ui.get('edit-feedback').value = 'none';
+  await ui.get('edit-form').fire('submit');
+  assert.equal((await memory.getAnalysis(id)).feedback, 'none');
+  await ui.get('detail-content').children.at(-2).fire('click');
+  assert.equal(ui.get('edit-correction').open, false);
+  ui.get('edit-notes').value = 'Contacted the sender.';
+  await ui.get('edit-form').fire('submit');
+  const updated = await memory.getAnalysis(id);
+  assert.equal(updated.feedback, 'none');
+  assert.equal(updated.prediction, original.prediction);
 });
 
 test("notes and feedback stay disabled until edit save settles", async () => {
@@ -319,6 +448,7 @@ test("create and edit submit through the injected five-method client", async () 
   const saved = (await client.listAnalyses())[0];
   assert.equal(saved.subject, "Test subject");
   assert.equal(saved.body, "Email body");
+  assert.equal(ui.get("detail-heading").focused, true);
   await controller.loadDetail(saved.id);
   const editButton = ui.get("detail-content").children.at(-2);
   await editButton.fire("click");

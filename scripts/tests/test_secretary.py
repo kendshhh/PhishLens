@@ -451,6 +451,7 @@ class PreviewTests(unittest.TestCase):
     def test_local_scanner_archive_labels_partial_llama_package_and_staging_report_origin(self):
         api = Mock()
         files = {
+            "popup.js": b"import { initializeAccountPopup } from './js/account-popup.js';\n",
             "manifest.json": json.dumps({
                 "manifest_version": 3,
                 "background": {"service_worker": "background.js", "type": "module"},
@@ -493,6 +494,7 @@ class PreviewTests(unittest.TestCase):
                     "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
                     "vendor/ml/ort-wasm-simd-threaded.asyncify.wasm",
                     "js/report-workflow.js",
+                    "js/account-popup.js", "js/account-session.js", "js/account-ui.js",
                 ):
                     self.assertIn(required, names)
                 self.assertEqual(
@@ -556,5 +558,3 @@ class MetricsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
