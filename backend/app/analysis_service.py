@@ -23,6 +23,7 @@ async def create_saved_analysis(
     model: str | None,
     deadline: AnalysisDeadline,
     idempotency_key: str | None = None,
+    owner_id=None,
 ) -> SavedAnalysisDetail:
     """Run timely inference, then commit one validated saved analysis."""
     try:
@@ -45,6 +46,7 @@ async def create_saved_analysis(
                 mode=mode,
                 deadline=deadline,
                 idempotency_key=idempotency_key,
+                **({"owner_id": owner_id} if owner_id is not None else {}),
             )
     except TimeoutError:
         raise AnalysisTimeoutError("Analysis deadline exceeded") from None
