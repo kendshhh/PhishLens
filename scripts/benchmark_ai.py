@@ -1,12 +1,14 @@
-"""Compare real AI providers on frozen synthetic cases. JSONL goes only to stdout.
+"""Measure real AI providers on the versioned synthetic development cases.
 
 Run from the repository root:
-python scripts/benchmark_ai.py --models local gemini-3.1-flash-lite gemini-3.8-flash
+python scripts/benchmark_ai.py --models tfidf --repeats 1
+An optional comparison can also select local DistilBERT or a Gemini model ID.
 Optional: --repeats 2 (paid API usage may apply), --limit 3 for a wiring check.
 Use --pause to match the selected model's account quota; five seconds is the default.
-Each model runs in a fresh subprocess for separate cold timing and process memory.
-Binary metrics treat spam as non-phishing because local DistilBERT has two classes.
-No failed call is converted into a legitimate verdict or removed from the denominator.
+Each model runs in a fresh subprocess. Install psutil to include memory measurements.
+The confusion table retains spam as an input label. Binary metrics count it among
+non-phishing cases, and inference errors count as unsuccessful attempts.
+JSONL goes to stdout.
 """
 
 import argparse
@@ -37,9 +39,14 @@ from backend.core.config import get_ai_config
 def summarize(rows: list[dict]) -> dict:
     completed = [row for row in rows if row.get("prediction") is not None]
     phishing = [row for row in rows if row["expected"] == "phishing"]
+    legitimate = [row for row in rows if row["expected"] == "legitimate"]
+    spam = [row for row in rows if row["expected"] == "spam"]
     negatives = [row for row in rows if row["expected"] != "phishing"]
     tp = sum(row.get("prediction") == "phishing" for row in phishing)
     fp = sum(row.get("prediction") == "phishing" for row in negatives)
+    legitimate_alerts = sum(row.get("prediction") == "phishing" for row in legitimate)
+    spam_alerts = sum(row.get("prediction") == "phishing" for row in spam)
+    non_phishing_rate = fp / len(negatives) if negatives else None
     correct = sum((r["prediction"] == "phishing") == (r["expected"] == "phishing") for r in completed)
     latencies = sorted(r["seconds"] for r in completed)
     precision = tp / (tp + fp) if tp + fp else 0
@@ -51,7 +58,12 @@ def summarize(rows: list[dict]) -> dict:
         "phishing_tp": tp, "phishing_fp": fp, "phishing_cases": len(phishing),
         "phishing_precision": precision, "phishing_recall": recall,
         "phishing_f1": 2 * precision * recall / (precision + recall) if recall and precision else 0,
-        "false_positive_rate": fp / len(negatives) if negatives else None,
+        "legitimate_cases": len(legitimate), "legitimate_false_positives": legitimate_alerts,
+        "legitimate_false_positive_rate": legitimate_alerts / len(legitimate) if legitimate else None,
+        "spam_cases": len(spam), "spam_phishing_alerts": spam_alerts,
+        "spam_phishing_alert_rate": spam_alerts / len(spam) if spam else None,
+        "non_phishing_false_positive_rate": non_phishing_rate,
+        "false_positive_rate": non_phishing_rate,
         "three_class_accuracy": sum(r["prediction"] == r["expected"] for r in completed) / len(rows) if rows else None,
         "p50_seconds": statistics.median(latencies) if latencies else None,
         "p95_seconds": latencies[math.ceil(.95 * len(latencies)) - 1] if latencies else None,
@@ -61,51 +73,65 @@ def summarize(rows: list[dict]) -> dict:
 
 
 def worker(args) -> int:
-    import psutil
+    try:
+        import psutil
+    except ImportError:
+        psutil = None
 
     selected = CASES[:args.limit] if args.limit else CASES
     frozen = json.dumps([asdict(case) for case in selected], sort_keys=True).encode()
-    if args.worker == "local":
-        os.environ["AI_MODE"] = "local"
+    hosted = args.worker not in {"tfidf", "local"}
+    os.environ["AI_MODE"] = "gemini" if hosted else args.worker
+    if hosted:
+        os.environ["GEMINI_MODEL"] = args.worker
+    if args.worker == "tfidf":
+        from backend.app.main import get_ai_service
+    elif not hosted:
         get_ai_config()
         from backend.ai.local_provider import DEFAULT_CACHE, LocalProvider
+
         provider = LocalProvider(cache_dir=Path(os.getenv("MODEL_PATH", "").strip() or DEFAULT_CACHE))
     else:
         from backend.ai.gemini_provider import GeminiProvider
-        os.environ["AI_MODE"] = "gemini"
-        os.environ["GEMINI_MODEL"] = args.worker
+
         _, api_key, model = get_ai_config()
         provider = GeminiProvider(api_key=api_key, model=model)
-    service = AIService(provider)
-    process = psutil.Process()
-    peak = [process.memory_info().rss]
+    service = None
+    process = psutil.Process() if psutil else None
+    peak = process.memory_info().rss if process else None
     stop = Event()
 
     def sample_memory():
+        nonlocal peak
         while not stop.wait(.02):
-            peak[0] = max(peak[0], process.memory_info().rss)
+            peak = max(peak, process.memory_info().rss)
 
-    sampler = Thread(target=sample_memory, daemon=True)
-    sampler.start()
+    sampler = None
+    if process is not None:
+        sampler = Thread(target=sample_memory, daemon=True)
+        sampler.start()
     rows = []
     cold_seconds = None
     first_result = None
     aborted = None
     try:
-        # Warmup/cold inference is recorded separately and never scored as a test case.
+        # Include the bundled TF-IDF model load in the cold shared-service call.
         start = perf_counter()
         try:
+            service = get_ai_service()[0] if args.worker == "tfidf" else AIService(provider)
             first_result = service.analyze_email(subject=None, sender=None, body="Hello, tomorrow's meeting is at ten. Please bring the agenda.")
             cold_seconds = perf_counter() - start
         except RuntimeError as exc:
             print(json.dumps({"event": "cold_error", "model": args.worker, "error": str(exc)}), flush=True)
             if isinstance(exc, DailyQuotaExceeded):
                 aborted = "daily_quota_exhausted"
+            elif service is None:
+                aborted = "service_initialization_failed"
         for repeat in range(args.repeats):
             if aborted:
                 break
             for case in selected:
-                if args.pause and args.worker != "local":
+                if args.pause and hosted:
                     sleep(args.pause)
                 start = perf_counter()
                 row = {"case": case.id, "expected": case.label, "repeat": repeat + 1}
@@ -125,15 +151,22 @@ def worker(args) -> int:
                 if aborted:
                     break
     finally:
-        stop.set()
-        sampler.join()
-        peak[0] = max(peak[0], process.memory_info().rss)
-        if hasattr(provider, "close"):
-            provider.close()
+        if sampler is not None:
+            stop.set()
+            sampler.join()
+            peak = max(peak, process.memory_info().rss)
+        if service is not None and hasattr(service.provider, "close"):
+            service.provider.close()
     summary = summarize(rows)
+    if args.worker == "tfidf":
+        summary["three_class_accuracy"] = None
     requested = len(selected) * args.repeats
     if len(rows) < requested:
-        for metric in ("binary_accuracy", "phishing_recall", "phishing_f1", "false_positive_rate", "three_class_accuracy"):
+        for metric in (
+            "binary_accuracy", "phishing_recall", "phishing_f1", "three_class_accuracy",
+            "false_positive_rate", "legitimate_false_positive_rate",
+            "spam_phishing_alert_rate", "non_phishing_false_positive_rate",
+        ):
             summary[metric] = None
     print(json.dumps({
         "event": "summary", "model": args.worker,
@@ -141,13 +174,14 @@ def worker(args) -> int:
         "unattempted_cases": requested - len(rows),
         "model_metadata": first_result.model_dump(include={"model", "model_revision", "prompt_version", "explanation_source"}, exclude_none=True) if first_result else None,
         "caseset": CASESET_VERSION, "cases_sha256": hashlib.sha256(frozen).hexdigest(),
-        "prompt_version": PROMPT_VERSION, "repeats": args.repeats,
-        "hosted_pause_seconds": args.pause if args.worker != "local" else 0,
-        "supported_labels": ["legitimate", "phishing"] if args.worker == "local" else ["legitimate", "spam", "phishing"],
-        "cold_seconds": cold_seconds, "peak_process_rss_mb": peak[0] / 1024**2,
+        "prompt_version": PROMPT_VERSION if hosted else None, "repeats": args.repeats,
+        "hosted_pause_seconds": args.pause if hosted else 0,
+        "supported_labels": ["legitimate", "spam", "phishing"] if hosted else ["legitimate", "phishing"],
+        "cold_seconds": cold_seconds, "peak_process_rss_mb": peak / 1024**2 if peak is not None else None,
         "machine": {"os": platform.platform(), "python": platform.python_version(),
-                    "logical_cpus": os.cpu_count(), "ram_gb": round(psutil.virtual_memory().total / 1024**3, 2)},
-        "limitations": "Synthetic development suite; English checkpoint; two-class local model; hosted memory measures client only; latency includes network; confidence is uncalibrated classifier softmax only.",
+                    "logical_cpus": os.cpu_count(),
+                    "ram_gb": round(psutil.virtual_memory().total / 1024**3, 2) if psutil else None},
+        "limitations": "Synthetic development suite. TF-IDF and local DistilBERT use binary labels. Hosted timings include network, and hosted memory measures the client process only.",
         **summary,
     }), flush=True)
     return 1 if summary["errors"] or aborted else 0
@@ -155,7 +189,7 @@ def worker(args) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--models", nargs="+", default=["local", "gemini-3.1-flash-lite", "gemini-3.8-flash"])
+    parser.add_argument("--models", nargs="+", default=["tfidf"])
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--pause", type=float, default=5, help="Seconds between hosted calls; lower values can hit free-tier quotas")
