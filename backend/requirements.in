@@ -6,3 +6,4 @@ python-dotenv>=1,<2
 certifi>=2026.10.19
 psycopg[binary]>=3.3.8,<4
 google-genai>=2.34.0,<3
+pyasn1>=0.6.5,<0.7
