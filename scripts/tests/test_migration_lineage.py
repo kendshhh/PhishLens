@@ -1,4 +1,4 @@
-"""Guard the historically applied Render migration revision against accidental removal."""
+"""Guard the hosted Render migration chain, including historically applied revisions."""
 
 import shutil
 import tempfile
