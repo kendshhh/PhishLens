@@ -24,8 +24,8 @@ from scripts.secretary.core import (
 from scripts.secretary.github_api import APIError, GitHub
 from scripts.secretary.preview import (
     completed_event,
+    confirm_live_deployment,
     eligibility,
-    invalidate_previous,
     package,
     preview_gate_enabled,
     verify_environment,
@@ -394,8 +394,20 @@ class PreviewTests(unittest.TestCase):
         api = Mock()
         api.request.return_value = [{"id": 2, "sha": "c" * 40, "creator": {"login": "github-actions[bot]"}, "payload": {"secretary": 1}}]
         api.pages.return_value = [{"id": 8, "app": {"slug": "github-actions"}, "conclusion": "success"}]
-        invalidate_previous(api, CONFIG, SHA)
+        confirmed = confirm_live_deployment(
+            api, CONFIG, {"status": "live", "commit": {"id": SHA}}, SHA
+        )
+        self.assertTrue(confirmed)
         self.assertEqual(api.request.call_args.args[1]["conclusion"], "action_required")
+
+    def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
+        api = Mock()
+        confirmed = confirm_live_deployment(
+            api, CONFIG, {"status": "update_failed", "commit": {"id": "c" * 40}}, SHA
+        )
+        self.assertFalse(confirmed)
+        api.request.assert_not_called()
+        api.pages.assert_not_called()
 
     def test_real_extension_archive_has_staging_banner_and_origin(self):
         api = Mock()

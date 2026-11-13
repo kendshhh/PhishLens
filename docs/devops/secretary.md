@@ -289,10 +289,12 @@ fails, use the normal documented human review process; do not infer approval.
 On a new commit GitHub requires checks for that head; the bot reads current PR
 state before posting. The preview controller rejects old CI attempts and checks
 head again after deployment. A successful shared preview's check is changed to
-`action_required` before another PR takes the staging slot. The report also marks
-displaced evidence stale. There is a small unavoidable race between API reads and
-a concurrent push; the next PR/CI event reconciles it. Humans must always compare
-the SHA, and branch up-to-date/stale-review rules remain essential.
+`action_required` only after Render reports that another exact SHA is live. A
+failed or cancelled deployment leaves the prior live preview and its check valid.
+The report also marks displaced evidence stale. There is a small unavoidable
+race between API reads and a concurrent push; the next PR/CI event reconciles it.
+Humans must always compare the SHA, and branch up-to-date/stale-review rules
+remain essential.
 
 ## Costs, public access and cleanup
 
