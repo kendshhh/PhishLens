@@ -154,6 +154,38 @@ class CohortTests(unittest.TestCase):
         self.assertEqual({row["outcome"] for row in report["cases"]}, {"unattempted"})
         self.assertEqual(report["groups"]["synthetic/primary"]["attempted"], 0)
 
+    def test_unexpected_error_leaves_a_readable_failure_record(self):
+        output = self.bundle / "report.json"
+        lock = {"schema": 1}
+        with patch.object(cohort, "evaluate", side_effect=TypeError("private message")) as evaluate:
+            with self.assertRaisesRegex(cohort.CohortError, "Scoring did not finish"):
+                cohort.score_to_file(output, lock, [], {})
+            with self.assertRaisesRegex(cohort.CohortError, "Output report already exists"):
+                cohort.score_to_file(output, lock, [], {})
+            evaluate.assert_called_once()
+        self.assertEqual(json.loads(output.read_bytes()), {"lock": lock, "run_status": "execution_failed"})
+        self.assertFalse((self.bundle / "report.json.running").exists())
+
+    def test_hard_stop_leaves_a_readable_incomplete_record(self):
+        output = self.bundle / "report.json"
+        result = subprocess.run(
+            [
+                sys.executable, "-c",
+                (
+                    "import os, sys; from pathlib import Path; "
+                    "from scripts import evaluate_tfidf_cohort as cohort; "
+                    "cohort.evaluate = lambda *args: os._exit(23); "
+                    "cohort.score_to_file(Path(sys.argv[1]), {'schema': 1}, [], {})"
+                ),
+                str(output),
+            ],
+            cwd=cohort.ROOT, check=False,
+        )
+        self.assertEqual(result.returncode, 23)
+        self.assertEqual(json.loads(output.read_bytes()), {"lock": {"schema": 1}, "run_status": "incomplete"})
+        with self.assertRaisesRegex(cohort.CohortError, "Output path is reserved"):
+            cohort.score_to_file(output, {"schema": 1}, [], {})
+
     def test_screening_needs_diverse_primary_actual_mail_and_valid_results(self):
         self.write_bundle()
         lock, rows, sources = cohort.freeze(self.bundle)

@@ -10,6 +10,7 @@ import re
 import statistics
 import subprocess
 import sys
+import tempfile
 from collections import Counter, defaultdict
 from importlib.metadata import version
 from pathlib import Path
@@ -317,6 +318,47 @@ def evaluate(rows, sources, lock, service_factory):
     }
 
 
+def publish_report(path, report):
+    data = json_bytes(report)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".tfidf-report-", delete=False) as temporary:
+            temp_path = Path(temporary.name)
+            temporary.write(data)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def score_to_file(path, lock, rows, sources):
+    # The reservation also identifies an interrupted run if the process dies
+    # before it can publish its initial status record.
+    reservation = path.with_name(path.name + ".running")
+    try:
+        reservation.mkdir()
+    except FileExistsError as exc:
+        raise CohortError("Output path is reserved. Review the active or interrupted run first.") from exc
+
+    try:
+        require(not os.path.lexists(path), "Output report already exists. Review the existing run first.")
+        publish_report(path, {"lock": lock, "run_status": "incomplete"})
+        try:
+            report = evaluate(rows, sources, lock, lambda: AIService(TfidfProvider()))
+            publish_report(path, report)
+        except (Exception, KeyboardInterrupt) as exc:
+            # A write failure leaves the previous complete status record in place.
+            publish_report(path, {"lock": lock, "run_status": "execution_failed"})
+            raise CohortError("Scoring did not finish. Review the private run report.") from exc
+    finally:
+        reservation.rmdir()
+    return int(report["run_status"] != "finished" or any(
+        row["outcome"] not in ("alert", "below_threshold") for row in report["cases"]
+    ))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("preflight", "score"))
@@ -336,10 +378,7 @@ def main():
         require(SHA256.fullmatch(args.expected_lock_sha) and sha256(reviewed) == args.expected_lock_sha,
                 "Approved lock SHA-256 does not match")
         require(json.loads(reviewed) == lock, "Current bundle, source or runtime differs from the approved lock")
-        with args.output.open("xb") as output:
-            report = evaluate(rows, sources, lock, lambda: AIService(TfidfProvider()))
-            output.write(json_bytes(report))
-        return int(any(row["outcome"] not in ("alert", "below_threshold") for row in report["cases"]))
+        return score_to_file(args.output, lock, rows, sources)
     except CohortError as exc:
         parser.exit(1, f"Cohort validation failed: {exc}\n")
     except (OSError, ValueError, RuntimeError, TypeError, KeyError, AttributeError, subprocess.CalledProcessError):

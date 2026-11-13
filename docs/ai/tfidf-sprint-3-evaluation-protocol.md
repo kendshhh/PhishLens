@@ -121,7 +121,15 @@ python scripts/evaluate_tfidf_cohort.py score --bundle $CohortBundle --lock $Coh
 ```
 
 The scorer checks the lock against the current bundle, checkout, and runtime
-before creating the report file. It runs the pinned TF-IDF adapter through
+before reserving the output path with a sibling `.running` directory and
+publishing an `incomplete` JSON status record. The runner replaces the
+status record atomically with the final report. An unexpected scoring error
+records `execution_failed` without raw error text. A hard stop can leave
+the reservation and the last published record. If the record is absent or
+still says `incomplete`, no final results were published. Keep the evidence
+for review before using a fresh path for a rerun.
+
+The scorer runs the pinned TF-IDF adapter through
 the backend `AIService` once per selected case. Keep the per-case report private.
 Share aggregates, hashes, and sanitized limitations. Use a new approved lock
 for any input, source, or scoring change. A failed or interrupted run stays
