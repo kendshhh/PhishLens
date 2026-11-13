@@ -51,6 +51,23 @@ is explicitly marked synthetic.
 | [Provider failure preserves input](../evidence/issue-91-synthetic-browser/03-synthetic-provider-failure-preserves-input.png) | `bcb086baf115a0a437ca3a2ebff22d3cfcc82eacd6d280834f274a0acf1cebab` |
 | [History failure keeps saved result](../evidence/issue-91-synthetic-browser/04-synthetic-history-refresh-failure-keeps-saved-report.png) | `18881b2063cdfa76d014c3c86f16e54d7952ac7dfafec8cca120e356fe04f437` |
 
+## PR #61 artifact handoff
+
+The supplied `PhishLens-Extension.zip` evidence is internally consistent with
+PR #61's current source head `974522b4e2ec9d4cd29c28dda30b8112884ed125`; its
+tested merge commit is `38c7a2104fe762f319cf897bad4182fb712cff1c`, and
+`runtime_or_packaging_changes` is false. The ZIP SHA-256 is
+`c7db4ce45942b7a98f83345a1230924343aeb74230a043626d581874fea33b10`.
+
+This is a **production** package: its recorded host permission and source
+`extension/js/config.js` both point to
+`https://phishlens-api-ocvt.onrender.com`. It must not be used for synthetic
+staging writes or as the staging package for this issue. Packaging also records
+that local judge weights and the full local workflow assets are absent, and that
+Chrome acceptance was not performed. Obtain a separate trusted staging artifact
+with a staging origin and exact matching backend/deployment SHA before the
+connected run.
+
 ## Protected staging run
 
 Do not start until Kendra or the environment owner confirms that the protected
