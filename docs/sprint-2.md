@@ -23,6 +23,32 @@ Issue #43 remains open pending required review, CI, and checklist/board
 reconciliation. The test-only change has not been deployed; deployed API CRUD
 evidence is recorded separately under merged PR #58.
 
+November 13 backend acceptance handoff:
+
+- [#42 persistent CRUD](https://github.com/kendshhh/PhishLens/issues/42) still
+  needs evidence on the selected deployment for create, list/detail,
+  notes/feedback PATCH and a fresh reread, delete, and final detail 404.
+- [#43 CRUD tests](https://github.com/kendshhh/PhishLens/issues/43) recorded
+  the disposable PostgreSQL run on `7ced6984ba5cdc962a756afd2ec642fbf274ec4d`.
+  [PR #80](https://github.com/kendshhh/PhishLens/pull/80) later passed CI at
+  `e99a6682d3336ec2bb602d8492ffcf8fe6b9e38a` and merged as
+  `16b96fa0107aee28c321ed47affc0d7f30d456fd`. Separately, the historical
+  [PR #58](https://github.com/kendshhh/PhishLens/pull/58) hosted run used
+  source `8357317076bfa1ef300f14bc0efea2936fffbf70` on staging revision
+  `6c9f044324dc602893d0562f433cb0840411a34b`. It recorded create 201,
+  list/detail and notes/feedback PATCH with reread 200, delete 204, and
+  final detail 404. These results apply to those revisions. The issue
+  records the board as Done, with this sprint-log publication as its
+  remaining handoff.
+- [#48 TF-IDF saved-report verification](https://github.com/kendshhh/PhishLens/issues/48)
+  uses the verifier from merged [PR #185](https://github.com/kendshhh/PhishLens/pull/185)
+  at `afe6fad4f539d41e82b4772698c806935e94be34`. Its 38 local fixture tests
+  passed, including authenticated save/read/cleanup and rejection of
+  anonymous access in Auth mode. The hosted scope is one synthetic create,
+  list/detail read, delete, and final detail 404 after authorization for the
+  confirmed target. [#96](https://github.com/kendshhh/PhishLens/issues/96)
+  tracks forced provider and database failures.
+
 October 21 continuation: [playbook close-out and remaining gates](devops/playbook-closeout-2026-10-21.md).
 PR #55 adds strict production-package permissions, reproducible artifact identity
 and a measured staging download-cache experiment. Existing production evidence
