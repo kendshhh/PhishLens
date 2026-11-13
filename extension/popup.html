@@ -27,14 +27,14 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
 </section>
 <button id="clear-button" type="button">Clear local scan</button>
     <section class="panel" aria-labelledby="create-heading">
-      <h2 id="create-heading">Save an analysis</h2>
-      <p>Saving uploads the text you enter to the team’s API and shared demo history. Only save material you are authorized to share.</p>
+      <h2 id="create-heading">Analyze and save with the PhishLens API</h2>
+      <p>This sends the email text to the configured team API for analysis and saves its returned result in shared history. The server’s analysis mode and provider are shown in the saved details. Submit only synthetic or authorized content.</p>
       <form id="create-form">
         <label for="create-subject">Subject <span class="muted">(optional)</span></label>
         <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
         <label for="create-body">Email body <span class="required">(required)</span></label>
         <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
-        <button id="create-button" type="submit">Save analysis</button>
+        <button id="create-button" type="submit">Analyze and save</button>
       </form>
     </section>
     <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
@@ -74,5 +74,5 @@ and choose <strong>Analyze selection with PhishLens</strong>.</p>
         </div>
       </form>
     </section>
-<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>Built with Llama. LLM weights run locally; no email is sent to an AI provider.</p></footer>
+<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>The selected-text scan runs locally. It is not sent to the API unless you choose Save report. The separate Analyze and save action sends the entered text to the configured PhishLens API; its returned analysis mode and provider are shown with the saved result.</p></footer>
 </main><script type="module" src="popup.js"></script></body></html>
