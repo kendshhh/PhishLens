@@ -101,6 +101,15 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("- [ ] Exact-head staging saved-report CRUD and cleanup have not passed", body)
         self.assertIn("- [ ] Real AI acceptance is not checked", body)
 
+    def test_unrequested_staging_keeps_formal_review_unchecked(self):
+        snapshot = fixture()
+        snapshot["preview_requested"] = False
+        body = render(snapshot, {"status": "disabled"}, "test")
+        checklist = body.split("### Automated and human follow-up checklist", 1)[1].split("### Recommended next action", 1)[0]
+        self.assertIn("- [ ] Hosted staging was not requested", checklist)
+        self.assertIn("- [ ] Formal teammate review is a separate required approval", checklist)
+        self.assertNotIn("- [x] Exact-head staging", checklist)
+
     def test_mock_staging_checks_crud_but_never_ai_acceptance(self):
         snapshot = fixture()
         snapshot["preview"].update({"analysis_mode": "mock", "provider_mode": "mock"})
@@ -436,6 +445,15 @@ class PreviewTests(unittest.TestCase):
         )
         self.assertTrue(confirmed)
         self.assertEqual(api.request.call_args.args[1]["conclusion"], "action_required")
+
+    def test_wrong_live_commit_does_not_invalidate_any_preview(self):
+        api = Mock()
+        with self.assertRaisesRegex(RuntimeError, "wrong commit"):
+            confirm_live_deployment(
+                api, CONFIG, {"status": "live", "commit": {"id": "c" * 40}}, SHA
+            )
+        api.request.assert_not_called()
+        api.pages.assert_not_called()
 
     def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
         api = Mock()

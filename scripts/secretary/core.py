@@ -123,6 +123,7 @@ def automated_checklist(files, jobs, preview, sha, preview_requested=True):
     if application_change(files):
         if not preview_requested:
             yield False, "Hosted staging was not requested; no live acceptance evidence is claimed."
+            yield False, "Formal teammate review is a separate required approval; automated checks do not approve or merge the PR."
             return
         staging_current = (
             preview.get("current") is True

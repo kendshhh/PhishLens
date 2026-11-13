@@ -343,9 +343,9 @@ def confirm_live_deployment(api, config, live, expected_sha):
     live_sha = commit.get("id") if isinstance(commit, dict) else None
     if not isinstance(live_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", live_sha):
         raise RuntimeError("Render reported the wrong commit")
-    invalidate_previous(api, config, live_sha)
     if live_sha != expected_sha:
         raise RuntimeError("Render reported the wrong commit")
+    invalidate_previous(api, config, live_sha)
     return True
 
 
