@@ -24,8 +24,8 @@ from scripts.secretary.core import (
 from scripts.secretary.github_api import APIError, GitHub
 from scripts.secretary.preview import (
     completed_event,
+    confirm_live_deployment,
     eligibility,
-    invalidate_previous,
     package,
     preview_gate_enabled,
     verify_environment,
@@ -59,6 +59,7 @@ SHA = "a" * 40
 def fixture():
     return {"pr": {"number": 123, "title": "Synthetic history change", "body": "Related to #23. Acceptance: render history.",
         "user": {"login": "teammate"}, "state": "open", "draft": False,
+        "labels": [{"name": CONFIG["preview_opt_in_label"]}],
         "head": {"sha": SHA, "ref": "feat/demo", "repo": {"full_name": "kendshhh/PhishLens"}},
         "base": {"sha": "b" * 40, "ref": "main", "repo": {"full_name": "kendshhh/PhishLens"}}},
         "files": [{"filename": "extension/js/history.js", "status": "modified", "patch": "@@ -1 +1 @@\n-old\n+new"}],
@@ -72,7 +73,15 @@ def fixture():
 class PolicyTests(unittest.TestCase):
     def decision(self, s):
         findings, gaps, _ = inspect(s["pr"], s["files"], s["config"])
-        return recommendation(s["pr"], s["jobs"], s["preview"], findings, gaps, CONFIG["required_ci_jobs"], application_change(s["files"]))[0]
+        preview_requested = any(
+            label.get("name") == CONFIG["preview_opt_in_label"]
+            for label in s["pr"].get("labels", [])
+        )
+        return recommendation(
+            s["pr"], s["jobs"], s["preview"], findings, gaps,
+            CONFIG["required_ci_jobs"], application_change(s["files"]),
+            preview_requested,
+        )[0]
 
     def test_passing_is_review_never_approval(self):
         self.assertEqual(self.decision(fixture()), "READY FOR KENDRA’S REVIEW")
@@ -91,6 +100,15 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("- [ ] Packaged extension browser checklist has not passed", body)
         self.assertIn("- [ ] Exact-head staging saved-report CRUD and cleanup have not passed", body)
         self.assertIn("- [ ] Real AI acceptance is not checked", body)
+
+    def test_unrequested_staging_keeps_formal_review_unchecked(self):
+        snapshot = fixture()
+        snapshot["preview_requested"] = False
+        body = render(snapshot, {"status": "disabled"}, "test")
+        checklist = body.split("### Automated and human follow-up checklist", 1)[1].split("### Recommended next action", 1)[0]
+        self.assertIn("- [ ] Hosted staging was not requested", checklist)
+        self.assertIn("- [ ] Formal teammate review is a separate required approval", checklist)
+        self.assertNotIn("- [x] Exact-head staging", checklist)
 
     def test_mock_staging_checks_crud_but_never_ai_acceptance(self):
         snapshot = fixture()
@@ -325,16 +343,44 @@ class PreviewTests(unittest.TestCase):
     def test_eligibility_draft_fork_failure_docs_and_stale(self):
         s = fixture()
         run = {"head_sha": SHA, "conclusion": "success"}
-        self.assertEqual(eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens")[0], "deploy")
+        opt_in_label = CONFIG["preview_opt_in_label"]
+        self.assertEqual(
+            eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label)[0],
+            "deploy",
+        )
         s["pr"]["draft"] = True
-        self.assertEqual(eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens")[0], "action_required")
+        self.assertEqual(
+            eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label)[0],
+            "action_required",
+        )
         s["pr"]["draft"] = False
         s["pr"]["head"]["repo"]["full_name"] = "outside/fork"
-        self.assertEqual(eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens")[0], "action_required")
+        self.assertEqual(
+            eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label)[0],
+            "action_required",
+        )
         s = fixture()
-        self.assertEqual(eligibility(s["pr"], s["files"], {**run, "conclusion": "failure"}, "kendshhh/PhishLens")[0], "failure")
-        self.assertEqual(eligibility(s["pr"], [{"filename": "README.md"}], run, "kendshhh/PhishLens")[0], "success")
-        self.assertEqual(eligibility(s["pr"], s["files"], {**run, "head_sha": "c" * 40}, "kendshhh/PhishLens")[0], "stale")
+        self.assertEqual(
+            eligibility(
+                s["pr"], s["files"], {**run, "conclusion": "failure"},
+                "kendshhh/PhishLens", opt_in_label,
+            )[0],
+            "failure",
+        )
+        self.assertEqual(
+            eligibility(
+                s["pr"], [{"filename": "README.md"}], run,
+                "kendshhh/PhishLens", opt_in_label,
+            )[0],
+            "success",
+        )
+        self.assertEqual(
+            eligibility(
+                s["pr"], s["files"], {**run, "head_sha": "c" * 40},
+                "kendshhh/PhishLens", opt_in_label,
+            )[0],
+            "stale",
+        )
 
     def test_preview_head_guard_rejects_only_superseded_or_closed_prs(self):
         from scripts.secretary.preview import current_pr_head_matches
@@ -394,8 +440,29 @@ class PreviewTests(unittest.TestCase):
         api = Mock()
         api.request.return_value = [{"id": 2, "sha": "c" * 40, "creator": {"login": "github-actions[bot]"}, "payload": {"secretary": 1}}]
         api.pages.return_value = [{"id": 8, "app": {"slug": "github-actions"}, "conclusion": "success"}]
-        invalidate_previous(api, CONFIG, SHA)
+        confirmed = confirm_live_deployment(
+            api, CONFIG, {"status": "live", "commit": {"id": SHA}}, SHA
+        )
+        self.assertTrue(confirmed)
         self.assertEqual(api.request.call_args.args[1]["conclusion"], "action_required")
+
+    def test_wrong_live_commit_does_not_invalidate_any_preview(self):
+        api = Mock()
+        with self.assertRaisesRegex(RuntimeError, "wrong commit"):
+            confirm_live_deployment(
+                api, CONFIG, {"status": "live", "commit": {"id": "c" * 40}}, SHA
+            )
+        api.request.assert_not_called()
+        api.pages.assert_not_called()
+
+    def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
+        api = Mock()
+        confirmed = confirm_live_deployment(
+            api, CONFIG, {"status": "update_failed", "commit": {"id": "c" * 40}}, SHA
+        )
+        self.assertFalse(confirmed)
+        api.request.assert_not_called()
+        api.pages.assert_not_called()
 
     def test_real_extension_archive_has_staging_banner_and_origin(self):
         api = Mock()

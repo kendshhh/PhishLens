@@ -1,4 +1,4 @@
-"""Guard the hosted Render migration chain against accidental removal."""
+"""Guard the hosted Render migration chain, including historically applied revisions."""
 
 import shutil
 import tempfile
@@ -29,13 +29,13 @@ class MigrationLineageTests(unittest.TestCase):
                 / "backend"
                 / "migrations"
                 / "versions"
-                / "0003_saved_analysis_idempotency.py"
+                / "0004_neon_auth_subject.py"
             )
             missing_revision.unlink()
 
             with self.assertRaisesRegex(
                 MigrationLineageError,
-                "0003_saved_analysis_idempotency",
+                "0004_neon_auth_subject",
             ):
                 verify_migration_lineage(repo_root)
 
