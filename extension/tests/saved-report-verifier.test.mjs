@@ -4,13 +4,16 @@ import { createServer } from 'node:http';
 import { verifySavedReport } from '../../scripts/verify_saved_report.mjs';
 
 const sha = 'a'.repeat(40);
+const modelSha = 'b'.repeat(64);
 const id = '29d80c39-ec0d-4db8-a6e5-87444ba2600c';
 
 async function fixture(t, {
     createStatus, failHistory, failCleanup, invalidJson, identitySha = sha,
-    detailTimestamp, historyTimestamp, createdFields = {}, historyFields = {}
+    detailTimestamp, historyTimestamp, createdFields = {}, historyFields = {},
+    deployedModelSha = modelSha
 } = {}) {
     let record;
+    let requestedModel;
     const calls = [];
     const server = createServer(async (request, response) => {
         calls.push(request.method + ' ' + request.url);
@@ -20,7 +23,11 @@ async function fixture(t, {
         };
         if (request.url === '/version') return send(200, { commit: identitySha, environment: 'disposable' });
         if (request.url === '/ready') return send(200, { status: 'ready', database: 'connected' });
+        if (request.url === '/model-info') return send(200, {
+            provider_mode: 'tfidf', accepts_tfidf_reports: true, model_sha256: deployedModelSha
+        });
         if (request.method === 'POST') {
+            requestedModel = request.headers['x-phishlens-model'];
             let body = '';
             for await (const chunk of request) body += chunk;
             if (createStatus) return send(createStatus, { detail: 'Controlled create failure' });
@@ -62,7 +69,7 @@ async function fixture(t, {
     return {
         url: 'http://127.0.0.1:' + server.address().port,
         options: { environment: 'disposable', expectedSha: sha, allowWrites: true },
-        calls, get record() { return record; }
+        calls, get record() { return record; }, get requestedModel() { return requestedModel; }
     };
 }
 
@@ -221,3 +228,32 @@ for (const provider of ['gemini', 'local']) {
         assert.equal(result.cleanedUp, true);
     });
 }
+
+test('TF-IDF verification pins the deployed and saved model and cleans up', async t => {
+    const f = await fixture(t, { createdFields: {
+        prediction: 'legitimate', risk_level: 'low', analysis_mode: 'real',
+        analysis_provenance: { provider_mode: 'tfidf', model_revision: modelSha }
+    } });
+    const result = await verifySavedReport(f.url, { ...f.options, expectedModelSha: modelSha });
+    assert.equal(f.requestedModel, modelSha);
+    assert.equal(result.providerMode, 'tfidf');
+    assert.equal(result.modelRevision, modelSha);
+    assert.equal(result.cleanedUp, true);
+});
+
+test('TF-IDF verification refuses a different deployed model before saving', async t => {
+    const f = await fixture(t, { deployedModelSha: 'c'.repeat(64) });
+    await assert.rejects(verifySavedReport(f.url, { ...f.options, expectedModelSha: modelSha }),
+        /Target model SHA-256 differs/);
+    assert.equal(f.calls.some(call => call.startsWith('POST')), false);
+});
+
+test('TF-IDF verification cleans up when saved provenance has a different model', async t => {
+    const f = await fixture(t, { createdFields: {
+        analysis_mode: 'real',
+        analysis_provenance: { provider_mode: 'tfidf', model_revision: 'c'.repeat(64) }
+    } });
+    await assert.rejects(verifySavedReport(f.url, { ...f.options, expectedModelSha: modelSha }),
+        /Saved model SHA-256 differs/);
+    assert.equal(f.record, undefined);
+});

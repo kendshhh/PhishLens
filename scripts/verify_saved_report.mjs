@@ -5,8 +5,22 @@ import { saveAnalysisAndRefresh } from '../extension/js/report-client.js';
 import { verifyTarget } from './verify_crud.mjs';
 
 export async function verifySavedReport(baseUrl, options = {}) {
+    const { expectedModelSha } = options;
+    if (expectedModelSha !== undefined && !/^[0-9a-f]{64}$/.test(expectedModelSha)) {
+        throw new Error('A full lowercase TF-IDF model SHA-256 is required');
+    }
     const target = await verifyTarget(baseUrl, options);
-    const client = createAnalysisClient(target.baseUrl, target.safeFetch);
+    if (expectedModelSha !== undefined) {
+        const response = await target.safeFetch(target.baseUrl + '/model-info', {
+            cache: 'no-store', signal: AbortSignal.timeout(10000)
+        });
+        assert.equal(response.status, 200, 'Target model identity check failed');
+        const model = await response.json();
+        assert.equal(model.provider_mode, 'tfidf', 'Target is not serving TF-IDF');
+        assert.equal(model.accepts_tfidf_reports, true, 'Target does not accept TF-IDF reports');
+        assert.equal(model.model_sha256, expectedModelSha, 'Target model SHA-256 differs');
+    }
+    const client = createAnalysisClient(target.baseUrl, target.safeFetch, { requiredModel: expectedModelSha });
     const input = {
         subject: 'Synthetic saved-report check ' + crypto.randomUUID(),
         body: 'Synthetic verification message. No personal content or credentials.'
@@ -31,8 +45,16 @@ export async function verifySavedReport(baseUrl, options = {}) {
         const provenance = report.saved.analysis_provenance;
         assert.ok(provenance && typeof provenance === 'object' && !Array.isArray(provenance),
             'New report requires a provenance object');
-        const providers = report.saved.analysis_mode === 'mock' ? ['mock'] : ['gemini', 'local'];
+        const providers = report.saved.analysis_mode === 'mock' ? ['mock'] : ['gemini', 'local', 'tfidf'];
         assert.ok(providers.includes(provenance.provider_mode), 'New report provenance must match its mode');
+        if (provenance.provider_mode === 'tfidf') {
+            assert.ok(/^[0-9a-f]{64}$/.test(provenance.model_revision),
+                'Saved TF-IDF report requires a model SHA-256');
+        }
+        if (expectedModelSha !== undefined) {
+            assert.equal(provenance.provider_mode, 'tfidf', 'Saved report provider differs from TF-IDF');
+            assert.equal(provenance.model_revision, expectedModelSha, 'Saved model SHA-256 differs');
+        }
         if (report.refreshErrors.length) {
             throw new AggregateError(
                 report.refreshErrors.map(item => item.error),
@@ -61,6 +83,8 @@ export async function verifySavedReport(baseUrl, options = {}) {
             environment: options.environment,
             recordId: report.saved.id,
             analysisMode: report.saved.analysis_mode,
+            providerMode: provenance.provider_mode,
+            modelRevision: provenance.model_revision ?? null,
             cleanedUp: false
         };
     } catch (error) {
@@ -92,9 +116,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         return index === -1 ? undefined : args[index + 1];
     };
     try {
+        const expectedModelSha = value('--expected-model-sha');
+        if (args.includes('--expected-model-sha') && !expectedModelSha) {
+            throw new Error('--expected-model-sha requires a value');
+        }
         console.log(JSON.stringify(await verifySavedReport(value('--base-url'), {
             environment: value('--environment'),
             expectedSha: value('--expected-sha'),
+            expectedModelSha,
             allowWrites: args.includes('--allow-writes')
         }), null, 2));
     } catch (error) {
