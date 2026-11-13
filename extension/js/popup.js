@@ -16,6 +16,9 @@ const provenanceLabels = new Map([
 const classificationLabels = new Map([
   ["phishing", "Phishing"], ["legitimate", "Legitimate"], ["spam", "Spam"]
 ]);
+const providerLabels = new Map([
+  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"], ["tfidf", "TF-IDF"]
+]);
 
 function node(doc, tag, className, text) {
   const element = doc.createElement(tag);
@@ -97,6 +100,11 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
     const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "Analysis source unknown"];
+    if (record.analysis_mode === "real" && provenance.provider_mode === "tfidf") {
+      provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode)}`);
+      if (typeof provenance.model === "string" && provenance.model.trim()) provenanceLines.push(`Model: ${provenance.model}`);
+      if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) provenanceLines.push(`Model revision: ${provenance.model_revision}`);
+    }
     if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
     ui.modeWarning.textContent = record.analysis_mode === 'mock' ? 'Demo result — this is not a real email assessment.' :
       record.analysis_mode !== 'real' ? 'The analysis source was not recorded. Treat this report as unverified.' : '';
