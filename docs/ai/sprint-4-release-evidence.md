@@ -4,6 +4,9 @@ Audited source: `fa9a23fbb5d1d60c45d0fc06333c50415d04d57e` on November 10, 2026.
 This is the source baseline for the checks below. Release candidate selection,
 deployment verification, and model-quality approval are separate gates.
 
+See the [November 13 sprint verification handoff](tfidf-sprint-closeout.md) for
+the latest local reruns, release probes and demonstration steps.
+
 ## Model and runtime
 
 | Layer | Identity and behavior |
