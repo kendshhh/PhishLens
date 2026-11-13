@@ -22,6 +22,8 @@ Deleted only that disposable record through the extension confirmation flow. Dev
 
 ## Limits and follow-up
 
-This records observed native Chrome behavior, not a complete release acceptance. Final detail-404 and absence after a fresh popup reopen still need capture. HAR export was attempted but did not save successfully; no exported capture is claimed. Exact browser version and a reviewable screenshot/Network evidence bundle remain to be attached. Authentication, local Llama weights, provider fault injection and Week 1 subject/result mutation were not tested here.
+A fresh detail reread returned HTTP 404 with `{"detail":"Analysis not found"}`, observed in DevTools Network. Closed and reopened the actual matched PR #61 toolbar popup, loaded history, and confirmed the disposable record stayed absent while the original five entries remained. Chrome About Version reported 157.0.8103.78 (Official Build, 64-bit) on Windows 10 Build 21996.1.
+
+Exported the sanitized DevTools HAR locally and verified its DELETE 204 / GET 200 entries. The committed `staging-crud-cleanup-network-2026-11-13.json` contains only methods, paths, statuses and request times; response bodies, headers, host identity and unrelated history records are excluded. The raw HAR stays local. A reviewable screenshot bundle and teammate acceptance of the native run remain pending. This is not a complete release acceptance. Authentication, local Llama weights, provider fault injection and Week 1 subject/result mutation were not tested here.
 
 The run exposed a presentation defect: supported `tfidf` provenance was labeled `Unrecognized (tfidf)`. The accompanying fix adds the display label and a regression test; it does not alter the deployed package or claim that the fix is already deployed.
