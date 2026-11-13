@@ -9,8 +9,8 @@ records the source licenses and the limits on underlying message rights.
 
 | Sprint | Issue | Evidence and open acceptance |
 | --- | --- | --- |
-| 1 | [#8](https://github.com/kendshhh/PhishLens/issues/8), [#21](https://github.com/kendshhh/PhishLens/issues/21) | The shared backend service scored three synthetic examples with TF-IDF. The October 18 DistilBERT run remains historical. Trixia's requested review still needs to be recorded. |
-| 2 | [#48](https://github.com/kendshhh/PhishLens/issues/48) | The current app runs TF-IDF through the supervised saved-create service. [PR #121](https://github.com/kendshhh/PhishLens/pull/121) verifies TF-IDF and optional Gemini mapping and persistence, with a separate disposable PostgreSQL check. [Issue #90](https://github.com/kendshhh/PhishLens/issues/90#issuecomment-6683245280) records a protected TF-IDF create/read/list/delete run. Deterministic failure tests cover unavailable, timeout, malformed output and storage failure. |
+| 1 | [#8](https://github.com/kendshhh/PhishLens/issues/8), [#21](https://github.com/kendshhh/PhishLens/issues/21) | Trixia reproduced all three TF-IDF smoke cases through the shared backend at `2bd72c6`. The October 18 DistilBERT run remains historical. Record the agreed change in scope on the original issues before counting TF-IDF against criteria that name DistilBERT. |
+| 2 | [#48](https://github.com/kendshhh/PhishLens/issues/48) | Trixia confirmed the output, error and persistence contract at `2bd72c6`. [PR #121](https://github.com/kendshhh/PhishLens/pull/121) covers saved-provider mapping and persistence. [Issue #90](https://github.com/kendshhh/PhishLens/issues/90#issuecomment-6683245280) records the earlier protected TF-IDF create/read/list/delete run. Fresh staging evidence is needed on the revision selected for acceptance. |
 | 2 | [#49](https://github.com/kendshhh/PhishLens/issues/49) | Model metadata, local smoke, runtime measurements and a leakage-controlled evaluation are available. The failure rehearsal below can be repeated without a database. Record instructor acceptance of the TF-IDF scope and the resulting evaluation decision. |
 | 3 | [#92](https://github.com/kendshhh/PhishLens/issues/92) | The frozen source-pair evaluation and the current development results are reported below. Fresh separately labelled spam and modern phishing coverage still need review before making a broader quality claim. |
 | 4 | [#132](https://github.com/kendshhh/PhishLens/issues/132), [#142](https://github.com/kendshhh/PhishLens/issues/142) | Model identity, input policy, attribution, data roles and coverage limits are documented. The release owner still needs to freeze the application candidate under [#153](https://github.com/kendshhh/PhishLens/issues/153). |
@@ -19,8 +19,9 @@ records the source licenses and the limits on underlying message rights.
 
 ## Reproduce the evaluations
 
-Use Python 3.12 with the backend requirements. The benchmark also needs
-`psutil` for process memory. Run these from the repository root:
+Use Python 3.12 with the backend requirements. Install `psutil` to include
+peak process RSS and system RAM. Without it, those fields are null and the
+benchmark still reports predictions and timing. Run from the repository root:
 
 ```sh
 python scripts/ai_smoke.py --mode tfidf
@@ -43,14 +44,18 @@ study measures a different workflow.
 
 The historical result gives 95.0% phishing recall, 99.48% alert precision
 and 0.1% false positives on legitimate mail. The development run gives
-18.75% phishing recall, 75% alert precision and 4.17% false positives
-across the 24 legitimate and spam examples. All eight spam messages were
-below the phishing threshold. TF-IDF has no spam output, so this does
-not measure spam classification. The development examples are CC0,
+18.75% phishing recall and 75% alert precision. The legitimate-only false
+positive rate was 1/16 (6.25%). The spam phishing-alert rate was 0/8 (0%).
+The combined non-phishing false positive rate was 1/24 (4.17%). TF-IDF emits
+binary labels, so spam is reported as an input group. The development examples are CC0,
 version `synthetic-v1`, SHA-256
 `a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f`.
 The missed phishing examples are evidence of limited transfer to this set.
-Neither cohort estimates performance across current user inboxes.
+Neither cohort estimates performance across current user inboxes. Trixia
+independently reproduced the development counts and the archived hash/count
+checks at `2bd72c6`. The archive check she ran performed zero classifier
+inferences. The private 1,200-case replay and the Windows timing and memory
+measurements are from the author's run.
 
 For the [frozen study](../../benchmark-records/tfidf_false_alarm_v12a/summary.md),
 the source pair contains 1,200 messages in 1,135 groups. Its prepared SHA-256 is
@@ -72,14 +77,9 @@ and emits aggregate values only. This is a read-only reproduction of an
 existing result on the same data. Use a new frozen cohort for an independent
 quality test.
 
-For a new study, freeze sources, usage rights, visible-text labeling rules,
-model and case hashes before scoring. Track legitimate, spam and phishing
-input classes separately, including unknown or disputed labels. Compare IDs,
-full and prepared hashes and template groups against earlier data roles.
-Keep repeated templates in one split. Record misses, false alerts and failed
-outputs separately by class. Give modern security notices, short selections
-and phishing scenarios their own counts. Have the reviewer assess the
-protocol and operating limits before using the results for release.
+The [proposed Sprint 3 cohort protocol](tfidf-sprint-3-evaluation-protocol.md)
+defines source admission, labels, overlap checks, reporting and proposed
+thresholds for Trixia's review before any new scoring.
 
 ## Candidate verification and recovery
 
@@ -102,6 +102,14 @@ The verifier checks the deployed app SHA, database readiness and advertised
 model before saving. It uses one synthetic record and compares returned and
 reread provenance, then verifies cleanup. Retain the JSON result with the
 deployment link. Recheck the target version if shared staging changes.
+
+If the approved target requires Neon report authentication, add
+`--auth-token-file PRIVATE_LOCAL_FILE` to the same command. Keep the token
+file outside the checkout and use a current access token for the authorized
+synthetic account. Remove the local token file when finished. The verifier expects
+anonymous report access to return 401 and uses the same token for create,
+read and cleanup. Use the installed extension for OTP, token renewal and
+two-account isolation checks.
 
 The previous staging recovery target `0769de936c349f57bf32540d92adaab97f7c402a`
 contains the same TF-IDF decision contract. The recorded staging rehearsal

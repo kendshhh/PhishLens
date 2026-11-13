@@ -5,7 +5,7 @@ python scripts/benchmark_ai.py --models tfidf --repeats 1
 An optional comparison can also select local DistilBERT or a Gemini model ID.
 Optional: --repeats 2 (paid API usage may apply), --limit 3 for a wiring check.
 Use --pause to match the selected model's account quota; five seconds is the default.
-Each model runs in a fresh subprocess for separate cold timing and process memory.
+Each model runs in a fresh subprocess. Install psutil to include memory measurements.
 The confusion table retains spam as an input label. Binary metrics count it among
 non-phishing cases, and inference errors count as unsuccessful attempts.
 JSONL goes to stdout.
@@ -39,9 +39,14 @@ from backend.core.config import get_ai_config
 def summarize(rows: list[dict]) -> dict:
     completed = [row for row in rows if row.get("prediction") is not None]
     phishing = [row for row in rows if row["expected"] == "phishing"]
+    legitimate = [row for row in rows if row["expected"] == "legitimate"]
+    spam = [row for row in rows if row["expected"] == "spam"]
     negatives = [row for row in rows if row["expected"] != "phishing"]
     tp = sum(row.get("prediction") == "phishing" for row in phishing)
     fp = sum(row.get("prediction") == "phishing" for row in negatives)
+    legitimate_alerts = sum(row.get("prediction") == "phishing" for row in legitimate)
+    spam_alerts = sum(row.get("prediction") == "phishing" for row in spam)
+    non_phishing_rate = fp / len(negatives) if negatives else None
     correct = sum((r["prediction"] == "phishing") == (r["expected"] == "phishing") for r in completed)
     latencies = sorted(r["seconds"] for r in completed)
     precision = tp / (tp + fp) if tp + fp else 0
@@ -53,7 +58,12 @@ def summarize(rows: list[dict]) -> dict:
         "phishing_tp": tp, "phishing_fp": fp, "phishing_cases": len(phishing),
         "phishing_precision": precision, "phishing_recall": recall,
         "phishing_f1": 2 * precision * recall / (precision + recall) if recall and precision else 0,
-        "false_positive_rate": fp / len(negatives) if negatives else None,
+        "legitimate_cases": len(legitimate), "legitimate_false_positives": legitimate_alerts,
+        "legitimate_false_positive_rate": legitimate_alerts / len(legitimate) if legitimate else None,
+        "spam_cases": len(spam), "spam_phishing_alerts": spam_alerts,
+        "spam_phishing_alert_rate": spam_alerts / len(spam) if spam else None,
+        "non_phishing_false_positive_rate": non_phishing_rate,
+        "false_positive_rate": non_phishing_rate,
         "three_class_accuracy": sum(r["prediction"] == r["expected"] for r in completed) / len(rows) if rows else None,
         "p50_seconds": statistics.median(latencies) if latencies else None,
         "p95_seconds": latencies[math.ceil(.95 * len(latencies)) - 1] if latencies else None,
@@ -63,7 +73,10 @@ def summarize(rows: list[dict]) -> dict:
 
 
 def worker(args) -> int:
-    import psutil
+    try:
+        import psutil
+    except ImportError:
+        psutil = None
 
     selected = CASES[:args.limit] if args.limit else CASES
     frozen = json.dumps([asdict(case) for case in selected], sort_keys=True).encode()
@@ -84,16 +97,19 @@ def worker(args) -> int:
         _, api_key, model = get_ai_config()
         provider = GeminiProvider(api_key=api_key, model=model)
     service = None
-    process = psutil.Process()
-    peak = [process.memory_info().rss]
+    process = psutil.Process() if psutil else None
+    peak = process.memory_info().rss if process else None
     stop = Event()
 
     def sample_memory():
+        nonlocal peak
         while not stop.wait(.02):
-            peak[0] = max(peak[0], process.memory_info().rss)
+            peak = max(peak, process.memory_info().rss)
 
-    sampler = Thread(target=sample_memory, daemon=True)
-    sampler.start()
+    sampler = None
+    if process is not None:
+        sampler = Thread(target=sample_memory, daemon=True)
+        sampler.start()
     rows = []
     cold_seconds = None
     first_result = None
@@ -135,9 +151,10 @@ def worker(args) -> int:
                 if aborted:
                     break
     finally:
-        stop.set()
-        sampler.join()
-        peak[0] = max(peak[0], process.memory_info().rss)
+        if sampler is not None:
+            stop.set()
+            sampler.join()
+            peak = max(peak, process.memory_info().rss)
         if service is not None and hasattr(service.provider, "close"):
             service.provider.close()
     summary = summarize(rows)
@@ -145,7 +162,11 @@ def worker(args) -> int:
         summary["three_class_accuracy"] = None
     requested = len(selected) * args.repeats
     if len(rows) < requested:
-        for metric in ("binary_accuracy", "phishing_recall", "phishing_f1", "false_positive_rate", "three_class_accuracy"):
+        for metric in (
+            "binary_accuracy", "phishing_recall", "phishing_f1", "three_class_accuracy",
+            "false_positive_rate", "legitimate_false_positive_rate",
+            "spam_phishing_alert_rate", "non_phishing_false_positive_rate",
+        ):
             summary[metric] = None
     print(json.dumps({
         "event": "summary", "model": args.worker,
@@ -156,9 +177,10 @@ def worker(args) -> int:
         "prompt_version": PROMPT_VERSION if hosted else None, "repeats": args.repeats,
         "hosted_pause_seconds": args.pause if hosted else 0,
         "supported_labels": ["legitimate", "spam", "phishing"] if hosted else ["legitimate", "phishing"],
-        "cold_seconds": cold_seconds, "peak_process_rss_mb": peak[0] / 1024**2,
+        "cold_seconds": cold_seconds, "peak_process_rss_mb": peak / 1024**2 if peak is not None else None,
         "machine": {"os": platform.platform(), "python": platform.python_version(),
-                    "logical_cpus": os.cpu_count(), "ram_gb": round(psutil.virtual_memory().total / 1024**3, 2)},
+                    "logical_cpus": os.cpu_count(),
+                    "ram_gb": round(psutil.virtual_memory().total / 1024**3, 2) if psutil else None},
         "limitations": "Synthetic development suite. TF-IDF and local DistilBERT use binary labels. Hosted timings include network, and hosted memory measures the client process only.",
         **summary,
     }), flush=True)

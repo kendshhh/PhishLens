@@ -10,11 +10,12 @@ const id = '29d80c39-ec0d-4db8-a6e5-87444ba2600c';
 async function fixture(t, {
     createStatus, failHistory, failCleanup, invalidJson, identitySha = sha,
     detailTimestamp, historyTimestamp, createdFields = {}, historyFields = {},
-    deployedModelSha = modelSha
+    deployedModelSha = modelSha, requireAuth = false
 } = {}) {
     let record;
     let requestedModel;
     const calls = [];
+    const reportAuthorizations = [];
     const server = createServer(async (request, response) => {
         calls.push(request.method + ' ' + request.url);
         const send = (status, body) => {
@@ -26,6 +27,12 @@ async function fixture(t, {
         if (request.url === '/model-info') return send(200, {
             provider_mode: 'tfidf', accepts_tfidf_reports: true, model_sha256: deployedModelSha
         });
+        if (request.url.startsWith('/api/analyses')) {
+            reportAuthorizations.push(request.headers.authorization);
+            if (requireAuth && request.headers.authorization !== 'Bearer synthetic-token') {
+                return send(401, { detail: 'Authentication required' });
+            }
+        }
         if (request.method === 'POST') {
             requestedModel = request.headers['x-phishlens-model'];
             let body = '';
@@ -69,9 +76,32 @@ async function fixture(t, {
     return {
         url: 'http://127.0.0.1:' + server.address().port,
         options: { environment: 'disposable', expectedSha: sha, allowWrites: true },
-        calls, get record() { return record; }, get requestedModel() { return requestedModel; }
+        calls, reportAuthorizations, get record() { return record; },
+        get requestedModel() { return requestedModel; }
     };
 }
+
+test('authenticated verifier uses the token for save, read and cleanup', async t => {
+    const f = await fixture(t, { requireAuth: true, createdFields: {
+        prediction: 'legitimate', risk_level: 'low', analysis_mode: 'real',
+        analysis_provenance: { provider_mode: 'tfidf', model_revision: modelSha }
+    } });
+    const result = await verifySavedReport(f.url, {
+        ...f.options, expectedModelSha: modelSha, getAccessToken: async () => 'synthetic-token'
+    });
+    assert.equal(result.cleanedUp, true);
+    assert.equal(f.requestedModel, modelSha);
+    assert.ok(f.calls.includes('DELETE /api/analyses/' + id));
+    assert.deepEqual(f.reportAuthorizations, [undefined, ...Array(5).fill('Bearer synthetic-token')]);
+});
+
+test('authenticated verifier refuses a target that permits anonymous reports', async t => {
+    const f = await fixture(t);
+    await assert.rejects(verifySavedReport(f.url, { ...f.options, getAccessToken: async () => 'synthetic-token' }),
+        /must reject unauthenticated/);
+    assert.equal(f.calls.some(call => call.startsWith('POST')), false);
+    assert.deepEqual(f.reportAuthorizations, [undefined]);
+});
 
 test('guarded report replay uses returned ID, refreshes and confirms cleanup', async t => {
     const f = await fixture(t);

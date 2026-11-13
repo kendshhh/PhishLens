@@ -1,15 +1,22 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { createAnalysisClient } from '../extension/js/api.js';
 import { saveAnalysisAndRefresh } from '../extension/js/report-client.js';
 import { verifyTarget } from './verify_crud.mjs';
 
 export async function verifySavedReport(baseUrl, options = {}) {
-    const { expectedModelSha } = options;
+    const { expectedModelSha, getAccessToken } = options;
     if (expectedModelSha !== undefined && !/^[0-9a-f]{64}$/.test(expectedModelSha)) {
         throw new Error('A full lowercase TF-IDF model SHA-256 is required');
     }
     const target = await verifyTarget(baseUrl, options);
+    if (getAccessToken !== undefined) {
+        const response = await target.safeFetch(target.baseUrl + '/api/analyses', {
+            cache: 'no-store', signal: AbortSignal.timeout(10000)
+        });
+        assert.equal(response.status, 401, 'Target must reject unauthenticated report access');
+    }
     if (expectedModelSha !== undefined) {
         const response = await target.safeFetch(target.baseUrl + '/model-info', {
             cache: 'no-store', signal: AbortSignal.timeout(10000)
@@ -20,7 +27,10 @@ export async function verifySavedReport(baseUrl, options = {}) {
         assert.equal(model.accepts_tfidf_reports, true, 'Target does not accept TF-IDF reports');
         assert.equal(model.model_sha256, expectedModelSha, 'Target model SHA-256 differs');
     }
-    const client = createAnalysisClient(target.baseUrl, target.safeFetch, { requiredModel: expectedModelSha });
+    const client = createAnalysisClient(target.baseUrl, target.safeFetch, {
+        requiredModel: expectedModelSha,
+        getAccessToken
+    });
     const input = {
         subject: 'Synthetic saved-report check ' + crypto.randomUUID(),
         body: 'Synthetic verification message. No personal content or credentials.'
@@ -111,6 +121,7 @@ export async function verifySavedReport(baseUrl, options = {}) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const args = process.argv.slice(2);
+    const authenticated = args.includes('--auth-token-file');
     const value = flag => {
         const index = args.indexOf(flag);
         return index === -1 ? undefined : args[index + 1];
@@ -120,16 +131,28 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         if (args.includes('--expected-model-sha') && !expectedModelSha) {
             throw new Error('--expected-model-sha requires a value');
         }
+        const tokenPath = value('--auth-token-file');
+        if (authenticated && (!tokenPath || tokenPath.startsWith('--'))) {
+            throw new Error('--auth-token-file requires a private local file path');
+        }
+        let accessToken;
+        const getAccessToken = authenticated ? async () => {
+            accessToken ??= (await readFile(tokenPath, 'utf8')).trim();
+            return accessToken;
+        } : undefined;
         console.log(JSON.stringify(await verifySavedReport(value('--base-url'), {
             environment: value('--environment'),
             expectedSha: value('--expected-sha'),
             expectedModelSha,
+            getAccessToken,
             allowWrites: args.includes('--allow-writes')
         }), null, 2));
     } catch (error) {
         console.error(JSON.stringify({
             result: 'failed',
-            message: error.message,
+            message: authenticated && error.status
+                ? 'Authenticated request failed (HTTP ' + error.status + ')'
+                : error.message,
             status: error.status,
             recordId: error.recordId,
             idempotencyKey: error.idempotencyKey
