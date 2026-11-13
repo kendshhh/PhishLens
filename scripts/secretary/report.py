@@ -52,6 +52,11 @@ def preview_state(api, config, sha):
 
 def snapshot(api, number, config):
     pr = api.request(f"pulls/{number}")
+    opt_in_label = config.get("preview_opt_in_label")
+    preview_requested = bool(opt_in_label) and any(
+        isinstance(label, dict) and label.get("name") == opt_in_label
+        for label in pr.get("labels", [])
+    )
     files = api.pull_request_files(number)
     jobs, run = latest_jobs(api, pr["head"]["sha"])
     gaps = []
@@ -80,7 +85,8 @@ def snapshot(api, number, config):
                      "user": {"login": pr["user"]["login"]}})
     return {"pr": clean_pr,
             "files": [{k: f.get(k) for k in ("filename", "status", "patch", "changes")} for f in files],
-            "jobs": jobs, "run": run, "preview": preview, "config": config, "gaps": gaps,
+            "jobs": jobs, "run": run, "preview": preview,
+            "preview_requested": preview_requested, "config": config, "gaps": gaps,
             "protection": protection, "issues": issues}
 
 
