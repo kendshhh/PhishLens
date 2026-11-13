@@ -1,0 +1,14 @@
+[
+  {
+    "method": "DELETE",
+    "path": "/api/analyses/01885c37-6249-494f-87bc-eb8594dabb00",
+    "status": 204,
+    "started": "2026-11-13T10:17:15.696Z"
+  },
+  {
+    "method": "GET",
+    "path": "/api/analyses",
+    "status": 200,
+    "started": "2026-11-13T10:17:15.855Z"
+  }
+]
