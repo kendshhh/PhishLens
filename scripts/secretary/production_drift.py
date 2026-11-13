@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -30,6 +31,26 @@ def fetch_json(url, attempts=3):
     raise RuntimeError("Production endpoint remained unavailable after retries")
 
 
+def failure_category(error):
+    """Return a bounded diagnostic without exposing upstream response bodies."""
+    if isinstance(error, urllib.error.HTTPError):
+        return f"HTTP {error.code}"
+    if isinstance(error, urllib.error.URLError):
+        reason = error.reason
+        if isinstance(reason, (TimeoutError, socket.timeout)):
+            return "timeout"
+        if isinstance(reason, (ConnectionError, OSError)):
+            return "connection failure"
+        return "network error"
+    if isinstance(error, (TimeoutError, socket.timeout)):
+        return "timeout"
+    if isinstance(error, (ConnectionError, OSError)):
+        return "connection failure"
+    if isinstance(error, json.JSONDecodeError):
+        return "invalid JSON"
+    return "unexpected error"
+
+
 def inspect_production(api, origin, get_json=fetch_json):
     findings = []
     try:
@@ -41,15 +62,18 @@ def inspect_production(api, origin, get_json=fetch_json):
         findings.append("Could not read a valid current main SHA from GitHub.")
 
     observed = {}
+    endpoint_failures = {}
     for path in ("/version", "/health", "/ready"):
         try:
             value = get_json(urljoin(origin.rstrip("/") + "/", path.lstrip("/")))
             if not isinstance(value, dict):
                 raise TypeError
             observed[path] = value
-        except Exception:  # noqa: BLE001 -- endpoint errors may contain private response data
+        except Exception as error:  # noqa: BLE001 -- report category only; upstream details may be private
             observed[path] = None
-            findings.append(f"Production {path} could not be read as JSON.")
+            category = failure_category(error)
+            endpoint_failures[path] = category
+            findings.append(f"Production {path} could not be read as JSON ({category}).")
 
     version = observed["/version"]
     if version is not None and expected_sha is not None:
@@ -65,7 +89,7 @@ def inspect_production(api, origin, get_json=fetch_json):
     if readiness is not None and readiness != {"status": "ready", "database": "connected"}:
         findings.append("Production /ready returned an unexpected response.")
 
-    return {"expected_sha": expected_sha, "observed": observed, "findings": findings}
+    return {"expected_sha": expected_sha, "observed": observed, "endpoint_failures": endpoint_failures, "findings": findings}
 
 
 def main():

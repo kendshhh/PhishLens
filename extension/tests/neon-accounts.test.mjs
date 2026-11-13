@@ -51,15 +51,15 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
     assert.equal('token' in current, false);
     const client = createClient(current);
     await client.listAnalyses();
-    let apiCalls = requests.filter(r => r.url.startsWith(apiOrigin));
+    let apiCalls = requests.filter(r => new URL(r.url).origin === apiOrigin);
     assert.equal(new Headers(apiCalls.at(-1).options.headers).get('Authorization'), 'Bearer ' + token);
     token = jwt(user.id, Date.now() / 1000 + 1800);
     await client.listAnalyses();
-    apiCalls = requests.filter(r => r.url.startsWith(apiOrigin));
+    apiCalls = requests.filter(r => new URL(r.url).origin === apiOrigin);
     assert.equal(new Headers(apiCalls.at(-1).options.headers).get('Authorization'), 'Bearer ' + token);
     token = jwt('another-account');
     await assert.rejects(client.listAnalyses(), { status: 401 });
-    assert.equal(requests.filter(r => r.url.startsWith(apiOrigin)).length, apiCalls.length);
+    assert.equal(requests.filter(r => new URL(r.url).origin === apiOrigin).length, apiCalls.length);
     token = jwt();
     await adapter.signUp({ name: user.name, email: user.email, password: 'Synthetic-password-only' });
     await adapter.resend({ email: user.email });
