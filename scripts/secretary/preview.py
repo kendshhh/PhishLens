@@ -267,7 +267,7 @@ def package(api, sha, number, config, output):
     )
 
 
-def eligibility(pr, files, run, repo):
+def eligibility(pr, files, run, repo, opt_in_label=None):
     if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
     if pr["draft"]:
@@ -276,6 +276,14 @@ def eligibility(pr, files, run, repo):
         return "action_required", "Fork: reviewed work must be brought into a trusted branch; no preview secrets granted"
     if not application_change(files):
         return "success", "Preview not applicable: no application/runtime files changed"
+    if not opt_in_label:
+        return "failure", "Hosted staging request label is not configured"
+    labels = {label.get("name") for label in pr.get("labels", []) if isinstance(label, dict)}
+    if opt_in_label not in labels:
+        return "success", (
+            "Hosted staging not requested. Add the `" + opt_in_label
+            + "` label and rerun CI on the current head to request a deployment."
+        )
     if run["conclusion"] != "success":
         return "failure", "CI did not succeed; staging not deployed"
     return "deploy", "CI passed; exact-head staging requested"
@@ -381,13 +389,20 @@ def main():
         if not current_pr_head_matches(pr, run["head_sha"]):
             continue
         files = api.pull_request_files(pr["number"])
-        action, message = eligibility(pr, files, run, api.repo)
+        action, message = eligibility(
+            pr, files, run, api.repo, config.get("preview_opt_in_label")
+        )
         if action == "deploy":
             jobs, latest = latest_jobs(api, run["head_sha"])
             if not latest or latest["id"] != run["id"] or latest.get("run_attempt", 1) != run.get("run_attempt", 1):
                 continue  # An older completion must not override a newer CI attempt.
             if any(jobs.get(name, {}).get("conclusion") != "success" for name in config["required_ci_jobs"]):
                 action, message = "failure", "Required CI jobs are missing, pending or unsuccessful"
+            elif not preview_gate_enabled():
+                action, message = (
+                    "action_required",
+                    "Hosted staging is disabled. Set SECRETARY_PREVIEW_ENABLED=true, then rerun CI for this PR head.",
+                )
             else:
                 message = "Required CI jobs passed; exact-head staging requested"
                 if completed_event(api, config, run):
@@ -483,8 +498,13 @@ def main():
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
+            title = (
+                "Hosted staging not requested"
+                if action == "success" and message.startswith("Hosted staging not requested.")
+                else "Staging: " + action
+            )
             api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": action,
-                "output": {"title": "Staging: " + action, "summary": message}}, "PATCH")
+                "output": {"title": title, "summary": message}}, "PATCH")
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
             if action == "failure":
