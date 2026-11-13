@@ -16,7 +16,7 @@ const classificationLabels = new Map([
   ["phishing", "Phishing"], ["legitimate", "Legitimate"], ["spam", "Spam"]
 ]);
 const providerLabels = new Map([
-  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"]
+  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"], ["tfidf", "TF-IDF"]
 ]);
 
 function node(doc, tag, className, text) {
