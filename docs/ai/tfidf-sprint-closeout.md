@@ -14,7 +14,7 @@ records the source licenses and the limits on underlying message rights.
 | 2 | [#49](https://github.com/kendshhh/PhishLens/issues/49) | Model metadata, local smoke, runtime measurements and a leakage-controlled evaluation are available. The failure rehearsal below can be repeated without a database. Record instructor acceptance of the TF-IDF scope and the resulting evaluation decision. |
 | 3 | [#92](https://github.com/kendshhh/PhishLens/issues/92) | The frozen source-pair evaluation and the current development results are reported below. Fresh separately labelled spam and modern phishing coverage still need review before making a broader quality claim. |
 | 4 | [#132](https://github.com/kendshhh/PhishLens/issues/132), [#142](https://github.com/kendshhh/PhishLens/issues/142) | Model identity, input policy, attribution, data roles and coverage limits are documented. The release owner still needs to freeze the application candidate under [#153](https://github.com/kendshhh/PhishLens/issues/153). |
-| 4 | [#137](https://github.com/kendshhh/PhishLens/issues/137) | Reproduced the archived counts, reran the pinned model on `synthetic-v1`, and repeated development fixture parity and failure tests. The original once-only holdout remains the historical confirmation. |
+| 4 | [#137](https://github.com/kendshhh/PhishLens/issues/137) | Replayed all 1,200 archived TF-IDF decisions with the pinned backend scorer and reran development and failure checks. The replay checks reproducibility against the historical confirmation. |
 | 4 | [#147](https://github.com/kendshhh/PhishLens/issues/147), [#152](https://github.com/kendshhh/PhishLens/issues/152) | A guarded saved-report check and a local demo sequence are ready. Candidate deployment evidence and the actual presentation and Q&A remain open. |
 
 ## Reproduce the evaluations
@@ -62,6 +62,15 @@ three study models reconciled. The existing [parity checker](../../scripts/check
 also replayed 52 development fixtures against archived margins and Python/Node
 visible-text scoring. The largest margin difference was below `1e-12`.
 These checks leave the original score lock and held-out predictions intact.
+
+Add `--replay-tfidf` when running the archive verifier with both local
+directories to reproduce the TF-IDF scores from the already prepared cohort.
+The replay reproduced 1,200 of 1,200 alert decisions. The largest absolute
+margin and sigmoid score differences were about `9.77e-15` and `1.11e-15`,
+respectively. The script checks input and prediction hashes before inference
+and emits aggregate values only. This is a read-only reproduction of an
+existing result on the same data. Use a new frozen cohort for an independent
+quality test.
 
 For a new study, freeze sources, usage rights, visible-text labeling rules,
 model and case hashes before scoring. Track legitimate, spam and phishing
