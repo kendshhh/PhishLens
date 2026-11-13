@@ -202,6 +202,32 @@ the health check; do not change ports or suppress errors without evidence.
 Rolling back application code does not automatically reverse
 database migrations. Coordinate database recovery with Trixia.
 
+## Candidate-compatible staging rollback — 2026-11-08
+
+This bounded rehearsal covered application rollback and restore on Render staging only. It used no production writes and no live-provider request.
+
+**Preconditions and target**
+
+- Service: `phishlens-staging` (`srv-db92irlg1s2s739404i0`), auto-deploy off.
+- Starting candidate app SHA: `46a2b27c199c64a25261d3cbba7e52a3352e7a98`, deploy `dep-dbntn4k9v7es73do87a0`.
+- Prior successful target SHA: `0769de936c349f57bf32540d92adaab97f7c402a`, deploy `dep-dbnt775g1s2s73dkbrtg`. Render showed no configuration changes since the target deploy.
+- No migration files differ between the two app SHAs; migration preflight reported `0003_saved_analysis_idempotency`.
+
+**Procedure and observed results**
+
+1. In Render, select the prior successful staging deploy and choose **Rollback to this deploy**.
+2. Wait for its deployment to reach Live. Rollback deploy `dep-dbnvt2ajnfac73dhlda0` completed in 40.352 seconds on app SHA `0769de9`.
+3. Check `/version`, `/health`, `/ready`, and `/model-info`; each returned HTTP 200. Readiness reported the database connected; model mode was TF-IDF.
+4. Restore the original exact SHA using **Manual Deploy > Deploy a specific commit**, selecting `46a2b27c199c64a25261d3cbba7e52a3352e7a98`.
+5. Restore deploy `dep-dbnvukk9v7es73dtsmrg` reached Live in 86.593 seconds. Repeat all four GET checks; each returned HTTP 200, `/version` matched the original SHA, readiness reported the database connected, and the TF-IDF model hash matched `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
+6. Confirm auto-deploy remains off. Render reports `autoDeploy=no`.
+
+**Stop and limits**
+
+If the expected SHA or health/readiness response does not return after a transition, stop the drill, do not promote or deploy to production, inspect that deployment's own logs, and restore the last verified staging SHA through **Manual Deploy > Deploy a specific commit**. Confirm version, health, readiness, model identity and auto-deploy setting before ending the rehearsal.
+
+This rehearsal proves the staging app rollback/restore path for this candidate only. It does not simulate provider timeout, quota or malformed output; it does not measure AI failure detection/recovery and does not establish production recovery. Owner: Kendra (`kendshhh`). Reviewer: `EnviousCoal`; review remains pending. Track remaining AI drill work in #95 and candidate review in #143.
+
 ## Evidence
 
 - Public URL: https://phishlens-api-ocvt.onrender.com
