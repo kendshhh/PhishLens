@@ -17,18 +17,25 @@ class SecretaryWorkflowTests(unittest.TestCase):
             workflow,
         )
 
-    def test_dependency_review_starts_advisory_with_read_only_permissions(self):
+    def test_private_repo_lockfile_audit_and_opt_in_dependency_review(self):
         workflow = (WORKFLOWS / "dependency-review.yml").read_text(encoding="utf-8")
         permissions = workflow.split("jobs:", 1)[0]
+        dependency_review = workflow.split("  dependency-review:", 1)[1]
+        review_permissions = dependency_review.split("steps:", 1)[0]
 
         self.assertIn("pull_request:", workflow)
-        self.assertIn("if: vars.DEPENDENCY_REVIEW_ENABLED != 'false'", workflow)
-        self.assertIn("advisory review by default", workflow)
+        self.assertIn("push:", workflow)
+        self.assertIn("name: Lockfile vulnerability audit", workflow)
+        self.assertIn("npm audit --audit-level=high --package-lock-only", workflow)
+        self.assertIn("pip-audit==2.10.1", workflow)
+        self.assertIn("python -m pip_audit --no-deps -r backend/requirements-dev.txt", workflow)
+        self.assertIn("if: vars.DEPENDENCY_REVIEW_ENABLED == 'true'", workflow)
+        self.assertIn("GitHub Advanced Security license", workflow)
         self.assertIn("contents: read", permissions)
-        self.assertIn("pull-requests: read", permissions)
+        self.assertIn("pull-requests: read", review_permissions)
         self.assertIn("warn-only: true", workflow)
         self.assertNotIn("continue-on-error", workflow)
-        self.assertNotIn("pull-requests: write", permissions)
+        self.assertNotIn("pull-requests: write", workflow)
 
     def test_secretary_report_has_issue_write_permission_for_pr_comments(self):
         workflow = (WORKFLOWS / "secretary-report.yml").read_text(encoding="utf-8")

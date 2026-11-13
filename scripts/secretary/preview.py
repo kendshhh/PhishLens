@@ -264,7 +264,7 @@ def package(api, sha, number, config, output):
             raise RuntimeError("Invalid extension archive")
 
 
-def eligibility(pr, files, run, repo):
+def eligibility(pr, files, run, repo, opt_in_label=None):
     if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
     if pr["draft"]:
@@ -273,6 +273,14 @@ def eligibility(pr, files, run, repo):
         return "action_required", "Fork: reviewed work must be brought into a trusted branch; no preview secrets granted"
     if not application_change(files):
         return "success", "Preview not applicable: no application/runtime files changed"
+    if not opt_in_label:
+        return "failure", "Hosted staging request label is not configured"
+    labels = {label.get("name") for label in pr.get("labels", []) if isinstance(label, dict)}
+    if opt_in_label not in labels:
+        return "success", (
+            "Hosted staging not requested. Add the `" + opt_in_label
+            + "` label and rerun CI on the current head to request a deployment."
+        )
     if run["conclusion"] != "success":
         return "failure", "CI did not succeed; staging not deployed"
     return "deploy", "CI passed; exact-head staging requested"
@@ -324,7 +332,21 @@ def invalidate_previous(api, config, sha):
         for check in checks:
             if check.get("app", {}).get("slug") == "github-actions" and check.get("conclusion") == "success":
                 api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": "action_required",
-                    "output": {"title": "Shared staging replaced", "summary": "Another PR is deploying. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
+                    "output": {"title": "Shared staging replaced", "summary": "Another PR successfully replaced shared staging. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
+
+
+def confirm_live_deployment(api, config, live, expected_sha):
+    """Invalidate earlier preview evidence only after Render confirms a live replacement."""
+    if live.get("status") != "live":
+        return False
+    commit = live.get("commit")
+    live_sha = commit.get("id") if isinstance(commit, dict) else None
+    if not isinstance(live_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", live_sha):
+        raise RuntimeError("Render reported the wrong commit")
+    invalidate_previous(api, config, live_sha)
+    if live_sha != expected_sha:
+        raise RuntimeError("Render reported the wrong commit")
+    return True
 
 
 def completed_event(api, config, run):
@@ -364,13 +386,20 @@ def main():
         if not current_pr_head_matches(pr, run["head_sha"]):
             continue
         files = api.pull_request_files(pr["number"])
-        action, message = eligibility(pr, files, run, api.repo)
+        action, message = eligibility(
+            pr, files, run, api.repo, config.get("preview_opt_in_label")
+        )
         if action == "deploy":
             jobs, latest = latest_jobs(api, run["head_sha"])
             if not latest or latest["id"] != run["id"] or latest.get("run_attempt", 1) != run.get("run_attempt", 1):
                 continue  # An older completion must not override a newer CI attempt.
             if any(jobs.get(name, {}).get("conclusion") != "success" for name in config["required_ci_jobs"]):
                 action, message = "failure", "Required CI jobs are missing, pending or unsuccessful"
+            elif not preview_gate_enabled():
+                action, message = (
+                    "action_required",
+                    "Hosted staging is disabled. Set SECRETARY_PREVIEW_ENABLED=true, then rerun CI for this PR head.",
+                )
             else:
                 message = "Required CI jobs passed; exact-head staging requested"
                 if completed_event(api, config, run):
@@ -394,7 +423,6 @@ def main():
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
                 verify_environment(render_request("services/" + config["staging_service"] + "/env-vars?limit=100"))
-                invalidate_previous(api, config, run["head_sha"])
                 deployment = api.request("deployments", {"ref": run["head_sha"], "environment": config["preview_environment"],
                     "auto_merge": False, "required_contexts": [], "production_environment": False, "transient_environment": True,
                     "description": f"PR #{pr['number']} exact-head staging", "payload": {"secretary": 1, "pr": pr["number"], "run_id": run["id"], "run_attempt": run.get("run_attempt", 1)}})
@@ -406,8 +434,7 @@ def main():
                 while True:
                     live = render_request(f"services/{config['staging_service']}/deploys/{deployed['id']}")
                     if live["status"] == "live":
-                        if live.get("commit", {}).get("id") != run["head_sha"]:
-                            raise RuntimeError("Render reported the wrong commit")
+                        confirm_live_deployment(api, config, live, run["head_sha"])
                         break
                     if live["status"] in {"build_failed", "update_failed", "pre_deploy_failed", "canceled", "deactivated"}:
                         raise RuntimeError("Render staging deployment failed: " + live["status"])
@@ -468,8 +495,13 @@ def main():
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
+            title = (
+                "Hosted staging not requested"
+                if action == "success" and message.startswith("Hosted staging not requested.")
+                else "Staging: " + action
+            )
             api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": action,
-                "output": {"title": "Staging: " + action, "summary": message}}, "PATCH")
+                "output": {"title": title, "summary": message}}, "PATCH")
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
             if action == "failure":
