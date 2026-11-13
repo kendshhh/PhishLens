@@ -17,7 +17,7 @@ from backend.core.config import get_ai_config
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=["local", "gemini", "mock"])
+    parser.add_argument("--mode", choices=["tfidf", "local", "gemini", "mock"])
     parser.add_argument("--model", help="Override the Google-hosted model for this process only")
     parser.add_argument("--download-model", action="store_true")
     args = parser.parse_args()
@@ -36,7 +36,7 @@ def main() -> int:
 
         service, mode = get_ai_service()
         if mode == "mock":
-            print("Mock mode cannot prove real inference. Select local or gemini.")
+            print("Select tfidf, local, or gemini to exercise real inference.")
             return 1
         for case in (CASES[0], CASES[16], CASES[27]):
             start = perf_counter()
