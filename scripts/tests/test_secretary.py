@@ -59,6 +59,7 @@ SHA = "a" * 40
 def fixture():
     return {"pr": {"number": 123, "title": "Synthetic history change", "body": "Related to #23. Acceptance: render history.",
         "user": {"login": "teammate"}, "state": "open", "draft": False,
+        "labels": [{"name": CONFIG["preview_opt_in_label"]}],
         "head": {"sha": SHA, "ref": "feat/demo", "repo": {"full_name": "kendshhh/PhishLens"}},
         "base": {"sha": "b" * 40, "ref": "main", "repo": {"full_name": "kendshhh/PhishLens"}}},
         "files": [{"filename": "extension/js/history.js", "status": "modified", "patch": "@@ -1 +1 @@\n-old\n+new"}],
@@ -72,7 +73,15 @@ def fixture():
 class PolicyTests(unittest.TestCase):
     def decision(self, s):
         findings, gaps, _ = inspect(s["pr"], s["files"], s["config"])
-        return recommendation(s["pr"], s["jobs"], s["preview"], findings, gaps, CONFIG["required_ci_jobs"], application_change(s["files"]))[0]
+        preview_requested = any(
+            label.get("name") == CONFIG["preview_opt_in_label"]
+            for label in s["pr"].get("labels", [])
+        )
+        return recommendation(
+            s["pr"], s["jobs"], s["preview"], findings, gaps,
+            CONFIG["required_ci_jobs"], application_change(s["files"]),
+            preview_requested,
+        )[0]
 
     def test_passing_is_review_never_approval(self):
         self.assertEqual(self.decision(fixture()), "READY FOR KENDRA’S REVIEW")
@@ -325,16 +334,44 @@ class PreviewTests(unittest.TestCase):
     def test_eligibility_draft_fork_failure_docs_and_stale(self):
         s = fixture()
         run = {"head_sha": SHA, "conclusion": "success"}
-        self.assertEqual(eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens")[0], "deploy")
+        opt_in_label = CONFIG["preview_opt_in_label"]
+        self.assertEqual(
+            eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label)[0],
+            "deploy",
+        )
         s["pr"]["draft"] = True
-        self.assertEqual(eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens")[0], "action_required")
+        self.assertEqual(
+            eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label)[0],
+            "action_required",
+        )
         s["pr"]["draft"] = False
         s["pr"]["head"]["repo"]["full_name"] = "outside/fork"
-        self.assertEqual(eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens")[0], "action_required")
+        self.assertEqual(
+            eligibility(s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label)[0],
+            "action_required",
+        )
         s = fixture()
-        self.assertEqual(eligibility(s["pr"], s["files"], {**run, "conclusion": "failure"}, "kendshhh/PhishLens")[0], "failure")
-        self.assertEqual(eligibility(s["pr"], [{"filename": "README.md"}], run, "kendshhh/PhishLens")[0], "success")
-        self.assertEqual(eligibility(s["pr"], s["files"], {**run, "head_sha": "c" * 40}, "kendshhh/PhishLens")[0], "stale")
+        self.assertEqual(
+            eligibility(
+                s["pr"], s["files"], {**run, "conclusion": "failure"},
+                "kendshhh/PhishLens", opt_in_label,
+            )[0],
+            "failure",
+        )
+        self.assertEqual(
+            eligibility(
+                s["pr"], [{"filename": "README.md"}], run,
+                "kendshhh/PhishLens", opt_in_label,
+            )[0],
+            "success",
+        )
+        self.assertEqual(
+            eligibility(
+                s["pr"], s["files"], {**run, "head_sha": "c" * 40},
+                "kendshhh/PhishLens", opt_in_label,
+            )[0],
+            "stale",
+        )
 
     def test_preview_head_guard_rejects_only_superseded_or_closed_prs(self):
         from scripts.secretary.preview import current_pr_head_matches

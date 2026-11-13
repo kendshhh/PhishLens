@@ -17,6 +17,7 @@ from backend.app.analysis_serialization import (
     saved_detail_from_record,
     saved_summary_from_record,
 )
+from backend.app.auth import report_owner
 from backend.app.routers.saved_create import router as saved_create_router
 from backend.models import AnalyzedEmail, User
 
@@ -42,10 +43,10 @@ def get_db():
     "/analyses",
     responses={503: {"description": HISTORY_UNAVAILABLE}},
 )
-def get_analyses(db: Annotated[Session, Depends(get_db)]):
+def get_analyses(db: Annotated[Session, Depends(get_db)], owner_id: Annotated[UUID | None, Depends(report_owner)] = None):
     try:
         user = db.scalar(
-            select(User).where(User.email == DEMO_USER_EMAIL)
+            select(User).where(User.id == owner_id if owner_id is not None else User.email == DEMO_USER_EMAIL)
         )
         if user is None:
             return {"items": []}
@@ -78,13 +79,14 @@ def get_analyses(db: Annotated[Session, Depends(get_db)]):
 def get_analysis(
     analysis_id: UUID,
     db: Annotated[Session, Depends(get_db)],
+    owner_id: Annotated[UUID | None, Depends(report_owner)] = None,
 ) -> SavedAnalysisDetail:
     try:
         query = (
             select(AnalyzedEmail)
             .join(User)
             .where(
-                User.email == DEMO_USER_EMAIL,
+                User.id == owner_id if owner_id is not None else User.email == DEMO_USER_EMAIL,
                 AnalyzedEmail.id == analysis_id,
             )
         )
@@ -109,13 +111,14 @@ def update_analysis(
     analysis_id: UUID,
     request: UpdateSavedAnalysis,
     db: Annotated[Session, Depends(get_db)],
+    owner_id: Annotated[UUID | None, Depends(report_owner)] = None,
 ) -> SavedAnalysisDetail:
     try:
         query = (
             select(AnalyzedEmail)
             .join(User)
             .where(
-                User.email == DEMO_USER_EMAIL,
+                User.id == owner_id if owner_id is not None else User.email == DEMO_USER_EMAIL,
                 AnalyzedEmail.id == analysis_id,
             )
             .with_for_update(of=AnalyzedEmail)
@@ -151,13 +154,14 @@ def update_analysis(
 def delete_analysis(
     analysis_id: UUID,
     db: Annotated[Session, Depends(get_db)],
+    owner_id: Annotated[UUID | None, Depends(report_owner)] = None,
 ) -> Response:
     try:
         query = (
             select(AnalyzedEmail)
             .join(User)
             .where(
-                User.email == DEMO_USER_EMAIL,
+                User.id == owner_id if owner_id is not None else User.email == DEMO_USER_EMAIL,
                 AnalyzedEmail.id == analysis_id,
             )
             .with_for_update(of=AnalyzedEmail)
