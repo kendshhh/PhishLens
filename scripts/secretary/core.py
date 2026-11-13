@@ -66,7 +66,7 @@ def inspect(pr, files, config):
     return findings[:30], gaps[:30], requirements
 
 
-def recommendation(pr, jobs, preview, findings, gaps, required, relevant):
+def recommendation(pr, jobs, preview, findings, gaps, required, relevant, preview_requested=True):
     if pr.get("draft"):
         return "BLOCKED", "Draft PR: not ready for formal review or merge."
     if any(kind == "confirmed" and severity == "high" for kind, severity, _, _ in findings):
@@ -78,7 +78,7 @@ def recommendation(pr, jobs, preview, findings, gaps, required, relevant):
         return "CHANGES RECOMMENDED", "Required CI did not pass: " + ", ".join(failed)
     if any(jobs.get(n, {}).get("conclusion") != "success" for n in required):
         return "WAITING FOR CHECKS", "Required CI is pending or missing; no success is inferred."
-    if relevant:
+    if relevant and preview_requested:
         if preview.get("state") in {"failure", "error"}:
             return "BLOCKED", "Staging deployment/smoke failed; inspect linked evidence."
         if not preview.get("current") or preview.get("sha") != pr["head"]["sha"] or preview.get("state") != "success":
@@ -94,7 +94,7 @@ def fingerprint(snapshot):
     return hashlib.sha256(json.dumps(snapshot, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
-def automated_checklist(files, jobs, preview, sha):
+def automated_checklist(files, jobs, preview, sha, preview_requested=True):
     names = [f["filename"] for f in files]
     if any(n.startswith("extension/") for n in names):
         passed = jobs.get("Extension checks", {}).get("conclusion") == "success"
@@ -121,6 +121,9 @@ def automated_checklist(files, jobs, preview, sha):
         )
         yield passed, label
     if application_change(files):
+        if not preview_requested:
+            yield False, "Hosted staging was not requested; no live acceptance evidence is claimed."
+            return
         staging_current = (
             preview.get("current") is True
             and preview.get("sha") == sha
@@ -155,9 +158,13 @@ def automated_checklist(files, jobs, preview, sha):
 def render(snapshot, ai, now):
     pr, config = snapshot["pr"], snapshot["config"]
     files, jobs, preview = snapshot["files"], snapshot["jobs"], snapshot["preview"]
+    preview_requested = snapshot.get("preview_requested", True)
     findings, gaps, requirements = inspect(pr, files, config)
     gaps = gaps + snapshot.get("gaps", [])
-    action, reason = recommendation(pr, jobs, preview, findings, gaps, config["required_ci_jobs"], application_change(files))
+    action, reason = recommendation(
+        pr, jobs, preview, findings, gaps, config["required_ci_jobs"],
+        application_change(files), preview_requested,
+    )
     sha = pr["head"]["sha"]
     repo = pr["base"]["repo"]["full_name"]
     url = f"https://github.com/{repo}/pull/{pr['number']}"
@@ -176,6 +183,7 @@ def render(snapshot, ai, now):
     lines += ["Type checks: not configured in this repository. Dependency compatibility checks are not an advisory audit.",
               "### Proposed version and visual evidence",
               f"Production: {config['production_origin']}/docs · Staging: {config['staging_origin']}/docs",
+              "Hosted staging request: " + ("requested" if preview_requested else "not requested; no live acceptance evidence is claimed."),
               f"Preview state: {safe(preview.get('state', 'waiting'))}; current exact SHA: {bool(preview.get('current'))}; deployed SHA: {safe(preview.get('sha', 'not available'))}.",
               f"Deployment/artifact evidence: {preview.get('log_url') or url + '/checks'}",
               "Download **Veriqo-Staging-Extension** from the preview run artifacts. It has a STAGING/PR/SHA banner. The API URL is a working backend, not a browser-extension UI preview.",
@@ -191,7 +199,7 @@ def render(snapshot, ai, now):
     lines += ["- " + safe(g) for g in gaps] or []
     lines += ["- Branch protection/admin-only configuration is not inferred from passing jobs. Held-out AI quality, production persistence, and formal teammate review require separate evidence.",
               "### Automated and human follow-up checklist"]
-    lines += [f"- [{'x' if passed else ' '}] {text}" for passed, text in automated_checklist(files, jobs, preview, sha)]
+    lines += [f"- [{'x' if passed else ' '}] {text}" for passed, text in automated_checklist(files, jobs, preview, sha, preview_requested)]
     lines += ["### Recommended next action", "**" + action + "** — " + reason,
               "Automated checks are marked only after the current-head job or staging evidence passes. Formal teammate approval remains separate. This bot never approves, merges, changes secrets/protection, or rolls back."]
     # Keep Markdown table rows adjacent; separate prose blocks for readable reports.
