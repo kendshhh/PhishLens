@@ -329,3 +329,26 @@ def test_idempotent_insert_race_rejects_different_payload(persistence_context):
         _persist(context, "request-123")
 
     context.connection.commit.assert_not_awaited()
+
+
+def test_authenticated_create_uses_resolved_owner(persistence_context):
+    context = persistence_context
+    owner = context.user_id
+    asyncio.run(analysis_persistence.persist_saved_analysis(
+        context.request, context.result, mode="mock", deadline=context.deadline,
+        owner_id=owner, idempotency_key="same-key"))
+    first, second = context.connection.execute.await_args_list
+    assert first.args == ("SELECT id FROM users WHERE id = %s", (owner,))
+    assert second.args[1][1] == owner
+    assert second.args[1][-1] == "same-key"
+
+
+def test_authenticated_retry_lookup_is_scoped_to_owner(persistence_context):
+    context = persistence_context
+    cursor = SimpleNamespace(fetchone=AsyncMock(return_value=None))
+    context.connection.execute = AsyncMock(return_value=cursor)
+    response = asyncio.run(analysis_persistence.find_idempotent_saved_analysis(
+        context.request, "same-key", deadline=context.deadline, owner_id=context.user_id))
+    assert response is None
+    context.connection.execute.assert_awaited_once_with(
+        analysis_persistence._SELECT_IDEMPOTENT_ANALYSIS, (context.user_id, "same-key"))

@@ -500,11 +500,11 @@ jobs:
       - name: Test staging deployment guards
         run: python -m unittest discover -s scripts/tests -v
 
-  # Check before the protected environment so obsolete queued PR runs never ask
-  # for approval or enter the shared Render deployment queue.
+  # Check PR heads before staging so obsolete runs never enter the queue
+  # or deploy code that is no longer the PR head.
   hosted-staging-preflight:
     name: Hosted staging preflight
-    if: github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') && vars.SECRETARY_PREVIEW_ENABLED == 'true' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     needs: [staging]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -523,7 +523,7 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.12'
-      - name: Check PR head before requesting staging approval
+      - name: Check PR head before entering staging queue
         id: staging-preflight
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -539,9 +539,12 @@ jobs:
           skip_reason = None
           try:
               current = GitHub().request(f'pulls/{number}')
+              labels = {label.get('name') for label in current.get('labels', [])
+                        if isinstance(label, dict)}
               is_current = (current['state'] == 'open'
                             and current['head']['sha'] == expected
-                            and not current.get('draft', False))
+                            and not current.get('draft', False)
+                            and 'needs-hosted-staging' in labels)
           except APIError as error:
               is_current = False
               skip_reason = f'GitHub could not confirm the current PR head ({error}); no deployment was started.'
@@ -552,8 +555,8 @@ jobs:
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
-                  summary.write(f'Staging skipped before approval: {reason} The latest PR run owns staging.\n')
+                  reason = skip_reason or f'PR #{number} is closed, a draft, has a different head than `{expected}`, or no longer has the `needs-hosted-staging` label.'
+                  summary.write(f'Staging skipped before deployment: {reason} The latest PR run owns staging.\n')
               if skip_reason:
                   raise SystemExit(1)
           PY
@@ -563,7 +566,7 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: always() && github.event_name == 'pull_request' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
+    if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') && vars.SECRETARY_PREVIEW_ENABLED == 'true' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
     needs: [staging, hosted-staging-preflight, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -574,7 +577,7 @@ jobs:
     concurrency:
       group: phishlens-hosted-staging
       cancel-in-progress: false
-      # Retain waiting deployments while keeping the shared staging service serialized.
+      # Serialize hosted staging while preserving queued PR candidates.
       queue: max
     env:
       STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
@@ -592,7 +595,7 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Recheck PR head after staging approval
+      - name: Recheck PR head immediately before deployment
         id: staging-final-preflight
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -608,21 +611,24 @@ jobs:
           skip_reason = None
           try:
               current = GitHub().request(f'pulls/{number}')
+              labels = {label.get('name') for label in current.get('labels', [])
+                        if isinstance(label, dict)}
               is_current = (current['state'] == 'open'
                             and current['head']['sha'] == expected
-                            and not current.get('draft', False))
+                            and not current.get('draft', False)
+                            and 'needs-hosted-staging' in labels)
           except APIError as error:
               is_current = False
               skip_reason = f'GitHub could not confirm the current PR head ({error}); deployment remains blocked.'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'current={str(is_current).lower()}\n')
           if is_current:
-              print(f'PR #{number} is still at the approved head {expected}.')
+              print(f'PR #{number} is still at the expected head {expected}.')
           else:
               print(f'PR #{number} staging run is superseded; deployment skipped.')
               with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  reason = skip_reason or f'PR #{number} is closed, a draft, or has a different head than `{expected}`.'
-                  summary.write(f'Staging skipped after approval: {reason} The latest PR run owns staging.\n')
+                  reason = skip_reason or f'PR #{number} is closed, a draft, has a different head than `{expected}`, or no longer has the `needs-hosted-staging` label.'
+                  summary.write(f'Staging skipped before deployment: {reason} The latest PR run owns staging.\n')
               if skip_reason:
                   raise SystemExit(1)
           PY

@@ -1,8 +1,10 @@
-"""Check the frozen v12a evaluation record without running inference."""
+"""Verify the frozen v12a record and optionally replay its pinned TF-IDF scores."""
 
 import argparse
 import hashlib
 import json
+import math
+import sys
 from collections import Counter
 from itertools import combinations
 from pathlib import Path
@@ -21,9 +23,10 @@ def checked_bytes(path, expected_hash):
     return data
 
 
-def verify_saved_predictions(record, metrics, prepared_dir, predictions_dir):
+def verify_saved_predictions(record, metrics, prepared_dir, predictions_dir, *, replay=False):
     role_keys = {}
     labels = {}
+    prepared = {}
     for role, metadata in record["data"].items():
         data = checked_bytes(prepared_dir / f"{role}.private.jsonl", metadata["sha256"])
         rows = [json.loads(line) for line in data.splitlines()]
@@ -34,6 +37,8 @@ def verify_saved_predictions(record, metrics, prepared_dir, predictions_dir):
         }
         if role == "fresh_source_pair":
             labels = {row["id"]: row["label"] for row in rows}
+            if replay:
+                prepared = {row["id"]: row["text"] for row in rows}
 
     for left, right in combinations(role_keys, 2):
         for field in OVERLAP_FIELDS:
@@ -41,6 +46,7 @@ def verify_saved_predictions(record, metrics, prepared_dir, predictions_dir):
                 raise ValueError(f"Overlap between {left} and {right} on {field}")
 
     total = 0
+    candidate_predictions = []
     for system, metadata in record["prediction_files"].items():
         recorded = metrics["systems"][system]
         if metadata["sha256"] != recorded["prediction_sha256"]:
@@ -64,12 +70,49 @@ def verify_saved_predictions(record, metrics, prepared_dir, predictions_dir):
         }
         if counts != recorded["counts"]:
             raise ValueError(f"Confusion counts differ for {system}")
+        if replay and system == SYSTEM:
+            candidate_predictions = rows
         total += len(rows)
 
-    return {"roles_verified": len(role_keys), "saved_prediction_rows_reconciled": total}
+    result = {
+        "roles_verified": len(role_keys),
+        "saved_prediction_rows_reconciled": total,
+    }
+    if replay:
+        if not candidate_predictions:
+            raise ValueError("Archived TF-IDF predictions are missing")
+        result.update(replay_tfidf(prepared, candidate_predictions))
+    return result
 
 
-def verify(prepared_dir, predictions_dir):
+def replay_tfidf(prepared, predictions):
+    sys.path.insert(0, str(ROOT))
+    from backend.ai.tfidf_provider import score_text
+
+    max_margin_delta = 0.0
+    max_score_delta = 0.0
+    for prediction in predictions:
+        result = score_text(prepared[prediction["id"]], prepared=True)
+        margin_delta = abs(result["raw_margin"] - prediction["raw_margin"])
+        score_delta = abs(result["score"] - prediction["score"])
+        if (
+            not math.isfinite(margin_delta)
+            or not math.isfinite(score_delta)
+            or margin_delta > 1e-12
+            or score_delta > 1e-12
+            or result["alert"] != prediction["alert"]
+        ):
+            raise ValueError("Pinned TF-IDF scores or alerts differ from archived predictions")
+        max_margin_delta = max(max_margin_delta, margin_delta)
+        max_score_delta = max(max_score_delta, score_delta)
+    return {
+        "classifier_inferences": len(predictions),
+        "max_replay_margin_delta": max_margin_delta,
+        "max_replay_score_delta": max_score_delta,
+    }
+
+
+def verify(prepared_dir, predictions_dir, *, replay=False):
     record = json.loads((RECORDS / "run_record.json").read_bytes())
     lock = json.loads(
         checked_bytes(RECORDS / "final_lock.json", record["fresh_scoring_lock_sha256"])
@@ -107,7 +150,9 @@ def verify(prepared_dir, predictions_dir):
     }
     if prepared_dir is not None:
         result.update(
-            verify_saved_predictions(record, metrics, prepared_dir, predictions_dir)
+            verify_saved_predictions(
+                record, metrics, prepared_dir, predictions_dir, replay=replay
+            )
         )
     return result
 
@@ -124,12 +169,19 @@ def main():
         type=Path,
         help="Local directory containing the three saved prediction sets",
     )
+    parser.add_argument(
+        "--replay-tfidf",
+        action="store_true",
+        help="Check the pinned backend scorer against the archived TF-IDF predictions",
+    )
     args = parser.parse_args()
     if (args.prepared_dir is None) != (args.predictions_dir is None):
         parser.error("Supply both local directories to reconcile archived predictions")
+    if args.replay_tfidf and args.prepared_dir is None:
+        parser.error("--replay-tfidf requires both local directories")
     try:
-        result = verify(args.prepared_dir, args.predictions_dir)
-    except (OSError, ValueError, KeyError) as exc:
+        result = verify(args.prepared_dir, args.predictions_dir, replay=args.replay_tfidf)
+    except (OSError, ValueError, KeyError, RuntimeError) as exc:
         parser.exit(1, f"Frozen evaluation verification failed: {exc}\n")
     print(json.dumps(result, indent=2))
 
