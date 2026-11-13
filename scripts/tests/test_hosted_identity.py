@@ -191,7 +191,7 @@ class HostedIdentityTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Staging smoke failed"):
                     self.verify(values)
 
-    def test_stale_runs_are_filtered_before_staging_approval(self):
+    def test_stale_runs_are_filtered_before_deployment(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         preflight_start = workflow.index("  hosted-staging-preflight:\n")
         hosted_start = workflow.index("  hosted-staging:\n", preflight_start)
@@ -223,11 +223,11 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", hosted_header)
         self.assertIn("environment: staging", hosted_header)
 
-    def test_hosted_staging_rechecks_current_head_after_approval(self):
+    def test_hosted_staging_rechecks_current_head_before_deployment(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         hosted_start = workflow.index("  hosted-staging:\n")
         hosted_job = workflow[hosted_start:]
-        preflight_marker = "      - name: Recheck PR head after staging approval"
+        preflight_marker = "      - name: Recheck PR head immediately before deployment"
         preflight_start = hosted_job.index(preflight_marker)
         deploy_start = hosted_job.index("      - name: Deploy PR merge commit using the trusted legacy script", preflight_start)
         preflight = hosted_job[preflight_start:deploy_start]
@@ -258,8 +258,8 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("raise SystemExit(0)", step)
         self.assertIn("steps.staging-finalize.outputs.current == 'true'", hosted_job[end:])
 
-    def test_api_error_before_staging_approval_fails_closed(self):
-        marker = "      - name: Check PR head before requesting staging approval"
+    def test_api_error_before_deployment_fails_closed(self):
+        marker = "      - name: Check PR head before entering staging queue"
         result = self.run_workflow_python(marker, APIError("GitHub HTTP 403 for pulls/68"))
 
         self.assertEqual(result["exit_code"], 1)
@@ -313,10 +313,10 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertTrue(result["evidence_exists"])
         self.assertTrue(result["package_exists"])
 
-    def test_draft_pr_is_skipped_before_approval_and_verification(self):
+    def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {"state": "open", "head": {"sha": SHA}, "draft": True}
         preflight = self.run_workflow_python(
-            "      - name: Check PR head before requesting staging approval",
+            "      - name: Check PR head before entering staging queue",
             [current_draft],
         )
         hosted = self.run_workflow_python(
