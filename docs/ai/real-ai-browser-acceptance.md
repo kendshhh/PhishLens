@@ -34,6 +34,23 @@ summary. These browser fixtures use a synthetic provider-backed response and
 controlled failures. They demonstrate the UI and client contract only; they do
 not establish a real provider call, staging persistence, or independent review.
 
+### Recorded local run
+
+The committed run used source/tested SHA
+`61e7fda0ddfcaa8ea41b7df430a8ed84c8049b07`, extension version `0.1.0`, package
+SHA-256 `db5e8d4ef458e35c88f9ec2a3e1ac5c4e6dd06904be87f6dccd27434b9a07bc0`,
+and Microsoft Edge `157.0.4341.46`. It passed 10 packaged-browser scenarios
+against an isolated synthetic API. The [redacted run record](../evidence/issue-91-synthetic-browser/browser-acceptance.json)
+contains request methods, normalized paths and statuses. Every image and fixture
+is explicitly marked synthetic.
+
+| Screenshot | SHA-256 |
+|---|---|
+| [Provider-backed result and provenance](../evidence/issue-91-synthetic-browser/01-synthetic-provider-backed-saved-report.png) | `8b8a7409c307da81bba568e2ad9d2e9dd695d974cf3eb77e2edda0de19080e3f` |
+| [History after popup reopen](../evidence/issue-91-synthetic-browser/02-synthetic-provider-report-after-popup-reopen.png) | `6efe396c17afc088d7d22b458a5c7b4867290420e0aeab8ae0190ace0c8d9c8e` |
+| [Provider failure preserves input](../evidence/issue-91-synthetic-browser/03-synthetic-provider-failure-preserves-input.png) | `bcb086baf115a0a437ca3a2ebff22d3cfcc82eacd6d280834f274a0acf1cebab` |
+| [History failure keeps saved result](../evidence/issue-91-synthetic-browser/04-synthetic-history-refresh-failure-keeps-saved-report.png) | `18881b2063cdfa76d014c3c86f16e54d7952ac7dfafec8cca120e356fe04f437` |
+
 ## Protected staging run
 
 Do not start until Kendra or the environment owner confirms that the protected
