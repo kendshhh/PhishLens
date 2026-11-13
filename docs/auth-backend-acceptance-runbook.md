@@ -76,9 +76,10 @@ and session records; approval and Auth-admin cleanup must cover them.
 
 Current proposed bound: **two Auth accounts, two reports total, one per owner**.
 Both accounts use the same run-specific idempotency key. Permit one identical A
-replay, one changed-payload A conflict, and one cross-account read. PATCH is off
-by default: enable `include_updates` only if the final authorization includes one
-notes/feedback update per report. One optional OTP resend is a client/admin
+replay, one changed-payload A conflict, and one cross-account detail, PATCH and
+DELETE denial check for each report. PATCH is off by default: enable
+`include_updates` only if the final authorization includes one owner notes/feedback
+update per report and the corresponding cross-account PATCH denial checks. One optional OTP resend is a client/admin
 operation, outside the helper. No forced timeout or interrupted commit is included.
 
 ## Dry-run and per-step execution
@@ -122,25 +123,26 @@ session renewal supplies a replacement token for the same subject.
 | `conflict-a`, `list-a-conflict` | Same key, changed body; reread history | **409** `idempotency_conflict`; **200**, no extra report |
 | `create-b`, `read-b`, `list-b` | B initial POST uses the same key; GET B detail/history | **201/200**, different ID; B sees only B's report |
 | `cross-read`, `read-a-after-cross` | B's token, GET A's report; A's token reread | **404**, then **200**; A's report remains readable by A |
-| Optional `patch-a`, `patch-b`, `read-a-after-patch`, `read-b-after-patch` | PATCH own report with synthetic notes/feedback, then reread | **200**; compare prediction/body/provenance/ID unchanged |
+| `cross-patch-a`, `cross-delete-a`, `cross-patch-b`, `cross-delete-b` | Each other account attempts PATCH and DELETE on the recorded report ID | **404** for all four; subsequent owner reads confirm records remain unchanged |
+| Optional `patch-a`, `patch-b`, `read-a-after-patch`, `read-b-after-patch` | Each owner PATCHes only synthetic notes/feedback, then rereads | **200**; notes/feedback match; prediction/body/provenance/ID unchanged |
 | `delete-a`, `delete-b` | DELETE each report as its owner | **204** |
 | `missing-a`, `missing-b` | GET deleted detail as owner | **404** |
 | `list-a-after`, `list-b-after` | GET each owner's history | **200**, empty |
 
 The helper validates the status, model provenance on create/replay, same/different
-IDs, expected history IDs, conflict code and basic read/PATCH identity. The
+IDs, expected history IDs, conflict code, owner PATCH fields and cross-account
+PATCH/DELETE denial. The
 operator compares the private before/after fields and records pass/fail. Do not
 repeat a blocked helper step by deleting its receipt. Extra requests must fit
 the agreed scope. Signup, real email/OTP, browser cookie/session restoration, renewal,
 expiry, sign-out and UI account switching remain Leyan's installed-Chrome checks.
 
-The broader checklist also expects anonymous/expired denial on all five CRUD
-operations, unverified-account denial (403 where a JWT exists), cross-user
-PATCH/DELETE denial, and demo separation. Those negative requests are **not**
-implicitly part of this smaller approved two-report scope. Agree on their exact
-requests separately, using only this run's recorded IDs; never test destructive
-denial against seed or unrelated rows. CI results are not live passes for omitted
-cases. Keep omitted live criteria explicitly pending.
+Anonymous/expired denial across all five CRUD operations, unverified-account
+denial (403 where a JWT exists), and demo separation remain outside this helper's
+live two-report sequence. Agree on their exact requests separately, using only
+this run's recorded IDs; never test destructive denial against seed or unrelated
+rows. CI results are not live passes for omitted cases. Keep omitted live criteria
+explicitly pending.
 
 ## Stop and reconcile
 

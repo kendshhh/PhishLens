@@ -10,7 +10,8 @@ const hash = /^[0-9a-f]{64}$/;
 export const steps = [
   'list-a-before', 'list-b-before', 'create-a', 'read-a', 'list-a',
   'replay-a', 'list-a-replay', 'conflict-a', 'list-a-conflict',
-  'create-b', 'read-b', 'list-b', 'cross-read', 'read-a-after-cross',
+  'create-b', 'read-b', 'list-b', 'cross-read', 'cross-patch-a', 'cross-delete-a',
+  'cross-patch-b', 'cross-delete-b', 'read-a-after-cross',
   'patch-a', 'patch-b', 'read-a-after-patch', 'read-b-after-patch', 'delete-a', 'delete-b',
   'missing-a', 'missing-b', 'list-a-after', 'list-b-after'
 ];
@@ -18,8 +19,9 @@ export const steps = [
 export function requestSpec(plan, step, executing = false) {
   assert.ok(steps.includes(step), 'Unknown checklist step');
   assert.ok(uuid.test(plan.run_id), 'Set one UUID run_id before planning');
-  const account = step === 'cross-read' ? 'b' : step.includes('-b') ? 'b' : 'a';
-  const recordAccount = step === 'cross-read' ? 'a' : account;
+  const cross = /^cross-(read|patch|delete)(?:-([ab]))?$/.exec(step);
+  const recordAccount = cross ? (cross[2] || 'a') : step.includes('-b') ? 'b' : 'a';
+  const account = cross ? (recordAccount === 'a' ? 'b' : 'a') : recordAccount;
   const id = plan.accounts?.[recordAccount]?.report_id;
   const input = {
     subject: `Synthetic Auth acceptance ${plan.run_id} ${account}`,
@@ -33,12 +35,12 @@ export function requestSpec(plan, step, executing = false) {
   } else if (!step.startsWith('list-')) {
     if (executing) assert.ok(uuid.test(id || ''), 'Record the exact report ID first');
     suffix = '/' + (id || `{{report_${recordAccount}_id}}`);
-    if (step.startsWith('patch-')) {
+    if (step.startsWith('patch-') || step.startsWith('cross-patch-')) {
       assert.equal(plan.include_updates, true, 'PATCH needs explicit inclusion in the approved scope');
       method = 'PATCH'; body = { notes: 'Synthetic acceptance note', feedback: 'false_positive' };
     }
-    if (step.startsWith('delete-')) { method = 'DELETE'; status = 204; }
-    if (step.startsWith('missing-') || step === 'cross-read') status = 404;
+    if (step.startsWith('delete-') || step.startsWith('cross-delete-')) { method = 'DELETE'; status = step.startsWith('cross-') ? 404 : 204; }
+    if (step.startsWith('missing-') || step === 'cross-read' || step.startsWith('cross-patch-')) status = 404;
   }
   if (executing && step.startsWith('create-')) assert.equal(id, null, 'Initial save already has a recorded ID');
   return { step, account, method, route: '/api/analyses' + suffix, body,
@@ -131,9 +133,12 @@ export async function runStep(plan, step, { execute = false, allowWrites = false
       const expected = /-(before|after)$/.test(step) ? [] : [account.report_id];
       assert.deepEqual(response.body.items.map(x => x.id).sort(), expected.sort());
     }
-    if (/^(read|patch)-/.test(step)) {
+    if (/^(read|patch)-/.test(step) && !step.startsWith('cross-')) {
       assert.equal(response.body.id, account.report_id);
-      if (step.startsWith('patch-')) assert.equal(response.body.notes, spec.body.notes);
+      if (step.startsWith('patch-')) {
+        assert.equal(response.body.notes, spec.body.notes);
+        assert.equal(response.body.feedback, spec.body.feedback);
+      }
     }
     record.outcome = 'passed';
     await receipt.finish(record);
