@@ -2,9 +2,10 @@
 
 import re
 from collections.abc import Callable, Coroutine
-from typing import Any, Literal, cast
+from typing import Annotated, Any, Literal, cast
+from uuid import UUID
 
-from fastapi import APIRouter, Header, Request, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
@@ -23,6 +24,7 @@ from backend.app.analysis_persistence import (
 )
 from backend.app.analysis_schemas import CreateSavedAnalysis, SavedAnalysisDetail
 from backend.app.analysis_service import create_saved_analysis
+from backend.app.auth import report_owner
 from backend.core.config import get_ai_config, get_database_url
 
 SavedCreateErrorCode = Literal[
@@ -100,8 +102,10 @@ async def create_analysis(
         max_length=255,
     ),
     required_model: str | None = Header(default=None, alias="X-PhishLens-Model", max_length=64),
+    owner_id: Annotated[UUID | None, Depends(report_owner)] = None,
 ) -> SavedAnalysisDetail | JSONResponse:
     deadline = AnalysisDeadline.start()
+    owner_args = {"owner_id": owner_id} if owner_id is not None else {}
 
     # An extension save must never silently invoke a cloud/mock provider. Keep
     # the existing body contract server-owned, including when deployment changes.
@@ -136,6 +140,7 @@ async def create_analysis(
                 request,
                 idempotency_key,
                 deadline=deadline,
+                **owner_args,
             )
         except AnalysisIdempotencyConflictError:
             return _error(
@@ -184,6 +189,7 @@ async def create_analysis(
             model=model,
             deadline=deadline,
             idempotency_key=idempotency_key,
+            **owner_args,
         )
     except AnalysisIdempotencyConflictError:
         return _error(
