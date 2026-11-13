@@ -5,6 +5,18 @@ Branch: `test/47-verify-installed-browser-crud`
 PR: [#61](https://github.com/kendshhh/PhishLens/pull/61)
 Owner: Andrei (`JupitraxNeptuna`)
 
+## Preview artifact identity
+
+The `Veriqo-Staging-Extension` Actions artifact contains the inner extension ZIP
+and `Veriqo-Staging-Extension.zip.sha256`. Verify the ZIP using that adjacent
+sidecar (or `Get-FileHash -Algorithm SHA256` on the downloaded ZIP). The digest
+GitHub displays for the Actions artifact is for the enclosing artifact archive;
+it is not the inner extension ZIP digest. Confirm `preview-info.json` inside the
+extension ZIP records the expected PR source SHA, and independently confirm the
+staging `/version` SHA before browser testing. The sidecar establishes ZIP
+integrity, while `preview-info.json` and `/version` establish the reported
+source/deployment identities.
+
 ## November 6 coordination and acceptance status
 
 Trixia requested a repeat installed-Chrome run using the extension artifact matched
