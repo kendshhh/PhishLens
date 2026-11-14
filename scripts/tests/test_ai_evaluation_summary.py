@@ -5,6 +5,7 @@ import unittest
 from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
+from unittest.mock import patch
 
 from backend.ai.evaluation_cases import CASES, CASESET_VERSION
 from scripts.ai_evaluation_summary import render_summary
@@ -44,7 +45,7 @@ class AIEvaluationSummaryTests(unittest.TestCase):
             "spend_guard": {"provider_calls": 0},
         })
 
-        with unittest.mock.patch.dict(os.environ, {"SOURCE_COMMIT": "c" * 40}):
+        with patch.dict(os.environ, {"SOURCE_COMMIT": "c" * 40}):
             summary = render_summary(self.benchmark)
 
         self.assertIn("Deterministic AI evaluation — complete; quality not approved", summary)

@@ -86,6 +86,7 @@ jobs:
           backend/tests/test_analysis_worker.py
           backend/tests/test_tfidf_provider.py
           backend/tests/test_saved_provider_pipeline.py
+          scripts/tests/test_ai_evaluation_summary.py
           --junitxml=output/ai-evaluation/contract-tests.xml
 
       - name: Run the deterministic TF-IDF development cohort
