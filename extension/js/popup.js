@@ -46,6 +46,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   let busy = false;
   let detailRequest = 0;
   let listRequest = 0;
+  let deleteFocusTarget = null;
 
   function setStatus(message, kind = "info") {
     ui.status.textContent = message;
@@ -126,14 +127,15 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     }
     const edit = node(doc, "button", "secondary", "Edit notes and feedback");
     edit.type = "button";
-    edit.addEventListener("click", openEdit);
+    edit.addEventListener("click", () => openEdit());
     const remove = node(doc, "button", "danger", "Delete analysis");
     remove.type = "button";
-    remove.addEventListener("click", openDelete);
+    remove.addEventListener("click", () => openDelete(remove));
     ui.detailContent.append(edit, remove);
     ui.notes.value = record.notes || "";
     ui.feedback.value = record.feedback || "none";
     show(ui.detail, true);
+    return { edit, remove };
   }
 
   function renderList() {
@@ -213,8 +215,9 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     show(ui.editForm, true);
     ui.notes.focus();
   }
-  function openDelete() {
+  function openDelete(trigger) {
     if (busy || !selected) return;
+    deleteFocusTarget = trigger;
     ui.deleteSubject.textContent = selected.subject || "Untitled analysis";
     show(ui.deleteConfirm, true);
     ui.cancelDelete.focus();
@@ -270,8 +273,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
         : `Could not save changes: ${error.message}. Your edits are still here.`, "error");
     } finally { setBusy(false); }
   });
-  ui.cancelEdit.addEventListener("click", () => { show(ui.editForm, false); if (selected) renderDetail(selected); });
-  ui.cancelDelete.addEventListener("click", () => show(ui.deleteConfirm, false));
+  ui.cancelEdit.addEventListener("click", () => {
+    show(ui.editForm, false);
+    if (selected) renderDetail(selected).edit.focus();
+  });
+  ui.cancelDelete.addEventListener("click", () => {
+    show(ui.deleteConfirm, false);
+    deleteFocusTarget?.focus();
+  });
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;

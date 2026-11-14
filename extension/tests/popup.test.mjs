@@ -219,12 +219,16 @@ test("edit cancel and delete cancel preserve the saved record", async () => {
   await controller.refresh(); await controller.loadDetail(id);
   const editButton = ui.get("detail-content").children.at(-2);
   await editButton.fire("click");
+  assert.equal(ui.get("edit-notes").focused, true);
   ui.get("edit-notes").value = "unsaved";
   await ui.get("cancel-edit").fire("click");
+  assert.equal(ui.get("detail-content").children.at(-2).focused, true);
   assert.equal((await memory.getAnalysis(id)).notes, null);
   const deleteButton = ui.get("detail-content").children.at(-1);
   await deleteButton.fire("click");
+  assert.equal(ui.get("cancel-delete").focused, true);
   await ui.get("cancel-delete").fire("click");
+  assert.equal(deleteButton.focused, true);
   assert.equal((await memory.listAnalyses()).length, 1);
 });
 
