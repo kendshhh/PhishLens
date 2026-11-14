@@ -39,6 +39,7 @@ LOCAL_SCANNER_ASSETS = (
     "vendor/ml/THIRD_PARTY_NOTICES.md",
 )
 ASSET_SIZE_LIMITS = {
+    "vendor/neon/sdk.mjs": 1_000_000,
     "ai/tfidf_v12a.json": 3_000_000,
     "ai/reevaluators/krr.json": 1_000_000,
     "vendor/ml/transformers.min.js": 1_000_000,
@@ -196,6 +197,11 @@ def package(api, sha, number, config, output):
             files[asset] = read_extension_asset(api, sha, asset)
     if b"./js/account-popup.js" in files["popup.js"]:
         for asset in ("js/account-popup.js", "js/account-session.js", "js/account-ui.js"):
+            files[asset] = read_extension_asset(api, sha, asset)
+
+    if b"./js/neon-integration.js" in files["popup.js"]:
+        for asset in ("js/neon-integration.js", "js/neon-accounts.js", "js/auth-config.js",
+                      "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt"):
             files[asset] = read_extension_asset(api, sha, asset)
 
     origin = config["staging_origin"]
