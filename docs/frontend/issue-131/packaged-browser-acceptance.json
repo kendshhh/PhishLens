@@ -1,24 +1,165 @@
 {
-  "source_commit": "24584cc383fe64d00128a88ff5084305555add00",
-  "tested_commit": "24584cc383fe64d00128a88ff5084305555add00",
+  "source_commit": "70d1940f84472fcb1de533c2e87d38fd7007edc9",
+  "tested_commit": "70d1940f84472fcb1de533c2e87d38fd7007edc9",
   "environment": "isolated synthetic browser",
-  "scope": "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The extension side-panel page is opened directly for UI checks; the installed toolbar behavior is checked through the Side Panel API. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover keyboard focus, safe rendering, local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
+  "scope": "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, synthetic saved-report CRUD, a provider-backed response fixture, and controlled create/history failures. The response fixtures and failures are synthetic substitutes; no real provider, confirmed staging API, or production data is used.",
+  "synthetic_substitutes_only": true,
   "tests": [
-    "keyboard navigation reaches visible controls with a visible focus indicator",
-    "installed extension configures the toolbar action to open the side panel",
+    "toolbar action is configured to open the side panel",
+    "side-panel keyboard focus and untrusted history text are accessible and safely rendered",
     "packaged side-panel page loads synthetic history in the browser",
-    "history subjects render as literal text without creating markup",
     "synthetic analysis shows a clearly labeled local result or readable error",
     "Clear during a local scan prevents a stale result from returning",
     "synthetic saved analysis can be created and viewed",
-    "synthetic saved analysis can be edited and deleted",
+    "synthetic saved analysis edit survives popup reopen and reread",
+    "deleted synthetic analysis stays absent after popup reopen",
+    "synthetic provider-backed report shows its returned classification and provenance",
+    "synthetic report remains in server history after popup reopen",
+    "controlled provider failure preserves input without showing a verdict",
+    "history refresh failure preserves the confirmed saved report and shows a warning",
     "empty history and history API failure states render clearly"
   ],
+  "screenshots": [
+    {
+      "file": "01-synthetic-provider-backed-saved-report.png",
+      "sha256": "c63c5b6faa8a85f56579c4336b541e8b0fa610f405f36aa6c90d3a3ee0d1c381",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "02-synthetic-provider-report-after-popup-reopen.png",
+      "sha256": "987ee98e27851db487f0c26365ad26b51d09f988bfa6d7ab589bc4cd8552dd31",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "03-synthetic-provider-failure-preserves-input.png",
+      "sha256": "26fcb1742c79238597865ef57d6e9ab95447da122e6083ece575e53b0f563740",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "04-synthetic-history-refresh-failure-keeps-saved-report.png",
+      "sha256": "e80e7e02ed6fb640da9dfcab6ad7ebf2dedb90f3ae5be5573cde2cfc379ee1a7",
+      "content": "synthetic browser fixture"
+    }
+  ],
+  "network_summary": [
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/analyses/:id",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 503
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 503
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 503
+    }
+  ],
   "result": "passed",
-  "package_sha256": "df6e1b6b6a03d91b586b9ba1c7a1fb469606ed8c3fbba165e94a4f19b9a5c967",
+  "package_sha256": "3480d67b642dc14deb11732f070682729dda950adbdca9134ef15a8272ff3eb4",
   "runtime_or_packaging_changes": false,
   "extension_version": "0.1.0",
   "browser_channel": "chromium",
   "local_analysis_outcome": "Uncertain — full review not confirmed",
+  "synthetic_provider_record_id": "7d0cd698-4408-4ebe-89f3-2ca4b60cd210",
+  "synthetic_history_failure_record_id": "b4d6066b-8992-4ef1-82b5-667590306c31",
   "browser_version": "156.0.8078.4"
 }

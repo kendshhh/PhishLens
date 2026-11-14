@@ -6,12 +6,12 @@ production API, or database was used.
 ## Package and source identity
 
 - Extension version: `0.1.0`.
-- Source and tested Git revision: `24584cc383fe64d00128a88ff5084305555add00`.
+- Source and tested Git revision: `70d1940f84472fcb1de533c2e87d38fd7007edc9`.
 - The identity sidecar marks `runtime_or_packaging_changes: false` and records a
   SHA-256 for every package file; the archive digest below identifies the exact
   bytes that were exercised.
 - Generated archive: `PhishLens-Extension.zip`, SHA-256
-  `df6e1b6b6a03d91b586b9ba1c7a1fb469606ed8c3fbba165e94a4f19b9a5c967`.
+  `3480d67b642dc14deb11732f070682729dda950adbdca9134ef15a8272ff3eb4`.
 - Sidecar: [package-identity.json](package-identity.json). The archive omits the
   optional LLM weights; they are about 1.1 GB and must be provisioned separately.
   The sidecar's `environment: production` describes the package's configured API
@@ -33,19 +33,21 @@ production API, or database was used.
 ## Evidence
 
 - [Packaged browser acceptance](packaged-browser-acceptance.json): exact archive,
-  SHA-256 sidecar verification, synthetic Chromium `156.0.8078.4`; all nine
-  scenarios passed. API requests were redirected to a local synthetic server.
+  SHA-256 sidecar verification, synthetic Chromium `156.0.8078.4`; all thirteen
+  scenarios passed, including side-panel toolbar behavior, keyboard focus, safe
+  rendering, local scan and synthetic saved-report flows. API requests were
+  redirected to a local synthetic server. Screenshots are attached.
 - [Chrome 157 smoke](chrome-157-browser-smoke.json): unpacked extension loaded in
   a disposable Chrome `157.0.8103.79` profile. Its source commit, version, archive
   digest, and each runtime file hash match the package identity sidecar. Local scan,
   upload consent, synthetic save/read/edit/delete, failure, retry, Clear, and
   side-panel behavior passed. Eight API requests were intercepted. Temporary
   profile was removed.
-- Extension and package checks: `npm run validate`, `npm test` (222 passed),
+- Extension and package checks: `npm run validate`, `npm test` (253 passed),
   `npm run lint`, and `python -m unittest discover -s scripts/tests -p
   test_extension_assets.py` (6 passed).
-- [Uncertain-state screenshot](side-panel-uncertain-state.png): captured from the
-  packaged browser run.
+- The four synthetic saved-report screenshots listed in the browser-acceptance
+  evidence were captured from this packaged browser run.
 
 ## Defects fixed
 
