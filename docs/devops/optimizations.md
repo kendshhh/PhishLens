@@ -1,5 +1,25 @@
 # Pipeline optimization evidence
 
+## November 14 end-to-end review — no verified improvement
+
+The current 28-day sample is in
+[metrics.md](metrics.md#current-28-day-delivery-snapshot--2026-11-14-0312-utc)
+with run-level source rows in
+[ci-runs-2026-11-14.csv](evidence/ci-runs-2026-11-14.csv). Completed PR
+workflow attempts have a 4.58-minute median but 175.87-minute mean and
+205.08-minute p90 because the protected `Hosted staging` job sometimes waits
+for days before starting. Main push CI has an 1.18-minute median (n=86). These
+are different workflows and are not a before/after comparison.
+
+The current implementation work adds checks and controls; it has not changed
+the production pipeline's execution path. Its effect on total workflow time is
+therefore unmeasured. The cached uv comparison remains two baseline and two
+candidate Backend job samples, not full PR workflows; do not extrapolate that
+result to end-to-end delivery. Next measurement should separate runner time
+from protected-environment queue time and compare the same event/check set
+before and after a specific queue-policy change. Preserve the protected staging
+acceptance gate while measuring it.
+
 ## October 21 measured staging-cache experiment
 
 [Raw comparable job/step timestamps](evidence/2026-10-21-cache-comparison.json).
