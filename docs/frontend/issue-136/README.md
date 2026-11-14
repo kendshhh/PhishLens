@@ -15,7 +15,7 @@ From the repository root, run:
 
 ```powershell
 npm run package
-$env:PHISHLENS_PYTHON = 'C:\Users\ACER Nitro V15\PhishLens\.venv\Scripts\python.exe'
+$env:PHISHLENS_PYTHON = (Get-Command python).Source
 npm run test:browser
 ```
 
