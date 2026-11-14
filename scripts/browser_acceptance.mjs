@@ -585,6 +585,7 @@ async function run() {
 
     await setState(apiOrigin, { historyMode: "seeded", analysisMode: "real", providerFailure: false });
     const providerFixtureSubject = "Synthetic provider fixture <img src=x>";
+    await page.locator("#server-create > summary").click();
     await page.locator("#create-subject").fill(providerFixtureSubject);
     await page.locator("#create-body").fill(
       "Synthetic email only: an example.invalid notice asks for review. No person, account, or credential is real."
@@ -622,6 +623,8 @@ async function run() {
     page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await page.locator("#clear-button").click();
+    await page.locator("#show-reports").click();
+    await page.locator("#server-create > summary").click();
     await page.locator("#empty-state").waitFor({ state: "visible" });
     await setState(apiOrigin, { providerFailure: true });
     const failedSubject = "Synthetic controlled provider failure";
