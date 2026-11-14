@@ -10,7 +10,8 @@ score.
 - GitHub repository: `kendshhh/PhishLens`, public visibility is intended.
 - Current `main`: `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`.
 - Issues: 24 closed and 40 open out of 64 (37.5% raw issue closure).
-- Five pull requests are open. #206 and #207 are approved, clean follow-ups
+- Five other pull requests were open when this snapshot was captured, before
+  this handoff PR (#208) was opened. #206 and #207 are approved, clean follow-ups
   into `feat/96-bounded-inference`; they are not merges to `main`. #107 remains
   behind `main` with changes requested. #156 is dirty with changes requested,
   and #202 is blocked with changes requested.

@@ -14,7 +14,8 @@ same-day observations; newer facts in the handoff supersede them.
 [#156](https://github.com/kendshhh/PhishLens/pull/156),
 [#202](https://github.com/kendshhh/PhishLens/pull/202),
 [#206](https://github.com/kendshhh/PhishLens/pull/206),
-[#207](https://github.com/kendshhh/PhishLens/pull/207)
+[#207](https://github.com/kendshhh/PhishLens/pull/207),
+[#208](https://github.com/kendshhh/PhishLens/pull/208)
 
 This is a current evidence crosswalk, not a claim that closed issue checkboxes
 prove every course acceptance item. The course guide distinguishes a checked
