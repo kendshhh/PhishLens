@@ -70,8 +70,17 @@ claim installed-Chrome acceptance; that remains a separate human test.
 
 The selected staging target is Neon branch `pr-58-staging`, database
 `phishlens_dev`. Keep development on the `development` branch and production on
-`production`; never point staging at either one. On 2026-10-28, the Render
-Environment page was privately checked: `DATABASE_URL` resolves to the host and
+`production`; never point staging at either one.
+
+The hosted startup guard pins `STAGING_DATABASE_HOST` and both database URLs to
+the verified Neon endpoint `ep-soft-fog-b3orfa8a` (direct or pooler hostname),
+which maps to project `patient-bird-25428852`, branch `br-delicate-paper-b381z98i`
+(`pr-58-staging`). If Neon replaces that endpoint or branch, verify the new
+project/branch mapping through Neon and update the code pin with review; changing
+Render variables alone cannot authorize a different database target.
+
+On 2026-10-28, the Render Environment page was privately checked:
+`DATABASE_URL` resolves to the host and
 database for `pr-58-staging/phishlens_dev`, and `STAGING_DATABASE_HOST` matches
 that host; `APP_ENV=staging` and `AI_MODE=mock`. Only the branch/database result
 is recorded here. Do not copy the connection string into this runbook, a PR

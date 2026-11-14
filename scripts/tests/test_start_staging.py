@@ -8,9 +8,11 @@ from sqlalchemy.engine import make_url
 
 from scripts.start_staging import main, pin_ipv4_addresses
 
-DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-DATABASE_HOST = "ep-round-dew.c-4.ap-southeast-1.aws.neon.tech"
+DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+DATABASE_HOST = "ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech"
+DIRECT_DATABASE_HOST = "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech"
+PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
 
 
 def ipv4_records(*addresses):
@@ -66,6 +68,27 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 make_url(MIGRATION_URL.replace("neondb_owner:owner-example-password", "phishlens_staging_app:example-password")),
                 DATABASE_HOST,
                 "phishlens_staging_app",
+            )
+
+    def test_direct_and_pooled_hosts_for_verified_staging_endpoint_are_allowed(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        direct_runtime = DATABASE_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
+        direct_migration = MIGRATION_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
+        validate_hosted_database_urls(
+            make_url(direct_runtime), make_url(direct_migration), DIRECT_DATABASE_HOST,
+            "phishlens_staging_app",
+        )
+
+    def test_matching_production_host_is_rejected_even_when_all_vars_agree(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        production_runtime = DATABASE_URL.replace(DATABASE_HOST, PRODUCTION_DATABASE_HOST)
+        production_migration = MIGRATION_URL.replace(DATABASE_HOST, PRODUCTION_DATABASE_HOST)
+        with self.assertRaisesRegex(SystemExit, "verified Neon staging endpoint"):
+            validate_hosted_database_urls(
+                make_url(production_runtime), make_url(production_migration),
+                PRODUCTION_DATABASE_HOST, "phishlens_staging_app",
             )
 
     def test_fails_clearly_when_host_has_no_ipv4_address(self):
