@@ -254,8 +254,13 @@ def main():
         )
     except (ValueError, TypeError, OSError, KeyError, BadZipFile, UnicodeError, RuntimeError) as exc:
         parser.exit(1, f"Staging package rejected: {exc}\n")
-    print(json.dumps(result, indent=2))
-    print("Staging origin, manifest permissions, ZIP contents, and checkout identity verified.")
+    print(
+        "Staging package verified: "
+        f"source={result['source_commit']}, "
+        f"auth_enabled={result['auth_enabled']}, "
+        f"files={result['files_verified']}, "
+        f"zip_sha256={result['archive_sha256']}"
+    )
 
 
 if __name__ == "__main__":
