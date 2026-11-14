@@ -4,9 +4,33 @@
 
 This handoff covers Issue #96, “Bound provider inference and verify controlled
 failures.” The implementation is present in the source baseline at
-`b8015961b6f31bdeaea62820b313f339b587d5f1`; this branch records a focused
-configuration regression test and current behavior notes. It does not claim a
-new staging deployment or real-provider run.
+`b8015961b6f31bdeaea62820b313f339b587d5f1`; later commits add tests and update
+the evidence below. It does not claim a new staging deployment or real-provider
+run.
+
+## Reviewed source and CI evidence before this handoff update (November 14, 2026)
+
+Before this documentation-only update, PR #107's code head was
+`9eedb67f57980995a7e37a246ab831aa4cfca672`. PR #205 merged that reconciliation
+into `feat/96-bounded-inference`; it includes main at
+`51357447ef77de436fa43f2bd1d092417a04d1e2`, preserves the
+`0004_neon_auth_subject` migration-lineage assertion, and has no merge conflict.
+
+Code head `9eedb67` contains the TF-IDF wrong-model-hash regression at
+[`backend/tests/test_saved_create.py::test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay`](https://github.com/kendshhh/PhishLens/blob/9eedb67f57980995a7e37a246ab831aa4cfca672/backend/tests/test_saved_create.py#L223),
+committed in `9b54c5adb1c9c6718ccca7bb28364bf1e4390642`. It rejects with
+503 `analysis_unavailable` before database setup, idempotency lookup, or saving.
+The exact-head [CI run](https://github.com/kendshhh/PhishLens/actions/runs/43581813221)
+and [PR #107 checks](https://github.com/kendshhh/PhishLens/actions/runs/43581726243)
+passed for code head `9eedb67`. PR #205 records Backend, Extension, Staging integration, Migration
+source preflight, Workflow lint, Dependency security, Dependency graph review,
+and CodeQL passing on this same SHA. Hosted staging was skipped/not requested;
+no current hosted deployment or write is claimed.
+
+This update changes only this handoff. Its resulting PR head and checks must be
+refreshed after the document change is pushed. The re-review of the updated PR
+head is pending. Earlier local, CI, and staging results below are historical and
+remain tied to the source revisions explicitly stated in their sections.
 
 ## Persistent saved-create limits
 
@@ -46,11 +70,16 @@ lock timeout, rollback and healthy follow-up, and idempotent replay after an
 ambiguous commit acknowledgement. Tests use synthetic fixtures and do not call
 the live provider.
 
-This branch adds a focused SDK configuration test proving the persistent path’s
-15-second timeout still has one SDK attempt. The S3-T2 PostgreSQL run below
-includes the branch's allowlisted test-database guard. Verification used the
-working tree based on source SHA `b8015961b6f31bdeaea62820b313f339b587d5f1`;
-the changes were uncommitted during the run.
+The focused Gemini SDK configuration test is committed in
+`8fd1fa32338bbd12208cbbfc5b28abaef0b60bc1` at
+[`backend/tests/test_ai_providers.py::test_saved_create_gemini_timeout_keeps_single_sdk_attempt`](https://github.com/kendshhh/PhishLens/blob/9eedb67f57980995a7e37a246ab831aa4cfca672/backend/tests/test_ai_providers.py#L68).
+Its original November 2 local run used an uncommitted working-tree snapshot
+based on `b8015961b6f31bdeaea62820b313f339b587d5f1`; the test was subsequently
+committed in `8fd1fa3`. That run is historical evidence for the pre-commit
+snapshot only. Both the Gemini timeout test and the separate TF-IDF
+wrong-model-hash regression are committed, respectively, in `8fd1fa3` and
+`9b54c5a`. The S3-T2 PostgreSQL run below includes the branch's allowlisted
+test-database guard.
 
 ## Verification commands
 
@@ -195,17 +224,17 @@ evidence; it does not establish failure-path behavior, model accuracy, or
 browser acceptance. Evidence was recorded on Issues #90 and #96. No extension
 artifact was required for this server-side check.
 
-## Review and verification status (audited November 7, 2026)
+## Historical review and verification snapshot (November 7, 2026)
 
 The audited PR #107 head was
 `4c6d548b3999cc37ebc121ac89747deccb716c1a`. Its final commit changed
-only this handoff. The TF-IDF wrong-model-hash regression was pushed in code
+only this handoff. At that time, the TF-IDF wrong-model-hash regression was pushed in code
 commit `9b54c5adb1c9c6718ccca7bb28364bf1e4390642`, and Wilberr confirmed
 the test on that revision. [CI run #42213225007](https://github.com/kendshhh/PhishLens/actions/runs/42213225007)
-passed for the code commit. Wilberr's latest formal review is still
-`CHANGES_REQUESTED`; his earlier approvals were dismissed after later pushes.
-Request a fresh formal review after the handoff and PR description are
-reconciled. The discussion confirmation is not an approval of the audited head.
+passed for the code commit. At that historical point, Wilberr's formal review
+was `CHANGES_REQUESTED`; that status and the earlier dismissed approvals refer
+to the revisions reviewed then, not the current `9eedb67` head. The current
+re-review status is recorded above.
 
 [CI run #42252109389](https://github.com/kendshhh/PhishLens/actions/runs/42252109389)
 passed for source head `4c6d548b3999cc37ebc121ac89747deccb716c1a`.
