@@ -446,14 +446,20 @@ class PreviewTests(unittest.TestCase):
         self.assertTrue(confirmed)
         self.assertEqual(api.request.call_args.args[1]["conclusion"], "action_required")
 
-    def test_wrong_live_commit_does_not_invalidate_any_preview(self):
+    def test_wrong_live_commit_invalidates_old_preview_before_rejecting(self):
         api = Mock()
+        api.request.side_effect = [
+            [{"id": 2, "sha": "b" * 40, "creator": {"login": "github-actions[bot]"},
+              "payload": {"secretary": 1}}],
+            {},
+        ]
+        api.pages.return_value = [{"id": 8, "app": {"slug": "github-actions"}, "conclusion": "success"}]
         with self.assertRaisesRegex(RuntimeError, "wrong commit"):
             confirm_live_deployment(
                 api, CONFIG, {"status": "live", "commit": {"id": "c" * 40}}, SHA
             )
-        api.request.assert_not_called()
-        api.pages.assert_not_called()
+        self.assertEqual(api.request.call_args_list[1].args[1]["conclusion"], "action_required")
+        self.assertEqual(api.request.call_args_list[1].args[2], "PATCH")
 
     def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
         api = Mock()

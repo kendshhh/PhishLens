@@ -101,6 +101,7 @@ test("a local save completed over an open detail restores the report library", a
   assert.match(html, /id="detail-heading" tabindex="-1"/);
   assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
+  assert.match(html, /<button id="create-button" type="submit">Analyze and save<\/button>/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
@@ -293,7 +294,7 @@ test("saved report uncertainty and missing results are described without inventi
   data.risk_level = null;
   data.explanation = null;
   data.threat_indicators = [];
-  data.analysis_mode = "unknown";
+  data.analysis_mode = "unrecognized";
   data.analysis_provenance = { provider_mode: "unknown", model: "fixture-model" };
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
@@ -303,19 +304,54 @@ test("saved report uncertainty and missing results are described without inventi
   assert.match(detail.children[4].children[1].textContent, /not assessed/i);
   assert.match(detail.children[5].children[1].textContent, /Not provided/);
   assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
-  assert.match(detail.children[9].children[1].textContent, /source unknown/i);
-  assert.doesNotMatch(detail.children[9].children[1].textContent, /fixture-model/);
+  assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
+  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
 });
 
 test("provider provenance is labeled explicitly", async () => {
   const data = record(id);
   data.analysis_mode = "real";
-  data.analysis_provenance = { provider_mode: "gemini", model: "fixture-gemini-model", model_revision: "fixture-revision" };
+  data.analysis_provenance = {
+    provider_mode: "gemini", model: "fixture-gemini-model", model_revision: "fixture-revision",
+    prompt_version: "fixture-prompt-v1", explanation_source: "provider fixture"
+  };
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
-  assert.match(text, /Automated analysis/);
-  assert.doesNotMatch(text, /fixture-gemini-model|fixture-revision/);
+  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Provider: Gemini/);
+  assert.match(text, /Model: fixture-gemini-model/);
+  assert.match(text, /Model revision: fixture-revision/);
+  assert.match(text, /Prompt version: fixture-prompt-v1/);
+  assert.match(text, /Explanation source: provider fixture/);
+});
+
+test("real reports without provider metadata explain the missing provenance", async () => {
+  const data = record(id);
+  data.analysis_mode = "real";
+  data.analysis_provenance = {};
+  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+  await controller.loadDetail(id);
+  const text = ui.get("detail-content").children[9].children[1].textContent;
+  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Provider and model were not reported/);
+});
+
+test("real reports with partial provenance identify a missing or blank provider", async () => {
+  for (const { provenance, metadata, missingProvider } of [
+    { provenance: { model: "fixture-model" }, metadata: /Model: fixture-model/, missingProvider: /Provider was not reported/ },
+    { provenance: { provider_mode: "   ", model: "fixture-model" }, metadata: /Model: fixture-model/, missingProvider: /Provider was not reported/ },
+    { provenance: { prompt_version: "fixture-prompt-v1" }, metadata: /Prompt version: fixture-prompt-v1/, missingProvider: /Provider and model were not reported/ },
+  ]) {
+    const data = record(id);
+    data.analysis_mode = "real";
+    data.analysis_provenance = provenance;
+    const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+    await controller.loadDetail(id);
+    const text = ui.get("detail-content").children[9].children[1].textContent;
+    assert.match(text, metadata);
+    assert.match(text, missingProvider);
+  }
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
@@ -385,22 +421,57 @@ test('the single no-feedback choice clears a correction and remains unchanged fo
 test("notes and feedback stay disabled until edit save settles", async () => {
   let resolveUpdate;
   const original = record(id, "Pending edit");
-  const updated = { ...original, notes: "Saved notes", feedback: null };
+  let submitted;
   const client = {
     ...createInMemoryAnalysisClient([original]),
-    updateAnalysis() { return new Promise(resolve => { resolveUpdate = resolve; }); }
+    updateAnalysis(_id, patch) {
+      submitted = patch;
+      return new Promise(resolve => { resolveUpdate = () => resolve({ ...original, ...patch }); });
+    }
   };
   const { ui, controller } = setup(client);
   await controller.loadDetail(id);
   await ui.get("detail-content").children.at(-2).fire("click");
+  ui.get("edit-notes").value = "Draft saved";
+  ui.get("edit-feedback").value = "false_positive";
 
   const saving = ui.get("edit-form").fire("submit");
   assert.equal(ui.get("edit-notes").disabled, true);
   assert.equal(ui.get("edit-feedback").disabled, true);
-  resolveUpdate(updated);
+  assert.equal(ui.get("edit-notes").value, "Draft saved");
+  assert.equal(ui.get("edit-feedback").value, "false_positive");
+  assert.deepEqual(submitted, { notes: "Draft saved", feedback: "false_positive" });
+  resolveUpdate();
   await saving;
   assert.equal(ui.get("edit-notes").disabled, false);
   assert.equal(ui.get("edit-feedback").disabled, false);
+  assert.equal(ui.get("detail-content").children[7].children[1].textContent, "Draft saved");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Flagged, but I think it’s legitimate");
+});
+
+test("a delayed older detail response cannot replace an open editor draft", async () => {
+  let resolveOlder;
+  const selected = record(id, "Selected");
+  const client = {
+    ...createInMemoryAnalysisClient([selected]),
+    getAnalysis(recordId) {
+      if (recordId === "older") return new Promise(resolve => { resolveOlder = resolve; });
+      return Promise.resolve(selected);
+    }
+  };
+  const { ui, controller } = setup(client);
+  const olderRead = controller.loadDetail("older");
+  await Promise.resolve();
+  await controller.loadDetail(id);
+  await ui.get("detail-content").children.at(-2).fire("click");
+  ui.get("edit-notes").value = "Unsaved editor draft";
+
+  resolveOlder(record("older", "Older response"));
+  await olderRead;
+
+  assert.equal(ui.get("edit-form").classList.contains("hidden"), false);
+  assert.equal(ui.get("edit-notes").value, "Unsaved editor draft");
+  assert.equal(ui.get("detail-content").children[0].children[1].textContent, "Selected");
 });
 test("create subject and body stay disabled until save settles", async () => {
   let resolveCreate;
@@ -530,6 +601,30 @@ test("malformed list responses have a distinct message instead of an empty state
   await controller.refresh();
   assert.match(ui.get("crud-status").textContent, /malformed/i);
   assert.equal(ui.get("empty").classList.contains("hidden"), true);
+});
+
+test("a detail read pending before deletion cannot reopen the deleted record", async () => {
+  const original = record(id, "Deleted");
+  let resolveLate;
+  const client = {
+    ...createInMemoryAnalysisClient([original]),
+    getAnalysis(recordId) {
+      if (recordId === "older") return new Promise(resolve => { resolveLate = resolve; });
+      return Promise.resolve(original);
+    },
+    async deleteAnalysis() {},
+    async listAnalyses() { return []; }
+  };
+  const { ui, controller } = setup(client);
+  const lateRead = controller.loadDetail("older");
+  await Promise.resolve();
+  await controller.loadDetail(id);
+  await ui.get("detail-content").children.at(-1).fire("click");
+  await ui.get("delete-confirm").fire("submit");
+  resolveLate(record("older", "Late response"));
+  await lateRead;
+  assert.equal(ui.get("detail-panel").classList.contains("hidden"), true);
+  assert.equal(ui.get("history-list").children.length, 0);
 });
 
 test("TF-IDF saved reports show their provider and preserve model identity", async () => {
