@@ -616,13 +616,13 @@ async function run() {
     await page.locator("#create-button").click();
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     const providerDetail = page.locator("#detail-content");
-    await providerDetail.getByText(providerFixtureSubject, { exact: true }).waitFor();
+    assert.equal((await page.locator("#detail-heading").textContent()).trim(), providerFixtureSubject);
     assert.match(await providerDetail.textContent(), /Spam/);
     assert.match(await providerDetail.textContent(), /Synthetic provider fixture explanation/);
     assert.match(await providerDetail.textContent(), /Provider-backed AI analysis/);
     assert.match(await providerDetail.textContent(), /Provider: Gemini/);
     assert.match(await providerDetail.textContent(), /synthetic-provider-fixture-v1/);
-    assert.equal(await providerDetail.locator("img, script").count(), 0,
+    assert.equal(await page.locator("#detail-panel").locator("img, script").count(), 0,
       "Untrusted subject and email content must remain text, not markup");
     assert.ok(createdRecordId && records.get(createdRecordId)?.analysis_mode === "real",
       "The browser must render the real-mode record returned by the synthetic API fixture");
