@@ -1,6 +1,6 @@
 {
-  "source_commit": "eb8d74132c7fd637ae36d3db251e443d9e622a0f",
-  "tested_commit": "eb8d74132c7fd637ae36d3db251e443d9e622a0f",
+  "source_commit": "73e7a1e9ce14bf019062a8c24edab4143ac774dd",
+  "tested_commit": "73e7a1e9ce14bf019062a8c24edab4143ac774dd",
   "environment": "isolated synthetic browser",
   "scope": "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. A test-only verified mock session is injected into the disposable copy; this does not verify live authentication. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, synthetic saved-report CRUD, a provider-backed response fixture, and controlled create/history failures. The response fixtures and failures are synthetic substitutes; no real provider, confirmed staging API, or production data is used.",
   "synthetic_substitutes_only": true,
@@ -27,22 +27,22 @@
   "screenshots": [
     {
       "file": "01-synthetic-provider-backed-saved-report.png",
-      "sha256": "88d7b281f1491894d44a2a2ca1c76defb9f4e6ea0201e180770894f1e885f3f7",
+      "sha256": "d00f5e7b90eef82812fabe68cb637bb0fdfe039aa3b26c9b8526c3df882e35a3",
       "content": "synthetic browser fixture"
     },
     {
       "file": "02-synthetic-provider-report-after-popup-reopen.png",
-      "sha256": "f907c7e38eb918976d5827df0f7998084e09024bbb0101b5828a8e1e77df3a22",
+      "sha256": "489746fb2454831252493d571ea5734becaa86caae92c33b0b26cbca5042c4b5",
       "content": "synthetic browser fixture"
     },
     {
       "file": "03-synthetic-provider-failure-preserves-input.png",
-      "sha256": "5ab77b73f5bb13da466c7f7346d98ffac6d2f7b7ffecadeaef17287d822ec9df",
+      "sha256": "3ced811c6eb78c47193a3edc1cf0097ed6d415179ea9a4b5d09553b161302f03",
       "content": "synthetic browser fixture"
     },
     {
       "file": "04-synthetic-history-refresh-failure-keeps-saved-report.png",
-      "sha256": "5adb5c4747f0091848aa343c3679f629f6d4ccfab0b9ff7bfe29989489005211",
+      "sha256": "9d7123e5da80372182725b3cfa35d805917a8afed3d6fdbbb08a8960660e8af4",
       "content": "synthetic browser fixture"
     }
   ],
@@ -249,7 +249,7 @@
     }
   ],
   "result": "passed",
-  "package_sha256": "342e24c25e95d0fa9d668e06d110e5448616b068c7832ae5e45b5865077025aa",
+  "package_sha256": "e0261c8ace13713d20b5c6c7008911eae2a251b9eb4aab32289a2b1175d6461e",
   "runtime_or_packaging_changes": false,
   "extension_version": "0.1.0",
   "browser_channel": "msedge",
@@ -257,7 +257,7 @@
     "requested": "chromium",
     "used": "msedge",
     "mode": "headed",
-    "reason": "browserType.launchPersistentContext: Executable doesn't exist at <redacted local Playwright Chromium path>"
+    "reason": "browserType.launchPersistentContext: Executable doesn't exist at <redacted local path>"
   },
   "local_analysis_outcome": "Uncertain — check before acting",
   "popup_document_urls": [
@@ -292,7 +292,7 @@
       "button#load-history:Refresh saved reports"
     ]
   },
-  "synthetic_provider_record_id": "acb9e3a1-b8a3-4aae-b19d-0a2e26c2648b",
-  "synthetic_history_failure_record_id": "5eef3e41-3d23-4fc3-8460-d48e42a84dad",
+  "synthetic_provider_record_id": "000ceb33-7046-43d9-8acb-8c59af9ba1d7",
+  "synthetic_history_failure_record_id": "b6e3f843-ef6b-4de3-85b5-c59f65ab0ca0",
   "browser_version": "157.0.4341.46"
 }

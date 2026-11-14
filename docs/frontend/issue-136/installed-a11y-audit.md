@@ -7,11 +7,11 @@ database was used.
 ## Package and source identity
 
 - Extension version: `0.1.0`.
-- Source and tested Git revision: `eb8d74132c7fd637ae36d3db251e443d9e622a0f`
-  (`main` at `ef9dec2` plus the keyboard checks added to the installed Chrome
-  smoke in this PR).
+- Source and tested Git revision: `73e7a1e9ce14bf019062a8c24edab4143ac774dd`
+  (`main` at `ef9dec2` plus this PR's keyboard checks for the installed Chrome
+  smoke and its fix for a test-timing race; neither changes packaged files).
 - Generated archive: `PhishLens-Extension.zip`, SHA-256
-  `342e24c25e95d0fa9d668e06d110e5448616b068c7832ae5e45b5865077025aa`.
+  `e0261c8ace13713d20b5c6c7008911eae2a251b9eb4aab32289a2b1175d6461e`.
   The identity sidecar marks `runtime_or_packaging_changes: false`:
   [installed-a11y-package-identity.json](installed-a11y-package-identity.json).
   Its `environment: production` is the package's configured API target; every
@@ -42,11 +42,20 @@ database was used.
 - [Packaged browser acceptance](installed-a11y-packaged-browser-acceptance.json):
   the exact archive, checked against its SHA-256 sidecar, passed 18 of 18
   scenarios with a local synthetic API and a test-only session. A local path in
-  the browser-fallback reason is redacted. One earlier run on the same revision
-  failed one scenario: the history-refresh-failure check found the saved report's
-  detail panel not yet visible. The same scenario passed in every other run,
-  including two consecutive reruns, so it is recorded as an intermittent timing
-  issue in the test, not a product defect.
+  the browser-fallback reason is redacted.
+
+## Test-timing defect fixed
+
+**P3 — intermittent failure in the history-refresh-failure scenario.** After a
+save, the popup shows “Saved reports are temporarily unavailable” first and then
+loads the new report's detail in a separate request. The packaged browser test
+checked the detail panel as soon as the message appeared, so it failed when that
+read was slower. The product behaved correctly; the check was racing it. The test
+now waits for the panel to show the newly saved report and confirms the error
+stays visible. The synthetic server's test-only `detailDelayMs` setting delays
+that read by 1.5 s in this scenario, so the ordering is exercised on every run.
+With the delay, the old check failed every time; the new check passed in three
+consecutive runs and in the recorded run above.
 - Repository checks on this revision: `npm test` (296 passed), `npm run lint`,
   `npm run validate`.
 

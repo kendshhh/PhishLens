@@ -1,14 +1,14 @@
 {
-  "recorded_at": "2026-11-14T13:57:20.338785+00:00",
-  "source_commit": "eb8d74132c7fd637ae36d3db251e443d9e622a0f",
-  "tested_commit": "eb8d74132c7fd637ae36d3db251e443d9e622a0f",
+  "recorded_at": "2026-11-14T14:05:05.558147+00:00",
+  "source_commit": "73e7a1e9ce14bf019062a8c24edab4143ac774dd",
+  "tested_commit": "73e7a1e9ce14bf019062a8c24edab4143ac774dd",
   "runtime_or_packaging_changes": false,
   "extension_version": "0.1.0",
   "environment": "production",
   "includes_local_judge_weights": false,
   "full_workflow_assets_provisioned_in_archive": false,
   "archive": "PhishLens-Extension.zip",
-  "archive_sha256": "342e24c25e95d0fa9d668e06d110e5448616b068c7832ae5e45b5865077025aa",
+  "archive_sha256": "e0261c8ace13713d20b5c6c7008911eae2a251b9eb4aab32289a2b1175d6461e",
   "host_permissions": [
     "https://phishlens-api-ocvt.onrender.com/*"
   ],
