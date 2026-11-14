@@ -7,6 +7,8 @@
   "permissions": [
     "contextMenus",
     "sidePanel",
+    "activeTab",
+    "scripting",
     "storage",
     "offscreen"
   ],

@@ -10,9 +10,9 @@ function deferred() {
   let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; });
   return { promise, resolve, reject };
 }
-function worker({ firstWrite } = {}) {
-  let listener, clicks, installed, sidePanelBehavior, sidePanelOpen, writes = 0;
-  const requests = [], state = { analysis: undefined, badge: '' };
+function worker({ firstWrite, panelFailure = false, selectionResult, selectionFailure = false } = {}) {
+  let listener, clicks, installed, sidePanelBehavior, writes = 0;
+  const requests = [], panels = [], injections = [], state = { analysis: undefined, badge: '' };
   const storage = {};
   const context = vm.createContext({
     console, crypto: globalThis.crypto,
@@ -25,8 +25,17 @@ function worker({ firstWrite } = {}) {
       contextMenus: { removeAll() {}, create() {}, onClicked: { addListener(fn) { clicks = fn; } } },
       sidePanel: {
         async setPanelBehavior(value) { sidePanelBehavior = value; },
-        async open(value) { sidePanelOpen = value; }
+        open(options) {
+          // Recorded synchronously so tests can prove the call happens inside the user gesture.
+          panels.push({ options, beforeSelectionRead: injections.length === 0, status: state.analysis?.status });
+          return panelFailure ? Promise.reject(Error('Side panel unavailable')) : Promise.resolve();
+        }
       },
+      scripting: { async executeScript(options) {
+        injections.push(options);
+        if (selectionFailure) throw Error('Frame access denied');
+        return [{ result: await selectionResult }];
+      } },
       storage: { session: {
         async get(key) { return { [key]: storage[key] }; },
         async set(value) {
@@ -39,12 +48,15 @@ function worker({ firstWrite } = {}) {
     }
   });
   vm.runInContext(source, context);
-  return { state, requests, storage, clicks, sidePanelBehavior: () => sidePanelBehavior,
-    sidePanelOpen: () => sidePanelOpen, install: () => installed(),
+  return { state, requests, storage, clicks, panels, injections,
+    sidePanelBehavior: () => sidePanelBehavior, install: () => installed(),
     analyze: text => context.analyzeSelectedText(text),
     message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
     clear: () => new Promise(resolve => {
       assert.equal(listener({ type: 'phishlens-clear-analysis' }, { id: 'self' }, resolve), true);
+    }),
+    cancel: () => new Promise(resolve => {
+      assert.equal(listener({ type: 'phishlens-cancel-analysis' }, { id: 'self' }, resolve), true);
     })
   };
 }
@@ -54,12 +66,63 @@ test('installation makes the toolbar action open the side panel', async () => {
   await settle();
   assert.equal(app.sidePanelBehavior().openPanelOnActionClick, true);
 });
-test('selection context menu opens the panel and analyzes the selected text', async () => {
+test('right-click opens the side panel for the source tab within the gesture, before reading the selection', async () => {
   const app = worker();
-  app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Synthetic selection', tabId: 42 });
-  await settle(); await settle();
-  assert.equal(app.sidePanelOpen().tabId, 42);
-  assert.equal(app.requests[0].text, 'Synthetic selection');
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected <img src=x> text' }, { id: 12, windowId: 7 });
+  assert.equal(app.panels.length, 1, 'sidePanel.open must be called synchronously in the click handler');
+  assert.deepEqual({ ...app.panels[0].options }, { tabId: 12 });
+  assert.equal(app.panels[0].beforeSelectionRead, true);
+  assert.equal(app.panels[0].status, undefined);
+  await settle();
+  assert.equal(app.state.analysis.status, 'loading');
+  assert.equal(app.state.analysis.selectedText, 'Selected <img src=x> text');
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
+  assert.equal(app.state.analysis.status, 'success');
+});
+test('right-click without a tab id opens the side panel for the source window', async () => {
+  const app = worker();
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' }, { windowId: 7 });
+  assert.deepEqual({ ...app.panels[0].options }, { windowId: 7 });
+  await settle();
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
+});
+test('side panel failure does not prevent selected-text analysis or lose its result', async () => {
+  const app = worker({ panelFailure: true });
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' }, { id: 12 });
+  await settle();
+  app.requests[0].resolve({ alert: true, workflow: { released: true } }); await scan;
+  assert.equal(app.state.analysis.selectedText, 'Selected text');
+  assert.equal(app.state.analysis.status, 'success');
+});
+test('right-click preserves paragraph breaks, repeated spaces and tabs from the source frame', async () => {
+  const original = 'Dear team,\n\n  Review\tthe agenda.\n\nRegards,\nNicole';
+  const app = worker({ selectionResult: original });
+  const pending = app.clicks({ menuItemId: 'phishlens-analyze-selection', frameId: 4,
+    selectionText: 'Dear team, Review the agenda. Regards, Nicole' }, { id: 12, windowId: 7 });
+  await settle();
+  assert.equal(app.injections[0].target.tabId, 12);
+  assert.equal(app.injections[0].target.frameIds[0], 4);
+  assert.equal(app.state.analysis.selectedText, original);
+  assert.equal(app.requests[0].text, original);
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await pending;
+});
+for (const options of [{ selectionResult: 'Different selection' }, { selectionFailure: true }]) {
+  test('unavailable or changed source selection falls back to the original context-menu text ' + JSON.stringify(options), async () => {
+    const app = worker(options);
+    const pending = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Original menu text' }, { id: 12 });
+    await settle();
+    assert.equal(app.requests[0].text, 'Original menu text');
+    app.requests[0].resolve({ alert: false, workflow: { released: true } }); await pending;
+  });
+}
+test('a delayed selection read cannot replace a newer scan', async () => {
+  const selection = deferred(), app = worker({ selectionResult: selection.promise });
+  const older = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Old text' }, { id: 12 });
+  const newer = app.analyze('New text'); await settle();
+  selection.resolve('Old text'); await older;
+  assert.equal(app.requests.length, 1);
+  assert.equal(app.requests[0].text, 'New text');
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await newer;
 });
 for (const outcome of ['success', 'error']) {
   test('latest scan wins over an older ' + outcome, async () => {
@@ -96,9 +159,27 @@ test('debug failure is consumed once and requires no inference/API call', async 
   assert.equal(app.requests.length, 0); assert.equal(app.storage.phishlensDebugFailNext, undefined);
   assert.match(app.state.analysis.error, /Simulated/);
 });
+for (const outcome of ['success', 'error']) {
+  test('Cancel retains the original selection and rejects late ' + outcome, async () => {
+    const app = worker();
+    const pending = app.analyze('  Original\n\nselection  '); await settle();
+    await app.cancel();
+    assert.equal(app.state.analysis.status, 'cancelled');
+    assert.equal(app.state.analysis.selectedText, '  Original\n\nselection  ');
+    if (outcome === 'success') app.requests[0].resolve({ alert: true, workflow: { released: true } });
+    else app.requests[0].reject(Error('Late failure'));
+    await pending;
+    assert.equal(app.state.analysis.status, 'cancelled');
+    assert.equal(app.state.badge, '');
+    const retry = app.analyze(app.state.analysis.selectedText); await settle();
+    app.requests[1].resolve({ alert: false, workflow: { released: true } }); await retry;
+    assert.equal(app.state.analysis.status, 'success');
+  });
+}
 test('other extensions cannot submit or clear scan state', async () => {
   const app = worker();
   assert.equal(app.message({ type: 'phishlens-clear-analysis' }, { id: 'stranger' }), undefined);
+  assert.equal(app.message({ type: 'phishlens-cancel-analysis' }, { id: 'stranger' }), undefined);
   assert.equal(app.message({ type: 'phishlens-analyze-text', text: 'private' }, { id: 'stranger' }), undefined);
   assert.equal(app.requests.length, 0);
 });

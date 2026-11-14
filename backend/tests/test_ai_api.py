@@ -40,6 +40,88 @@ def test_analysis_endpoint_uses_ai_service(monkeypatch):
     assert calls == [(None, None, "Your account will be closed today.")]
 
 
+def test_analysis_endpoint_rejects_required_provider_mismatch_before_inference(monkeypatch):
+    calls = []
+
+    class GeminiService:
+        def analyze_email(self, *, subject, sender, body):
+            calls.append((subject, sender, body))
+            raise AssertionError("A mismatched provider must not receive the request")
+
+    monkeypatch.setattr(
+        main,
+        "get_ai_service",
+        lambda: (GeminiService(), "gemini"),
+    )
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/analyses",
+            json={"text": "Synthetic smoke input"},
+            headers={"X-Require-Provider": "tfidf"},
+        )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error": {
+            "code": "analysis_unavailable",
+            "message": "Required analysis provider is unavailable",
+        }
+    }
+    assert calls == []
+
+
+def test_revision_analysis_rejects_different_deployment_before_provider_lookup(monkeypatch):
+    expected_sha = "a" * 40
+    serving_sha = "b" * 40
+    monkeypatch.setenv("RENDER_GIT_COMMIT", serving_sha)
+
+    def unexpected_provider_lookup():
+        raise AssertionError("A mismatched deployment must stop before provider lookup")
+
+    monkeypatch.setattr(main, "get_ai_service", unexpected_provider_lookup)
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            f"/analyses/revision/{expected_sha}",
+            json={"text": "Synthetic smoke input"},
+            headers={"X-Require-Provider": "tfidf"},
+        )
+
+    assert response.status_code == 409
+    assert response.headers["X-PhishLens-Revision"] == serving_sha
+    assert response.json() == {
+        "error": {
+            "code": "deployment_revision_mismatch",
+            "message": "Analysis request reached a different deployment revision",
+        }
+    }
+
+
+def test_revision_analysis_rejects_non_tfidf_provider_before_inference(monkeypatch):
+    serving_sha = "a" * 40
+    calls = []
+    monkeypatch.setenv("RENDER_GIT_COMMIT", serving_sha)
+
+    class GeminiService:
+        def analyze_email(self, *, subject, sender, body):
+            calls.append((subject, sender, body))
+            raise AssertionError("The revision-scoped route must reject Gemini before inference")
+
+    monkeypatch.setattr(main, "get_ai_service", lambda: (GeminiService(), "gemini"))
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            f"/analyses/revision/{serving_sha}",
+            json={"text": "Synthetic smoke input"},
+            headers={"X-Require-Provider": "tfidf"},
+        )
+
+    assert response.status_code == 503
+    assert response.headers["X-PhishLens-Revision"] == serving_sha
+    assert calls == []
+
+
 def test_analysis_endpoint_returns_mock_mode(monkeypatch):
     from backend.ai.mock_provider import MockProvider
     from backend.ai.service import AIService
