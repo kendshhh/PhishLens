@@ -16,10 +16,12 @@ score.
   Extension, Migration source preflight, Staging integration, Workflow lint,
   CodeQL, Dependency security, Dependency graph review, and Deterministic AI
   evaluation pass. Hosted staging, Hosted staging preflight, and the Issue 90
-  read-only staging package check were skipped; the Secretary staging check
-  reported that hosted staging was not requested. The latest submitted #107
-  review is `CHANGES_REQUESTED` from EnviousCoal, who remains the requested
-  reviewer.
+  read-only staging package check were skipped. EnviousCoal approved this head
+  on November 14 ([review](https://github.com/kendshhh/PhishLens/pull/107#pullrequestreview-5904383228)).
+  GitHub still shows the required `Secretary staging` context as
+  `Expected — Waiting for status to be reported` ([#107 checks](https://github.com/kendshhh/PhishLens/pull/107/checks)).
+  The Secretary check run that says “Hosted staging not requested” and the
+  skipped hosted jobs do not satisfy that required context.
 - [PR #196](https://github.com/kendshhh/PhishLens/pull/196) merged as
   `591a2beaafcc4cc3706d176f8c79f2ffde300e89`. Its deterministic AI workflow,
   fail-closed saved-analysis spend policy, and 40-case TF-IDF development run
@@ -65,10 +67,13 @@ score.
    source preflight, Staging integration, Workflow lint, CodeQL, Dependency
    security, Dependency graph review, and Deterministic AI evaluation pass;
    Hosted staging, Hosted staging preflight, and the Issue 90 read-only staging
-   package check were skipped. The latest submitted reviewer decision is
-   `CHANGES_REQUESTED`; EnviousCoal is still the requested reviewer. Obtain a
-   fresh reviewer decision before treating #107 as ready to merge. Do not count
-   the feature branch as merged to `main` or as current staging acceptance.
+   package check were skipped. EnviousCoal approved this head on November 14
+   ([review](https://github.com/kendshhh/PhishLens/pull/107#pullrequestreview-5904383228)),
+   but GitHub still reports the required `Secretary staging` context as
+   `Expected — Waiting for status to be reported` ([#107 checks](https://github.com/kendshhh/PhishLens/pull/107/checks)).
+   The separate “Hosted staging not requested” check result and skipped hosted
+   jobs do not satisfy that context. Do not count the feature branch as merged
+   to `main` or as current staging acceptance.
 2. Before any staging write or promotion, have the environment owner verify the
    selected SHA and exact Neon target read-only; then run one approved synthetic
    acceptance flow and clean it up.
