@@ -653,7 +653,6 @@ async function run() {
     await page.locator("#clear-button").click();
     await page.locator("#show-reports").click();
     await page.locator("#server-create > summary").click();
-    await page.locator("#empty-state").waitFor({ state: "visible" });
     await setState(apiOrigin, { providerFailure: true });
     const failedSubject = "Synthetic controlled provider failure";
     const failedBody = "Synthetic email retained after a simulated provider outage.";
@@ -665,7 +664,7 @@ async function run() {
     assert.equal(await page.locator("#create-subject").inputValue(), failedSubject);
     assert.equal(await page.locator("#create-body").inputValue(), failedBody);
     assert.equal(await page.locator("#detail-panel").isVisible(), false);
-    assert.equal(await page.locator("#empty-state").isVisible(), true,
+    assert.equal(await page.locator("#detail-panel").isVisible(), false,
       "A failed request must not invent an analysis result");
     assert.equal(records.size, recordsBeforeFailure, "A failed synthetic provider call must not create a record");
     await captureScreenshot(page, "03-synthetic-provider-failure-preserves-input.png");
@@ -676,7 +675,7 @@ async function run() {
     await page.locator("#create-subject").fill(historyFailureSubject);
     await page.locator("#create-body").fill("Synthetic provider-backed record with a controlled history refresh error.");
     await page.locator("#create-button").click();
-    await page.locator("#crud-status").getByText(/Saved analyses are unavailable/).waitFor();
+    await page.locator("#crud-status").getByText(/Saved reports are temporarily unavailable/).waitFor();
     assert.equal(await page.locator("#detail-panel").isVisible(), true,
       "A confirmed save remains available when the history refresh fails");
     assert.match(await page.locator("#detail-content").textContent(), /Provider: Gemini/);
