@@ -18,13 +18,14 @@ those identifiers and retained per-run event, result, timestamp, and duration
 so the sample counts and timing calculations remain auditable. The sanitized
 changed-file scan passed. Reports were stored outside the repository.
 
-The workflow currently blocks high/critical npm findings and high/critical
-GitHub dependency-graph findings. Pinned Python dependency audit failures block
-at any reported severity. The `Dependency security` lockfile audit and
-`Dependency graph review (GitHub Advanced Security)` must be present as
-required checks on `main`; until GitHub confirms those ruleset entries, the
-policy is configured in workflow code but not yet fully enforced at merge. See
-[dependency-audits.md](dependency-audits.md).
+The workflow blocks high/critical npm findings, high/critical GitHub
+dependency-graph findings, and any reported vulnerability in the pinned Python
+dependency audit. The active `main` ruleset `26782191` now requires both
+`Dependency security` and `Dependency graph review (GitHub Advanced Security)`;
+GitHub's API confirmed the updated contexts. The new deterministic AI
+evaluation runs and passes on AI-changing PRs (including PR #196), but its
+workflow is still under review and the evaluation check is not yet required by
+the `main` ruleset. See [dependency-audits.md](dependency-audits.md).
 
 ## Participant-sourced course records
 
