@@ -337,16 +337,21 @@ test("real reports without provider metadata explain the missing provenance", as
   assert.match(text, /Provider and model were not reported/);
 });
 
-test("real reports with partial provenance identify the missing provider", async () => {
-  const data = record(id);
-  data.analysis_mode = "real";
-  data.analysis_provenance = { model: "fixture-model" };
-  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
-  await controller.loadDetail(id);
-  const text = ui.get("detail-content").children[9].children[1].textContent;
-  assert.match(text, /Model: fixture-model/);
-  assert.match(text, /Provider was not reported/);
-  assert.doesNotMatch(text, /Provider and model were not reported/);
+test("real reports with partial provenance identify a missing or blank provider", async () => {
+  for (const { provenance, metadata, missingProvider } of [
+    { provenance: { model: "fixture-model" }, metadata: /Model: fixture-model/, missingProvider: /Provider was not reported/ },
+    { provenance: { provider_mode: "   ", model: "fixture-model" }, metadata: /Model: fixture-model/, missingProvider: /Provider was not reported/ },
+    { provenance: { prompt_version: "fixture-prompt-v1" }, metadata: /Prompt version: fixture-prompt-v1/, missingProvider: /Provider and model were not reported/ },
+  ]) {
+    const data = record(id);
+    data.analysis_mode = "real";
+    data.analysis_provenance = provenance;
+    const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+    await controller.loadDetail(id);
+    const text = ui.get("detail-content").children[9].children[1].textContent;
+    assert.match(text, metadata);
+    assert.match(text, missingProvider);
+  }
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
