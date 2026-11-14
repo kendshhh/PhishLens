@@ -69,8 +69,6 @@ def main() -> int:
             raise RuntimeError("Select tfidf, local, or gemini to exercise real inference")
         for case in cases:
             try:
-                if mode == "gemini":
-                    report["provider_requests"] += 1
                 service.analyze_email(subject=None, sender=None, body=case.body)
                 report["cases"].append({"case": case.id, "status": "completed", "mode": mode})
             except RuntimeError:
@@ -81,6 +79,8 @@ def main() -> int:
         # Provider RuntimeErrors are sanitized by adapters; never print raw SDK errors.
         report["error"] = str(exc)
     finally:
+        if service is not None and mode == "gemini":
+            report["provider_requests"] = getattr(service.provider, "requests_started", 0)
         if service is not None and hasattr(service.provider, "close"):
             service.provider.close()
         if spend_budget is not None:

@@ -37,6 +37,7 @@ class GeminiProvider:
         self.model = model
         self.spend_policy = spend_policy
         self.evaluation_budget = evaluation_budget
+        self.requests_started = 0
 
     def analyze(
         self,
@@ -74,6 +75,10 @@ class GeminiProvider:
             self.spend_policy.require_within_cap(self.spend_policy.estimate(**spend_request))
 
         try:
+            # Count the provider call only after the spend guard accepts it.
+            # This is the number of SDK requests started, including requests
+            # that fail at the network/provider boundary.
+            self.requests_started = getattr(self, "requests_started", 0) + 1
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=contents,

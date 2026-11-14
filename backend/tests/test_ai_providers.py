@@ -96,6 +96,7 @@ def test_gemini_per_request_cap_blocks_before_paid_inference(google_client):
     with pytest.raises(SpendLimitExceeded, match="request exceeds"):
         provider.analyze('{"body":"Synthetic"}')
     client.models.generate_content.assert_not_called()
+    assert provider.requests_started == 0
 
 
 def test_evaluation_budget_reserves_and_stops_before_cap_is_exceeded(google_client):
@@ -129,6 +130,7 @@ def test_evaluation_budget_reserves_and_stops_before_cap_is_exceeded(google_clie
         provider.analyze('{"body":"Synthetic"}')
     assert budget.requests_reserved == 1
     assert client.models.generate_content.call_count == 1
+    assert provider.requests_started == 1
 
 
 def test_evaluation_budget_requires_exact_request_limit(monkeypatch):
