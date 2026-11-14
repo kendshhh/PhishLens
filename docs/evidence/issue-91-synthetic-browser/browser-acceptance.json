@@ -1,0 +1,153 @@
+{
+  "source_commit": "61e7fda0ddfcaa8ea41b7df430a8ed84c8049b07",
+  "tested_commit": "61e7fda0ddfcaa8ea41b7df430a8ed84c8049b07",
+  "environment": "isolated synthetic browser",
+  "scope": "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, synthetic saved-report CRUD, a provider-backed response fixture, and controlled create/history failures. The response fixtures and failures are synthetic substitutes; no real provider, confirmed staging API, or production data is used.",
+  "synthetic_substitutes_only": true,
+  "tests": [
+    "packaged popup loads synthetic history in the browser",
+    "synthetic analysis shows a clearly labeled local result or readable error",
+    "Clear during a local scan prevents a stale result from returning",
+    "synthetic saved analysis can be created and viewed",
+    "synthetic saved analysis can be edited and deleted",
+    "synthetic provider-backed report shows its returned classification and provenance",
+    "synthetic report remains in server history after popup reopen",
+    "controlled provider failure preserves input without showing a verdict",
+    "history refresh failure preserves the confirmed saved report and shows a warning",
+    "empty history and history API failure states render clearly"
+  ],
+  "screenshots": [
+    {
+      "file": "01-synthetic-provider-backed-saved-report.png",
+      "sha256": "8b8a7409c307da81bba568e2ad9d2e9dd695d974cf3eb77e2edda0de19080e3f",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "02-synthetic-provider-report-after-popup-reopen.png",
+      "sha256": "6efe396c17afc088d7d22b458a5c7b4867290420e0aeab8ae0190ace0c8d9c8e",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "03-synthetic-provider-failure-preserves-input.png",
+      "sha256": "bcb086baf115a0a437ca3a2ebff22d3cfcc82eacd6d280834f274a0acf1cebab",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "04-synthetic-history-refresh-failure-keeps-saved-report.png",
+      "sha256": "18881b2063cdfa76d014c3c86f16e54d7952ac7dfafec8cca120e356fe04f437",
+      "content": "synthetic browser fixture"
+    }
+  ],
+  "network_summary": [
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/analyses/:id",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 503
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 503
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 503
+    }
+  ],
+  "result": "passed",
+  "package_sha256": "db5e8d4ef458e35c88f9ec2a3e1ac5c4e6dd06904be87f6dccd27434b9a07bc0",
+  "runtime_or_packaging_changes": false,
+  "extension_version": "0.1.0",
+  "browser_channel": "msedge",
+  "browser_launch_fallback": {
+    "requested": "chromium",
+    "used": "msedge",
+    "mode": "headed",
+    "reason": "browserType.launchPersistentContext: Executable doesn't exist at C:\\Users\\ACER Nitro V15\\AppData\\Local\\ms-playwright\\chromium-1254\\chrome-win64\\chrome.exe"
+  },
+  "local_analysis_outcome": "Uncertain — full review not confirmed",
+  "synthetic_provider_record_id": "524f2213-22fb-4fbf-b524-28c0d6a656d7",
+  "synthetic_history_failure_record_id": "00ca9f85-52c0-44c2-885e-1612e15f256c",
+  "browser_version": "157.0.4341.46"
+}

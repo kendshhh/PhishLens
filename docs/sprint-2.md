@@ -1,4 +1,4 @@
-﻿# Sprint 2 — independent work
+# Sprint 2 — independent work
 
 October 20 Kendra implementation update: see the
 [work/evidence and interface audit](devops/sprint-2-work-2026-10-20.md).
@@ -7,9 +7,8 @@ are delivered. PR #58 has since merged the persistent CRUD backend, and its
 description records successful current-head Hosted staging and authorized
 synthetic API CRUD verification. Issue #43's PostgreSQL acceptance tests are
 now in a focused PR; local PostgreSQL evidence is recorded in
-[the S2-T2 test handoff](s2-t2-test-handoff.md). That PR's CI and teammate
-review remain pending. No issue, board card, or delivery gate is marked complete
-by local results alone.
+[the S2-T2 test handoff](s2-t2-test-handoff.md). At the time of this update,
+CI and teammate review were pending.
 
 October 28 Trixia S2-T2 update: test changes are based on `main`
 `b3a7588811e77edc48b29b07763152f66172a331` and committed as
@@ -18,10 +17,37 @@ PostgreSQL database, targeted CRUD tests passed (35 passed, 1 intentionally
 skipped), and the full DB-enabled backend suite passed (252 passed, 1 skipped).
 The ordinary backend suite passed (216 passed, 37 skipped); Ruff and whitespace
 checks passed. The skip is the separately gated seed-integrity test, which
-requires local `phishlens_dev`. These are local results, not the new PR's CI.
-Issue #43 remains open pending required review, CI, and checklist/board
-reconciliation. The test-only change has not been deployed; deployed API CRUD
-evidence is recorded separately under merged PR #58.
+requires local `phishlens_dev`. These results came from local test runs.
+[PR #80](https://github.com/kendshhh/PhishLens/pull/80) later passed CI and
+merged. The #43 board item is Done, and publishing this sprint log on `main`
+is the remaining handoff. Deployed API CRUD evidence is recorded separately
+under merged PR #58.
+
+November 13 backend acceptance handoff:
+
+- [#42 persistent CRUD](https://github.com/kendshhh/PhishLens/issues/42) still
+  needs evidence on the selected deployment for create, list/detail,
+  notes/feedback PATCH and a fresh reread, delete, and final detail 404.
+- [#43 CRUD tests](https://github.com/kendshhh/PhishLens/issues/43) recorded
+  the disposable PostgreSQL run on `7ced6984ba5cdc962a756afd2ec642fbf274ec4d`.
+  [PR #80](https://github.com/kendshhh/PhishLens/pull/80) later passed CI at
+  `e99a6682d3336ec2bb602d8492ffcf8fe6b9e38a` and merged as
+  `16b96fa0107aee28c321ed47affc0d7f30d456fd`. Separately, the historical
+  [PR #58](https://github.com/kendshhh/PhishLens/pull/58) hosted run used
+  source `8357317076bfa1ef300f14bc0efea2936fffbf70` on staging revision
+  `6c9f044324dc602893d0562f433cb0840411a34b`. It recorded create 201,
+  list/detail and notes/feedback PATCH with reread 200, delete 204, and
+  final detail 404. These results apply to those revisions. The issue
+  records the board as Done, with this sprint-log publication as its
+  remaining handoff.
+- [#48 TF-IDF saved-report verification](https://github.com/kendshhh/PhishLens/issues/48)
+  uses the verifier from merged [PR #185](https://github.com/kendshhh/PhishLens/pull/185)
+  at `afe6fad4f539d41e82b4772698c806935e94be34`. Its 38 local fixture tests
+  passed, including authenticated save/read/cleanup and rejection of
+  anonymous access in Auth mode. The hosted scope is one synthetic create,
+  list/detail read, delete, and final detail 404 after authorization for the
+  confirmed target. [#96](https://github.com/kendshhh/PhishLens/issues/96)
+  tracks forced provider and database failures.
 
 October 21 continuation: [playbook close-out and remaining gates](devops/playbook-closeout-2026-10-21.md).
 PR #55 adds strict production-package permissions, reproducible artifact identity

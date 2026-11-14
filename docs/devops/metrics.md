@@ -1,5 +1,42 @@
 # Pipeline Metrics
 
+## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
+
+Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
+Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and
+the Render production service deploy inventory. Run-level records are in
+[ci-runs-2026-11-14.csv](evidence/ci-runs-2026-11-14.csv) and
+[production-deploys-2026-11-14.csv](evidence/production-deploys-2026-11-14.csv).
+
+| Metric | Current measurement | Sample and calculation |
+|---|---|---|
+| PR pipeline wall time | Mean **175.87 min**; median **4.58 min**; p90 **205.08 min** | 682 completed PR workflow attempts across 110 head branches; elapsed from `run_started_at` to `updated_at`. Attempts include synchronize events and reruns; this is not 682 distinct PRs. |
+| PR pipeline success | **82.14%** when cancelled runs are excluded; **75.51%** including cancellations | 515 success, 112 failure, 55 cancelled; 515/(515+112), and 515/682 respectively. |
+| Main pipeline wall time | Mean **1.39 min**; median **1.18 min**; p90 **1.92 min** | 86 completed main-push runs, all successful; same start-to-completion calculation. |
+| Main pipeline success | **100%** | 86 success, 0 failed, 0 cancelled completed main-push runs. |
+| Production deploys | **69 deploy records**; 1 currently `live`, 68 `deactivated` after later deploys; 0 failed statuses | Render inventory for this window; deploy duration n=69, mean **89.06 s**, median **74.23 s**, p90 **87.92 s**. |
+| Merge-to-live | Mean **4.40 min**; median **3.42 min**; p90 **5.47 min** | 64 distinct merged PR SHAs matched to a Render deployment finish time. Of 95 merged PR SHAs, 31 had no matching deploy record; 5 deploy records had no unique merged-PR match. |
+| Failed production deploys | **0 observed** | 69 deploy records in this window; this is not a lifetime count. |
+| Time to recover | **Unknown** | No failed production deploy was observed, so recovery-time sample **n=0**; do not report zero minutes. |
+| Change made and measured effect | **No speed improvement established** | Current local work adds deterministic AI evaluation, spend controls, security gates, and deployment-smoke coverage. The 40-case TF-IDF development evaluation found 18.75% phishing recall; the model threshold is not approved. The work has not been merged/deployed and has no comparable after pipeline sample. |
+
+The PR pipeline mean is dominated by environment wait, not runner execution. The
+longest sampled run was 111.4 hours: its Backend, Extension, and Staging
+integration jobs finished in about a minute each, but `Hosted staging` began
+more than four days later. Example: [run 39454875889](https://github.com/kendshhh/PhishLens/actions/runs/39454875889)
+finished its ordinary jobs on October 20 and started the protected hosted job
+on October 25. This is operational delay that needs a queue/approval policy
+review; it is not a reason to omit the protected check.
+
+The snapshot is descriptive, not a before/after experiment. The existing cached
+uv backend comparison remains **n=2 baseline and n=2 candidate** and measures
+the Backend job only. Its candidate median was 50.92 s versus 61.52 s, but that
+small job-level sample does not establish a reliable end-to-end improvement.
+PR and main workflows also have different check sets and are not an equivalent
+optimization pair. No timing win is claimed.
+
+## Historical observations
+
 ## Current main deployment observation — October 28, 2026
 
 At 2026-10-28 15:39 UTC, main was `6414914dfa8eb8322839597c4cd6912145a442a0`.

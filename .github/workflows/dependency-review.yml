@@ -1,4 +1,4 @@
-name: Dependency audit
+name: Dependency security
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   lockfile-audit:
-    name: Lockfile vulnerability audit
+    name: Dependency security
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -42,10 +42,7 @@ jobs:
 
   dependency-review:
     name: Dependency graph review (GitHub Advanced Security)
-    # GitHub supports this action on public repositories or private repositories
-    # with a GitHub Advanced Security license. Opt in after that capability is
-    # available; private repositories use the lockfile audit above by default.
-    if: vars.DEPENDENCY_REVIEW_ENABLED == 'true'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -56,4 +53,3 @@ jobs:
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
-          warn-only: true
