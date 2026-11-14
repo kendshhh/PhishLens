@@ -36,15 +36,20 @@ production root was created as `snap-nameless-math-b3i4bw19` at
 expire at `2026-11-15T03:00:00Z`.
 
 The restore created branch `br-orange-sky-b3zzzyqc` and it became ready at
-`2026-11-14T02:56:00Z`, about ten seconds after the snapshot timestamp. The
-restore call used `finalize=true`; this promoted the restored branch to the
-production name/default and changed branch identity. The original branch was
-renamed and remains present. The Render production endpoint stayed attached to
+`2026-11-14T02:56:00Z`, about ten seconds after the snapshot timestamp. I set
+`finalize=true`; this was wrong for an isolated rehearsal and promoted the
+restored branch to the production name/default, changing branch identity. The
+original branch was renamed and remains present. The Render production
+endpoint stayed attached to
 the endpoint ID `ep-dawn-band-b37l1bil`; production `/version`, `/health`, and
 `/ready` subsequently returned the expected production identity and HTTP 200.
 The two branches showed the same database name, migration revision, and row
-counts for `users` and `analyzed_emails` when compared. No application data was
-written during the rehearsal.
+counts for `users` and `analyzed_emails` when compared. A later read-only
+comparison found one user and one analyzed email on each branch, the same latest
+analysis timestamp, and matching whole-row content digests for every public
+base table (`users`, `analyzed_emails`, and `alembic_version`). No data
+divergence was detected at comparison time. No application data was written by
+the rehearsal or its checks.
 
 This was **not a clean, low-risk restore acceptance**: it changed Neon branch
 topology/default state, and an original branch with children could not be

@@ -3,23 +3,33 @@
 ## Current delivery and acceptance snapshot — November 14, 2026
 
 This dated snapshot supersedes the October 28 observations below. GitHub
-`main` is `8c02a7c86e8b2052d127b5a6a0422a5a80ffa9ea`. The repository is public,
-as intended by the owner. The active main ruleset requires one review approval
-and ten status checks, including `Dependency security` and
+`main` is `76551f68ff7dc02971cf127fa82f1f35e79cc2ab` (`Block vulnerable
+dependencies in CI`, PR #197). The repository is public, as intended by the
+owner. The active main ruleset requires one review approval and ten status
+checks, including `Dependency security` and
 `Dependency graph review (GitHub Advanced Security)`. The AI evaluation check
 is running on AI-changing PRs but is not yet a required main check.
 
-Four focused DevOps PRs are open and none has been merged: [#196 AI evaluation
-and spend controls](https://github.com/kendshhh/PhishLens/pull/196), [#197
-dependency security](https://github.com/kendshhh/PhishLens/pull/197), [#198
-production smoke and acceptance](https://github.com/kendshhh/PhishLens/pull/198),
-and [#199 delivery metrics](https://github.com/kendshhh/PhishLens/pull/199).
-PR #197 has green required checks but still needs review; its fixes have not yet
-changed the default branch. GitHub currently reports twelve high Dependabot
-alerts on main, all `pyasn1` advisories in three lockfiles. PR #197 updates
-`pyasn1` to 0.6.5 and `opentelemetry-api` to 1.45.2. PRs based on the current
-main still fail the old lockfile audit until that fix is merged and their checks
-are rerun.
+Three focused DevOps PRs remain open: [#196 AI evaluation and spend
+controls](https://github.com/kendshhh/PhishLens/pull/196), [#198 production
+smoke and acceptance](https://github.com/kendshhh/PhishLens/pull/198), and [#199
+delivery metrics](https://github.com/kendshhh/PhishLens/pull/199). They are
+rebased on current main. Their latest automated checks pass; #196 still has a
+requested-changes review, #198 needs review, and #199 is approved. PR #197 is
+merged; no other DevOps PR is merged.
+
+The GitHub Dependabot API still lists fifteen open alerts: twelve high
+`pyasn1` alerts and three medium `opentelemetry-api` alerts across the three
+requirements manifests. Current main pins `pyasn1==0.6.5` and
+`opentelemetry-api==1.45.2`, above the reported vulnerable ranges, and the new
+dependency checks pass on the rebased PRs. Reconcile the still-open alert
+records with GitHub's refreshed dependency graph; do not treat the API count
+alone as evidence that the pinned versions remain vulnerable or as evidence
+that the alerts are closed.
+
+A fresh Gitleaks v8.30.1 scan after the sync/rebase scanned 524 commits across
+all local refs and found no leaks. This records the credential scan result; it
+does not establish broader application security.
 
 ### Live service targets
 
@@ -32,7 +42,7 @@ are rerun.
   and [reliability record](docs/devops/reliability-acceptance-2026-11-14.md).
 - **Staging:** Render currently serves
   `3b6101b0d77d3a5282d245c83b29c3b684fe780d` from open PR #61's test branch,
-  not main. It is 58 commits ahead of main. The Render host was matched to Neon
+  not main. The Render host was matched to Neon
   branch `pr-58-staging`; `/version`, `/health`, `/ready`, and `/model-info`
   passed. Guarded synthetic CRUD passed on this exact SHA and cleaned up record
   `56ee2dc4-7dd9-4e6d-bb3e-8c14638146e7`. This establishes backend behavior for
@@ -48,18 +58,22 @@ are rerun.
 ### Candidate workflow changes and remaining gates
 
 PR #196 adds a deterministic 40-case, provider-free evaluation for AI logic,
-prompt, and model-setting changes. The run completed with 18.75% phishing
-recall; no quality threshold has been approved. The configured runtime Gemini
-cost guard is an estimate per request, and the local evaluation scripts enforce
-per-run request/dollar ceilings. There is no shared daily/monthly production
-budget or verified provider-side quota, and no paid provider run was made.
+prompt, and model-setting changes. The run reports 65% binary accuracy, 18.75%
+phishing recall, and 6.25% legitimate false positives; all eight spam cases
+were classified as legitimate. No quality threshold or holdout approval has
+been recorded, so a green deterministic job is not an AI quality approval. The
+configured runtime Gemini cost guard is an estimate per request, and the local
+evaluation scripts enforce per-run request/dollar ceilings. There is no shared
+daily/monthly production budget or verified provider-side quota, and no paid
+provider run was made.
 
 PR #198 adds exact-SHA post-deploy behavior checks, but the workflow is manual
 because Render currently has no production deployment event for this service and
 workspace webhooks require a higher Render plan. It does not yet run immediately
 after every production deploy. An uptime monitor is also not configured.
 
-PR #199 records the 28-day run-level sample and comparison limits. The PR
+PR #199 records the 28-day run-level sample through 2026-11-14 03:12 UTC, before
+PR #197 merged, and the comparison limits. The PR
 workflow median is 4.58 minutes (682 attempts across 110 head branches), but the
 mean is 175.87 minutes because protected staging waits sometimes last days. Main
 pipeline median is 1.18 minutes (86 successful pushes). There were 69 production
