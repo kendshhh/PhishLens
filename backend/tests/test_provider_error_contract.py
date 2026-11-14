@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import Mock
 
 import httpx
@@ -7,6 +8,7 @@ from google.genai import errors
 
 from backend.ai import gemini_provider
 from backend.ai.service import AIService
+from backend.ai.spend_limit import GeminiSpendPolicy
 from backend.app import main
 
 
@@ -22,6 +24,12 @@ def failing_gemini(monkeypatch):
     provider = gemini_provider.GeminiProvider(
         api_key="synthetic-key",
         model="gemini-test",
+        spend_policy=GeminiSpendPolicy(
+            cap_usd=Decimal(1),
+            input_usd_per_million_tokens=Decimal(1),
+            output_usd_per_million_tokens=Decimal(1),
+            model_id="gemini-test",
+        ),
     )
     service = AIService(provider)
     monkeypatch.setattr(

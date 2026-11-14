@@ -41,6 +41,8 @@ def test_gemini_output_is_validated_mapped_and_persisted(monkeypatch):
         models=SimpleNamespace(generate_content=sdk_call)
     )
     provider.model = "gemini-test-model"
+    provider.spend_policy = None
+    provider.evaluation_budget = None
 
     request = CreateSavedAnalysis(subject=email_subject, body=email_body)
     result = AIService(provider).analyze_email(

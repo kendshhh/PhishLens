@@ -1,6 +1,98 @@
 # PhishLens Pipeline
 
-## Main and stage observation — October 28, 2026
+## Current delivery and acceptance snapshot — November 14, 2026
+
+This dated snapshot supersedes the October 28 observations below. GitHub
+`main` is `36cb0d4c1c197b5a4a2bead38dcf9fa966719f53` (PR #199, refresh delivery
+and deployment metrics). The repository is public, as intended by the owner.
+The active main ruleset requires one review approval and ten status
+checks, including `Dependency security` and
+`Dependency graph review (GitHub Advanced Security)`. The AI evaluation check
+is running on AI-changing PRs but is not yet a required main check.
+
+Two focused DevOps PRs remain open: [#196 AI evaluation and spend
+controls](https://github.com/kendshhh/PhishLens/pull/196) and [#198 production
+smoke and acceptance](https://github.com/kendshhh/PhishLens/pull/198). PR #197
+dependency security and PR #199 delivery metrics have merged. Both open PRs
+are based on current main; #196 still has a requested-changes review and #198
+needs review.
+
+The GitHub Dependabot API still lists fifteen open alerts: twelve high
+`pyasn1` alerts and three medium `opentelemetry-api` alerts across the three
+requirements manifests. Current main pins `pyasn1==0.6.5` and
+`opentelemetry-api==1.45.2`, above the reported vulnerable ranges, and the new
+dependency checks pass on the rebased PRs. Reconcile the still-open alert
+records with GitHub's refreshed dependency graph; do not treat the API count
+alone as evidence that the pinned versions remain vulnerable or as evidence
+that the alerts are closed.
+The first `Dependency graph review` run failed because the graph was disabled.
+I enabled the repository dependency graph through GitHub's vulnerability-alerts
+setting and reran the job; it passed. That check is now active in the main
+ruleset.
+
+A fresh Gitleaks v8.30.1 history scan across all refs after the sync/rebase
+found no leaks. This records the credential scan result; it
+does not establish broader application security.
+
+### Live service targets
+
+- **Production:** Render serves SHA
+  `76551f68ff7dc02971cf127fa82f1f35e79cc2ab`; `/health` and `/ready` return
+  200, but `/model-info` reports `provider_mode=unavailable`. The exact-SHA
+  feature smoke therefore failed before inference and made zero analysis
+  requests, provider calls, or database writes. Production AI behavior is not
+  accepted. See the [smoke procedure](docs/devops/production-deploy-smoke.md)
+  and [reliability record](docs/devops/reliability-acceptance-2026-11-14.md).
+- **Staging:** Render currently serves
+  `3b6101b0d77d3a5282d245c83b29c3b684fe780d` from open PR #61's test branch,
+  not main. The Render host was matched to Neon
+  branch `pr-58-staging`; `/version`, `/health`, `/ready`, and `/model-info`
+  passed. Guarded synthetic CRUD passed on this exact SHA and cleaned up record
+  `56ee2dc4-7dd9-4e6d-bb3e-8c14638146e7`. This establishes backend behavior for
+  the test branch; it does not establish current-main or browser-extension
+  acceptance. Earlier `8c02a7c` and `c3ce2fff` acceptances were superseded when
+  staging changed. See the
+  [staging acceptance record](docs/devops/staging-acceptance-2026-11-14.md).
+- **Restore and objectives:** The November 14 production snapshot restore changed
+  Neon branch identity/default topology, so it is not accepted as a safe restore
+  rehearsal. Recovery time was not measured. Team-approved SLI/SLO and RPO/RTO
+  targets are absent; proposed targets remain explicitly unapproved.
+
+### Candidate workflow changes and remaining gates
+
+PR #196 adds a deterministic 40-case, provider-free evaluation for AI logic,
+prompt, and model-setting changes. The run reports 65% binary accuracy, 18.75%
+phishing recall, and 6.25% legitimate false positives; all eight spam cases
+were classified as legitimate. No quality threshold or holdout approval has
+been recorded, so a green deterministic job is not an AI quality approval. The
+configured runtime Gemini cost guard is an estimate per request, and the local
+evaluation scripts enforce per-run request/dollar ceilings. There is no shared
+daily/monthly production budget or verified provider-side quota, and no paid
+provider run was made.
+
+PR #198 adds exact-SHA post-deploy behavior checks, but the workflow is manual
+because Render currently has no production deployment event for this service and
+workspace webhooks require a higher Render plan. It does not yet run immediately
+after every production deploy. An uptime monitor is also not configured.
+
+The merged metrics log records a frozen 28-day run-level sample through
+2026-11-14 03:12 UTC, before PRs #197 and #199 merged, and the comparison limits.
+The PR workflow median is 4.58 minutes (682 attempts across 110 head branches), but the
+mean is 175.87 minutes because protected staging waits sometimes last days. Main
+pipeline median is 1.18 minutes (86 successful pushes). There were 69 production
+deploy records, zero failures observed, and 64 matched merge-to-live samples
+(median 3.42 minutes). With zero failures, time-to-recovery sample size is zero
+and recovery time is unknown. The existing pipeline optimization comparison is
+still only n=2 before and n=2 after at the Backend-job level; no end-to-end
+improvement has been established. See [the metrics log](docs/devops/metrics.md)
+and [optimization log](docs/devops/optimizations.md).
+
+Participant-sourced standup, retrospective, and consultation evidence is still
+missing. No records have been reconstructed or invented. The production
+post-deploy trigger, approved reliability targets, safe restore proof, accepted
+AI quality threshold, and participant records remain release/course gaps.
+
+## Historical main and stage observation — October 28, 2026
 
 Observed at 2026-10-28 15:39 UTC: GitHub `main` pointed to
 [`6414914dfa8eb8322839597c4cd6912145a442a0`](https://github.com/kendshhh/PhishLens/commit/6414914dfa8eb8322839597c4cd6912145a442a0).

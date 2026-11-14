@@ -22,6 +22,11 @@ from .report import latest_jobs
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js",
           "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
+ACCOUNT_UI_ASSETS = ("js/account-popup.js", "js/account-session.js", "js/account-ui.js")
+NEON_AUTH_ASSETS = (
+    "js/neon-integration.js", "js/neon-accounts.js", "js/auth-config.js",
+    "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
+)
 LOCAL_SCANNER_ASSETS = (
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
     "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
@@ -39,6 +44,7 @@ LOCAL_SCANNER_ASSETS = (
     "vendor/ml/THIRD_PARTY_NOTICES.md",
 )
 ASSET_SIZE_LIMITS = {
+    "vendor/neon/sdk.mjs": 1_000_000,
     "ai/tfidf_v12a.json": 3_000_000,
     "ai/reevaluators/krr.json": 1_000_000,
     "vendor/ml/transformers.min.js": 1_000_000,
@@ -195,7 +201,10 @@ def package(api, sha, number, config, output):
         for asset in LOCAL_SCANNER_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
     if b"./js/account-popup.js" in files["popup.js"]:
-        for asset in ("js/account-popup.js", "js/account-session.js", "js/account-ui.js"):
+        for asset in ACCOUNT_UI_ASSETS:
+            files[asset] = read_extension_asset(api, sha, asset)
+    if any(marker in files["popup.js"] for marker in (b"./js/neon-integration.js", b"./js/auth-config.js")):
+        for asset in NEON_AUTH_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
 
     origin = config["staging_origin"]

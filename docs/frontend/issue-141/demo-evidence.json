@@ -1,0 +1,45 @@
+{
+    "issue":  141,
+    "source_commit":  "e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8",
+    "extension_version":  "0.1.0",
+    "package_sha256":  "db8f2cbdf2b9c340a76123b13515f6de06a3ea3da3e930e01d4555b1e5c560de",
+    "environment":  "production",
+    "includes_model_weights":  false,
+    "screenshot_capture_source":  "7301b953c678ab9c8657cad323ac1eecc65f62fe",
+    "screenshots":  [
+                        {
+                            "file":  "../issue-131/manual-chrome-157/01-toolbar-opens-side-panel.png",
+                            "sha256":  "38b856cce392da4c4ac7eeb74ddd4c64a19340fce90c46c4443638d2cc03c8d8",
+                            "captured_source":  "7301b953c678ab9c8657cad323ac1eecc65f62fe",
+                            "verified_against_package":  "e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8"
+                        },
+                        {
+                            "file":  "../issue-131/manual-chrome-157/02-right-click-analyze-selection-menu.png",
+                            "sha256":  "1535f2ed99adab0aacb0d06e1d119ddad81ce86b343f5784bf4afe07d6fb9968",
+                            "captured_source":  "7301b953c678ab9c8657cad323ac1eecc65f62fe",
+                            "verified_against_package":  "e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8"
+                        },
+                        {
+                            "file":  "../issue-131/manual-chrome-157/03-right-click-result-uncertain.png",
+                            "sha256":  "0380bc1d2cae98c396c2d19359badd17a71d44e95e0a9c004c95931e87e72d17",
+                            "captured_source":  "7301b953c678ab9c8657cad323ac1eecc65f62fe",
+                            "verified_against_package":  "e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8"
+                        }
+                    ],
+    "packaged_browser":  {
+                             "result":  "passed",
+                             "browser":  "157.0.4341.46",
+                             "scenarios":  18,
+                             "source_commit":  "e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8"
+                         },
+    "installed_chrome":  {
+                             "success":  true,
+                             "browser":  "157.0.8103.79",
+                             "checks":  10,
+                             "api_requests":  0,
+                             "temporary_profile_removed":  true
+                         },
+    "model":  "Local processing; default package omits optional LLM judge weights. Attached no-weight capture explicitly demonstrates uncertainty.",
+    "data":  "Synthetic message only; signed out; no production or staging requests.",
+    "screenshot_runtime_file_hashes_match_except_manifest_line_endings":  true
+}

@@ -4,15 +4,35 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
-## Current Status — October 28, 2026
+## Current Status — November 14, 2026
 
-Sprint 2 is in integration and acceptance. Backend and extension checks run in CI;
-disposable PostgreSQL gates migrations, seed, and saved-analysis CRUD. Render
-production auto-deploys checked `main`, and the staging service has passed exact-SHA
-health, readiness, and guarded synthetic CRUD verification. Saved-analysis API
-CRUD is implemented. Production record persistence across refresh or redeploy,
-installed-Chrome acceptance, and real-provider AI evaluation still need separate
-evidence. See the [current DevOps backlog audit](docs/devops/backlog-audit-2026-10-28.md).
+Current `main` is `ddc0ab1`. Backend, extension, PostgreSQL integration,
+dependency-security, CodeQL, and workflow checks are configured; main is protected
+and successful main changes auto-deploy through Render. The refreshed 28-day
+delivery snapshot is in [pipeline metrics](docs/devops/metrics.md).
+
+Sprint acceptance is not complete. Merged [PR #192](https://github.com/kendshhh/PhishLens/pull/192)
+adds synthetic browser acceptance evidence, and merged [PR #193](https://github.com/kendshhh/PhishLens/pull/193)
+adds a guarded Auth acceptance procedure; neither is evidence of a connected
+staging run or live Auth acceptance. [PR #196](https://github.com/kendshhh/PhishLens/pull/196)
+adds deterministic AI evaluation on AI changes and fail-closed Gemini spend checks,
+but remains open. Its 40-case result is development regression evidence, not a
+held-out quality result or an approved model threshold. [PR #198](https://github.com/kendshhh/PhishLens/pull/198)
+records an exact-SHA production smoke that stopped before analysis because the
+production model mode was unavailable; it made no analysis request, database
+write, or paid call. Its staging CRUD evidence used a test-branch SHA, not current
+main. Merged [PR #189](https://github.com/kendshhh/PhishLens/pull/189) reconciles
+historical Sprint 2 CRUD evidence but leaves hosted acceptance on hold pending
+confirmation of the selected backend, database and authentication target.
+On November 14, read-only `/version` probes reported production at
+`ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213` (`main`) with
+`provider_mode=unavailable`, and staging at `dcd234e0e012e1a869e182e64d34728343d17637`
+with `provider_mode=tfidf`. Both `/health` and `/ready` returned HTTP 200;
+readiness reported a connected database but does not identify its Neon branch.
+Current DevOps acceptance gaps and named handoffs are tracked in the
+[Sprint 1–3 closeout](docs/devops/kendra-sprint-1-3-status-2026-11-14.md).
+The isolated Chrome software audit and synthetic browser evidence for Issue #131
+are recorded in [the installed-browser audit](docs/frontend/issue-131/audit.md).
 
 ## Planned Features
 
@@ -45,6 +65,9 @@ separately. This combined workflow has no new accuracy qualification or public
 deployment claim. See [setup, workflow and limits](docs/ai/live-workflow.md).
 
 Neon hosts PostgreSQL; Render hosts the FastAPI backend.
+
+See the current [architecture and environment map](docs/architecture.md) and
+[architecture decision record](docs/adr/0001-application-and-deployment-architecture.md).
 
 ### Database Decision
 
@@ -201,9 +224,26 @@ For local development, set `API_BASE_URL` in `extension/js/config.js` to
 `host_permissions`. Reload the extension after changing configuration. The default
 source package targets production; the separate staging package targets staging.
 
-Then load the `extension` folder as an unpacked Chrome extension, highlight email text,
-and choose **Analyze selection with VeriQo**. The popup displays the model result or
-reports a configuration/provider error.
+## Install in Chrome
+
+PhishLens requires Chrome 127 or newer. There is no Chrome Web Store listing yet.
+To install from the public GitHub repository:
+
+1. Download the repository ZIP and extract it to a folder you will keep.
+2. From that folder, run `npm run phishlens -- setup-models --download`. This
+   downloads and verifies about 1.1 GB of local LLM weights; without them, scans
+   report **Uncertain** when the full review cannot run.
+3. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
+   and select the extracted `extension` folder.
+4. To check an email, select its text, right-click, and choose **Analyze selection
+   with PhishLens**. The PhishLens popup opens with your selection and the result.
+5. Optionally, pin PhishLens from Chrome's Extensions menu. Its toolbar button opens
+   the same view in the side panel, which stays open while you read email.
+
+PhishLens shows a ready state before scanning, progress while local models load,
+a result or an explicit uncertainty/error state, and a Clear action. Scanning stays
+in Chrome. The full local review also requires WebGPU with shader-f16 support.
+Saving a report or refreshing shared history contacts the configured API.
 
 ## Configuration and Secrets
 
@@ -218,6 +258,10 @@ The Chrome extension does not automatically read `.env` files.
 Its public backend origin is configured in `extension/js/config.js` for both
 analysis and history. See [staging instructions](docs/devops/staging.md) for the
 separate acceptance package.
+
+For a presenter-ready synthetic walkthrough with exact package identity, accessible
+keyboard steps, screenshots and environment labels, see the
+[clean-install and demo guide](docs/frontend/issue-141/demo-guide.md).
 
 ## Project Requirements
 

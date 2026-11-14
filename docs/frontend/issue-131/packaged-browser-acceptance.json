@@ -1,0 +1,298 @@
+{
+  "source_commit": "7301b953c678ab9c8657cad323ac1eecc65f62fe",
+  "tested_commit": "7301b953c678ab9c8657cad323ac1eecc65f62fe",
+  "environment": "isolated synthetic browser",
+  "scope": "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. A test-only verified mock session is injected into the disposable copy; this does not verify live authentication. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, synthetic saved-report CRUD, a provider-backed response fixture, and controlled create/history failures. The response fixtures and failures are synthetic substitutes; no real provider, confirmed staging API, or production data is used.",
+  "synthetic_substitutes_only": true,
+  "tests": [
+    "toolbar button is configured to open the side panel as a secondary entry point",
+    "packaged side-panel page loads synthetic history in the browser",
+    "synthetic analysis shows a clearly labeled local result or readable error",
+    "right-click selection opens the action popup with the highlighted text",
+    "local scan saves once and keeps its title and save marker after popup reload",
+    "Clear during a local scan prevents a stale result from returning",
+    "Cancel retains the selection and retry recovers from a controlled local failure",
+    "synthetic saved analysis can be created and viewed",
+    "synthetic saved analysis edit survives popup reopen and reread",
+    "synthetic saved analysis can be edited and deleted",
+    "deleted synthetic analysis stays absent after popup reopen",
+    "keyboard Tab order reaches only visible, named controls with a focus indicator",
+    "keyboard-only report open, edit cancel and delete cancel restore focus without changes",
+    "synthetic provider-backed report shows its returned classification and provenance",
+    "synthetic report remains in server history after popup reopen",
+    "controlled provider failure preserves input without showing a verdict",
+    "history refresh failure preserves the confirmed saved report and shows a warning",
+    "empty history and history API failure states render clearly"
+  ],
+  "screenshots": [
+    {
+      "file": "01-synthetic-provider-backed-saved-report.png",
+      "sha256": "69384eebbe035a01804f71c00693dbc83923b88bdf1e026123bc17d79fe6cb1f",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "02-synthetic-provider-report-after-popup-reopen.png",
+      "sha256": "31b549e40603e069f98556cba992e74b516beff7f104d76b5a4ecb7a2241c104",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "03-synthetic-provider-failure-preserves-input.png",
+      "sha256": "189a84f8b578cc7059a266d25ccf0534fb95b1d678043df1d2de0894e0bef21b",
+      "content": "synthetic browser fixture"
+    },
+    {
+      "file": "04-synthetic-history-refresh-failure-keeps-saved-report.png",
+      "sha256": "65bcbaf62b8d3573dc296b7ec227bb55251a86ed8249bf255732577cf5ffdc20",
+      "content": "synthetic browser fixture"
+    }
+  ],
+  "network_summary": [
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/analyses/:id",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/analyses/:id",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 503
+    },
+    {
+      "method": "POST",
+      "path": "/api/analyses",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 503
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses/:id",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/analyses",
+      "status": 503
+    }
+  ],
+  "result": "passed",
+  "package_sha256": "68cdbe2c66352310f581dd43c8d6fb38d871dc98ca55d3b631c95cfa91721eb1",
+  "runtime_or_packaging_changes": false,
+  "extension_version": "0.1.0",
+  "browser_channel": "msedge",
+  "browser_launch_fallback": {
+    "requested": "chromium",
+    "used": "msedge",
+    "mode": "headed",
+    "reason": "browserType.launchPersistentContext: Executable doesn't exist at <redacted local Playwright Chromium path>"
+  },
+  "local_analysis_outcome": "Uncertain — check before acting",
+  "popup_document_urls": [
+    "/popup.html?surface=popup"
+  ],
+  "toolbar_state_after_right_click": {
+    "tab_popup": "",
+    "global_popup": "",
+    "open_panel_on_action_click": true
+  },
+  "keyboard_tab_order": {
+    "check": [
+      "button#show-check:Check email",
+      "button#show-reports:Saved reports",
+      "button#show-account:Account",
+      "p#selection-content:Original email text; scroll to read more",
+      "summary#:See wording",
+      "summary#:What this check can’t tell you",
+      "input#report-subject:Report title (optional)",
+      "input#save-consent:I agree to upload this email text to save a report.",
+      "button#save-report:Save report",
+      "button#clear-button:Clear local scan",
+      "summary#:Or paste email text"
+    ],
+    "reports": [
+      "input#report-search:Find a report",
+      "button#:View Synthetic <script>alert(1)</script>",
+      "summary#create-heading:Analyze and save on the server",
+      "button#show-check:Check email",
+      "button#show-reports:Saved reports",
+      "button#show-account:Account",
+      "button#load-history:Refresh saved reports"
+    ]
+  },
+  "synthetic_provider_record_id": "4281ac9c-3b16-4a60-bb95-8c5abeee7384",
+  "synthetic_history_failure_record_id": "327037e8-c5e6-4b25-b151-2afcb1a259c7",
+  "browser_version": "157.0.4341.46"
+}

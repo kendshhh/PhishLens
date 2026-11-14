@@ -10,8 +10,8 @@ const feedbackLabels = new Map([
   ["false_negative", "Not flagged, but I think it’s suspicious"]
 ]);
 const provenanceLabels = new Map([
-  ["mock", "Mock analysis (development/test output)"], ["real", "Provider-backed AI analysis"],
-  ["unknown", "AI provenance unknown"]
+  ["mock", "Mock / demo result — not a real assessment"], ["real", "Automated analysis recorded when saved"],
+  ["unknown", "Analysis source unknown"]
 ]);
 const classificationLabels = new Map([
   ["phishing", "Phishing"], ["legitimate", "Legitimate"], ["spam", "Spam"]
@@ -99,25 +99,28 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const analyzed = classificationLabels.has(record.prediction);
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
-    const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"];
-    const hasProvider = typeof provenance.provider_mode === "string" && Boolean(provenance.provider_mode.trim());
-    const hasModel = typeof provenance.model === "string" && Boolean(provenance.model.trim());
-    if (hasProvider) {
-      provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode) || `Unrecognized (${provenance.provider_mode})`}`);
-    }
-    if (hasModel) provenanceLines.push(`Model: ${provenance.model}`);
-    if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) {
-      provenanceLines.push(`Model revision: ${provenance.model_revision}`);
-    }
-    if (typeof provenance.prompt_version === "string" && provenance.prompt_version.trim()) {
-      provenanceLines.push(`Prompt version: ${provenance.prompt_version}`);
-    }
-    if (typeof provenance.explanation_source === "string" && provenance.explanation_source.trim()) {
-      provenanceLines.push(`Explanation source: ${provenance.explanation_source}`);
-    }
-    if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
-    if (record.analysis_mode === "real" && !hasProvider) {
-      provenanceLines.push(hasModel ? "Provider was not reported." : "Provider and model were not reported.");
+    const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "Analysis source unknown"];
+    if (record.analysis_mode === "real") {
+      const hasProvider = typeof provenance.provider_mode === "string" && Boolean(provenance.provider_mode.trim());
+      const hasModel = typeof provenance.model === "string" && Boolean(provenance.model.trim());
+      if (hasProvider) {
+        provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode) || `Unrecognized (${provenance.provider_mode})`}`);
+      }
+      if (hasModel) provenanceLines.push(`Model: ${provenance.model}`);
+      if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) {
+        provenanceLines.push(`Model revision: ${provenance.model_revision}`);
+      }
+      if (typeof provenance.prompt_version === "string" && provenance.prompt_version.trim()) {
+        provenanceLines.push(`Prompt version: ${provenance.prompt_version}`);
+      }
+      if (typeof provenance.explanation_source === "string" && provenance.explanation_source.trim()) {
+        provenanceLines.push(`Explanation source: ${provenance.explanation_source}`);
+      }
+      if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
+      if (record.analysis_mode === "real" && !hasProvider) {
+        provenanceLines.push(hasModel ? "Provider was not reported." : "Provider and model were not reported.");
+      }
+  
     }
     ui.modeWarning.textContent = record.analysis_mode === 'mock' ? 'Demo result — this is not a real email assessment.' :
       record.analysis_mode !== 'real' ? 'The analysis source was not recorded. Treat this report as unverified.' : '';
@@ -436,7 +439,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
 
 export function initializePopup({ documentImpl = document, chromeImpl = globalThis.chrome,
-    fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve() } = {}) {
+    fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve(),
+    locationImpl = globalThis.location } = {}) {
+    // popup.html serves both the right-click action popup and the toolbar side panel. The
+    // manifest opens the popup as popup.html?surface=popup; a popup sizes itself from its
+    // content, so it keeps a fixed width, while the side panel fills its width.
+    if (new globalThis.URLSearchParams(locationImpl?.search ?? '').get('surface') === 'popup') {
+        documentImpl.documentElement?.classList.add('popup-surface');
+    }
     const $ = id => documentImpl.getElementById(id);
     const client = clientImpl || createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
     let state, stateGeneration = 0, accountEpoch = 0;

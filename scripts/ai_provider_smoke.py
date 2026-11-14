@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
-import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -83,8 +82,6 @@ def _validate_configuration() -> dict:
         raise SmokeGateError("owner_model_not_configured")
     if os.getenv("AI_PROVIDER_SMOKE_MAX_REQUESTS", "") != "1":
         raise SmokeGateError("owner_request_limit_must_be_one")
-    if os.getenv("AI_PROVIDER_SMOKE_PROVIDER_BUDGET_ENFORCED", "").lower() != "true":
-        raise SmokeGateError("owner_provider_budget_not_confirmed")
     cost_cap = os.getenv("AI_PROVIDER_SMOKE_COST_CAP_USD", "").strip()
     try:
         if not Decimal(cost_cap).is_finite() or Decimal(cost_cap) <= 0:
@@ -123,6 +120,18 @@ def run() -> dict:
         raise SmokeGateError("staging_revision_mismatch")
     if version.get("environment") != "staging":
         raise SmokeGateError("target_is_not_staging")
+
+    _, model_info = _get_json(values["origin"], "/model-info")
+    if model_info.get("provider_mode") != "gemini" or model_info.get("model") != values["model"]:
+        raise SmokeGateError("staging_provider_or_model_mismatch")
+    if model_info.get("spend_guard_enabled") is not True:
+        raise SmokeGateError("staging_runtime_spend_guard_not_enabled")
+    try:
+        runtime_cap = Decimal(str(model_info.get("per_request_cost_cap_usd", "")))
+    except InvalidOperation:
+        raise SmokeGateError("staging_runtime_spend_cap_unavailable") from None
+    if not runtime_cap.is_finite() or runtime_cap != Decimal(values["approved_cost_cap_usd"]):
+        raise SmokeGateError("staging_runtime_spend_cap_mismatch")
 
     _, ready = _get_json(values["origin"], "/ready")
     if ready.get("status") != "ready" or ready.get("database") != "connected":
@@ -173,6 +182,7 @@ def run() -> dict:
         "workflow_source_sha": workflow_sha,
         "provider": values["provider"],
         "model": values["model"],
+        "runtime_cost_cap_usd": str(runtime_cap.normalize()),
         "model_revision": _safe_identity(result.get("model_revision")),
         "prompt_version": _safe_identity(result.get("prompt_version")),
         "provider_mode": mode,
@@ -185,7 +195,7 @@ def run() -> dict:
         "database_writes": 0,
         "limitations": [
             "One fixed synthetic request was sent to the non-persisting /analyses endpoint.",
-            "The workflow enforces the approved one-request cap; provider billing remains governed by the owner-configured provider budget.",
+            "The deployed Gemini provider reserves a conservative per-request token-cost upper bound before inference; this is a cap, not an invoice measurement.",
             "This smoke is not a quality evaluation or held-out accuracy result.",
         ],
     }
@@ -195,7 +205,7 @@ def main() -> int:
     output = ROOT / "output/ai-provider-smoke"
     output.mkdir(parents=True, exist_ok=True)
     report = {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "workflow_run_id": os.getenv("GITHUB_RUN_ID", "local"),
         "workflow_source_sha": os.getenv("GITHUB_SHA", "unavailable"),
         "target": "staging",
@@ -218,7 +228,7 @@ def main() -> int:
             report["analysis_requests"] = 1
             report["provider_request_attempts"] = 1
             report["provider_calls_observed"] = PROVIDER_CALLS_OBSERVED
-    except Exception as exc:  # keep raw exception text out of logs and artifacts
+    except Exception as exc:  # noqa: BLE001 -- preserve a redacted failure record
         report["status"] = "failed"
         report["reason"] = f"unexpected_{type(exc).__name__}"
         if PROVIDER_REQUEST_ATTEMPTED:
