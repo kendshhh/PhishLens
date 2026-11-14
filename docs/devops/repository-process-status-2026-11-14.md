@@ -1,0 +1,44 @@
+# Repository visibility and process evidence — 2026-11-14
+
+## Visibility
+
+GitHub's repository API reports `kendshhh/PhishLens` as public. The owner has
+confirmed that public visibility is intended. This current status supersedes
+conflicting November 8 and November 13 notes that describe private visibility
+as intended or unresolved. Those documents remain historical records; they
+must not be treated as the current repository setting.
+
+## Security scan and dependency merge policy
+
+Gitleaks v8.30.1 scanned all refs and full history (499 commits) and found no
+leaks. A separate scan of all 33 changed source files also found no leaks. Its
+first pass flagged 70 generic-key patterns in the raw CI timing export; the
+export contained run/branch/SHA metadata rather than credentials. I removed
+those identifiers and retained per-run event, result, timestamp, and duration
+so the sample counts and timing calculations remain auditable. The sanitized
+changed-file scan passed. Reports were stored outside the repository.
+
+The workflow currently blocks high/critical npm findings and high/critical
+GitHub dependency-graph findings. Pinned Python dependency audit failures block
+at any reported severity. The `Dependency security` lockfile audit and
+`Dependency graph review (GitHub Advanced Security)` must be present as
+required checks on `main`; until GitHub confirms those ruleset entries, the
+policy is configured in workflow code but not yet fully enforced at merge. See
+[dependency-audits.md](dependency-audits.md).
+
+## Participant-sourced course records
+
+The current checkout contains no participant-sourced evidence for the latest
+standups, retrospective, or consultation. No attendee statements, dates,
+decisions, or instructor feedback are inferred or fabricated here. The closeout
+is incomplete until participants provide source notes with:
+
+- date/time and attendees;
+- what was completed, planned next, and blocked at each standup;
+- retrospective observations and agreed actions;
+- consultation date, instructor/consultant, questions asked, decisions, and
+  follow-up;
+- source evidence such as meeting notes, links, or instructor feedback.
+
+The repo can preserve provided records, but it cannot supply participant
+evidence by reconstructing events after the fact.
