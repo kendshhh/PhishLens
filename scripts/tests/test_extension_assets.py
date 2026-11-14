@@ -58,7 +58,10 @@ class ExtensionAssetValidationTests(unittest.TestCase):
         (self.extension / "manifest.json").write_text(json.dumps({
             "manifest_version": 3,
             "background": {"service_worker": "background.js", "type": "module"},
-            "action": {"default_popup": "popup.html"},
+            "minimum_chrome_version": "116",
+            "permissions": ["sidePanel"],
+            "action": {},
+            "side_panel": {"default_path": "popup.html"},
             "host_permissions": ["https://phishlens-api-ocvt.onrender.com/*"],
         }), encoding="utf-8")
 

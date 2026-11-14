@@ -11,7 +11,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 function worker({ firstWrite } = {}) {
-  let listener, clicks, writes = 0;
+  let listener, clicks, installed, sidePanelBehavior, sidePanelOpen, writes = 0;
   const requests = [], state = { analysis: undefined, badge: '' };
   const storage = {};
   const context = vm.createContext({
@@ -20,9 +20,13 @@ function worker({ firstWrite } = {}) {
     analyzeWithReview: text => { const d = deferred(); requests.push({ ...d, text }); return d.promise; },
     cancelJudge: async () => {},
     chrome: {
-      runtime: { id: 'self', onInstalled: { addListener() {} },
+      runtime: { id: 'self', onInstalled: { addListener(fn) { installed = fn; } },
         onMessage: { addListener(fn) { listener = fn; } } },
-      contextMenus: { onClicked: { addListener(fn) { clicks = fn; } } },
+      contextMenus: { removeAll() {}, create() {}, onClicked: { addListener(fn) { clicks = fn; } } },
+      sidePanel: {
+        async setPanelBehavior(value) { sidePanelBehavior = value; },
+        async open(value) { sidePanelOpen = value; }
+      },
       storage: { session: {
         async get(key) { return { [key]: storage[key] }; },
         async set(value) {
@@ -35,7 +39,8 @@ function worker({ firstWrite } = {}) {
     }
   });
   vm.runInContext(source, context);
-  return { state, requests, storage, clicks,
+  return { state, requests, storage, clicks, sidePanelBehavior: () => sidePanelBehavior,
+    sidePanelOpen: () => sidePanelOpen, install: () => installed(),
     analyze: text => context.analyzeSelectedText(text),
     message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
     clear: () => new Promise(resolve => {
@@ -43,6 +48,19 @@ function worker({ firstWrite } = {}) {
     })
   };
 }
+test('installation makes the toolbar action open the side panel', async () => {
+  const app = worker();
+  app.install();
+  await settle();
+  assert.equal(app.sidePanelBehavior().openPanelOnActionClick, true);
+});
+test('selection context menu opens the panel and analyzes the selected text', async () => {
+  const app = worker();
+  app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Synthetic selection', tabId: 42 });
+  await settle(); await settle();
+  assert.equal(app.sidePanelOpen().tabId, 42);
+  assert.equal(app.requests[0].text, 'Synthetic selection');
+});
 for (const outcome of ['success', 'error']) {
   test('latest scan wins over an older ' + outcome, async () => {
     const app = worker(), older = app.analyze('A'); await settle();

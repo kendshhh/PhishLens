@@ -19,6 +19,7 @@ function updateAnalysis(generation, state, badge) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.removeAll(() => chrome.contextMenus.create({
     id: MENU_ID, title: 'Analyze selection with PhishLens', contexts: ['selection']
   }));
@@ -53,6 +54,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.contextMenus.onClicked.addListener(info => {
   if (info.menuItemId === MENU_ID && typeof info.selectionText === 'string') {
+    if (Number.isInteger(info.tabId)) {
+      chrome.sidePanel.open({ tabId: info.tabId }).catch(() => {});
+    }
     analyzeSelectedText(info.selectionText).catch(() => {
       console.error('PhishLens could not save the local scan state.');
     });

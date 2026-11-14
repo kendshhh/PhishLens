@@ -11,8 +11,11 @@ disposable PostgreSQL gates migrations, seed, and saved-analysis CRUD. Render
 production auto-deploys checked `main`, and the staging service has passed exact-SHA
 health, readiness, and guarded synthetic CRUD verification. Saved-analysis API
 CRUD is implemented. Production record persistence across refresh or redeploy,
-installed-Chrome acceptance, and real-provider AI evaluation still need separate
-evidence. See the [current DevOps backlog audit](docs/devops/backlog-audit-2026-10-28.md).
+production install-path verification, and real-provider AI evaluation
+still need separate evidence. The isolated Chrome software audit and synthetic
+browser results for Issue #131 are recorded in
+[the installed-browser audit](docs/frontend/issue-131/audit.md). See the
+[current DevOps backlog audit](docs/devops/backlog-audit-2026-10-28.md).
 
 ## Planned Features
 
@@ -204,9 +207,25 @@ For local development, set `API_BASE_URL` in `extension/js/config.js` to
 `host_permissions`. Reload the extension after changing configuration. The default
 source package targets production; the separate staging package targets staging.
 
-Then load the `extension` folder as an unpacked Chrome extension, highlight email text,
-and choose **Analyze selection with VeriQo**. The popup displays the model result or
-reports a configuration/provider error.
+## Install in Chrome
+
+PhishLens requires Chrome 116 or newer. There is no Chrome Web Store listing yet.
+To install from the public GitHub repository:
+
+1. Download the repository ZIP and extract it to a folder you will keep.
+2. From that folder, run `npm run phishlens -- setup-models --download`. This
+   downloads and verifies about 1.1 GB of local LLM weights; without them, scans
+   report **Uncertain** when the full review cannot run.
+3. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
+   and select the extracted `extension` folder.
+4. Pin PhishLens from Chrome's Extensions menu if you want its toolbar button.
+   Click the button to open the side panel, or select email text, right-click, and
+   choose **Analyze selection with PhishLens**.
+
+The side panel shows a ready state before scanning, progress while local models load,
+a result or an explicit uncertainty/error state, and a Clear action. Scanning stays
+in Chrome. The full local review also requires WebGPU with shader-f16 support.
+Saving a report or refreshing shared history contacts the configured API.
 
 ## Configuration and Secrets
 

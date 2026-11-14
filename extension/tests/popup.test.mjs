@@ -42,10 +42,11 @@ function record(id, subject = "Example") {
 }
 const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
 
- test("HTML provides associated labels, focusable CRUD controls, and a bounded popup", async () => {
+test("HTML provides associated labels, focusable CRUD controls, and a responsive side panel", async () => {
   const html = await readFile(new URL("../popup.html", import.meta.url), "utf8");
   const css = await readFile(new URL("../css/popup.css", import.meta.url), "utf8");
   const popup = await readFile(new URL("../js/popup.js", import.meta.url), "utf8");
+  const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
   for (const [label, control] of [["create-subject", "create-subject"], ["create-body", "create-body"], ["edit-notes", "edit-notes"], ["edit-feedback", "edit-feedback"]]) {
     assert.match(html, new RegExp(`<label for="${label}">`));
     assert.match(html, new RegExp(`id="${control}"`));
@@ -54,8 +55,12 @@ const id = "29d80c39-ec0d-4db8-a6e5-87444ba2600c";
   assert.match(html, /id="edit-notes"[^>]*maxlength="2000"/);
   assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
-  assert.match(css, /width:\s*380px/);
-  assert.match(css, /max-height:\s*600px/);
+  assert.equal(manifest.minimum_chrome_version, "116");
+  assert.equal(manifest.side_panel.default_path, "popup.html");
+  assert.equal(manifest.action.default_popup, undefined);
+  assert.match(css, /width:\s*min\(100vw,\s*460px\)/);
+  assert.match(css, /min-width:\s*300px/);
+  assert.match(css, /max-width:\s*520px/);
   assert.match(css, /overflow-y:\s*auto/);
   assert.match(popup, /createAnalysisClient\(API_BASE_URL, fetchImpl, \{ requiredModel: MODEL_SHA256 \}\)/);
   assert.doesNotMatch(popup, /in-memory-analysis-client/);

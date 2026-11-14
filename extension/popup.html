@@ -1,78 +1,101 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PhishLens</title><link rel="stylesheet" href="css/popup.css"></head>
-<body><main class="container">
-<header><h1>PhishLens</h1><p class="subtitle">TF-IDF v12a · local LLM judge · KRR + LightGBM</p></header>
-<p>Scans stay in Chrome. Highlight the complete visible email text, right-click,
-and choose <strong>Analyze selection with PhishLens</strong>.</p>
-<section id="empty-state" class="panel"><h2>No scan yet</h2><p>No email text is uploaded when you scan.</p></section>
-<section id="loading-state" class="panel hidden"><h2>Checking locally…</h2><p id="workflow-progress">Preparing the local review.</p><p>First use loads a large local LLM. Clear cancels this scan.</p></section>
-<section id="error-state" class="panel hidden" role="alert"><h2>Unable to assess</h2><p id="error-message"></p></section>
-<section id="result-state" class="hidden" aria-live="polite">
- <div class="panel"><h2 id="classification"></h2><p id="assessment"></p>
- <p>Primary TF-IDF score: <strong id="risk-score"></strong></p><p id="threshold"></p>
- <p id="coverage"></p><p class="muted">The score is calibrated on the research data. It is not a guaranteed probability for your inbox.</p></div>
- <div class="panel"><h2>What the text says</h2><p>Observations are checks of wording, not proof of phishing.</p><ul id="evidence"></ul></div>
- <div class="panel"><h2>Local LLM review</h2><p id="judge-review"></p><p id="workflow-status"></p></div>
- <div class="panel"><h2>Three-model reevaluation</h2><ul id="reevaluator-list"></ul><p>Each percentage belongs to that model. Agreement does not authenticate the sender.</p></div>
- <details class="panel"><summary>Model feature details</summary><p>Partial word-feature contributions; character features also affect the result.</p><ul id="drivers"></ul></details>
- <div class="panel"><h2>What to do next</h2><ul id="recommendations"></ul><ul id="limitations"></ul></div>
- <details class="panel"><summary>Checked text and highlights</summary><p>Quotes refer to this normalized, redacted model input.</p><p id="analysis-text"></p></details>
- <div class="panel"><h2>Optional: save a report</h2><p>Saving uploads the <strong>original selected text</strong> to the team's API and shared demo history.
- Only save material you are authorized to share. The server replays classifier checks; the LLM audit is recorded as a browser-reported review.</p>
- <label>Report title <input id="report-subject" maxlength="320" placeholder="Optional title"></label>
- <label class="consent"><input id="save-consent" type="checkbox"> I agree to upload this selection to shared history.</label>
- <button id="save-report" type="button">Save report</button><p id="save-status" role="status"></p></div>
-</section>
-<button id="clear-button" type="button">Clear local scan</button>
-    <section class="panel" aria-labelledby="create-heading">
-      <h2 id="create-heading">Save an analysis</h2>
-      <p>Saving uploads the text you enter to the team’s API and shared demo history. Only save material you are authorized to share.</p>
-      <form id="create-form">
-        <label for="create-subject">Subject <span class="muted">(optional)</span></label>
-        <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
-        <label for="create-body">Email body <span class="required">(required)</span></label>
-        <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
-        <button id="create-button" type="submit">Save analysis</button>
-      </form>
-    </section>
-    <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
-    <section class="panel" aria-labelledby="history-heading">
-      <h2 id="history-heading">Saved analyses</h2>
-      <p>Loading history uses the API. Local scanning works while it is unavailable.</p>
-      <button id="load-history" type="button">Load / refresh history</button>
-      <p id="loading" class="hidden">Loading analyses…</p>
-      <p id="empty" class="hidden">No saved analyses yet.</p>
-      <ul id="history-list" class="history-list"></ul>
-    </section>
-    <section id="detail-panel" class="panel hidden" aria-labelledby="detail-heading">
-      <h2 id="detail-heading">Analysis details</h2>
-      <div id="detail-content"></div>
-      <form id="edit-form" class="subpanel hidden">
-        <h3>Edit notes and feedback</h3>
-        <label for="edit-notes">Notes</label>
-        <textarea id="edit-notes" rows="3" maxlength="2000"></textarea>
-        <label for="edit-feedback">Feedback</label>
-        <select id="edit-feedback">
-          <option value="null">Unspecified</option>
-          <option value="none">No feedback</option>
-          <option value="false_positive">False positive</option>
-          <option value="false_negative">False negative</option>
-        </select>
-        <div class="actions">
-          <button id="save-edit" type="submit">Save changes</button>
-          <button id="cancel-edit" class="secondary" type="button">Cancel</button>
-        </div>
-      </form>
-      <form id="delete-confirm" class="subpanel hidden" aria-labelledby="delete-heading">
-        <h3 id="delete-heading">Delete this analysis?</h3>
-        <p>Delete <strong id="delete-subject"></strong>? This cannot be undone.</p>
-        <div class="actions">
-          <button id="confirm-delete" class="danger" type="submit">Delete analysis</button>
-          <button id="cancel-delete" class="secondary" type="button">Cancel</button>
-        </div>
-      </form>
-    </section>
-<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>Built with Llama. LLM weights run locally; no email is sent to an AI provider.</p></footer>
-</main><script type="module" src="popup.js"></script></body></html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PhishLens</title>
+  <link rel="stylesheet" href="css/popup.css">
+</head>
+<body>
+<main class="container">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6v5.5c0 4.2 3.1 7.8 7.5 9.5 4.4-1.7 7.5-5.3 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.5 12 2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <div><h1>PhishLens</h1><p class="subtitle">A second look before you click.</p></div>
+    </div>
+    <span class="privacy-badge"><span aria-hidden="true"></span> On-device scanning</span>
+  </header>
+
+  <section class="scan-guide" aria-label="How to scan an email">
+    <p class="eyebrow">LOCAL EMAIL CHECK</p>
+    <p>Select the visible email text, right-click, and choose <strong>Analyze selection with PhishLens</strong>.</p>
+    <p class="field-help">Your text stays in Chrome during the local scan.</p>
+  </section>
+
+  <section id="empty-state" class="panel state-panel">
+    <span class="state-icon" aria-hidden="true">✓</span>
+    <div><h2>Ready when you are</h2><p>Select email text and start a check from the right-click menu.</p></div>
+  </section>
+  <section id="loading-state" class="panel state-panel hidden">
+    <span class="state-icon loading-icon" aria-hidden="true">…</span>
+    <div><h2>Checking locally…</h2><p id="workflow-progress">Preparing the local review.</p><p class="field-help">First use loads a large local LLM. Clear cancels this scan.</p></div>
+  </section>
+  <section id="error-state" class="panel state-panel error-panel hidden" role="alert">
+    <span class="state-icon" aria-hidden="true">!</span><div><h2>Unable to assess</h2><p id="error-message"></p></div>
+  </section>
+
+  <section id="result-state" class="hidden" aria-live="polite">
+    <div class="panel verdict-panel"><p class="eyebrow">SCAN RESULT</p><h2 id="classification"></h2><p id="assessment"></p>
+      <div class="score-line"><span>Primary TF-IDF score</span><strong id="risk-score"></strong></div><p id="threshold"></p>
+      <p id="coverage"></p><p class="muted">Scores are estimates, not proof that a message is safe.</p>
+    </div>
+    <div class="panel"><p class="eyebrow">WHY IT WAS FLAGGED</p><h2>Text signals</h2><ul id="evidence"></ul></div>
+    <div class="panel next-steps"><h2>What to do next</h2><ul id="recommendations"></ul><ul id="limitations"></ul></div>
+    <details class="panel"><summary>Local model review</summary><p id="judge-review"></p><p id="workflow-status" class="field-help"></p></details>
+    <details class="panel"><summary>Compare model results</summary><ul id="reevaluator-list"></ul><p class="field-help">Model agreement does not verify the sender.</p></details>
+    <details class="panel"><summary>Model feature details</summary><p>Partial word-feature contributions; character features also affect the result.</p><ul id="drivers"></ul></details>
+    <details class="panel"><summary>Checked text</summary><p>Quotes refer to the normalized, redacted text reviewed by the model.</p><p id="analysis-text"></p></details>
+    <div class="panel save-panel"><p class="eyebrow">KEEP A RECORD</p><h2>Save this report</h2>
+      <p>Saves the <strong>original selected text</strong> to shared team history. Only save text you are allowed to share.</p>
+      <label for="report-subject">Report title <span class="muted">(optional)</span></label><input id="report-subject" maxlength="320" placeholder="Add a short title">
+      <label class="consent"><input id="save-consent" type="checkbox"><span>I agree to upload this selection to shared history.</span></label>
+      <button id="save-report" class="full-width" type="button">Save report</button><p id="save-status" class="status-message" role="status"></p>
+      <details class="processing-note"><summary>How saved reports are processed</summary><p>The server rechecks classifier results. The LLM review is reported by this browser.</p></details>
+    </div>
+  </section>
+
+  <button id="clear-button" class="secondary full-width clear-button" type="button">Clear local scan</button>
+
+  <details class="panel create-panel" aria-labelledby="create-heading">
+    <summary id="create-heading">Analyze and save text</summary>
+    <p class="field-help">Sends your text to the team API and shared history. Submit only text you are allowed to share.</p>
+    <form id="create-form">
+      <label for="create-subject">Subject <span class="muted">(optional)</span></label>
+      <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
+      <label for="create-body">Email body <span class="required">(required)</span></label>
+      <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
+      <button id="create-button" class="full-width" type="submit">Save analysis</button>
+    </form>
+  </details>
+
+  <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
+  <section class="panel history-panel" aria-labelledby="history-heading">
+    <p class="eyebrow">REPORT LIBRARY</p><h2 id="history-heading">Saved analyses</h2>
+    <p class="field-help">Your saved team reports.</p>
+    <button id="load-history" class="secondary full-width" type="button">Refresh reports</button>
+    <p id="loading" class="field-help hidden">Loading analyses…</p>
+    <p id="empty" class="field-help hidden">No saved analyses yet.</p>
+    <ul id="history-list" class="history-list"></ul>
+  </section>
+  <section id="detail-panel" class="panel detail-panel hidden" aria-labelledby="detail-heading">
+    <div class="detail-heading"><p class="eyebrow">REPORT DETAILS</p><h2 id="detail-heading">Analysis details</h2></div>
+    <div id="detail-content"></div>
+    <form id="edit-form" class="subpanel hidden">
+      <h3>Edit notes and feedback</h3>
+      <label for="edit-notes">Notes</label><textarea id="edit-notes" rows="3" maxlength="2000"></textarea>
+      <label for="edit-feedback">Feedback</label><select id="edit-feedback"><option value="null">Unspecified</option><option value="none">No feedback</option><option value="false_positive">False positive</option><option value="false_negative">False negative</option></select>
+      <div class="actions"><button id="save-edit" type="submit">Save changes</button><button id="cancel-edit" class="secondary" type="button">Cancel</button></div>
+    </form>
+    <form id="delete-confirm" class="subpanel hidden" aria-labelledby="delete-heading">
+      <h3 id="delete-heading">Delete this analysis?</h3><p>Delete <strong id="delete-subject"></strong>? This cannot be undone.</p>
+      <div class="actions"><button id="confirm-delete" class="danger" type="submit">Delete analysis</button><button id="cancel-delete" class="secondary" type="button">Cancel</button></div>
+    </form>
+  </section>
+
+  <footer><p>A second opinion, not a safety guarantee.</p><p>Sender, links, and attachments are not verified.</p></footer>
+</main>
+<script type="module" src="popup.js"></script>
+</body>
+</html>

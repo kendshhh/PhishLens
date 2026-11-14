@@ -21,13 +21,19 @@ manifest = json.loads(require_file("manifest.json").read_text(encoding="utf-8"))
 
 if manifest.get("manifest_version") != 3:
     raise ValueError("Expected manifest_version 3")
+if manifest.get("minimum_chrome_version") != "116":
+    raise ValueError("The side panel open API requires Chrome 116 or newer")
 
 if manifest.get("background") != {"service_worker": "background.js", "type": "module"}:
     raise ValueError("Expected a module background worker for shared API configuration")
 
-popup = manifest.get("action", {}).get("default_popup")
+if manifest.get("action", {}).get("default_popup") is not None:
+    raise ValueError("The action must open the side panel instead of a popup")
+popup = manifest.get("side_panel", {}).get("default_path")
 if popup != "popup.html":
-    raise ValueError("Expected popup.html as the default popup")
+    raise ValueError("Expected popup.html as the side panel page")
+if "sidePanel" not in manifest.get("permissions", []):
+    raise ValueError("Expected sidePanel permission")
 
 for asset in (
     popup,

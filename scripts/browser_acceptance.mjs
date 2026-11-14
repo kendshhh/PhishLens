@@ -12,7 +12,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = path.join(root, "output", "extension", "PhishLens-Extension.zip");
 const evidencePath = path.join(root, "output", "extension", "browser-acceptance.json");
 const expectedTests = [
-  "packaged popup loads synthetic history in the browser",
+  "packaged side-panel page loads synthetic history in the browser",
+  "history subjects render as literal text without creating markup",
+  "keyboard navigation reaches visible controls with a visible focus indicator",
+  "installed extension configures the toolbar action to open the side panel",
   "synthetic analysis shows a clearly labeled local result or readable error",
   "Clear during a local scan prevents a stale result from returning",
   "synthetic saved analysis can be created and viewed",
@@ -25,14 +28,14 @@ const evidence = {
   source_commit: sourceCommit ?? "unknown",
   tested_commit: testedCommit ?? "unknown",
   environment: "isolated synthetic browser",
-  scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
+    scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The extension side-panel page is opened directly for UI checks; the installed toolbar behavior is checked through the Side Panel API. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover keyboard focus, safe rendering, local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
   tests: [],
   result: "failed",
 };
 
 const seededRecord = {
   id: "29d80c39-ec0d-4db8-a6e5-87444ba2600c",
-  subject: "Synthetic account notice",
+  subject: "Synthetic <script>alert(1)</script>",
   prediction: "phishing",
   confidence: 0.93,
   risk_level: "high",
@@ -225,8 +228,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 """
 worker_path.write_text(worker, encoding="utf-8")
 `;
-  const python = process.platform === "win32" ? "py" : (process.env.PYTHON ?? "python3");
-  const pythonArgs = process.platform === "win32" ? ["-3.12"] : [];
+  const python = process.env.PHISHLENS_PYTHON ?? process.env.PYTHON ??
+    (process.platform === "win32" ? "python" : "python3");
+  const pythonArgs = [];
   execFileSync(python, [...pythonArgs, "-c", prepare, archivePath, destination, apiOrigin, evidencePath], { stdio: "inherit" });
 }
 
@@ -321,10 +325,19 @@ async function run() {
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
 
     await page.locator("#empty-state").waitFor({ state: "visible" });
+    await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement.id), "clear-button");
+    assert.notEqual(await page.locator("#clear-button").evaluate(element => getComputedStyle(element).outlineStyle), "none");
+    evidence.tests.push("keyboard navigation reaches visible controls with a visible focus indicator");
+    const panelBehavior = await page.evaluate(() => chrome.sidePanel.getPanelBehavior());
+    assert.equal(panelBehavior.openPanelOnActionClick, true);
+    evidence.tests.push("installed extension configures the toolbar action to open the side panel");
     await page.locator("#load-history").click();
-    await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    await page.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
+    assert.equal(await page.locator("#history-list script, #history-list img").count(), 0);
     assert.match(await page.locator("#history-list li").textContent(), /phishing.*high/i);
-    evidence.tests.push("packaged popup loads synthetic history in the browser");
+    evidence.tests.push("packaged side-panel page loads synthetic history in the browser");
+    evidence.tests.push("history subjects render as literal text without creating markup");
 
     await page.evaluate(() => {
       void chrome.runtime.sendMessage({
@@ -360,6 +373,7 @@ async function run() {
     assert.equal(await page.locator("#result-state").isVisible(), false);
     evidence.tests.push("Clear during a local scan prevents a stale result from returning");
 
+    await page.locator(".create-panel > summary").click();
     await page.locator("#create-subject").fill("Synthetic browser CRUD");
     await page.locator("#create-body").fill("Synthetic browser acceptance. No personal data or credentials.");
     await page.locator("#create-button").click();
