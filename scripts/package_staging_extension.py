@@ -1,6 +1,7 @@
 """Build a staging-only extension ZIP from the exact observed staging checkout."""
 
 import argparse
+import base64
 import datetime as dt
 import hashlib
 import json
@@ -19,6 +20,7 @@ except ImportError:
 
 STAGING_ORIGIN = "https://phishlens-staging.onrender.com"
 PRODUCTION_HOST = "phishlens-api-ocvt.onrender.com"
+IN_ARCHIVE_EVIDENCE = "phishlens-build-evidence.json"
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -63,10 +65,24 @@ def assert_clean_extension_checkout(root):
         raise RuntimeError("Staging checkout has modified or untracked extension inputs")
 
 
-def auth_settings(auth_url, auth_database):
+def chrome_extension_id(public_key):
+    """Return Chrome's stable ID for the manifest's base64-encoded public key."""
+    try:
+        decoded = base64.b64decode(public_key, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Manifest public key must be standard base64") from exc
+    if len(decoded) < 32 or base64.b64encode(decoded).decode("ascii") != public_key:
+        raise ValueError("Manifest public key must be canonical base64 DER data")
+    digest = hashlib.sha256(decoded).digest()[:16]
+    return "".join(chr(ord("a") + nibble) for byte in digest for nibble in (byte >> 4, byte & 15))
+
+
+def auth_settings(auth_url, auth_database, manifest_key):
     """Validate an opt-in Neon Auth target and return package-safe settings."""
-    if auth_url is None and auth_database is None:
+    if auth_url is None and auth_database is None and manifest_key is None:
         return None
+    if not isinstance(manifest_key, str) or not manifest_key:
+        raise ValueError("Auth-enabled staging packages require the extension owner's public manifest key")
     if (not isinstance(auth_database, str)
             or not re.fullmatch(r"[A-Za-z0-9_-]{1,63}", auth_database)):
         raise ValueError("Auth database must be a simple database name")
@@ -80,11 +96,16 @@ def auth_settings(auth_url, auth_database):
             or parsed.path != expected_path or hostname == PRODUCTION_HOST
             or ".neonauth." not in hostname or not hostname.endswith(".aws.neon.tech")):
         raise ValueError("Auth URL must be a canonical Neon Auth HTTPS URL for the selected database")
+    extension_id = chrome_extension_id(manifest_key)
     return {
         "enabled": True,
         "auth_url": auth_url,
         "database": auth_database,
         "origin": f"https://{hostname}",
+        "manifest_key": manifest_key,
+        "manifest_key_sha256": hashlib.sha256(base64.b64decode(manifest_key)).hexdigest(),
+        "chrome_extension_id": extension_id,
+        "expected_chrome_origin": f"chrome-extension://{extension_id}",
         "config": {
             "enabled": True,
             "authUrl": auth_url,
@@ -94,13 +115,14 @@ def auth_settings(auth_url, auth_database):
     }
 
 
-def build(source_root, archive_path, evidence_path, expected_staging, *, auth_url=None, auth_database=None):
+def build(source_root, archive_path, evidence_path, expected_staging, *, auth_url=None,
+          auth_database=None, manifest_key=None):
     source_root = Path(source_root).resolve(strict=True)
     archive_path = Path(archive_path).resolve()
     evidence_path = Path(evidence_path).resolve()
     if not full_sha(expected_staging):
         raise ValueError("Expected staging revision must be a full lowercase commit SHA")
-    auth = auth_settings(auth_url, auth_database)
+    auth = auth_settings(auth_url, auth_database, manifest_key)
     if archive_path == evidence_path or archive_path.is_relative_to(source_root) or evidence_path.is_relative_to(source_root):
         raise ValueError("Staging package and evidence outputs must be separate from the source checkout")
 
@@ -129,6 +151,23 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
     host_permissions = [STAGING_ORIGIN + "/*"]
     if auth:
         host_permissions.append(auth["origin"] + "/*")
+    embedded_evidence = {
+        "format": "phishlens-staging-package-v1",
+        "environment": "staging",
+        "source_commit": package_revision,
+        "observed_staging_commit": expected_staging,
+        "packager_commit": packager_revision,
+        "api_origin": STAGING_ORIGIN,
+        "host_permissions": host_permissions,
+        "auth_enabled": bool(auth),
+        "auth_url": auth["auth_url"] if auth else None,
+        "auth_database": auth["database"] if auth else None,
+        "auth_origin": auth["origin"] if auth else None,
+        "manifest_key_sha256": auth["manifest_key_sha256"] if auth else None,
+        "chrome_extension_id": auth["chrome_extension_id"] if auth else None,
+        "expected_chrome_origin": auth["expected_chrome_origin"] if auth else None,
+    }
+    embedded_bytes = (json.dumps(embedded_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8")
     with ZipFile(archive_path, "w", ZIP_DEFLATED) as archive:
         for asset in sorted(ASSETS):
             source = extension_root / asset
@@ -139,6 +178,13 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
                 manifest = json.loads(data)
                 manifest["name"] = "PhishLens Staging Auth" if auth else "PhishLens Staging"
                 manifest["host_permissions"] = host_permissions
+                if auth:
+                    existing_key = manifest.get("key")
+                    if existing_key is not None and existing_key != auth["manifest_key"]:
+                        raise ValueError("Supplied public key does not match the source manifest key")
+                    manifest["key"] = auth["manifest_key"]
+                else:
+                    manifest.pop("key", None)
                 manifest.pop("optional_host_permissions", None)
                 data = json.dumps(manifest, indent=2).encode("utf-8")
             elif asset == "js/config.js":
@@ -152,17 +198,24 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
             archive.writestr(asset, data)
             file_hashes[asset] = hashlib.sha256(data).hexdigest()
 
+        archive.writestr(IN_ARCHIVE_EVIDENCE, embedded_bytes)
+        file_hashes[IN_ARCHIVE_EVIDENCE] = hashlib.sha256(embedded_bytes).hexdigest()
+
     archive_hash = sha256_file(archive_path)
     evidence = {
         "recorded_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "environment": "staging",
         "api_origin": STAGING_ORIGIN,
+        "source_commit": package_revision,
+        "in_archive_evidence": IN_ARCHIVE_EVIDENCE,
         "host_permissions": host_permissions,
         "auth_enabled": bool(auth),
         "auth_url": auth["auth_url"] if auth else None,
         "auth_database": auth["database"] if auth else None,
         "auth_origin": auth["origin"] if auth else None,
-        "chrome_extension_id": None,
+        "manifest_key_sha256": auth["manifest_key_sha256"] if auth else None,
+        "chrome_extension_id": auth["chrome_extension_id"] if auth else None,
+        "expected_chrome_origin": auth["expected_chrome_origin"] if auth else None,
         "trusted_chrome_origin": None,
         "observed_staging_commit": expected_staging,
         "package_checkout_commit": package_revision,
@@ -191,6 +244,10 @@ def main():
         help="Enable Neon Auth in this staging-only package for this confirmed Auth URL",
     )
     parser.add_argument("--auth-database", help="Neon Auth database name; required with --auth-url")
+    parser.add_argument(
+        "--manifest-key-file", type=Path,
+        help="File containing the extension owner's base64 public manifest key (not the private signing key)",
+    )
     args = parser.parse_args()
     try:
         evidence = build(
@@ -200,6 +257,8 @@ def main():
             args.expected_staging,
             auth_url=args.auth_url,
             auth_database=args.auth_database,
+            manifest_key=args.manifest_key_file.read_text(encoding="ascii").strip()
+            if args.manifest_key_file else None,
         )
     except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as exc:
         parser.exit(1, f"Staging package rejected: {exc}\n")
