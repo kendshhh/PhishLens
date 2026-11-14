@@ -32,6 +32,7 @@ def _json_request(
     payload: dict | None = None,
     timeout: int = 15,
     extra_headers: dict[str, str] | None = None,
+    response_headers: dict[str, str] | None = None,
 ) -> dict:
     headers = {"Accept": "application/json"}
     data = None
@@ -47,6 +48,8 @@ def _json_request(
     with opener.open(request, timeout=timeout) as response:
         if response.status != 200:
             raise RuntimeError(f"HTTP {response.status}")
+        if response_headers is not None:
+            response_headers.update({key.lower(): value for key, value in response.headers.items()})
         value = json.loads(response.read(64 * 1024))
     if not isinstance(value, dict):
         raise TypeError("Invalid JSON response")
@@ -132,12 +135,16 @@ def verify_deployment(
     behavior = []
     for case_id, expected in CASES.items():
         case = case_map[case_id]
+        response_headers: dict[str, str] = {}
         result = post_json(
-            base + "/analyses",
+            base + f"/analyses/revision/{expected_sha}",
             payload={"text": case.body},
             timeout=30,
             extra_headers={"X-Require-Provider": "tfidf"},
+            response_headers=response_headers,
         )
+        if response_headers.get("x-phishlens-revision") != expected_sha:
+            raise RuntimeError(f"{case_id}: analysis response came from a different deployment revision")
         behavior.append(_validate_analysis(
             result, expected=expected, model_sha=model_sha, case_id=case_id,
         ))
@@ -160,6 +167,7 @@ def verify_deployment(
         "database_writes": 0,
         "limitations": [
             "Behavior checks use two fixed synthetic TF-IDF development cases.",
+            "The revision-scoped analysis endpoint rejects mismatched source revisions before inference.",
             "The /analyses endpoint does not persist a saved report.",
             "This smoke is not a full browser acceptance, held-out accuracy evaluation, or load test.",
         ],

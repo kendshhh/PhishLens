@@ -8,11 +8,14 @@ production `/version` to report that exact SHA, then check `/health`, `/ready`,
 the configured provider/model identity, and two fixed synthetic analysis cases.
 The preflight also requires `/model-info` to advertise
 `supports_required_provider=true`. Each analysis request sends
-`X-Require-Provider: tfidf`, and the API checks the active provider before
-inference. Older API versions that do not confirm this guard fail closed before
-analysis. The behavior checks run only when the live provider is TF-IDF. They
-make no saved-report/database write and no paid provider request. A failed
-identity or provider preflight stops before analysis.
+`X-Require-Provider: tfidf` to `/analyses/revision/{expected_sha}`. The API
+checks its own source revision and active provider before inference, then echoes
+the serving revision in `X-PhishLens-Revision`. An older instance without the
+revision-scoped route returns before inference; a mismatched revision is
+rejected before provider lookup. The smoke verifies the response revision for
+every analysis request. The behavior checks run only when the live provider is
+TF-IDF. They make no saved-report/database write and no paid provider request.
+A failed identity or provider preflight stops before analysis.
 
 ## Workflow trust boundary
 

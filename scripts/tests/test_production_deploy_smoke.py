@@ -24,8 +24,9 @@ def test_production_smoke_waits_for_exact_sha_and_checks_behavior():
             }
         raise AssertionError(url)
 
-    def post_json(url, *, payload, timeout, extra_headers=None):
-        posts.append((url, payload, timeout, extra_headers))
+    def post_json(url, *, payload, timeout, extra_headers=None, response_headers=None):
+        posts.append((url, payload, timeout, extra_headers, response_headers))
+        response_headers["x-phishlens-revision"] = SHA
         expected = "phishing" if "account will be closed" in payload["text"] else "legitimate"
         return {
             "mode": "tfidf",
@@ -50,10 +51,11 @@ def test_production_smoke_waits_for_exact_sha_and_checks_behavior():
     assert [item["case"] for item in report["behavior_checks"]] == ["p01-credential", "l01-meeting"]
     assert len(posts) == 2
     assert all(
-        url.endswith("/analyses")
+        url.endswith(f"/analyses/revision/{SHA}")
         and timeout == 30
         and headers == {"X-Require-Provider": "tfidf"}
-        for url, _, timeout, headers in posts
+        and response_headers["x-phishlens-revision"] == SHA
+        for url, _, timeout, headers, response_headers in posts
     )
     assert urls == [
         "https://production.example/version",
@@ -116,6 +118,52 @@ def test_production_smoke_refuses_analysis_when_provider_guard_is_not_advertised
     else:
         raise AssertionError("an API without the provider guard must fail closed")
     assert posts == []
+
+
+def test_production_smoke_rejects_analysis_response_from_other_revision():
+    posts = []
+    other_sha = "b" * 40
+
+    def get_json(url):
+        if url.endswith("/version"):
+            return {"environment": "production", "commit": SHA}
+        if url.endswith("/health"):
+            return {"status": "ok", "service": "phishlens-api"}
+        if url.endswith("/ready"):
+            return {"status": "ready", "database": "connected"}
+        if url.endswith("/model-info"):
+            return {
+                "provider_mode": "tfidf",
+                "model_sha256": MODEL_SHA,
+                "supports_required_provider": True,
+            }
+        raise AssertionError(url)
+
+    def post_json(url, *, payload, timeout, extra_headers=None, response_headers=None):
+        posts.append(url)
+        response_headers["x-phishlens-revision"] = other_sha
+        return {
+            "mode": "tfidf",
+            "model_revision": MODEL_SHA,
+            "classification": "phishing",
+            "risk_level": "high",
+            "evidence": [],
+            "tactics": [],
+        }
+
+    try:
+        verify_deployment(
+            "https://production.example",
+            SHA,
+            get_json=get_json,
+            post_json=post_json,
+            timeout_seconds=0,
+        )
+    except RuntimeError as exc:
+        assert "analysis response came from a different deployment revision" in str(exc)
+    else:
+        raise AssertionError("smoke must reject analysis from a different deployment revision")
+    assert posts == [f"https://production.example/analyses/revision/{SHA}"]
 
 
 def test_production_smoke_stops_before_analysis_when_provider_is_unavailable():
