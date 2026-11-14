@@ -207,11 +207,6 @@ def package(api, sha, number, config, output):
         for asset in NEON_AUTH_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
 
-    if b"./js/neon-integration.js" in files["popup.js"]:
-        for asset in ("js/neon-integration.js", "js/neon-accounts.js", "js/auth-config.js",
-                      "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt"):
-            files[asset] = read_extension_asset(api, sha, asset)
-
     origin = config["staging_origin"]
     files["js/config.js"] = ("export const API_BASE_URL = " + json.dumps(origin) + ";\n").encode()
     # Compatibility with main before PR #32: rewrite only the exact known localhost constant.
