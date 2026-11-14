@@ -40,6 +40,37 @@ def test_analysis_endpoint_uses_ai_service(monkeypatch):
     assert calls == [(None, None, "Your account will be closed today.")]
 
 
+def test_analysis_endpoint_rejects_required_provider_mismatch_before_inference(monkeypatch):
+    calls = []
+
+    class GeminiService:
+        def analyze_email(self, *, subject, sender, body):
+            calls.append((subject, sender, body))
+            raise AssertionError("A mismatched provider must not receive the request")
+
+    monkeypatch.setattr(
+        main,
+        "get_ai_service",
+        lambda: (GeminiService(), "gemini"),
+    )
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/analyses",
+            json={"text": "Synthetic smoke input"},
+            headers={"X-Require-Provider": "tfidf"},
+        )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error": {
+            "code": "analysis_unavailable",
+            "message": "Required analysis provider is unavailable",
+        }
+    }
+    assert calls == []
+
+
 def test_analysis_endpoint_returns_mock_mode(monkeypatch):
     from backend.ai.mock_provider import MockProvider
     from backend.ai.service import AIService

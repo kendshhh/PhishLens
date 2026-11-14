@@ -21,7 +21,7 @@ def test_production_smoke_waits_for_exact_sha_and_checks_behavior():
         raise AssertionError(url)
 
     def post_json(url, *, payload, timeout, extra_headers=None):
-        posts.append((url, payload, timeout))
+        posts.append((url, payload, timeout, extra_headers))
         expected = "phishing" if "account will be closed" in payload["text"] else "legitimate"
         return {
             "mode": "tfidf",
@@ -45,7 +45,12 @@ def test_production_smoke_waits_for_exact_sha_and_checks_behavior():
     assert report["paid_provider_calls"] == report["database_writes"] == 0
     assert [item["case"] for item in report["behavior_checks"]] == ["p01-credential", "l01-meeting"]
     assert len(posts) == 2
-    assert all(url.endswith("/analyses") and timeout == 30 for url, _, timeout in posts)
+    assert all(
+        url.endswith("/analyses")
+        and timeout == 30
+        and headers == {"X-Require-Provider": "tfidf"}
+        for url, _, timeout, headers in posts
+    )
     assert urls == [
         "https://production.example/version",
         "https://production.example/health",
