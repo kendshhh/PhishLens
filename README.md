@@ -6,7 +6,7 @@ risk indicators, and manage saved analysis reports.
 
 ## Current Status — November 14, 2026
 
-Current `main` is `6068558`. Backend, extension, PostgreSQL integration,
+Current `main` is `ddc0ab1`. Backend, extension, PostgreSQL integration,
 dependency-security, CodeQL, and workflow checks are configured; main is protected
 and successful main changes auto-deploy through Render. The refreshed 28-day
 delivery snapshot is in [pipeline metrics](docs/devops/metrics.md).
@@ -21,7 +21,15 @@ held-out quality result or an approved model threshold. [PR #198](https://github
 records an exact-SHA production smoke that stopped before analysis because the
 production model mode was unavailable; it made no analysis request, database
 write, or paid call. Its staging CRUD evidence used a test-branch SHA, not current
-main. Current DevOps acceptance gaps and owners are tracked in the
+main. Merged [PR #189](https://github.com/kendshhh/PhishLens/pull/189) reconciles
+historical Sprint 2 CRUD evidence but leaves hosted acceptance on hold pending
+confirmation of the selected backend, database and authentication target.
+On November 14, read-only `/version` probes reported production at
+`ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213` (`main`) with
+`provider_mode=unavailable`, and staging at `dcd234e0e012e1a869e182e64d34728343d17637`
+with `provider_mode=tfidf`. Both `/health` and `/ready` returned HTTP 200;
+readiness reported a connected database but does not identify its Neon branch.
+Current DevOps acceptance gaps and named handoffs are tracked in the
 [Sprint 1–3 closeout](docs/devops/kendra-sprint-1-3-status-2026-11-14.md).
 
 ## Planned Features

@@ -2,7 +2,7 @@
 
 **Snapshot date:** 2026-11-14
 
-**GitHub `main`:** `6068558a1903284fc80a6cbc07936a16a3598e1e`
+**GitHub `main`:** `ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213`
 
 **Open related PRs:** [#196](https://github.com/kendshhh/PhishLens/pull/196),
 [#198](https://github.com/kendshhh/PhishLens/pull/198)
@@ -19,7 +19,7 @@ records.
 | Sprint | Repo / issue status | Remaining acceptance |
 | --- | --- | --- |
 | Sprint 1 | Issues #9 and #24 are closed. CI, merge protections, extension packaging, migrations, and automated deployment are present in the repository. This PR adds the missing architecture map and decision record. | Current integrated Chrome-to-API-to-PostgreSQL acceptance and backend inference on an identified live SHA are not evidenced. Closed issue status does not supply the missing Network, changed-record, teammate, or instructor evidence. |
-| Sprint 2 | #36, #38, #39, and #40 are closed; #37 and #41 are open. CI/security controls and the 28-day metrics snapshot are documented. | Fresh Render-to-Neon mapping and encrypted Render key scopes, participant-sourced standups/retro/consultation, and a reliable end-to-end optimization result remain open. |
+| Sprint 2 | #36, #38, #39, and #40 are closed; #37 and #41 are open. Merged PR #189 publishes the Sprint 2 handoff with historical CRUD evidence. | Hosted acceptance remains on hold pending selected backend, database, and authentication confirmation. Current Render-to-Neon mapping and effective key scopes, participant-sourced standups/retro/consultation, and reliable end-to-end optimization remain open. |
 | Sprint 3 | Deterministic contract/failure tests and the manual-only provider-smoke workflow are merged from PR #104. #92–#95 remain open. PR #196 adds deterministic evaluation and saved-route spend protection but is not merged. | AI-owner thresholds, held-out evaluation, approved provider/quota, a real provider smoke, and the protected-staging AI failure/recovery drill remain open. |
 
 ## Sprint 1 — repository, architecture, walking skeleton
@@ -52,11 +52,10 @@ records.
 - Run an exact-current-SHA installed-Chrome flow that shows the actual API
   request/response, saved record, changed-record read, and cleanup. Historical
   package/browser identity and `/ready` are not substitutes for this.
-- Record a successful backend AI inference on an identified deployed revision.
-  PR #198's November 14 production smoke stopped before analysis because
-  `/model-info` reported `provider_mode=unavailable`. That probe preceded the
-  later main advance to `6068558`; production identity was not rechecked after
-  that merge in this closeout.
+- Production now reports the current main SHA
+  `ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213`, but a fresh `/model-info` read
+  still reports `provider_mode=unavailable`; successful backend AI inference
+  on the deployed candidate remains unproven.
 - Attach the actual required teammate/instructor acceptance evidence. Issue
   closure alone is not the evidence.
 
@@ -86,7 +85,12 @@ records.
 
 - [#37](https://github.com/kendshhh/PhishLens/issues/37): the Neon role grant
   state is now read-only verified, but the live Render `DATABASE_URL` branch and
-  database mapping was not read or freshly confirmed. The name `phishlens_dev`
+  database mapping remain unverified. A fresh November 14 read-only probe
+  reported production `/version` at `ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213`
+  with `provider_mode=unavailable`, and staging at
+  `dcd234e0e012e1a869e182e64d34728343d17637` with `provider_mode=tfidf`.
+  Both `/health` and `/ready` returned HTTP 200; readiness said the database was
+  connected but does not establish the branch/database target. The name `phishlens_dev`
   exists on multiple branches, and `/ready` only establishes a working database
   connection. Read-only Render metadata identifies `phishlens-api` and
   `phishlens-staging`, both on `main`; production auto-deploys after checks and
@@ -145,8 +149,8 @@ records.
 
 | Action | Required evidence / dependency |
 | --- | --- |
-| Review and merge PR #196 | Exact-head required checks and reviewer acceptance; keep numeric model threshold pending until AI-owner decision and held-out data. |
-| Review and merge PR #198 | Exact-head CI plus decision on a supported production post-deploy trigger; do not describe manual dispatch as an automatic smoke. |
+| Review and merge PR #196 | Latest head `572f9e8` has passing checks but is behind current `main` and still has a changes-requested review. Update branch and obtain reviewer re-review; keep numeric model threshold pending until AI-owner decision and held-out data. |
+| Review and merge PR #198 | Latest head `1653947` is behind current `main` and still has a changes-requested review. Update branch, rerun required checks, and decide on a supported production post-deploy trigger; do not describe manual dispatch as automatic smoke. |
 | Resolve #37 environment verification | Authorized read-only Render configuration check identifying the production and staging Neon branch/database; verify effective external key scopes. Do not expose values. |
 | Complete #41 | Real participant-sourced standups, retro, consultation attendance, decisions, and technical explanations. |
 | Complete #92–#95 | AI-owner-approved criteria/data/provider/quota and bounded failure matrix; exact revisions, no-retry behavior, redacted reports, detection and recovery timing. |
@@ -156,3 +160,21 @@ records.
 No production writes, provider calls, grant changes, or issue closures were
 performed for this documentation update. GitHub ran the required PR checks;
 Hosted staging and its preflight were skipped. No tests were run manually.
+
+## Named handoff for remaining work
+
+These assignments follow the repository role map and current issue ownership.
+They are proposed handoffs; they do not claim that the named people are
+available, have accepted a new deadline, or have completed the work.
+
+| Person | Role-based next work | Completion evidence |
+| --- | --- | --- |
+| Kendra (`kendshhh`) | DevOps: keep this PR current with `main`; verify Render-to-Neon targets and effective key scopes; coordinate the exact reviewed staging candidate; refresh DORA and release evidence. | Current source/deployed SHA, redacted target mapping, exact-SHA run, updated metrics and evidence links. |
+| Wilberr (`EnviousCoal`) | AI owner: approve held-out protocol, data provenance/freeze, model decision and blocking threshold; decide provider/model and quota with Kendra before any paid request. | Reviewed evaluation protocol and, only after budget approval, a redacted bounded provider report. |
+| Trixia (`xxTrixia`) | Backend: confirm the isolated staging database/role and failure matrix; re-review saved-analysis spend guarding and persistence behavior. | Read-only target/role evidence, reviewed failure expectations, and PR review. |
+| Leyan (`inaki3023`) | Fullstack: run the API/client saved-report flow on the agreed staging SHA, including a fresh reread. | Source-bound create/read/edit/reread/delete/cleanup evidence and review. |
+| Andrei (`JupitraxNeptuna`) | Frontend: install the matching extension package and verify connected Chrome CRUD and visible failure states. | Browser run sheet/screenshots tied to extension and backend SHAs. |
+| Whole team | Hold a real review/rehearsal and record attendance, decisions, blockers and owners. Do not backdate a new meeting as a missing Sprint 2 event. | Dated participant-sourced notes. Historical standups and retro remain open unless contemporaneous evidence is supplied. |
+
+Related open work: #37, #41, #42, #45, #87, #91, #92, #93, #94, #95, #96,
+#98, and #153. These references do not close those acceptance gates.
