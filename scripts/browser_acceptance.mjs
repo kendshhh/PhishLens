@@ -138,7 +138,8 @@ const server = createServer(async (request, response) => {
       created_at: new Date().toISOString(),
       analysis_mode: analysisMode,
       analysis_provenance: analysisMode === "real"
-        ? { provider_mode: "gemini", model: "synthetic-provider-fixture-v1", explanation_source: "synthetic fixture" }
+        ? { provider_mode: "tfidf", model: "TF-IDF v12a", model_revision: MODEL_SHA256,
+          explanation_source: "synthetic fixture" }
         : structuredClone(seededRecord.analysis_provenance),
     };
     if (analysisMode === "real") {
@@ -598,8 +599,9 @@ async function run() {
     assert.match(await providerDetail.textContent(), /Synthetic provider fixture explanation/);
     await providerDetail.locator("details").filter({ hasText: "About this result" }).locator("summary").click();
     assert.match(await providerDetail.innerText(), /Automated analysis recorded when saved/);
-    assert.match(await providerDetail.innerText(), /Provider: Gemini/);
-    assert.match(await providerDetail.innerText(), /Model: synthetic-provider-fixture-v1/);
+    assert.match(await providerDetail.innerText(), /Provider: TF-IDF/);
+    assert.match(await providerDetail.innerText(), /Model: TF-IDF v12a/);
+    assert.match(await providerDetail.innerText(), new RegExp(`Model revision: ${MODEL_SHA256}`));
     assert.equal(await providerDetail.locator("img, script").count(), 0,
       "Untrusted subject and email content must remain text, not markup");
     assert.ok(createdRecordId && records.get(createdRecordId)?.analysis_mode === "real",
@@ -616,7 +618,7 @@ async function run() {
     await providerRow.waitFor({ state: "visible" });
     await providerRow.locator("button").click();
     await page.locator("#detail-panel").waitFor({ state: "visible" });
-    assert.match(await page.locator("#detail-content").textContent(), /Provider: Gemini/);
+    assert.match(await page.locator("#detail-content").textContent(), /Provider: TF-IDF/);
     await captureScreenshot(page, "02-synthetic-provider-report-after-popup-reopen.png");
     evidence.tests.push("synthetic report remains in server history after popup reopen");
 
