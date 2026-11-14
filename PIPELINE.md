@@ -25,6 +25,10 @@ dependency checks pass on the rebased PRs. Reconcile the still-open alert
 records with GitHub's refreshed dependency graph; do not treat the API count
 alone as evidence that the pinned versions remain vulnerable or as evidence
 that the alerts are closed.
+The first `Dependency graph review` run failed because the graph was disabled.
+I enabled the repository dependency graph through GitHub's vulnerability-alerts
+setting and reran the job; it passed. That check is now active in the main
+ruleset.
 
 A fresh Gitleaks v8.30.1 history scan across all refs after the sync/rebase
 found no leaks. This records the credential scan result; it
