@@ -575,7 +575,8 @@ async function run() {
 
     const reopenedPage = await context.newPage();
     await reopenedPage.goto(`chrome-extension://${extensionId}/popup.html`);
-    await reopenedPage.locator("#empty-state").waitFor({ state: "visible" });
+    // Reopening keeps the existing local scan in this browser session.
+    await reopenedPage.locator("#show-reports").click();
     await reopenedPage.locator("#load-history").click();
     await reopenedPage.locator("#history-list li").getByText("Synthetic browser CRUD").waitFor();
     await reopenedPage.locator("#history-list li").getByRole("button", { name: "View Synthetic browser CRUD" }).click();
@@ -599,7 +600,6 @@ async function run() {
 
     page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
-    await page.locator("#empty-state").waitFor({ state: "visible" });
     await page.locator("#show-reports").click();
     await page.locator("#load-history").click();
     await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
