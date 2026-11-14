@@ -19,9 +19,12 @@ same-day observations; newer facts in the handoff supersede them.
 PRs [#206](https://github.com/kendshhh/PhishLens/pull/206) and
 [#207](https://github.com/kendshhh/PhishLens/pull/207) merged into the protected
 `feat/96-bounded-inference` branch; they did not merge that branch into `main`.
-The current #107 head is `81b13485d0e773a0f9301a8453a5eb83b16ea8e3`. Its
-automated checks pass, hosted staging checks were skipped, and reviewer
-re-approval is still required.
+The current #107 head is `81b13485d0e773a0f9301a8453a5eb83b16ea8e3`. Backend,
+Extension, Migration source preflight, Staging integration, Workflow lint,
+CodeQL, Dependency security, Dependency graph review, and Deterministic AI
+evaluation pass. Hosted staging, Hosted staging preflight, and the Issue 90
+read-only staging package check were skipped. The latest submitted review is
+`CHANGES_REQUESTED` from EnviousCoal, who remains the requested reviewer.
 
 This is a current evidence crosswalk, not a claim that closed issue checkboxes
 prove every course acceptance item. The course guide distinguishes a checked
@@ -166,7 +169,7 @@ records.
 
 | Action | Required evidence / dependency |
 | --- | --- |
-| Refresh PR #107 path | #206 and #207 are approved, clean PRs into `feat/96-bounded-inference`; merge them only through the protected branch process, then refresh #107 checks and required reviewer approval. |
+| Refresh PR #107 review | PRs #206 and #207 have already merged into `feat/96-bounded-inference`; neither merged that branch into `main`. On #107 head `81b13485d0e773a0f9301a8453a5eb83b16ea8e3`, Backend, Extension, Migration source preflight, Staging integration, Workflow lint, CodeQL, Dependency security, Dependency graph review, and Deterministic AI evaluation pass; Hosted staging, Hosted staging preflight, and the Issue 90 read-only staging package check were skipped. The latest submitted review is `CHANGES_REQUESTED`; EnviousCoal remains the requested reviewer, so a fresh reviewer decision is required before merge. |
 | Correct production provider mode | Render owner must inspect and review the production configuration change; rerun PR #198's exact-SHA smoke and verify changed behavior before claiming AI acceptance. |
 | Resolve #37 environment verification | Authorized read-only Render configuration check identifying the production and staging Neon branch/database; verify effective external key scopes. Do not expose values. |
 | Complete #41 | Real participant-sourced standups, retro, consultation attendance, decisions, and technical explanations. |
