@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "127",
   "name": "PhishLens",
   "version": "0.1.0",
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
     "contextMenus",
+    "activeTab",
+    "scripting",
     "storage",
     "offscreen"
   ],

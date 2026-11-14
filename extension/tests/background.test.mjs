@@ -10,9 +10,9 @@ function deferred() {
   let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; });
   return { promise, resolve, reject };
 }
-function worker({ firstWrite } = {}) {
+function worker({ firstWrite, popupFailure = false, selectionResult, selectionFailure = false } = {}) {
   let listener, clicks, writes = 0;
-  const requests = [], state = { analysis: undefined, badge: '' };
+  const requests = [], popups = [], injections = [], state = { analysis: undefined, badge: '' };
   const storage = {};
   const context = vm.createContext({
     console, crypto: globalThis.crypto,
@@ -23,6 +23,11 @@ function worker({ firstWrite } = {}) {
       runtime: { id: 'self', onInstalled: { addListener() {} },
         onMessage: { addListener(fn) { listener = fn; } } },
       contextMenus: { onClicked: { addListener(fn) { clicks = fn; } } },
+      scripting: { async executeScript(options) {
+        injections.push(options);
+        if (selectionFailure) throw Error('Frame access denied');
+        return [{ result: await selectionResult }];
+      } },
       storage: { session: {
         async get(key) { return { [key]: storage[key] }; },
         async set(value) {
@@ -31,18 +36,73 @@ function worker({ firstWrite } = {}) {
         },
         async remove(key) { delete storage[key]; state.analysis = storage.veriqoAnalysis; }
       } },
-      action: { async setBadgeText({ text }) { state.badge = text; } }
+      action: { async setBadgeText({ text }) { state.badge = text; }, async openPopup(options) {
+        popups.push({ options, status: state.analysis?.status, text: state.analysis?.selectedText });
+        if (popupFailure) throw Error('Popup unavailable');
+      } }
     }
   });
   vm.runInContext(source, context);
-  return { state, requests, storage, clicks,
+  return { state, requests, storage, clicks, popups, injections,
     analyze: text => context.analyzeSelectedText(text),
     message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
     clear: () => new Promise(resolve => {
       assert.equal(listener({ type: 'phishlens-clear-analysis' }, { id: 'self' }, resolve), true);
+    }),
+    cancel: () => new Promise(resolve => {
+      assert.equal(listener({ type: 'phishlens-cancel-analysis' }, { id: 'self' }, resolve), true);
     })
   };
 }
+test('right-click opens the popup in the source window after storing the selection, before inference finishes', async () => {
+  const app = worker();
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected <img src=x> text' }, { windowId: 7 });
+  await settle();
+  assert.equal(app.popups.length, 1);
+  assert.equal(app.popups[0].options.windowId, 7);
+  assert.equal(app.popups[0].status, 'loading');
+  assert.equal(app.popups[0].text, 'Selected <img src=x> text');
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
+  assert.equal(app.state.analysis.status, 'success');
+});
+test('popup failure does not prevent selected-text analysis or lose its result', async () => {
+  const app = worker({ popupFailure: true });
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' });
+  await settle();
+  app.requests[0].resolve({ alert: true, workflow: { released: true } }); await scan;
+  assert.equal(app.state.analysis.selectedText, 'Selected text');
+  assert.equal(app.state.analysis.status, 'success');
+});
+test('right-click preserves paragraph breaks, repeated spaces and tabs from the source frame', async () => {
+  const original = 'Dear team,\n\n  Review\tthe agenda.\n\nRegards,\nNicole';
+  const app = worker({ selectionResult: original });
+  const pending = app.clicks({ menuItemId: 'phishlens-analyze-selection', frameId: 4,
+    selectionText: 'Dear team, Review the agenda. Regards, Nicole' }, { id: 12, windowId: 7 });
+  await settle();
+  assert.equal(app.injections[0].target.tabId, 12);
+  assert.equal(app.injections[0].target.frameIds[0], 4);
+  assert.equal(app.state.analysis.selectedText, original);
+  assert.equal(app.requests[0].text, original);
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await pending;
+});
+for (const options of [{ selectionResult: 'Different selection' }, { selectionFailure: true }]) {
+  test('unavailable or changed source selection falls back to the original context-menu text ' + JSON.stringify(options), async () => {
+    const app = worker(options);
+    const pending = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Original menu text' }, { id: 12 });
+    await settle();
+    assert.equal(app.requests[0].text, 'Original menu text');
+    app.requests[0].resolve({ alert: false, workflow: { released: true } }); await pending;
+  });
+}
+test('a delayed selection read cannot replace a newer scan', async () => {
+  const selection = deferred(), app = worker({ selectionResult: selection.promise });
+  const older = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Old text' }, { id: 12 });
+  const newer = app.analyze('New text'); await settle();
+  selection.resolve('Old text'); await older;
+  assert.equal(app.requests.length, 1);
+  assert.equal(app.requests[0].text, 'New text');
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await newer;
+});
 for (const outcome of ['success', 'error']) {
   test('latest scan wins over an older ' + outcome, async () => {
     const app = worker(), older = app.analyze('A'); await settle();
@@ -78,9 +138,27 @@ test('debug failure is consumed once and requires no inference/API call', async 
   assert.equal(app.requests.length, 0); assert.equal(app.storage.phishlensDebugFailNext, undefined);
   assert.match(app.state.analysis.error, /Simulated/);
 });
+for (const outcome of ['success', 'error']) {
+  test('Cancel retains the original selection and rejects late ' + outcome, async () => {
+    const app = worker();
+    const pending = app.analyze('  Original\n\nselection  '); await settle();
+    await app.cancel();
+    assert.equal(app.state.analysis.status, 'cancelled');
+    assert.equal(app.state.analysis.selectedText, '  Original\n\nselection  ');
+    if (outcome === 'success') app.requests[0].resolve({ alert: true, workflow: { released: true } });
+    else app.requests[0].reject(Error('Late failure'));
+    await pending;
+    assert.equal(app.state.analysis.status, 'cancelled');
+    assert.equal(app.state.badge, '');
+    const retry = app.analyze(app.state.analysis.selectedText); await settle();
+    app.requests[1].resolve({ alert: false, workflow: { released: true } }); await retry;
+    assert.equal(app.state.analysis.status, 'success');
+  });
+}
 test('other extensions cannot submit or clear scan state', async () => {
   const app = worker();
   assert.equal(app.message({ type: 'phishlens-clear-analysis' }, { id: 'stranger' }), undefined);
+  assert.equal(app.message({ type: 'phishlens-cancel-analysis' }, { id: 'stranger' }), undefined);
   assert.equal(app.message({ type: 'phishlens-analyze-text', text: 'private' }, { id: 'stranger' }), undefined);
   assert.equal(app.requests.length, 0);
 });
