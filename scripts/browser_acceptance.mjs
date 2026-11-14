@@ -613,6 +613,7 @@ async function run() {
     await page.close();
     page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
+    await page.locator("#show-reports").click();
     await page.locator("#load-history").click();
     const providerRow = page.locator("#history-list li").filter({ hasText: providerFixtureSubject });
     await providerRow.waitFor({ state: "visible" });
