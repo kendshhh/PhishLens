@@ -304,7 +304,7 @@ test("saved report uncertainty and missing results are described without inventi
   assert.match(detail.children[5].children[1].textContent, /Not provided/);
   assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
   assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
-  assert.doesNotMatch(detail.children[9].children[1].textContent, /fixture-model/);
+  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
 });
 
 test("provider provenance is labeled explicitly", async () => {
@@ -315,7 +315,9 @@ test("provider provenance is labeled explicitly", async () => {
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
   assert.match(text, /Provider-backed AI analysis/);
-  assert.doesNotMatch(text, /fixture-gemini-model|fixture-revision/);
+  assert.match(text, /Provider: Gemini/);
+  assert.match(text, /Model: fixture-gemini-model/);
+  assert.match(text, /Model revision: fixture-revision/);
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {
