@@ -593,7 +593,7 @@ async function run() {
     await page.locator("#create-button").click();
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     const providerDetail = page.locator("#detail-content");
-    await providerDetail.getByText(providerFixtureSubject, { exact: true }).waitFor();
+    await page.locator("#detail-heading").getByText(providerFixtureSubject, { exact: true }).waitFor();
     assert.match(await providerDetail.textContent(), /Spam/);
     assert.match(await providerDetail.textContent(), /Synthetic provider fixture explanation/);
     assert.match(await providerDetail.textContent(), /Provider-backed AI analysis/);
