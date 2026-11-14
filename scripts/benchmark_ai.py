@@ -210,6 +210,9 @@ def main() -> int:
     args = parser.parse_args()
     if args.repeats < 1 or args.limit < 0 or args.pause < 0:
         parser.error("repeats must be positive; limit and pause must be nonnegative")
+    paid_models = [model for model in args.models if model not in {"tfidf", "local"}]
+    if len(paid_models) > 1:
+        parser.error("--models accepts at most one paid Gemini model per invocation")
     if args.worker:
         try:
             return worker(args)

@@ -118,3 +118,19 @@ def test_benchmark_stops_at_daily_quota_without_inventing_missing_scores(monkeyp
     assert summary["spam_phishing_alert_rate"] is None
     provider.analyze.assert_called_once()
     provider.close.assert_called_once()
+
+
+def test_benchmark_rejects_duplicate_paid_models_before_starting_workers(monkeypatch):
+    from scripts import benchmark_ai
+
+    workers = Mock()
+    monkeypatch.setattr(sys, "argv", [
+        "benchmark_ai.py", "--models", "test-gemini-model", "test-gemini-model",
+    ])
+    monkeypatch.setattr(benchmark_ai.subprocess, "run", workers)
+
+    with pytest.raises(SystemExit) as error:
+        benchmark_ai.main()
+
+    assert error.value.code == 2
+    workers.assert_not_called()
