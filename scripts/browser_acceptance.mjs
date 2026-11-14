@@ -678,7 +678,7 @@ async function run() {
     await page.locator("#crud-status").getByText(/Saved reports are temporarily unavailable/).waitFor();
     assert.equal(await page.locator("#detail-panel").isVisible(), true,
       "A confirmed save remains available when the history refresh fails");
-    assert.match(await page.locator("#detail-content").textContent(), /Provider: Gemini/);
+    assert.match(await page.locator("#detail-content").textContent(), /Provider: TF-IDF/);
     assert.equal(await page.locator("#empty").isVisible(), false,
       "History failure must not render as a successful empty list");
     assert.ok(createdRecordId && records.has(createdRecordId));
