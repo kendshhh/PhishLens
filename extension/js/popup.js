@@ -99,7 +99,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const analyzed = classificationLabels.has(record.prediction);
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
-    const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "Analysis source unknown"];
+    const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"];
     if (typeof provenance.provider_mode === "string" && provenance.provider_mode.trim()) {
       provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode) || `Unrecognized (${provenance.provider_mode})`}`);
     }
@@ -107,7 +107,16 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) {
       provenanceLines.push(`Model revision: ${provenance.model_revision}`);
     }
+    if (typeof provenance.prompt_version === "string" && provenance.prompt_version.trim()) {
+      provenanceLines.push(`Prompt version: ${provenance.prompt_version}`);
+    }
+    if (typeof provenance.explanation_source === "string" && provenance.explanation_source.trim()) {
+      provenanceLines.push(`Explanation source: ${provenance.explanation_source}`);
+    }
     if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
+    if (provenanceLines.length === 1 && record.analysis_mode === "real") {
+      provenanceLines.push("Provider and model were not reported.");
+    }
     ui.modeWarning.textContent = record.analysis_mode === 'mock' ? 'Demo result — this is not a real email assessment.' :
       record.analysis_mode !== 'real' ? 'The analysis source was not recorded. Treat this report as unverified.' : '';
     show(ui.modeWarning, Boolean(ui.modeWarning.textContent));

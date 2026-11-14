@@ -101,6 +101,7 @@ test("a local save completed over an open detail restores the report library", a
   assert.match(html, /id="detail-heading" tabindex="-1"/);
   assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
+  assert.match(html, /<button id="create-button" type="submit">Analyze and save<\/button>/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(css, /width:\s*380px/);
   assert.match(css, /max-height:\s*600px/);
@@ -293,7 +294,7 @@ test("saved report uncertainty and missing results are described without inventi
   data.risk_level = null;
   data.explanation = null;
   data.threat_indicators = [];
-  data.analysis_mode = "unknown";
+  data.analysis_mode = "unrecognized";
   data.analysis_provenance = { provider_mode: "unknown", model: "fixture-model" };
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
@@ -310,7 +311,10 @@ test("saved report uncertainty and missing results are described without inventi
 test("provider provenance is labeled explicitly", async () => {
   const data = record(id);
   data.analysis_mode = "real";
-  data.analysis_provenance = { provider_mode: "gemini", model: "fixture-gemini-model", model_revision: "fixture-revision" };
+  data.analysis_provenance = {
+    provider_mode: "gemini", model: "fixture-gemini-model", model_revision: "fixture-revision",
+    prompt_version: "fixture-prompt-v1", explanation_source: "provider fixture"
+  };
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
@@ -318,6 +322,19 @@ test("provider provenance is labeled explicitly", async () => {
   assert.match(text, /Provider: Gemini/);
   assert.match(text, /Model: fixture-gemini-model/);
   assert.match(text, /Model revision: fixture-revision/);
+  assert.match(text, /Prompt version: fixture-prompt-v1/);
+  assert.match(text, /Explanation source: provider fixture/);
+});
+
+test("real reports without provider metadata explain the missing provenance", async () => {
+  const data = record(id);
+  data.analysis_mode = "real";
+  data.analysis_provenance = {};
+  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+  await controller.loadDetail(id);
+  const text = ui.get("detail-content").children[9].children[1].textContent;
+  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Provider and model were not reported/);
 });
 
 test("edit cancel and delete cancel preserve the saved record", async () => {

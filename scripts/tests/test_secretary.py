@@ -460,6 +460,7 @@ class PreviewTests(unittest.TestCase):
             )
         self.assertEqual(api.request.call_args_list[1].args[1]["conclusion"], "action_required")
         self.assertEqual(api.request.call_args_list[1].args[2], "PATCH")
+
     def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
         api = Mock()
         confirmed = confirm_live_deployment(
