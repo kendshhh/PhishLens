@@ -207,6 +207,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
   function openEdit() {
     if (busy || !selected) return;
+    detailRequest++;
     ui.notes.value = selected.notes || "";
     ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
     show(ui.editForm, true);
@@ -250,6 +251,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     setBusy(true);
     try {
       selected = await client.updateAnalysis(selected.id, {
@@ -273,6 +275,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     setBusy(true);
     try {
       const deletedId = selected.id;
