@@ -146,5 +146,6 @@ records.
 | Agree reliability targets | Team-approved SLI/SLO, backup restore procedure, and RPO/RTO before claiming final release readiness. |
 | Reconcile dependency alert state | GitHub currently reports 12 open high `pyasn1` alerts and 3 open medium `opentelemetry-api` alerts, although all three default-branch requirements lockfiles pin patched `pyasn1==0.6.5`. Confirm the dependency graph/alert refresh and retain the findings until GitHub closes them; do not dismiss them merely to clear the dashboard. |
 
-No production writes, provider calls, grant changes, issue closures, or tests were
-performed for this documentation update.
+No production writes, provider calls, grant changes, or issue closures were
+performed for this documentation update. GitHub ran the required PR checks;
+Hosted staging and its preflight were skipped. No tests were run manually.
