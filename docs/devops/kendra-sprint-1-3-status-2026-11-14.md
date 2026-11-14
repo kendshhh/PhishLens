@@ -121,7 +121,7 @@ records.
   `provider_mode=unavailable`. Staging reported SHA
   `cd913b5c7c7cf6796b4cdb12a854c709a173a12f`,
   `environment=staging`, healthy/readiness responses, `provider_mode=tfidf`, and
-  model SHA-256 `a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`.
+  model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
   These read-only GET checks confirm live app identities and connectivity only.
   The fresh Neon inventory includes default/primary `production`
   (`br-orange-sky-b3zzzyqc`) and separate `pr-58-staging`

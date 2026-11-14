@@ -44,8 +44,14 @@ score.
   The same read-only probe found staging at
   `cd913b5c7c7cf6796b4cdb12a854c709a173a12f`, with `environment=staging`,
   healthy/readiness responses, `provider_mode=tfidf`, and model SHA-256
-  `a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`.
-  These GET checks made no application write or paid provider request. Neither
+  `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
+  The SHA-256 of `extension/ai/tfidf_v12a.json` at this staging source revision
+  matches the value pinned in [#48](https://github.com/kendshhh/PhishLens/issues/48),
+  as do the captured `/model-info` results in the
+  [staging acceptance record](staging-acceptance-2026-11-14.md). The former
+  `...3d8fde...` value in the three handoff documents was a transcription error;
+  these records do not show a model identity mismatch. These GET checks made no
+  application write or paid provider request. Neither
   `/ready` response identifies its Neon branch/database.
 
 ## Highest-value remaining work

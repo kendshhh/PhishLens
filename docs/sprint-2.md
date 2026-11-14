@@ -173,7 +173,7 @@ A read-only GET probe on November 14 found production `/version` at current
 `provider_mode=unavailable`. Staging reported SHA
 `cd913b5c7c7cf6796b4cdb12a854c709a173a12f`, `environment=staging`, readiness
 with database connectivity, and TF-IDF mode with model hash
-`a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`. These
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. These
 GET checks made no application write or paid provider request. Neither
 readiness response identifies its Neon branch/database; the mapping remains
 unverified, and the staging seed/auth acceptance is not claimed from health
