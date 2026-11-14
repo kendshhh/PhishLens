@@ -2,8 +2,8 @@
 
 import json
 from html.parser import HTMLParser
-from urllib.parse import unquote, urlsplit
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1] / "extension"
 
@@ -21,18 +21,31 @@ manifest = json.loads(require_file("manifest.json").read_text(encoding="utf-8"))
 
 if manifest.get("manifest_version") != 3:
     raise ValueError("Expected manifest_version 3")
+if manifest.get("minimum_chrome_version") != "127":
+    raise ValueError("Opening the popup from the context menu requires Chrome 127 or newer")
 
 if manifest.get("background") != {"service_worker": "background.js", "type": "module"}:
     raise ValueError("Expected a module background worker for shared API configuration")
 
-popup = manifest.get("action", {}).get("default_popup")
+# Split flow: right-click opens the action popup; the toolbar button opens the side panel.
+# A default_popup would take priority over openPanelOnActionClick, so the toolbar would
+# never open the side panel. The background worker sets the popup only for right-click.
+if manifest.get("action", {}).get("default_popup") is not None:
+    raise ValueError("The action must not define default_popup; the toolbar opens the side panel")
+popup = manifest.get("side_panel", {}).get("default_path")
 if popup != "popup.html":
-    raise ValueError("Expected popup.html as the default popup")
+    raise ValueError("Expected the side panel to reuse popup.html")
+if "sidePanel" not in manifest.get("permissions", []):
+    raise ValueError("Expected sidePanel permission")
 
 for asset in (
     popup,
     "css/popup.css",
     "js/popup.js",
+    "js/account-session.js",
+    "js/account-ui.js",
+    "js/account-popup.js",
+    "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js", "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
     "js/config.js",
     "js/api.js",
     "js/history.js",

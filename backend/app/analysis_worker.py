@@ -9,6 +9,7 @@ from google.genai import errors
 from backend.ai.gemini_provider import DailyQuotaExceeded, GeminiProvider
 from backend.ai.mock_provider import MockProvider
 from backend.ai.service import AIProvider, AIService
+from backend.ai.spend_limit import GeminiSpendPolicy, SpendLimitExceeded
 from backend.app.analysis_channel import ResultChannel
 
 
@@ -26,10 +27,15 @@ def _build_provider(
         return TfidfProvider()
 
     if mode == "gemini" and api_key and model:
+        spend_policy = GeminiSpendPolicy.from_environment(
+            cap_variable="GEMINI_PER_REQUEST_COST_CAP_USD",
+            model_id=model,
+        )
         return GeminiProvider(
             api_key=api_key,
             model=model,
             timeout_ms=15_000,
+            spend_policy=spend_policy,
         )
 
     raise RuntimeError("Provider unavailable for saved analysis")
@@ -46,7 +52,7 @@ def _failure_status(exception: Exception) -> str:
         if isinstance(current, (TimeoutError, httpx.TimeoutException)):
             return "timeout"
 
-        if isinstance(current, DailyQuotaExceeded):
+        if isinstance(current, (DailyQuotaExceeded, SpendLimitExceeded)):
             return "unavailable"
 
         if isinstance(current, errors.APIError):

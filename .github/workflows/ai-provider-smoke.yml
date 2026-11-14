@@ -47,7 +47,6 @@ jobs:
           AI_PROVIDER_SMOKE_MODEL: ${{ vars.AI_PROVIDER_SMOKE_MODEL }}
           AI_PROVIDER_SMOKE_MAX_REQUESTS: ${{ vars.AI_PROVIDER_SMOKE_MAX_REQUESTS }}
           AI_PROVIDER_SMOKE_COST_CAP_USD: ${{ vars.AI_PROVIDER_SMOKE_COST_CAP_USD }}
-          AI_PROVIDER_SMOKE_PROVIDER_BUDGET_ENFORCED: ${{ vars.AI_PROVIDER_SMOKE_PROVIDER_BUDGET_ENFORCED }}
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
           WORKFLOW_SOURCE_SHA: ${{ github.sha }}
         run: python scripts/ai_provider_smoke.py

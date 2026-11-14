@@ -2,9 +2,13 @@
   "manifest_version": 3,
   "name": "PhishLens",
   "version": "0.1.0",
+  "minimum_chrome_version": "127",
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
     "contextMenus",
+    "sidePanel",
+    "activeTab",
+    "scripting",
     "storage",
     "offscreen"
   ],
@@ -16,8 +20,10 @@
     "type": "module"
   },
   "action": {
-    "default_title": "PhishLens",
-    "default_popup": "popup.html"
+    "default_title": "PhishLens"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"

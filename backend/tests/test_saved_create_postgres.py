@@ -527,6 +527,10 @@ def test_gemini_failure_has_no_row_and_same_key_can_recover(
         saved_create, "get_ai_config",
         lambda: ("gemini", "synthetic-key", "gemini-test"),
     )
+    monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "1")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "gemini-test")
 
     def inline_inference(*, deadline, **kwargs):
         deadline.inference_remaining()

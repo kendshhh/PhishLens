@@ -27,6 +27,9 @@ class ExtensionAssetValidationTests(unittest.TestCase):
             "popup.html", "css/popup.css", "js/popup.js", "js/config.js",
             "js/api.js", "js/history.js", "background.js", "popup.js", "popup.css",
             "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
+            "js/account-session.js", "js/account-ui.js", "js/account-popup.js",
+            "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js",
+            "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
             "ai/local-analyzer.mjs", "ai/core.mjs", "ai/observations.mjs",
             "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md",
             "offscreen.html",
@@ -58,7 +61,10 @@ class ExtensionAssetValidationTests(unittest.TestCase):
         (self.extension / "manifest.json").write_text(json.dumps({
             "manifest_version": 3,
             "background": {"service_worker": "background.js", "type": "module"},
-            "action": {"default_popup": "popup.html"},
+            "minimum_chrome_version": "127",
+            "permissions": ["sidePanel"],
+            "action": {},
+            "side_panel": {"default_path": "popup.html"},
             "host_permissions": ["https://phishlens-api-ocvt.onrender.com/*"],
         }), encoding="utf-8")
 
