@@ -112,10 +112,10 @@ acceptance of current `main`, Chrome behavior, or a production release.
 Render's latest live staging deploy is `dep-dbs3jj6k1f9s73864st0`, commit
 `cd913b5c7c7cf6796b4cdb12a854c709a173a12f`. Render reports the service linked
 to `main` with auto-deploy off; this was an API-triggered deploy and is not the
-current `main` SHA (`ef9dec2ac4302fdb7afe22d5ef227f7e2ecc23e6`). The service's
+current `main` SHA (`623ede53ed52df49132452337a4bf2554e30c514`). The service's
 health-check setting is now `/health`, matching the production web service.
 
-At 2026-11-14 14:20 UTC, read-only GETs to `/version`, `/health`, `/ready`, and
+At 2026-11-14 14:37 UTC, read-only GETs to `/version`, `/health`, `/ready`, and
 `/model-info` returned the exact staging commit and `environment=staging`,
 HTTP 200 health, HTTP 200 database readiness, and `provider_mode=tfidf` with
 model SHA `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.

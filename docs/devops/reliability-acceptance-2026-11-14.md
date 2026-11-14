@@ -4,16 +4,16 @@
 
 Production Render service `phishlens-api` is configured for branch `main`,
 auto-deploy after CI checks pass, and HTTP health check `/health`. Its latest
-live deployment at the time of this audit was
-`dep-dbs6a9m417fc73f57c0g`, commit
-`ef9dec2ac4302fdb7afe22d5ef227f7e2ecc23e6`. Read-only GETs to `/version`,
+live deployment, verified 2026-11-14 14:37 UTC, was
+`dep-dbs72nu8bjmc73e6ubd0`, commit
+`623ede53ed52df49132452337a4bf2554e30c514`. Read-only GETs to `/version`,
 `/health`, and `/ready` returned the expected production SHA/environment, HTTP
 200 health contract, and HTTP 200 database readiness contract. Readiness
 confirms database connectivity only; the app does not identify its Neon branch.
 
 `/model-info` still returned `provider_mode=unavailable` and
 `accepts_tfidf_reports=false`. The exact-SHA production smoke,
-[run 43603469652](https://github.com/kendshhh/PhishLens/actions/runs/43603469652),
+[run 43605938419](https://github.com/kendshhh/PhishLens/actions/runs/43605938419),
 matched the deployed SHA and passed health/readiness, then failed at this
 pre-inference provider check. It sent zero analysis requests, made zero paid
 provider calls, and made zero database writes. This remains a production AI
