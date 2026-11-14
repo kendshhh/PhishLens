@@ -74,6 +74,8 @@ const seededRecord = {
 let historyMode = "seeded";
 let analysisMode = "mock";
 let providerFailure = false;
+// Test-only delay for single-record reads, so ordering-sensitive scenarios run deterministically.
+let detailDelayMs = 0;
 const networkEvents = [];
 const records = new Map([[seededRecord.id, structuredClone(seededRecord)]]);
 let createdRecordId = null;
@@ -111,6 +113,7 @@ const server = createServer(async (request, response) => {
     historyMode = state.historyMode ?? historyMode;
     analysisMode = state.analysisMode ?? analysisMode;
     providerFailure = state.providerFailure ?? providerFailure;
+    detailDelayMs = state.detailDelayMs ?? detailDelayMs;
     sendJson(response, 200, { ok: true });
     return;
   }
@@ -167,6 +170,7 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (request.method === "GET") {
+      if (detailDelayMs) await new Promise(resolve => setTimeout(resolve, detailDelayMs));
       sendJson(response, 200, record);
       return;
     }
@@ -797,15 +801,23 @@ async function run() {
     await captureScreenshot(page, "03-synthetic-provider-failure-preserves-input.png");
     evidence.tests.push("controlled provider failure preserves input without showing a verdict");
 
-    await setState(apiOrigin, { providerFailure: false, historyMode: "error", analysisMode: "real" });
+    // After a save, the popup shows the history-refresh error first and then loads the new
+    // report's detail in a separate request. Delay that read so the ordering is always exercised.
+    await setState(apiOrigin, { providerFailure: false, historyMode: "error", analysisMode: "real", detailDelayMs: 1500 });
     const historyFailureSubject = "Synthetic history refresh failure";
     await openCreatePanel(page);
     await page.locator("#create-subject").fill(historyFailureSubject);
     await page.locator("#create-body").fill("Synthetic provider-backed record with a controlled history refresh error.");
     await page.locator("#create-button").click();
     await page.locator("#crud-status").getByText(/Saved reports are temporarily unavailable/).waitFor();
+    // The detail read finishes after the history error is shown; wait for this report's detail.
+    await page.locator("#detail-panel").waitFor({ state: "visible" });
+    await page.locator("#detail-heading").getByText(historyFailureSubject, { exact: true }).waitFor();
     assert.equal(await page.locator("#detail-panel").isVisible(), true,
       "A confirmed save remains available when the history refresh fails");
+    assert.match(await page.locator("#crud-status").textContent(), /Saved reports are temporarily unavailable/,
+      "The history error must stay visible after the saved report opens");
+    await setState(apiOrigin, { detailDelayMs: 0 });
     assert.match(await page.locator("#detail-content").textContent(), /Provider: TF-IDF/);
     assert.equal(await page.locator("#empty").isVisible(), false,
       "History failure must not render as a successful empty list");
