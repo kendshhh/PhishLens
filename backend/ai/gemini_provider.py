@@ -8,7 +8,11 @@ from pydantic import ValidationError
 from backend.ai.errors import AnalysisUnavailableError
 from backend.ai.prompts import PROMPT_VERSION, SYSTEM_INSTRUCTION
 from backend.ai.schemas import AIAnalysisPayload, AIAnalysisResult
-from backend.ai.spend_limit import GeminiEvaluationBudget, GeminiSpendPolicy
+from backend.ai.spend_limit import (
+    GeminiEvaluationBudget,
+    GeminiSpendPolicy,
+    SpendLimitConfigurationError,
+)
 
 
 class DailyQuotaExceeded(RuntimeError):
@@ -25,6 +29,10 @@ class GeminiProvider:
         spend_policy: GeminiSpendPolicy | None = None,
         evaluation_budget: GeminiEvaluationBudget | None = None,
     ) -> None:
+        if spend_policy is None and evaluation_budget is None:
+            raise SpendLimitConfigurationError(
+                "Gemini provider requires a spend policy or evaluation budget"
+            )
         if spend_policy is not None and evaluation_budget is not None:
             raise ValueError("Choose either a per-request spend policy or an evaluation budget")
         self.client = genai.Client(

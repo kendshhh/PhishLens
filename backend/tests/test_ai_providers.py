@@ -21,6 +21,15 @@ from backend.ai.spend_limit import (
 from backend.core import config
 
 
+def _test_spend_policy(model: str) -> GeminiSpendPolicy:
+    return GeminiSpendPolicy(
+        cap_usd=Decimal(1),
+        input_usd_per_million_tokens=Decimal(1),
+        output_usd_per_million_tokens=Decimal(1),
+        model_id=model,
+    )
+
+
 @pytest.mark.parametrize("mode", ["mock", "local"])
 def test_offline_modes_need_no_google_credentials(monkeypatch, mode):
     monkeypatch.setattr(config, "load_dotenv", lambda *_args, **_kwargs: None)
@@ -57,7 +66,11 @@ def google_client(monkeypatch):
 
 def test_gemini_uses_raw_json_schema_with_bounded_single_attempt(google_client):
     client, constructor = google_client
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-3.1-flash-lite")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key",
+        model="gemini-3.1-flash-lite",
+        spend_policy=_test_spend_policy("gemini-3.1-flash-lite"),
+    )
     result = provider.analyze('{"body":"Hello"}')
     config = client.models.generate_content.call_args.kwargs["config"]
     assert config.response_json_schema["additionalProperties"] is False
@@ -74,7 +87,11 @@ def test_gemini_uses_raw_json_schema_with_bounded_single_attempt(google_client):
 
 def test_gemma_uses_explicit_prompt_schema_instead_of_unsupported_json_mode(google_client):
     client, _ = google_client
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemma-4-31b-it")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key",
+        model="gemma-4-31b-it",
+        spend_policy=_test_spend_policy("gemma-4-31b-it"),
+    )
     provider.analyze('{"body":"Hello"}')
     call = client.models.generate_content.call_args.kwargs
     assert call["config"].response_json_schema is None
@@ -97,6 +114,19 @@ def test_gemini_per_request_cap_blocks_before_paid_inference(google_client):
         provider.analyze('{"body":"Synthetic"}')
     client.models.generate_content.assert_not_called()
     assert provider.requests_started == 0
+
+
+def test_gemini_requires_spend_guard_before_creating_sdk_client(google_client):
+    client, constructor = google_client
+
+    with pytest.raises(
+        SpendLimitConfigurationError,
+        match="requires a spend policy or evaluation budget",
+    ):
+        gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+
+    constructor.assert_not_called()
+    client.models.generate_content.assert_not_called()
 
 
 def test_evaluation_budget_reserves_and_stops_before_cap_is_exceeded(google_client):
@@ -159,7 +189,9 @@ def test_evaluation_budget_requires_rates_for_exact_selected_model(monkeypatch):
 def test_bad_google_output_is_not_a_safe_verdict(google_client, text):
     client, _ = google_client
     client.models.generate_content.return_value = SimpleNamespace(text=text)
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(RuntimeError, match="empty response|invalid analysis"):
         provider.analyze("Test")
 
@@ -170,7 +202,9 @@ def test_google_errors_do_not_expose_provider_details(google_client, code):
     client.models.generate_content.side_effect = errors.APIError(
         code=code, response_json={"error": {"message": "private provider details"}},
     )
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(RuntimeError) as exc:
         provider.analyze("Test")
     assert "private" not in str(exc.value)
@@ -180,7 +214,9 @@ def test_google_errors_do_not_expose_provider_details(google_client, code):
 def test_network_timeout_is_a_controlled_failure(google_client):
     client, _ = google_client
     client.models.generate_content.side_effect = httpx.ReadTimeout("private transport detail")
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(RuntimeError, match="connection failed or timed out"):
         provider.analyze("Test")
 
@@ -192,7 +228,9 @@ def test_daily_quota_is_distinct_from_a_temporary_rate_limit(google_client):
             {"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier", "quotaValue": "20"}]},
         ]}},
     )
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(gemini_provider.DailyQuotaExceeded, match="daily request quota") as exc:
         provider.analyze("Test")
     assert "private" not in str(exc.value)
