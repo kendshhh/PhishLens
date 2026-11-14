@@ -25,7 +25,11 @@ dependency audit. The active `main` ruleset `26782191` now requires both
 GitHub's API confirmed the updated contexts. The new deterministic AI
 evaluation runs and passes on AI-changing PRs (including PR #196), but its
 workflow is still under review and the evaluation check is not yet required by
-the `main` ruleset. See [dependency-audits.md](dependency-audits.md).
+the `main` ruleset. GitHub currently reports 12 high Dependabot alerts on
+default `main`: four `pyasn1` advisories repeated across three lockfiles. PR
+#197 pins `pyasn1` to the first patched version, 0.6.5, in all three files and
+its lockfile audit passes; those default-branch alerts remain open until the
+PR is merged. See [dependency-audits.md](dependency-audits.md).
 
 ## Participant-sourced course records
 
