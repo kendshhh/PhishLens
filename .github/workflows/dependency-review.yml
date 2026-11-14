@@ -40,6 +40,12 @@ jobs:
       - name: Audit pinned Python runtime and development dependencies
         run: python -m pip_audit --no-deps -r backend/requirements-dev.txt
 
+      - name: Audit optional AI inference dependencies with OSV
+        run: >-
+          python -m pip_audit --no-deps --strict
+          --vulnerability-service osv
+          -r backend/requirements-ai.txt
+
   dependency-review:
     name: Dependency graph review (GitHub Advanced Security)
     if: github.event_name == 'pull_request'

@@ -2,21 +2,26 @@
 
 ## Current service identity
 
-Production Render service `phishlens-api` is configured to deploy from `main`
-after checks pass. At the latest read-only verification it served commit
-`76551f68ff7dc02971cf127fa82f1f35e79cc2ab`; `/health` and `/ready` both
-returned HTTP 200. Readiness confirms database connectivity only. The app did
-not expose enough information to prove which Neon branch it reached.
+Production Render service `phishlens-api` is configured for branch `main`,
+auto-deploy after CI checks pass, and HTTP health check `/health`. Its latest
+live deployment at the time of this audit was
+`dep-dbs6a9m417fc73f57c0g`, commit
+`ef9dec2ac4302fdb7afe22d5ef227f7e2ecc23e6`. Read-only GETs to `/version`,
+`/health`, and `/ready` returned the expected production SHA/environment, HTTP
+200 health contract, and HTTP 200 database readiness contract. Readiness
+confirms database connectivity only; the app does not identify its Neon branch.
 
-The production `/model-info` endpoint returned `provider_mode=unavailable`.
-The new exact-SHA smoke was run against `76551f…`; it stopped at this
-pre-inference check and made zero analysis/provider requests and zero database
-writes. This is a production AI feature failure even though process health and
-database readiness are green. The public endpoint does not disclose whether the
-cause is a missing/invalid mode or provider configuration; the Render owner
-must inspect production configuration and restore a known-good mode before a
-release can claim AI behavior acceptance. Do not paste provider credentials
-into this repo or a GitHub workflow.
+`/model-info` still returned `provider_mode=unavailable` and
+`accepts_tfidf_reports=false`. The exact-SHA production smoke,
+[run 43603469652](https://github.com/kendshhh/PhishLens/actions/runs/43603469652),
+matched the deployed SHA and passed health/readiness, then failed at this
+pre-inference provider check. It sent zero analysis requests, made zero paid
+provider calls, and made zero database writes. This remains a production AI
+feature failure while process health and database readiness are green. The
+public endpoint does not disclose whether the cause is a missing/invalid mode
+or provider configuration; the Render owner must inspect production settings
+and restore a known-good mode before a release can claim AI behavior acceptance.
+Do not paste provider credentials into this repo or a GitHub workflow.
 
 The production Render connection uses Neon endpoint
 `ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech`. After the restore
@@ -67,7 +72,7 @@ evidence. These are proposed for owner/team review, not approved commitments:
 
 | Measure | Proposed definition | Proposed target | Evidence/status |
 |---|---|---|---|
-| API availability SLI | One-minute synthetic probe passes only when `/health` and `/ready` both return the expected HTTP 200 contracts | At least 99.5% successful probes in a rolling 30-day window | The probe and retained time series are not yet configured; `/ready` alone does not prove correct database identity |
+| API availability SLI | One-minute synthetic probe passes only when `/health` and `/ready` both return the expected HTTP 200 contracts | At least 99.5% successful probes in a rolling 30-day window | A one-time read-only check passed. Render returned no HTTP request-count or latency series in the metrics query; a retained probe time series is not configured. `/ready` alone does not prove correct database identity |
 | Feature SLI | Fixed synthetic analysis returns the expected TF-IDF classification and risk level, with the pinned model SHA | At least 99% passing samples in a rolling 30-day window | The two-case deploy smoke is implemented locally but not yet deployed; current staging CRUD acceptance is a single run |
 | RPO | Maximum age of a recoverable database point | 1 hour proposed | Not measured; six-hour history retention and no verified backup schedule do not prove a one-hour RPO |
 | RTO | Time from declared database incident to production feature recovery | 4 hours proposed | Not measured; the restore rehearsal changed branch topology and did not measure user-facing outage/recovery |
