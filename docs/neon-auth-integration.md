@@ -62,6 +62,10 @@ pending save key. Do not automatically replay uncertain POSTs after login.
 
 ## Acceptance before rollout
 
+Use the [backend acceptance and cleanup procedure](auth-backend-acceptance-runbook.md)
+to prepare the private run record, bounded API steps and read-only cleanup preview.
+The procedure is preparation only and requires separate live-write authorization.
+
 1. Review offline signed-token and API ownership tests, plus existing regressions.
 2. Apply migration using migration credentials only on the confirmed isolated
    auth-enabled test database; runtime credentials must have only needed grants.
