@@ -155,3 +155,32 @@ Merged [PR #56](https://github.com/kendshhh/PhishLens/pull/56) prepared the agen
 Kendra reports that the instructor's verbal guidance on November 7 was to continue benchmarking the AI. Kendra also reports that the instructor said the DevOps work earned points for an automated secretary with a manual checklist for a human. This is a paraphrase; the exact score and rubric entry were not supplied.
 
 No actual Week 2 standup entries, retro, whole-team rehearsal, or attendance record were supplied. #41 remains open for those real process records and any exact score/rubric detail.
+
+## November 14 — Kendra recap review and current deployment identity
+
+Kendra's asynchronous review of the Sprint 2 consultation recap is recorded in
+[issue #41](https://github.com/kendshhh/PhishLens/issues/41#issuecomment-6877425867).
+The recap distinguishes component and historical staging evidence from the
+selected deployment. PR #117's November 4 run `41745040091` is a synthetic
+staging acceptance record; it does not establish current-main production CRUD.
+Issue [#42](https://github.com/kendshhh/PhishLens/issues/42) remains open for
+the selected deployment's create/list/detail, notes/feedback PATCH, fresh
+reread, delete, and final 404 evidence.
+
+A read-only GET probe on November 14 found production `/version` at current
+`main` SHA `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`; `/health` returned `ok`,
+`/ready` returned `ready` with database `connected`, and `/model-info` reported
+`provider_mode=unavailable`. Staging reported SHA
+`cd913b5c7c7cf6796b4cdb12a854c709a173a12f`, `environment=staging`, readiness
+with database connectivity, and TF-IDF mode with model hash
+`a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`. These
+GET checks made no application write or paid provider request. Neither
+readiness response identifies its Neon branch/database; the mapping remains
+unverified, and the staging seed/auth acceptance is not claimed from health
+checks.
+
+The Sprint 2 board was refreshed separately. The recap's retrospective bullets
+remain a proposal, not a team-approved retro. Original async standups, dated
+consultation attendance and individual presentations still require
+participant-sourced records. The recorded November 7 instructor feedback is a
+paraphrase only; no exact wording, score, or rubric entry is available.
