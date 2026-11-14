@@ -2,8 +2,8 @@
 
 import json
 from html.parser import HTMLParser
-from urllib.parse import unquote, urlsplit
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1] / "extension"
 
@@ -33,6 +33,10 @@ for asset in (
     popup,
     "css/popup.css",
     "js/popup.js",
+    "js/account-session.js",
+    "js/account-ui.js",
+    "js/account-popup.js",
+    "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js", "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
     "js/config.js",
     "js/api.js",
     "js/history.js",

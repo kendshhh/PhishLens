@@ -91,6 +91,7 @@ def test_model_info_requires_no_database(monkeypatch):
     with TestClient(main.app) as client:
         info = client.get("/model-info").json()
     assert info["accepts_tfidf_reports"] is True
+    assert info["supports_required_provider"] is True
     assert info["model_sha256"] == MODEL_SHA256
 
 
