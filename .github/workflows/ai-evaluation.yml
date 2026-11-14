@@ -1,0 +1,106 @@
+name: Deterministic AI evaluation
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-evaluation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect AI evaluation changes
+    runs-on: ubuntu-latest
+    outputs:
+      ai_changed: ${{ steps.detect.outputs.ai_changed }}
+    steps:
+      - name: Check out comparison history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect AI-related changes
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "ai_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ || ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Unable to identify the exact AI change range." >&2
+            exit 1
+          fi
+          changed_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|tfidf_provider)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|train_live_reevaluators)\.py$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
+            echo "ai_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ai_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  evaluate:
+    if: needs.changes.outputs.ai_changed == 'true'
+    needs: changes
+    name: Deterministic AI evaluation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AI_MODE: mock
+      SOURCE_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Check out evaluated source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install pinned backend dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+
+      - name: Prepare evidence directory
+        run: mkdir -p output/ai-evaluation
+
+      - name: Test AI contracts and spend caps with mocked provider
+        run: >-
+          python -m pytest
+          backend/tests/test_ai_providers.py
+          backend/tests/test_ai_service.py
+          backend/tests/test_tfidf_provider.py
+          --junitxml=output/ai-evaluation/contract-tests.xml
+
+      - name: Run the deterministic TF-IDF development cohort
+        env:
+          AI_MODE: tfidf
+        run: |
+          set -euo pipefail
+          mkdir -p output/ai-evaluation
+          python scripts/benchmark_ai.py --models tfidf --repeats 1 --limit 0 --pause 0 \
+            | tee output/ai-evaluation/development-benchmark.jsonl
+          python -m scripts.ai_evaluation_summary output/ai-evaluation/development-benchmark.jsonl
+
+      - name: Preserve redacted evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Deterministic-AI-Evaluation
+          path: output/ai-evaluation/
+          if-no-files-found: warn
+          retention-days: 30

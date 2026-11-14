@@ -98,6 +98,11 @@ def test_benchmark_stops_at_daily_quota_without_inventing_missing_scores(monkeyp
     monkeypatch.setattr(benchmark_ai, "get_ai_config", lambda: ("gemini", "synthetic-key", "test-model"))
     monkeypatch.setenv("AI_MODE", "mock")
     monkeypatch.setenv("GEMINI_MODEL", "original-test-model")
+    monkeypatch.setenv("GEMINI_PER_RUN_COST_CAP_USD", "0.05")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "0.4")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1.2")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "test-model")
+    monkeypatch.setenv("GEMINI_MAX_REQUESTS", "41")
     monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(
         Process=lambda: SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=1024)),
         virtual_memory=lambda: SimpleNamespace(total=1024**3),
