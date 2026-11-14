@@ -21,11 +21,12 @@ const expectedTests = [
   "Clear during a local scan prevents a stale result from returning",
   "Cancel retains the selection and retry recovers from a controlled local failure",
   "synthetic saved analysis can be created and viewed",
+  "synthetic saved analysis edit survives popup reopen and reread",
+  "deleted synthetic analysis stays absent after popup reopen",
   "synthetic provider-backed report shows its returned classification and provenance",
   "synthetic report remains in server history after popup reopen",
   "controlled provider failure preserves input without showing a verdict",
   "history refresh failure preserves the confirmed saved report and shows a warning",
-  "synthetic saved analysis can be edited and deleted",
   "empty history and history API failure states render clearly",
 ];
 let sourceCommit = process.env.SOURCE_COMMIT ?? null;
@@ -301,8 +302,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 """
 worker_path.write_text(worker, encoding="utf-8")
 `;
-  const explicitPython = Boolean(process.env.PYTHON);
-  const python = process.env.PYTHON ?? (process.platform === "win32" ? "py" : "python3");
+  const explicitPython = process.env.PHISHLENS_PYTHON ?? process.env.PYTHON;
+  const python = explicitPython ?? (process.platform === "win32" ? "py" : "python3");
   const pythonArgs = process.platform === "win32" && !explicitPython ? ["-3.12"] : [];
   execFileSync(python, [...pythonArgs, "-c", prepare, archivePath, destination, apiOrigin, evidencePath], { stdio: "inherit" });
 }
@@ -572,17 +573,40 @@ async function run() {
     await page.getByText("Changes saved successfully.").waitFor();
     assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
     assert.equal(records.get(createdRecordId).feedback, "false_positive");
+    await page.close();
 
-    await page.locator("#detail-content").getByRole("button", { name: "Delete report" }).click();
-    assert.equal(await page.evaluate(() => document.activeElement?.id), "delete-heading");
-    await page.locator("#cancel-delete").click();
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Delete report");
-    await page.locator("#detail-content").getByRole("button", { name: "Delete report" }).click();
-    await page.locator("#confirm-delete").click();
-    await page.getByText("Report deleted.").waitFor();
+    const reopenedPage = await context.newPage();
+    await reopenedPage.goto(`chrome-extension://${extensionId}/popup.html`);
+    await reopenedPage.locator("#show-reports").click();
+    await reopenedPage.locator("#load-history").click();
+    await reopenedPage.locator("#history-list li").getByText("Synthetic browser CRUD").waitFor();
+    await reopenedPage.locator("#history-list li").getByRole("button", { name: "View Synthetic browser CRUD" }).click();
+    await reopenedPage.locator("#detail-panel").waitFor({ state: "visible" });
+    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Edit notes" }).waitFor();
+    await reopenedPage.locator("#detail-content").getByText("Synthetic browser note", { exact: true }).waitFor();
+    await reopenedPage.locator("#detail-content").getByText("Flagged, but I think it’s legitimate", { exact: true }).waitFor();
+    assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
+    assert.equal(records.get(createdRecordId).feedback, "false_positive");
+    evidence.tests.push("synthetic saved analysis edit survives popup reopen and reread");
+
+    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Delete report" }).click();
+    assert.equal(await reopenedPage.evaluate(() => document.activeElement?.id), "delete-heading");
+    await reopenedPage.locator("#cancel-delete").click();
+    assert.equal(await reopenedPage.evaluate(() => document.activeElement?.textContent), "Delete report");
+    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Delete report" }).click();
+    await reopenedPage.locator("#confirm-delete").click();
+    await reopenedPage.getByText("Report deleted.").waitFor();
     assert.equal(records.has(createdRecordId), false, "Synthetic delete must remove the local API record");
-    await page.locator("#report-search").fill('');
     evidence.tests.push("synthetic saved analysis can be edited and deleted");
+    await reopenedPage.close();
+
+    page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/popup.html`);
+    await page.locator("#show-reports").click();
+    await page.locator("#load-history").click();
+    await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    assert.equal(await page.locator("#history-list li").getByText("Synthetic browser CRUD", { exact: true }).count(), 0);
+    evidence.tests.push("deleted synthetic analysis stays absent after popup reopen");
 
     await setState(apiOrigin, { historyMode: "seeded", analysisMode: "real", providerFailure: false });
     const providerFixtureSubject = "Synthetic provider fixture <img src=x>";

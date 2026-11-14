@@ -275,6 +275,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
   function openEdit() {
     if (busy || !selected) return;
+    detailRequest++;
     ui.notes.value = selected.notes || "";
     ui.feedback.value = selected.feedback ?? 'none';
     ui.correction.open = ['false_positive', 'false_negative'].includes(selected.feedback);
@@ -323,6 +324,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     const operationVersion = accountVersion;
     setBusy(true);
     try {
@@ -358,6 +360,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     const operationVersion = accountVersion;
     setBusy(true);
     try {

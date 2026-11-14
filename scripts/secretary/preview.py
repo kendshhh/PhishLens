@@ -271,6 +271,12 @@ def package(api, sha, number, config, output):
     with ZipFile(output) as archive:
         if archive.testzip() is not None:
             raise RuntimeError("Invalid extension archive")
+    # GitHub's artifact digest covers the enclosing upload archive, not this inner ZIP.
+    # Publish a conventional sidecar so acceptance reviewers can verify the ZIP itself.
+    package_digest = hashlib.sha256(output.read_bytes()).hexdigest()
+    output.with_suffix(output.suffix + ".sha256").write_text(
+        f"{package_digest}  {output.name}\n", encoding="ascii"
+    )
 
 
 def eligibility(pr, files, run, repo, opt_in_label=None):
