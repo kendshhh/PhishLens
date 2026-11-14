@@ -66,3 +66,35 @@ stop clients and account for token expiry before final mapping deletion checks.
 Use the separately reviewed backend acceptance procedure for exact bounded live
 requests. #48's demo-mode TF-IDF lifecycle is a different acceptance task. The
 local RLS spike is separate and has not changed the Auth implementation.
+
+## Staging ZIP correction after review
+
+Wilberr's review of `7426a90` identified missing unconditional popup imports in
+the trusted staging packager. The follow-up is based on `27ad26f`, including
+Kendra's main reconciliation and the OpenTelemetry audit fix.
+
+The packager now conditionally includes the Neon integration, adapter and config,
+the bundled SDK, and its notices when the popup imports Neon modules. Legacy
+account-only sources retain their existing inventory. The SDK has a one-megabyte
+bound (the bundled file exceeds the default 512 KB limit), including the existing
+size/digest-verified Git blob fallback. The correction copies config unchanged:
+it does not enable Auth or expand host permissions.
+
+The new stdlib unittest builds a preview ZIP using the real popup and JavaScript
+module sources through a mocked GitHub API, then traverses relative static
+imports/re-exports inside the ZIP. Large non-JavaScript model/runtime files are
+fixture bytes; the check does not claim to execute the scanner or popup. It also
+proves that removing config, integration or SDK modules is detected, legacy
+sources still package, and an oversized SDK is rejected. Before the code fix,
+the regression failed on missing `js/auth-config.js`.
+
+Local validation: all four new tests passed; full script unittest discovery
+passed **161 tests**. Ruff and whitespace checks passed. All GitHub/Render control
+plane behavior in these tests is mocked; no hosted operation was performed.
+
+The privileged Secretary workflow reads its controller from main, not this PR.
+These PR-local results do not update that trusted controller or rebuild a hosted
+artifact. A reviewed controller promotion and separately authorized deployment
+remain necessary before claiming the hosted preview path uses this correction.
+No workflow trust boundary, environment approval, configuration or shared data
+was changed. Wilberr's re-review and final Chrome/package acceptance remain pending.
