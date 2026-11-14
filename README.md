@@ -31,6 +31,8 @@ with `provider_mode=tfidf`. Both `/health` and `/ready` returned HTTP 200;
 readiness reported a connected database but does not identify its Neon branch.
 Current DevOps acceptance gaps and named handoffs are tracked in the
 [Sprint 1–3 closeout](docs/devops/kendra-sprint-1-3-status-2026-11-14.md).
+The isolated Chrome software audit and synthetic browser evidence for Issue #131
+are recorded in [the installed-browser audit](docs/frontend/issue-131/audit.md).
 
 ## Planned Features
 
@@ -222,9 +224,26 @@ For local development, set `API_BASE_URL` in `extension/js/config.js` to
 `host_permissions`. Reload the extension after changing configuration. The default
 source package targets production; the separate staging package targets staging.
 
-Then load the `extension` folder as an unpacked Chrome extension, highlight email text,
-and choose **Analyze selection with VeriQo**. The popup displays the model result or
-reports a configuration/provider error.
+## Install in Chrome
+
+PhishLens requires Chrome 127 or newer. There is no Chrome Web Store listing yet.
+To install from the public GitHub repository:
+
+1. Download the repository ZIP and extract it to a folder you will keep.
+2. From that folder, run `npm run phishlens -- setup-models --download`. This
+   downloads and verifies about 1.1 GB of local LLM weights; without them, scans
+   report **Uncertain** when the full review cannot run.
+3. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
+   and select the extracted `extension` folder.
+4. To check an email, select its text, right-click, and choose **Analyze selection
+   with PhishLens**. The PhishLens popup opens with your selection and the result.
+5. Optionally, pin PhishLens from Chrome's Extensions menu. Its toolbar button opens
+   the same view in the side panel, which stays open while you read email.
+
+PhishLens shows a ready state before scanning, progress while local models load,
+a result or an explicit uncertainty/error state, and a Clear action. Scanning stays
+in Chrome. The full local review also requires WebGPU with shader-f16 support.
+Saving a report or refreshing shared history contacts the configured API.
 
 ## Configuration and Secrets
 
