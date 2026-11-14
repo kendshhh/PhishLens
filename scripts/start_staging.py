@@ -8,13 +8,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from backend.core.config import get_database_url
 from sqlalchemy.engine import URL, make_url
+
+from backend.core.config import get_database_url
 
 DNS_TIMEOUT_SECONDS = 15
 DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
+
+# Pin hosted staging to the verified `pr-58-staging` Neon endpoint. Updating this
+# pin requires a reviewed Neon project/branch mapping; Render variables alone
+# must not be able to redirect startup to production or another branch.
+STAGING_NEON_ENDPOINT_ID = "ep-soft-fog-b3orfa8a"
+STAGING_NEON_ENDPOINT_SUFFIX = ".c-4.ap-southeast-1.aws.neon.tech"
+STAGING_NEON_ENDPOINT_HOSTS = frozenset({
+    f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
+    f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
+})
 
 
 def resolve_ipv4_addresses(host: str, port: int) -> list[tuple]:
@@ -73,7 +84,10 @@ def pin_ipv4_addresses(database: URL) -> URL:
 
 def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: str, app_role: str) -> None:
     """Reject production, owner-runtime, or mixed-branch staging credentials."""
-    if not expected_host or app_role != "phishlens_staging_app":
+    normalized_host = expected_host.rstrip(".").lower()
+    if normalized_host not in STAGING_NEON_ENDPOINT_HOSTS:
+        raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
+    if app_role != "phishlens_staging_app":
         raise SystemExit("Hosted staging requires an isolated host and the phishlens_staging_app role.")
     if runtime.database != "phishlens_dev" or migration.database != "phishlens_dev":
         raise SystemExit("Staging requires both database URLs to target phishlens_dev.")
