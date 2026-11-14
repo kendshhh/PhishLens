@@ -127,8 +127,10 @@ records.
   target. Render metadata still identifies separate `phishlens-api` and
   `phishlens-staging` services on source branch `main`; production autodeploys
   after checks and staging autodeploy is off. Effective Render API-key scopes
-  also remain unverified. Do not run hosted writes or promotion until the
-  database targets are verified.
+  also remain unverified. The installed Render CLI v2.34.0 could not be used
+  as a read-only fallback because its saved token is expired; no login or
+  secret-value inspection was performed. Do not run hosted writes or promotion
+  until the database targets are verified.
 - [#41](https://github.com/kendshhh/PhishLens/issues/41): the repository still
   lacks participant-sourced async standups, a retrospective, whole-team
   rehearsal/attendance, and exact instructor feedback. These cannot be recreated
