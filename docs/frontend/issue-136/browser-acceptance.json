@@ -255,7 +255,7 @@
     "requested": "chromium",
     "used": "msedge",
     "mode": "headed",
-    "reason": "browserType.launchPersistentContext: Executable doesn't exist at C:\\Users\\ACER Nitro V15\\AppData\\Local\\ms-playwright\\chromium-1254\\chrome-win64\\chrome.exe"
+    "reason": "browserType.launchPersistentContext: Executable doesn't exist at <redacted local Playwright Chromium path>"
   },
   "local_analysis_outcome": "Uncertain — check before acting",
   "keyboard_tab_order": {
