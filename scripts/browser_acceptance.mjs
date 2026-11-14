@@ -23,6 +23,8 @@ const expectedTests = [
   "synthetic saved analysis can be created and viewed",
   "synthetic saved analysis edit survives popup reopen and reread",
   "deleted synthetic analysis stays absent after popup reopen",
+  "keyboard Tab order reaches only visible, named controls with a focus indicator",
+  "keyboard-only report open, edit cancel and delete cancel restore focus without changes",
   "synthetic provider-backed report shows its returned classification and provenance",
   "synthetic report remains in server history after popup reopen",
   "controlled provider failure preserves input without showing a verdict",
@@ -607,6 +609,95 @@ async function run() {
     await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
     assert.equal(await page.locator("#history-list li").getByText("Synthetic browser CRUD", { exact: true }).count(), 0);
     evidence.tests.push("deleted synthetic analysis stays absent after popup reopen");
+
+    // Keyboard-only checks: no clicks or programmatic focus, only Tab/Shift+Tab/Enter/Space.
+    const keyboardPage = await context.newPage();
+    await keyboardPage.goto(`chrome-extension://${extensionId}/popup.html`);
+    await keyboardPage.locator("#show-check").waitFor({ state: "visible" });
+    const describeFocus = () => keyboardPage.evaluate(() => {
+      const element = document.activeElement;
+      if (!element || element === document.body) return null;
+      const box = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      const parentStyle = element.parentElement ? getComputedStyle(element.parentElement) : null;
+      const labelled = element.getAttribute("aria-labelledby")
+        ?.split(/\s+/).map(id => document.getElementById(id)?.textContent ?? "").join(" ");
+      const name = (element.getAttribute("aria-label") || labelled || element.labels?.[0]?.textContent
+        || element.textContent || element.getAttribute("title") || "").replace(/\s+/g, " ").trim();
+      return {
+        id: element.id, tag: element.tagName.toLowerCase(), name,
+        visible: box.width > 0 && box.height > 0 && style.visibility !== "hidden",
+        indicator: style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0
+          || Boolean(parentStyle && parentStyle.outlineStyle !== "none" && parseFloat(parentStyle.outlineWidth) > 0),
+      };
+    });
+    const tabUntil = async (matches, { reverse = false, limit = 60 } = {}) => {
+      for (let step = 0; step < limit; step++) {
+        await keyboardPage.keyboard.press(reverse ? "Shift+Tab" : "Tab");
+        const focused = await describeFocus();
+        if (focused && matches(focused)) return focused;
+      }
+      throw new Error("Keyboard focus did not reach the expected control");
+    };
+    const checkTabOrder = async view => {
+      // Walk the full Tab cycle: continue past the end of the page so focus wraps to the top,
+      // and stop once a control repeats.
+      const seen = [];
+      let outsidePage = 0;
+      for (let step = 0; step < 80; step++) {
+        await keyboardPage.keyboard.press("Tab");
+        const focused = await describeFocus();
+        if (!focused) {
+          if (++outsidePage > 3) break;
+          continue;
+        }
+        const key = `${focused.tag}#${focused.id}:${focused.name}`;
+        if (seen.includes(key)) break;
+        seen.push(key);
+        assert.ok(focused.visible, `${view}: keyboard focus reached a hidden control (${key})`);
+        assert.ok(focused.name, `${view}: focused control has no accessible name (${key})`);
+        assert.ok(focused.indicator, `${view}: focused control has no visible focus indicator (${key})`);
+      }
+      assert.ok(seen.length >= 3, `${view}: Tab must reach the popup controls`);
+      return seen;
+    };
+    evidence.keyboard_tab_order = { check: await checkTabOrder("Check email view") };
+    await tabUntil(focused => focused.id === "show-reports");
+    await keyboardPage.keyboard.press("Enter");
+    await keyboardPage.locator("#reports-view").waitFor({ state: "visible" });
+    assert.equal(await keyboardPage.locator("#show-reports").getAttribute("aria-pressed"), "true");
+    await tabUntil(focused => focused.id === "load-history");
+    await keyboardPage.keyboard.press("Enter");
+    await keyboardPage.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    evidence.keyboard_tab_order.reports = await checkTabOrder("Saved reports view");
+    evidence.tests.push("keyboard Tab order reaches only visible, named controls with a focus indicator");
+
+    const keyboardRecord = [...records.values()].find(record => record.subject === "Synthetic account notice");
+    assert.ok(keyboardRecord, "Seeded synthetic report must be available for the keyboard check");
+    const keyboardRecordBefore = JSON.stringify(keyboardRecord);
+    await tabUntil(focused => focused.name === "View Synthetic account notice");
+    await keyboardPage.keyboard.press("Enter");
+    await keyboardPage.locator("#detail-panel").waitFor({ state: "visible" });
+    assert.equal((await describeFocus())?.id, "detail-heading");
+    await tabUntil(focused => focused.tag === "button" && focused.name === "Edit notes");
+    await keyboardPage.keyboard.press("Enter");
+    assert.equal((await describeFocus())?.id, "edit-notes");
+    await keyboardPage.keyboard.type("Unsaved keyboard note");
+    await tabUntil(focused => focused.id === "cancel-edit");
+    await keyboardPage.keyboard.press("Enter");
+    assert.equal(await keyboardPage.locator("#edit-form").isVisible(), false);
+    assert.equal((await describeFocus())?.name, "Edit notes", "Cancelling an edit must return focus to Edit notes");
+    await tabUntil(focused => focused.tag === "button" && focused.name === "Delete report");
+    await keyboardPage.keyboard.press("Space");
+    assert.equal((await describeFocus())?.id, "delete-heading");
+    await tabUntil(focused => focused.id === "cancel-delete", { limit: 5 });
+    await keyboardPage.keyboard.press("Enter");
+    assert.equal(await keyboardPage.locator("#delete-confirm").isVisible(), false);
+    assert.equal((await describeFocus())?.name, "Delete report", "Cancelling a delete must return focus to Delete report");
+    assert.equal(JSON.stringify(records.get(keyboardRecord.id)), keyboardRecordBefore,
+      "Keyboard edit and delete cancellation must not change the saved report");
+    await keyboardPage.close();
+    evidence.tests.push("keyboard-only report open, edit cancel and delete cancel restore focus without changes");
 
     await setState(apiOrigin, { historyMode: "seeded", analysisMode: "real", providerFailure: false });
     const providerFixtureSubject = "Synthetic provider fixture <img src=x>";
