@@ -686,6 +686,8 @@ async function run() {
     await captureScreenshot(page, "04-synthetic-history-refresh-failure-keeps-saved-report.png");
     evidence.tests.push("history refresh failure preserves the confirmed saved report and shows a warning");
 
+    await page.locator("#back-to-reports").click();
+    await page.locator("#detail-panel").waitFor({ state: "hidden" });
     await setState(apiOrigin, { historyMode: "empty" });
     await page.locator("#load-history").click();
     await page.locator("#empty").waitFor({ state: "visible" });
