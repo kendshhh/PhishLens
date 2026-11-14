@@ -581,9 +581,9 @@ async function run() {
     await reopenedPage.locator("#history-list li").getByText("Synthetic browser CRUD").waitFor();
     await reopenedPage.locator("#history-list li").getByRole("button", { name: "View Synthetic browser CRUD" }).click();
     await reopenedPage.locator("#detail-panel").waitFor({ state: "visible" });
-    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Edit notes and feedback" }).waitFor();
+    await reopenedPage.locator("#detail-content").getByRole("button", { name: "Edit notes" }).waitFor();
     await reopenedPage.locator("#detail-content").getByText("Synthetic browser note", { exact: true }).waitFor();
-    await reopenedPage.locator("#detail-content").getByText("False positive", { exact: true }).waitFor();
+    await reopenedPage.locator("#detail-content").getByText("Flagged, but I think it’s legitimate", { exact: true }).waitFor();
     assert.equal(records.get(createdRecordId).notes, "Synthetic browser note");
     assert.equal(records.get(createdRecordId).feedback, "false_positive");
     evidence.tests.push("synthetic saved analysis edit survives popup reopen and reread");
