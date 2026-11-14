@@ -20,6 +20,7 @@ from backend.ai.schemas import (
     AnalysisValidationErrorResponse,
 )
 from backend.ai.service import AIService
+from backend.ai.spend_limit import GeminiSpendPolicy, SpendLimitExceeded
 from backend.app.routers.history import router as history_router
 from backend.core.config import PROJECT_ROOT, get_ai_config
 
@@ -118,7 +119,15 @@ def _get_cached_ai_service() -> tuple[AIService, Literal["mock", "gemini", "loca
         return AIService(LocalProvider(cache_dir=cache_dir)), "local"
     if api_key is None or model is None:
         raise RuntimeError("Gemini configuration is incomplete")
-    return AIService(GeminiProvider(api_key=api_key, model=model)), "gemini"
+    spend_policy = GeminiSpendPolicy.from_environment(
+        cap_variable="GEMINI_PER_REQUEST_COST_CAP_USD",
+        model_id=model,
+    )
+    return AIService(GeminiProvider(
+        api_key=api_key,
+        model=model,
+        spend_policy=spend_policy,
+    )), "gemini"
 
 
 @app.get("/health")
@@ -156,6 +165,20 @@ def model_info():
                     "supports_required_provider": True,
                     "alert_threshold_score": sigmoid(INTERCEPT), "accepts_tfidf_reports": True,
                     "accepts_local_reviews": True}
+        if mode == "gemini":
+            _, _, model = get_ai_config()
+            policy = GeminiSpendPolicy.from_environment(
+                cap_variable="GEMINI_PER_REQUEST_COST_CAP_USD",
+                model_id=model,
+            )
+            return {
+                "provider_mode": mode,
+                "model": model,
+                "spend_guard_enabled": True,
+                "per_request_cost_cap_usd": str(policy.cap_usd.normalize()),
+                "accepts_tfidf_reports": False,
+                "accepts_local_reviews": False,
+            }
     except (RuntimeError, OSError, ValueError, KeyError):
         pass
     return {
@@ -220,6 +243,12 @@ def analyze_email(
             "Analysis temporarily unavailable",
         )
     except DailyQuotaExceeded:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Analysis temporarily unavailable",
+        )
+    except SpendLimitExceeded:
         return analysis_error(
             503,
             "analysis_unavailable",

@@ -33,6 +33,7 @@ from backend.ai.evaluation_cases import CASES, CASESET_VERSION
 from backend.ai.gemini_provider import DailyQuotaExceeded
 from backend.ai.prompts import PROMPT_VERSION
 from backend.ai.service import AIService
+from backend.ai.spend_limit import GeminiEvaluationBudget, SpendLimitExceeded
 from backend.core.config import get_ai_config
 
 
@@ -81,6 +82,7 @@ def worker(args) -> int:
     selected = CASES[:args.limit] if args.limit else CASES
     frozen = json.dumps([asdict(case) for case in selected], sort_keys=True).encode()
     hosted = args.worker not in {"tfidf", "local"}
+    spend_budget = None
     os.environ["AI_MODE"] = "gemini" if hosted else args.worker
     if hosted:
         os.environ["GEMINI_MODEL"] = args.worker
@@ -95,7 +97,11 @@ def worker(args) -> int:
         from backend.ai.gemini_provider import GeminiProvider
 
         _, api_key, model = get_ai_config()
-        provider = GeminiProvider(api_key=api_key, model=model)
+        spend_budget = GeminiEvaluationBudget.from_environment(
+            expected_requests=1 + args.repeats * len(selected),
+            model_id=model,
+        )
+        provider = GeminiProvider(api_key=api_key, model=model, evaluation_budget=spend_budget)
     service = None
     process = psutil.Process() if psutil else None
     peak = process.memory_info().rss if process else None
@@ -125,6 +131,8 @@ def worker(args) -> int:
             print(json.dumps({"event": "cold_error", "model": args.worker, "error": str(exc)}), flush=True)
             if isinstance(exc, DailyQuotaExceeded):
                 aborted = "daily_quota_exhausted"
+            elif isinstance(exc, SpendLimitExceeded):
+                aborted = "cost_cap_reached"
             elif service is None:
                 aborted = "service_initialization_failed"
         for repeat in range(args.repeats):
@@ -145,6 +153,8 @@ def worker(args) -> int:
                     row["error"] = str(exc)
                     if isinstance(exc, DailyQuotaExceeded):
                         aborted = "daily_quota_exhausted"
+                    elif isinstance(exc, SpendLimitExceeded):
+                        aborted = "cost_cap_reached"
                 row["seconds"] = round(perf_counter() - start, 6)
                 rows.append(row)
                 print(json.dumps({"event": "case", "model": args.worker, **row}), flush=True)
@@ -178,6 +188,9 @@ def worker(args) -> int:
         "hosted_pause_seconds": args.pause if hosted else 0,
         "supported_labels": ["legitimate", "spam", "phishing"] if hosted else ["legitimate", "phishing"],
         "cold_seconds": cold_seconds, "peak_process_rss_mb": peak / 1024**2 if peak is not None else None,
+        "spend_guard": spend_budget.summary() if spend_budget is not None else {
+            "provider_calls": 0, "status": "not_applicable",
+        },
         "machine": {"os": platform.platform(), "python": platform.python_version(),
                     "logical_cpus": os.cpu_count(),
                     "ram_gb": round(psutil.virtual_memory().total / 1024**3, 2) if psutil else None},
@@ -197,6 +210,9 @@ def main() -> int:
     args = parser.parse_args()
     if args.repeats < 1 or args.limit < 0 or args.pause < 0:
         parser.error("repeats must be positive; limit and pause must be nonnegative")
+    paid_models = [model for model in args.models if model not in {"tfidf", "local"}]
+    if len(paid_models) > 1:
+        parser.error("--models accepts at most one paid Gemini model per invocation")
     if args.worker:
         try:
             return worker(args)

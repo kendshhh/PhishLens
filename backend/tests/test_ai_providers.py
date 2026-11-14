@@ -1,6 +1,7 @@
 import json
 import sys
 from contextlib import nullcontext
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -11,7 +12,22 @@ from google.genai import errors
 from backend.ai import gemini_provider
 from backend.ai.local_provider import EXPECTED_LABELS, MODEL_REVISION, LocalProvider
 from backend.ai.service import AIService
+from backend.ai.spend_limit import (
+    GeminiEvaluationBudget,
+    GeminiSpendPolicy,
+    SpendLimitConfigurationError,
+    SpendLimitExceeded,
+)
 from backend.core import config
+
+
+def _test_spend_policy(model: str) -> GeminiSpendPolicy:
+    return GeminiSpendPolicy(
+        cap_usd=Decimal(1),
+        input_usd_per_million_tokens=Decimal(1),
+        output_usd_per_million_tokens=Decimal(1),
+        model_id=model,
+    )
 
 
 @pytest.mark.parametrize("mode", ["mock", "local"])
@@ -50,7 +66,11 @@ def google_client(monkeypatch):
 
 def test_gemini_uses_raw_json_schema_with_bounded_single_attempt(google_client):
     client, constructor = google_client
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-3.1-flash-lite")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key",
+        model="gemini-3.1-flash-lite",
+        spend_policy=_test_spend_policy("gemini-3.1-flash-lite"),
+    )
     result = provider.analyze('{"body":"Hello"}')
     config = client.models.generate_content.call_args.kwargs["config"]
     assert config.response_json_schema["additionalProperties"] is False
@@ -67,7 +87,11 @@ def test_gemini_uses_raw_json_schema_with_bounded_single_attempt(google_client):
 
 def test_gemma_uses_explicit_prompt_schema_instead_of_unsupported_json_mode(google_client):
     client, _ = google_client
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemma-4-31b-it")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key",
+        model="gemma-4-31b-it",
+        spend_policy=_test_spend_policy("gemma-4-31b-it"),
+    )
     provider.analyze('{"body":"Hello"}')
     call = client.models.generate_content.call_args.kwargs
     assert call["config"].response_json_schema is None
@@ -75,11 +99,99 @@ def test_gemma_uses_explicit_prompt_schema_instead_of_unsupported_json_mode(goog
     assert '"classification"' in call["contents"]
 
 
+def test_gemini_per_request_cap_blocks_before_paid_inference(google_client):
+    client, _ = google_client
+    policy = GeminiSpendPolicy(
+        cap_usd=Decimal("0.000001"),
+        input_usd_per_million_tokens=Decimal(1),
+        output_usd_per_million_tokens=Decimal(1),
+        model_id="gemini-test",
+    )
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=policy,
+    )
+    with pytest.raises(SpendLimitExceeded, match="request exceeds"):
+        provider.analyze('{"body":"Synthetic"}')
+    client.models.generate_content.assert_not_called()
+    assert provider.requests_started == 0
+
+
+def test_gemini_requires_spend_guard_before_creating_sdk_client(google_client):
+    client, constructor = google_client
+
+    with pytest.raises(
+        SpendLimitConfigurationError,
+        match="requires a spend policy or evaluation budget",
+    ):
+        gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+
+    constructor.assert_not_called()
+    client.models.generate_content.assert_not_called()
+
+
+def test_evaluation_budget_reserves_and_stops_before_cap_is_exceeded(google_client):
+    client, _ = google_client
+    policy = GeminiSpendPolicy(
+        cap_usd=Decimal(1),
+        input_usd_per_million_tokens=Decimal(1),
+        output_usd_per_million_tokens=Decimal(1),
+        model_id="gemini-test",
+    )
+    estimate = policy.estimate(
+        contents='{"body":"Synthetic"}',
+        system_instruction=gemini_provider.SYSTEM_INSTRUCTION,
+        response_schema=gemini_provider.AIAnalysisPayload.model_json_schema(),
+        max_output_tokens=2_048,
+    )
+    budget = GeminiEvaluationBudget(
+        policy=GeminiSpendPolicy(
+            cap_usd=estimate.cost_upper_bound_usd * Decimal("1.5"),
+            input_usd_per_million_tokens=Decimal(1),
+            output_usd_per_million_tokens=Decimal(1),
+            model_id="gemini-test",
+        ),
+        max_requests=2,
+    )
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", evaluation_budget=budget,
+    )
+    provider.analyze('{"body":"Synthetic"}')
+    with pytest.raises(SpendLimitExceeded, match="evaluation would exceed"):
+        provider.analyze('{"body":"Synthetic"}')
+    assert budget.requests_reserved == 1
+    assert client.models.generate_content.call_count == 1
+    assert provider.requests_started == 1
+
+
+def test_evaluation_budget_requires_exact_request_limit(monkeypatch):
+    monkeypatch.setenv("GEMINI_PER_RUN_COST_CAP_USD", "0.05")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "0.4")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1.2")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "gemini-test")
+    monkeypatch.setenv("GEMINI_MAX_REQUESTS", "3")
+    budget = GeminiEvaluationBudget.from_environment(expected_requests=3, model_id="gemini-test")
+    assert budget.max_requests == 3
+    with pytest.raises(SpendLimitConfigurationError, match="exactly match"):
+        GeminiEvaluationBudget.from_environment(expected_requests=4, model_id="gemini-test")
+
+
+def test_evaluation_budget_requires_rates_for_exact_selected_model(monkeypatch):
+    monkeypatch.setenv("GEMINI_PER_RUN_COST_CAP_USD", "0.05")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "0.4")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1.2")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "gemini-cheap")
+    monkeypatch.setenv("GEMINI_MAX_REQUESTS", "3")
+    with pytest.raises(SpendLimitConfigurationError, match="exactly match"):
+        GeminiEvaluationBudget.from_environment(expected_requests=3, model_id="gemini-test")
+
+
 @pytest.mark.parametrize("text", [None, "", "not json", '{"classification":"safe"}', '{"classification":"phishing","confidence":0.99}'])
 def test_bad_google_output_is_not_a_safe_verdict(google_client, text):
     client, _ = google_client
     client.models.generate_content.return_value = SimpleNamespace(text=text)
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(RuntimeError, match="empty response|invalid analysis"):
         provider.analyze("Test")
 
@@ -90,7 +202,9 @@ def test_google_errors_do_not_expose_provider_details(google_client, code):
     client.models.generate_content.side_effect = errors.APIError(
         code=code, response_json={"error": {"message": "private provider details"}},
     )
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(RuntimeError) as exc:
         provider.analyze("Test")
     assert "private" not in str(exc.value)
@@ -100,7 +214,9 @@ def test_google_errors_do_not_expose_provider_details(google_client, code):
 def test_network_timeout_is_a_controlled_failure(google_client):
     client, _ = google_client
     client.models.generate_content.side_effect = httpx.ReadTimeout("private transport detail")
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(RuntimeError, match="connection failed or timed out"):
         provider.analyze("Test")
 
@@ -112,7 +228,9 @@ def test_daily_quota_is_distinct_from_a_temporary_rate_limit(google_client):
             {"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier", "quotaValue": "20"}]},
         ]}},
     )
-    provider = gemini_provider.GeminiProvider(api_key="synthetic-key", model="gemini-test")
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
+    )
     with pytest.raises(gemini_provider.DailyQuotaExceeded, match="daily request quota") as exc:
         provider.analyze("Test")
     assert "private" not in str(exc.value)

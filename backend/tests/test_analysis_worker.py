@@ -1,9 +1,11 @@
+import json
 from multiprocessing.connection import Connection
 from unittest.mock import Mock
 
 import httpx
 import pytest
 
+from backend.ai import gemini_provider
 from backend.ai.gemini_provider import DailyQuotaExceeded
 from backend.ai.schemas import AIAnalysisResult
 from backend.app import analysis_worker
@@ -68,26 +70,83 @@ def test_gemini_uses_requested_timeout_and_closes_provider(
     channel,
     monkeypatch,
 ):
-    provider = Mock()
-    provider.analyze.return_value = AIAnalysisResult(
-        classification="legitimate"
-    )
-    constructor = Mock(return_value=provider)
+    monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "1")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "0.4")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1.2")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "synthetic-model")
+    provider_client = Mock()
+    provider_client.models.generate_content.return_value.text = json.dumps({
+        "classification": "legitimate",
+        "tactics": [],
+        "evidence": [],
+        "recommendations": [],
+    })
+    constructor = Mock(return_value=provider_client)
     monkeypatch.setattr(
-        analysis_worker,
-        "GeminiProvider",
+        gemini_provider.genai,
+        "Client",
         constructor,
     )
 
     message = _run_worker(channel, mode="gemini")
 
     assert message["status"] == "ok"
-    constructor.assert_called_once_with(
-        api_key="synthetic-key",
-        model="synthetic-model",
-        timeout_ms=15_000,
-    )
-    provider.close.assert_called_once()
+    http_options = constructor.call_args.kwargs["http_options"]
+    assert http_options.timeout == 15_000
+    assert http_options.retry_options.attempts == 1
+    provider_client.models.generate_content.assert_called_once()
+    provider_client.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("configuration", "expected_status", "client_created"),
+    [
+        ("missing-cap", "unavailable", False),
+        ("invalid-rate", "unavailable", False),
+        ("model-mismatch", "unavailable", False),
+        ("insufficient-cap", "unavailable", True),
+    ],
+)
+def test_saved_gemini_worker_fails_closed_before_sdk_call(
+    channel,
+    monkeypatch,
+    configuration,
+    expected_status,
+    client_created,
+):
+    for name in (
+        "GEMINI_PER_REQUEST_COST_CAP_USD",
+        "GEMINI_INPUT_USD_PER_MILLION_TOKENS",
+        "GEMINI_OUTPUT_USD_PER_MILLION_TOKENS",
+        "GEMINI_COST_MODEL_ID",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "synthetic-model")
+    monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "1")
+
+    if configuration == "missing-cap":
+        monkeypatch.delenv("GEMINI_PER_REQUEST_COST_CAP_USD")
+    elif configuration == "invalid-rate":
+        monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "0")
+    elif configuration == "model-mismatch":
+        monkeypatch.setenv("GEMINI_COST_MODEL_ID", "another-model")
+    elif configuration == "insufficient-cap":
+        monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "0.000001")
+
+    client = Mock()
+    constructor = Mock(return_value=client)
+    monkeypatch.setattr(gemini_provider.genai, "Client", constructor)
+
+    message = _run_worker(channel, mode="gemini")
+
+    assert message == {"status": expected_status}
+    client.models.generate_content.assert_not_called()
+    assert constructor.called is client_created
+    if client_created:
+        client.close.assert_called_once()
 
 
 @pytest.mark.parametrize(
