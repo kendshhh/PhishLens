@@ -162,15 +162,12 @@ stores.
 
 ### Run AI analysis locally
 
-See [the AI contract and setup](docs/ai.md) for the provider, token limits, score
-mapping, threshold, indicator sources, and optional local CPU model. The
-[October 18 DevOps handoff](docs/devops/ai-review-2026-10-18.md) records verification
-and the current model, hosting, and extension integration limitations.
-
-The extension sends selected text to `POST /analyses`. The backend runs in mock mode
-when `AI_MODE=mock`; the response and extension UI label this as a mock, not an AI result.
-To use Gemini, set `AI_MODE=gemini`, `GEMINI_API_KEY`, and a valid `GEMINI_MODEL` in the
-private `.env`. The Google API key must never be added to the extension.
+PhishLens uses the bundled TF-IDF v12a model. The extension scores selected
+text locally and sends it to `POST /api/analyses` when a user chooses Save.
+Set `AI_MODE=tfidf` in the backend's private `.env` to enable matching saves.
+Use `POST /analyses` for a direct inference call without a database write.
+The default `AI_MODE=mock` is for development and CI. See the
+[AI contract and setup](docs/ai.md) for model provenance, score policy and evidence.
 
 Start the backend from the repository root:
 
@@ -184,7 +181,7 @@ works with `--reload`; reload is optional. On macOS/Linux, use
 `.venv/bin/python -m uvicorn backend.app.main:app --loop backend.core.event_loop:new_event_loop`.
 The staging startup script uses the same factory.
 
-Call the analysis endpoint directly (mock mode works without Gemini credentials):
+Call the analysis endpoint directly after starting in TF-IDF mode:
 
 ```powershell
 Invoke-RestMethod -Uri http://127.0.0.1:8000/analyses `

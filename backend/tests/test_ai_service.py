@@ -73,6 +73,29 @@ def test_benchmark_metrics_count_errors_as_failed_opportunities():
     assert summary["phishing_recall"] == .5
     assert summary["phishing_precision"] == .5
     assert summary["false_positive_rate"] == .5
+    assert summary["non_phishing_false_positive_rate"] == .5
+    assert summary["legitimate_false_positive_rate"] == 1
+    assert summary["spam_phishing_alert_rate"] == 0
+    assert summary["errors"] == 1
+
+
+def test_false_positive_rates_exclude_failed_negative_cases():
+    from scripts.benchmark_ai import summarize
+
+    summary = summarize([
+        {"expected": "phishing", "prediction": "phishing", "seconds": 1},
+        {"expected": "legitimate", "error": "unavailable", "seconds": 2},
+        {"expected": "legitimate", "prediction": "legitimate", "seconds": 3},
+        {"expected": "spam", "prediction": "phishing", "seconds": 4},
+    ])
+
+    assert summary["false_positive_rate"] == .5
+    assert summary["non_phishing_false_positive_rate"] == .5
+    assert summary["non_phishing_scored_cases"] == 2
+    assert summary["non_phishing_errors"] == 1
+    assert summary["legitimate_false_positive_rate"] == 0
+    assert summary["legitimate_errors"] == 1
+    assert summary["spam_phishing_alert_rate"] == 1
     assert summary["errors"] == 1
 
 
@@ -106,5 +129,7 @@ def test_benchmark_stops_at_daily_quota_without_inventing_missing_scores(monkeyp
     assert summary["requested_cases"] == summary["unattempted_cases"] == 40
     assert summary["attempts"] == 0
     assert summary["binary_accuracy"] is None
+    assert summary["legitimate_false_positive_rate"] is None
+    assert summary["spam_phishing_alert_rate"] is None
     provider.analyze.assert_called_once()
     provider.close.assert_called_once()

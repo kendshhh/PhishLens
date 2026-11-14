@@ -531,3 +531,16 @@ test("malformed list responses have a distinct message instead of an empty state
   assert.match(ui.get("crud-status").textContent, /malformed/i);
   assert.equal(ui.get("empty").classList.contains("hidden"), true);
 });
+
+test("TF-IDF saved reports show their provider and preserve model identity", async () => {
+  const data = record(id);
+  data.analysis_mode = "real";
+  data.analysis_provenance = { provider_mode: "tfidf", model: "word_plus_char_wb_C1p0", model_revision: "fixture-tfidf-revision" };
+  const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
+  await controller.loadDetail(id);
+  const text = ui.get("detail-content").children[9].children[1].textContent;
+  assert.match(text, /Provider: TF-IDF/);
+  assert.match(text, /Model: word_plus_char_wb_C1p0/);
+  assert.match(text, /fixture-tfidf-revision/);
+  assert.doesNotMatch(text, /Unrecognized/);
+});

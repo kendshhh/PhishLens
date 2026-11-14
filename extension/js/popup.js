@@ -97,6 +97,11 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
     const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "Analysis source unknown"];
+    if (analyzed && record.analysis_mode === 'real' && provenance.provider_mode === 'tfidf') {
+      provenanceLines.push('Provider: TF-IDF');
+      if (typeof provenance.model === 'string') provenanceLines.push(`Model: ${provenance.model}`);
+      if (typeof provenance.model_revision === 'string') provenanceLines.push(`Revision: ${provenance.model_revision}`);
+    }
     if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
     ui.modeWarning.textContent = record.analysis_mode === 'mock' ? 'Demo result — this is not a real email assessment.' :
       record.analysis_mode !== 'real' ? 'The analysis source was not recorded. Treat this report as unverified.' : '';
