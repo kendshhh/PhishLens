@@ -8,6 +8,12 @@ conflicting November 8 and November 13 notes that describe private visibility
 as intended or unresolved. Those documents remain historical records; they
 must not be treated as the current repository setting.
 
+The late-day release blockers, current `main` SHA, merged AI-evaluation and
+production-smoke PRs, and role-based handoff are summarized in the
+[November 14 readiness report](90-percent-readiness-2026-11-14.md). Use that
+report for the post-merge snapshot; older same-day records below retain their
+original point-in-time scope.
+
 ## Security scan and dependency merge policy
 
 Gitleaks v8.30.1 scanned all refs and full history (499 commits) and found no
@@ -25,8 +31,12 @@ found no leaks.
 PR #197 merged as `76551f68ff7dc02971cf127fa82f1f35e79cc2ab` on November 14.
 The active `main` ruleset `26782191` requires both `Dependency security` and
 `Dependency graph review (GitHub Advanced Security)`, along with the existing
-application and staging checks. The deterministic AI evaluation changes are in
-open PR #196 and are not yet a required `main` check.
+application and staging checks. PR #196 merged as
+`591a2beaafcc4cc3706d176f8c79f2ffde300e89` and added deterministic AI evaluation
+on relevant changes. The `Deterministic AI Evaluation` context is not among the
+currently required `main` checks. PR #198 merged the exact-SHA production smoke;
+its latest recorded run failed closed because the production provider mode was
+unavailable. See the readiness report for its exact revision and limits.
 
 A current GitHub Dependabot API query still reports 12 open high `pyasn1`
 alerts (four advisories across three requirements manifests) and three open
