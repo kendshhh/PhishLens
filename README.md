@@ -259,6 +259,10 @@ Its public backend origin is configured in `extension/js/config.js` for both
 analysis and history. See [staging instructions](docs/devops/staging.md) for the
 separate acceptance package.
 
+For a presenter-ready synthetic walkthrough with exact package identity, accessible
+keyboard steps, screenshots and environment labels, see the
+[clean-install and demo guide](docs/frontend/issue-141/demo-guide.md).
+
 ## Project Requirements
 
 The instructor's guide is the main authority for requirements,
