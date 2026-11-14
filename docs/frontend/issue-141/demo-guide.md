@@ -56,7 +56,7 @@ available. The Vercel site is a separate information page, not an extension host
 
 Use a blank tab or a local text file containing only this synthetic message:
 
-> Subject: Urgent account review  
+> Subject: Urgent account review
 > Your account will be closed today. Review it at `https://example.invalid` and
 > enter your password to keep access.
 
