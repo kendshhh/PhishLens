@@ -1,6 +1,5 @@
 """Tests for staging-only extension packaging evidence."""
 
-import base64
 import hashlib
 import json
 import tempfile
@@ -14,6 +13,7 @@ from scripts.package_staging_extension import (
     build as build_package,
     checkout_revision,
     chrome_extension_id,
+    decode_manifest_public_key,
 )
 from scripts.verify_staging_extension_package import (
     PRODUCTION_HOST,
@@ -22,6 +22,10 @@ from scripts.verify_staging_extension_package import (
     verify,
 )
 from scripts.verify_extension_package import ASSETS
+
+VALID_TEST_PUBLIC_KEY = (
+    "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9uXDbuvYdLYvZipPw0YRVDCzcvU3opz2pOu44/aZ3bX2fQGF+jlf0+JQE12VwE6cD36GeJl1J9gHfD/lD2oE+tvtE6pwtLEZ9I26KZ/By/vE15pUN0xq1cJhdhebPmjSpTjNJn6P4JIGycADEWyVtkRz8SD/ahJxltSX0QQaSU0paY6zviLc+SHd4jWcwAaB/R7r8IsxNLBvCmZjz3uuLEsN5hTEEPKtfR8faPTcTr+mATwLq497r188xehai7CKGB93fGadF24BSaqXU04Mh9uKhGsGMvTOZb6ixBWTHZ7yyXdLJQU8KsGBy1ZmybhRCmbFkKugk6CadYnOZLAKmQIDAQAB"
+)
 
 
 class StagingPackageVerificationTests(unittest.TestCase):
@@ -33,7 +37,7 @@ class StagingPackageVerificationTests(unittest.TestCase):
         self.sidecar = root / "package-evidence.json"
         self.staging_evidence = root / "staging-readonly-evidence.json"
         self.expected = "a" * 40
-        self.manifest_key = base64.b64encode(b"synthetic-public-key-material-for-tests-only").decode("ascii")
+        self.manifest_key = VALID_TEST_PUBLIC_KEY
         self.build()
 
     def build(self, *, hosts=None, config_origin=STAGING_ORIGIN, extra=None, auth_enabled=False):
@@ -43,7 +47,7 @@ class StagingPackageVerificationTests(unittest.TestCase):
         auth_database = "neondb"
         expected_hosts = STAGING_HOSTS + ([auth_origin + "/*"] if auth_enabled else [])
         extension_id = chrome_extension_id(self.manifest_key) if auth_enabled else None
-        key_sha256 = hashlib.sha256(base64.b64decode(self.manifest_key)).hexdigest() if auth_enabled else None
+        key_sha256 = hashlib.sha256(decode_manifest_public_key(self.manifest_key)).hexdigest() if auth_enabled else None
         files["manifest.json"] = json.dumps({
             "manifest_version": 3,
             "name": "PhishLens Staging Auth" if auth_enabled else "PhishLens Staging",
@@ -189,6 +193,17 @@ class StagingPackageVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "public manifest key"):
             verify(self.archive, self.sidecar, self.expected)
 
+    def test_auth_enabled_package_rejects_malformed_der_manifest_key(self):
+        self.build(auth_enabled=True)
+        with ZipFile(self.archive, "r") as package:
+            files = {name: package.read(name) for name in package.namelist()}
+        manifest = json.loads(files["manifest.json"])
+        manifest["key"] = "c3ludGhldGljLW5vdC1hLWRlci1rZXk="
+        files["manifest.json"] = json.dumps(manifest).encode()
+        self._rewrite_files(files)
+        with self.assertRaisesRegex(ValueError, "SubjectPublicKeyInfo"):
+            verify(self.archive, self.sidecar, self.expected)
+
     def test_embedded_provenance_must_match_sidecar(self):
         with ZipFile(self.archive, "r") as package:
             files = {name: package.read(name) for name in package.namelist()}
@@ -227,6 +242,22 @@ class StagingPackageVerificationTests(unittest.TestCase):
                 "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth",
                 "neondb",
                 None,
+            )
+
+    def test_auth_settings_rejects_non_der_public_key(self):
+        with self.assertRaisesRegex(ValueError, "SubjectPublicKeyInfo"):
+            auth_settings(
+                "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth",
+                "neondb",
+                "c3ludGhldGljLW5vdC1hLWRlci1rZXk=",
+            )
+
+    def test_auth_settings_rejects_truncated_der(self):
+        with self.assertRaisesRegex(ValueError, "truncated DER"):
+            auth_settings(
+                "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth",
+                "neondb",
+                "MA==",
             )
 
     def test_disabled_package_does_not_claim_trusted_origin(self):

@@ -1,7 +1,6 @@
 """Build a staging-only extension ZIP from the exact observed staging checkout."""
 
 import argparse
-import base64
 import datetime as dt
 import hashlib
 import json
@@ -13,8 +12,10 @@ from urllib.parse import quote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
 try:
+    from .manifest_key import chrome_extension_id, decode_manifest_public_key
     from .verify_extension_package import ASSETS
 except ImportError:
+    from manifest_key import chrome_extension_id, decode_manifest_public_key
     from verify_extension_package import ASSETS
 
 
@@ -65,18 +66,6 @@ def assert_clean_extension_checkout(root):
         raise RuntimeError("Staging checkout has modified or untracked extension inputs")
 
 
-def chrome_extension_id(public_key):
-    """Return Chrome's stable ID for the manifest's base64-encoded public key."""
-    try:
-        decoded = base64.b64decode(public_key, validate=True)
-    except (ValueError, TypeError) as exc:
-        raise ValueError("Manifest public key must be standard base64") from exc
-    if len(decoded) < 32 or base64.b64encode(decoded).decode("ascii") != public_key:
-        raise ValueError("Manifest public key must be canonical base64 DER data")
-    digest = hashlib.sha256(decoded).digest()[:16]
-    return "".join(chr(ord("a") + nibble) for byte in digest for nibble in (byte >> 4, byte & 15))
-
-
 def auth_settings(auth_url, auth_database, manifest_key):
     """Validate an opt-in Neon Auth target and return package-safe settings."""
     if auth_url is None and auth_database is None and manifest_key is None:
@@ -103,7 +92,7 @@ def auth_settings(auth_url, auth_database, manifest_key):
         "database": auth_database,
         "origin": f"https://{hostname}",
         "manifest_key": manifest_key,
-        "manifest_key_sha256": hashlib.sha256(base64.b64decode(manifest_key)).hexdigest(),
+        "manifest_key_sha256": hashlib.sha256(decode_manifest_public_key(manifest_key)).hexdigest(),
         "chrome_extension_id": extension_id,
         "expected_chrome_origin": f"chrome-extension://{extension_id}",
         "config": {

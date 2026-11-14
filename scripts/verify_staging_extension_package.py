@@ -1,7 +1,6 @@
 """Verify staging ZIP contents and bind them to the revision observed on staging."""
 
 import argparse
-import base64
 import hashlib
 import json
 import re
@@ -10,8 +9,10 @@ from urllib.parse import quote, urlsplit
 from zipfile import BadZipFile, ZipFile
 
 try:
+    from .manifest_key import chrome_extension_id, decode_manifest_public_key
     from .verify_extension_package import ASSETS
 except ImportError:
+    from manifest_key import chrome_extension_id, decode_manifest_public_key
     from verify_extension_package import ASSETS
 
 
@@ -27,18 +28,6 @@ def full_sha(value):
 
 def full_hash(value):
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
-
-
-def chrome_extension_id(public_key):
-    """Derive Chrome's ID from a manifest public key, without needing a private key."""
-    try:
-        decoded = base64.b64decode(public_key, validate=True)
-    except (ValueError, TypeError) as exc:
-        raise ValueError("Manifest public key must be standard base64") from exc
-    if len(decoded) < 32 or base64.b64encode(decoded).decode("ascii") != public_key:
-        raise ValueError("Manifest public key must be canonical base64 DER data")
-    digest = hashlib.sha256(decoded).digest()[:16]
-    return "".join(chr(ord("a") + nibble) for byte in digest for nibble in (byte >> 4, byte & 15))
 
 
 def sha256_file(path):
@@ -154,12 +143,8 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         manifest_key = manifest.get("key")
         if not isinstance(manifest_key, str):
             raise ValueError("Auth-enabled package must include its public manifest key")
-        try:
-            decoded_key = base64.b64decode(manifest_key, validate=True)
-        except (ValueError, TypeError) as exc:
-            raise ValueError("Manifest public key must be standard base64") from exc
-        if (base64.b64encode(decoded_key).decode("ascii") != manifest_key
-                or hashlib.sha256(decoded_key).hexdigest() != manifest_key_sha256
+        decoded_key = decode_manifest_public_key(manifest_key)
+        if (hashlib.sha256(decoded_key).hexdigest() != manifest_key_sha256
                 or chrome_extension_id(manifest_key) != extension_id):
             raise ValueError("Manifest public key does not match the recorded key hash and Chrome ID")
     elif "key" in manifest:

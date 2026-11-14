@@ -85,8 +85,9 @@ python scripts/package_staging_extension.py \
   --evidence /private/path/PhishLens-Staging-Auth-evidence.json
 ```
 
-The key file contains only the extension owner's canonical base64 public
-manifest key. The builder embeds `phishlens-build-evidence.json` in the ZIP with
+The key file contains only the extension owner's canonical base64 RSA
+SubjectPublicKeyInfo DER public manifest key. The builder rejects malformed or
+unsupported key encodings. It embeds `phishlens-build-evidence.json` in the ZIP with
 the full source/backend SHA, packager SHA, Auth target, exact host permissions,
 public-key digest, and derived Chrome ID/origin. It also writes a sidecar with
 the ZIP and per-file hashes. Keep the ZIP and sidecar together; send both from
