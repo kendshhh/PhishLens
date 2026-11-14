@@ -10,11 +10,14 @@ const feedbackLabels = new Map([
   ["false_negative", "Not flagged, but I think it’s suspicious"]
 ]);
 const provenanceLabels = new Map([
-  ["mock", "Mock / demo result — not a real assessment"], ["real", "Automated analysis recorded when saved"],
-  ["unknown", "Analysis source unknown"]
+  ["mock", "Mock analysis (development/test output)"], ["real", "Provider-backed AI analysis"],
+  ["unknown", "AI provenance unknown"]
 ]);
 const classificationLabels = new Map([
   ["phishing", "Phishing"], ["legitimate", "Legitimate"], ["spam", "Spam"]
+]);
+const providerLabels = new Map([
+  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"], ["tfidf", "TF-IDF"]
 ]);
 
 function node(doc, tag, className, text) {
@@ -70,7 +73,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete, ui.back]) {
       button.disabled = value;
     }
-    ui.createButton.textContent = value ? "Saving…" : "Save analysis";
+    ui.createButton.textContent = value ? "Analyzing and saving…" : "Analyze and save";
     ui.saveEdit.textContent = value ? "Saving…" : "Save changes";
     ui.deleteButton.textContent = value ? "Deleting…" : "Delete report";
   }
@@ -97,10 +100,12 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
     const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "Analysis source unknown"];
-    if (analyzed && record.analysis_mode === 'real' && provenance.provider_mode === 'tfidf') {
-      provenanceLines.push('Provider: TF-IDF');
-      if (typeof provenance.model === 'string') provenanceLines.push(`Model: ${provenance.model}`);
-      if (typeof provenance.model_revision === 'string') provenanceLines.push(`Revision: ${provenance.model_revision}`);
+    if (typeof provenance.provider_mode === "string" && provenance.provider_mode.trim()) {
+      provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode) || `Unrecognized (${provenance.provider_mode})`}`);
+    }
+    if (typeof provenance.model === "string" && provenance.model.trim()) provenanceLines.push(`Model: ${provenance.model}`);
+    if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) {
+      provenanceLines.push(`Model revision: ${provenance.model_revision}`);
     }
     if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
     ui.modeWarning.textContent = record.analysis_mode === 'mock' ? 'Demo result — this is not a real email assessment.' :
@@ -272,6 +277,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
   function openEdit() {
     if (busy || !selected) return;
+    detailRequest++;
     ui.notes.value = selected.notes || "";
     ui.feedback.value = selected.feedback ?? 'none';
     ui.correction.open = ['false_positive', 'false_negative'].includes(selected.feedback);
@@ -320,6 +326,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     const operationVersion = accountVersion;
     setBusy(true);
     try {
@@ -355,6 +362,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     const operationVersion = accountVersion;
     setBusy(true);
     try {
