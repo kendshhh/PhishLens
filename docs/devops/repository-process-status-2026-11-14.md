@@ -18,20 +18,24 @@ I removed those identifiers and retained per-run event, result, timestamp, and
 duration so sample counts and timing calculations remain auditable. Files
 changed after that initial scan were rescanned individually before their pushes;
 those scans also found no leaks. Reports were stored outside the repository.
+The November 14 Sprint 1–3 closeout, architecture records, process-status update,
+and README status were scanned with Gitleaks v8.30.1; the changed-source scan
+found no leaks.
 
-The dependency workflow in PR #197 blocks high/critical npm findings,
-high/critical GitHub dependency-graph findings, and any reported vulnerability
-in the pinned Python dependency audit. The active `main` ruleset `26782191` now requires both
-`Dependency security` and `Dependency graph review (GitHub Advanced Security)`;
-GitHub's API confirmed the updated contexts. PR #197 must merge for that
-workflow to run from `main`. The new deterministic AI evaluation runs and
-passes on AI-changing PRs (including PR #196), but its workflow is still under
-review and the evaluation check is not yet required by the `main` ruleset.
-GitHub currently reports 12 high Dependabot alerts on
-default `main`: four `pyasn1` advisories repeated across three lockfiles. PR
-#197 pins `pyasn1` to the first patched version, 0.6.5, in all three files and
-its lockfile audit passes; those default-branch alerts remain open until the
-PR is merged. See [dependency-audits.md](dependency-audits.md).
+PR #197 merged as `76551f68ff7dc02971cf127fa82f1f35e79cc2ab` on November 14.
+The active `main` ruleset `26782191` requires both `Dependency security` and
+`Dependency graph review (GitHub Advanced Security)`, along with the existing
+application and staging checks. The deterministic AI evaluation changes are in
+open PR #196 and are not yet a required `main` check.
+
+A current GitHub Dependabot API query still reports 12 open high `pyasn1`
+alerts (four advisories across three requirements manifests) and three open
+medium `opentelemetry-api` alerts. The three default-branch requirements
+lockfiles pin `pyasn1==0.6.5`, the first patched version. Treat the open alerts
+as unresolved until GitHub's dependency graph/alert state is reconciled; do not
+dismiss them just because the files contain a patched pin. See
+[dependency-audits.md](dependency-audits.md) and the [Sprint 1–3 DevOps
+closeout](kendra-sprint-1-3-status-2026-11-14.md).
 
 ## Participant-sourced course records
 
