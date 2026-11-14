@@ -35,7 +35,7 @@ this record.
 | Area | Expected | Observed | Result |
 |---|---|---|---|
 | Right-click entry | Selected text opens the scan in the action popup | The context-menu handler opened the real action popup at `/popup.html?surface=popup` with the selected text; the popup used its fixed 380px layout. | Pass in the packaged browser run |
-| Toolbar entry | Toolbar button opens the side panel, not the popup | After the right-click popup opened, the source tab and the global action had no popup configured, and `openPanelOnActionClick` was `true`. Chrome 157 also reported no global popup and `openPanelOnActionClick: true`. | Configuration verified. A physical toolbar click cannot be automated and still needs one manual check in installed Chrome |
+| Toolbar entry | Toolbar button opens the side panel, not the popup | After the right-click popup opened, the source tab and the global action had no popup configured, and `openPanelOnActionClick` was `true`. Chrome 157 also reported no global popup and `openPanelOnActionClick: true`. In the manual installed-Chrome run, clicking the toolbar button opened the side panel and no popup appeared. | Pass (automated configuration check and manual click) |
 | Initial/loading/result | Start ready; show progress; release a result only when the full review supports it | Ready and loading states rendered. Without local LLM weights, the packaged run showed “Uncertain — check before acting”. | Pass; uncertainty is explicit |
 | Error and retry | An interrupted or failed local review must not appear safe | Chrome 157 synthetic failure rendered “Unable to assess”; retry returned to a result and Clear returned to ready. | Pass |
 | Safe text | Untrusted text is displayed as text | The seeded history title `Synthetic <script>alert(1)</script>` and the subject `Synthetic provider fixture <img src=x>` rendered literally; no script or image element was created. Chrome 157 found no inline script in the rendered page. | Pass |
@@ -68,6 +68,44 @@ this record.
   `npm run lint`, `npm run validate`, and `python -m unittest discover -s
   scripts/tests` (164 passed).
 
+## Manual installed-Chrome check
+
+Recorded 2026-11-14 by Andrei in installed Google Chrome `157.0.8103.79` on
+Windows, with the extension loaded unpacked from the repository's `extension`
+folder. The 48 packaged runtime files in that folder matched the
+[package identity](package-identity.json) for `7301b95`; `manifest.json` differed
+only in line endings (LF locally, CRLF in the identity checkout). The selected text
+was a synthetic phishing sample with `example.com` addresses shown in a web page,
+not a real inbox. No account was signed in to PhishLens and no report was saved.
+
+| Step | Expected | Observed | Result |
+|---|---|---|---|
+| [Click the pinned toolbar button](manual-chrome-157/01-toolbar-opens-side-panel.png) | The side panel opens in its ready state | The side panel opened with “Highlight. Right-click. Check.” and “Your email stays with you”; no popup appeared. | Pass |
+| [Select text and right-click](manual-chrome-157/02-right-click-analyze-selection-menu.png) | The context menu offers “Analyze selection with PhishLens” | The menu showed “Analyze selection with PhishLens”. | Pass |
+| [Choose Analyze selection](manual-chrome-157/03-right-click-result-uncertain.png) | The selected text is analyzed locally and shown with an explicit result | The open side panel showed the analyzed text and “Uncertain — check before acting”, because the local LLM review could not run in this install. No safe verdict was shown. | Pass; uncertainty is explicit |
+
+The side panel was already open during the right-click step, and the toolbar is
+outside the captured area, so these screenshots do not show whether the action
+popup also opened. The popup opening is evidenced by the automated packaged run
+above.
+
+| Screenshot | SHA-256 |
+|---|---|
+| `manual-chrome-157/01-toolbar-opens-side-panel.png` | `38b856cce392da4c4ac7eeb74ddd4c64a19340fce90c46c4443638d2cc03c8d8` |
+| `manual-chrome-157/02-right-click-analyze-selection-menu.png` | `1535f2ed99adab0aacb0d06e1d119ddad81ce86b343f5784bf4afe07d6fb9968` |
+| `manual-chrome-157/03-right-click-result-uncertain.png` | `0380bc1d2cae98c396c2d19359badd17a71d44e95e0a9c004c95931e87e72d17` |
+
+## Open defects
+
+1. **P3 — paragraph breaks lost for this page's selection.** In the manual run, the
+   analyzed text shows the selection's paragraphs joined by spaces. The worker
+   therefore used Chrome's flattened `selectionText` instead of the source-frame
+   selection, which it does when the page selection cannot be read or does not
+   match the menu text word for word. Classification is unaffected, but the
+   displayed text loses its layout. Next step: reproduce on this page and log
+   whether `scripting.executeScript` fails or the word comparison rejects the
+   page selection.
+
 ## Defects fixed
 
 1. **P1 — install instructions could not produce a complete local review.** The
@@ -86,9 +124,8 @@ this record.
 ## Remaining evidence limits
 
 This is local software verification, not a production deployment, Web Store
-publication, persistence test, AI accuracy study, or screen-reader audit.
-Automation cannot click Chrome's toolbar, so one manual check remains: in installed
-Chrome 127+, pin PhishLens, right-click a selection to confirm the popup, then click
-the toolbar button and confirm the side panel opens. Record that result here before
-closing Issue #131. The live landing page and Web Store publication remain
-unverified.
+publication, persistence test, AI accuracy study, or screen-reader audit. The
+manual run used an install without the local LLM weights, so it shows the
+Uncertain path rather than a released local verdict. The right-click popup was
+observed only in the automated packaged run, not in the manual screenshots. The
+live landing page and Web Store publication remain unverified.
