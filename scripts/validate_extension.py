@@ -28,9 +28,10 @@ if manifest.get("background") != {"service_worker": "background.js", "type": "mo
     raise ValueError("Expected a module background worker for shared API configuration")
 
 # Split flow: right-click opens the action popup; the toolbar button opens the side panel.
-# The popup URL carries ?surface=popup so the shared page can keep its fixed popup size.
-if manifest.get("action", {}).get("default_popup") != "popup.html?surface=popup":
-    raise ValueError("Expected popup.html?surface=popup as the action popup opened after right-click analysis")
+# A default_popup would take priority over openPanelOnActionClick, so the toolbar would
+# never open the side panel. The background worker sets the popup only for right-click.
+if manifest.get("action", {}).get("default_popup") is not None:
+    raise ValueError("The action must not define default_popup; the toolbar opens the side panel")
 popup = manifest.get("side_panel", {}).get("default_path")
 if popup != "popup.html":
     raise ValueError("Expected the side panel to reuse popup.html")

@@ -80,7 +80,9 @@ try {
   await page.locator('#empty-state').waitFor({ state: 'visible' });
   const panelBehavior = await page.evaluate(() => chrome.sidePanel.getPanelBehavior());
   assert.equal(panelBehavior.openPanelOnActionClick, true);
-  check('Actual Chrome reports the installed toolbar action opens the side panel');
+  // A configured popup takes priority over openPanelOnActionClick, so none may be set.
+  assert.equal(await page.evaluate(() => chrome.action.getPopup({})), '');
+  check('Actual Chrome reports no toolbar popup and openPanelOnActionClick, so the toolbar opens the side panel');
   assert.equal(requests.length, 0); check('Side-panel page opens without API or text-upload requests');
   await page.evaluate(async text => {
     await chrome.runtime.sendMessage({ type: 'phishlens-analyze-text', text });

@@ -103,10 +103,10 @@ test("HTML provides associated labels, focusable CRUD controls, a bounded popup 
   assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
-  // Split flow: right-click opens the action popup (chrome.action.openPopup, Chrome 127+);
-  // the toolbar button opens the side panel via setPanelBehavior.
+  // Split flow: right-click opens a tab-scoped action popup (chrome.action.openPopup, Chrome 127+);
+  // the toolbar opens the side panel, so the manifest must not define a default popup.
   assert.equal(manifest.minimum_chrome_version, "127");
-  assert.equal(manifest.action.default_popup, "popup.html?surface=popup");
+  assert.equal(manifest.action.default_popup, undefined);
   assert.equal(manifest.side_panel.default_path, "popup.html");
   assert.ok(manifest.permissions.includes("sidePanel"));
   assert.match(css, /\.popup-surface body \{[^}]*width:\s*380px[^}]*max-height:\s*600px/);

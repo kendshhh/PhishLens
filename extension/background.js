@@ -2,6 +2,8 @@ import { analyzeWithReview } from './ai/live-workflow.mjs';
 import { cancelJudge } from './ai/judge-client.mjs';
 
 const MENU_ID = 'phishlens-analyze-selection';
+// Right-click results open in this popup; ?surface=popup keeps its fixed popup layout.
+const SELECTION_POPUP = 'popup.html?surface=popup';
 let analysisGeneration = 0;
 let stateUpdates = Promise.resolve();
 let activeJob;
@@ -96,10 +98,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const selectedText = await readSelectedText(info, tab);
     if (request !== analysisGeneration) return;
     return analyzeSelectedText(selectedText, { onStarted: async () => {
+      // The manifest defines no default_popup, because a popup would take priority over
+      // the toolbar's side panel. Configure the popup only for this tab, open it, then
+      // clear it so the toolbar button keeps opening the side panel.
+      const popupTarget = Number.isInteger(tab?.id) ? { tabId: tab.id } : {};
       try {
+        await chrome.action.setPopup({ ...popupTarget, popup: SELECTION_POPUP });
         await chrome.action.openPopup(Number.isInteger(tab?.windowId) ? { windowId: tab.windowId } : {});
       } catch {
-        console.warn('PhishLens could not open the popup. Open it from the toolbar to view this scan.');
+        console.warn('PhishLens could not open the popup. Open the side panel from the toolbar to view this scan.');
+      } finally {
+        await chrome.action.setPopup({ ...popupTarget, popup: '' }).catch(() => {});
       }
     } }).catch(() => {
       console.error('PhishLens could not save the local scan state.');

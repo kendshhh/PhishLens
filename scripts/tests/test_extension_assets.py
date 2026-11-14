@@ -63,7 +63,7 @@ class ExtensionAssetValidationTests(unittest.TestCase):
             "background": {"service_worker": "background.js", "type": "module"},
             "minimum_chrome_version": "127",
             "permissions": ["sidePanel"],
-            "action": {"default_popup": "popup.html?surface=popup"},
+            "action": {},
             "side_panel": {"default_path": "popup.html"},
             "host_permissions": ["https://phishlens-api-ocvt.onrender.com/*"],
         }), encoding="utf-8")

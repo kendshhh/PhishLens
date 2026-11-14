@@ -13,6 +13,9 @@ function deferred() {
 function worker({ firstWrite, popupFailure = false, selectionResult, selectionFailure = false } = {}) {
   let listener, clicks, installed, sidePanelBehavior, writes = 0;
   const requests = [], popups = [], injections = [], state = { analysis: undefined, badge: '' };
+  // The manifest defines no default popup; the worker sets one only for a right-click.
+  const actionLog = [], popupConfig = { global: '' };
+  let currentTab;
   const storage = {};
   const context = vm.createContext({
     console, crypto: globalThis.crypto,
@@ -38,14 +41,22 @@ function worker({ firstWrite, popupFailure = false, selectionResult, selectionFa
         },
         async remove(key) { delete storage[key]; state.analysis = storage.veriqoAnalysis; }
       } },
-      action: { async setBadgeText({ text }) { state.badge = text; }, async openPopup(options) {
-        popups.push({ options, status: state.analysis?.status, text: state.analysis?.selectedText });
-        if (popupFailure) throw Error('Popup unavailable');
-      } }
+      action: { async setBadgeText({ text }) { state.badge = text; },
+        async setPopup({ tabId, popup }) {
+          actionLog.push(['setPopup', tabId ?? 'global', popup]);
+          popupConfig[tabId ?? 'global'] = popup;
+        },
+        async openPopup(options) {
+          actionLog.push(['openPopup']);
+          popups.push({ options, status: state.analysis?.status, text: state.analysis?.selectedText,
+            popup: popupConfig[currentTab] ?? popupConfig.global });
+          if (popupFailure) throw Error('Popup unavailable');
+        } }
     }
   });
   vm.runInContext(source, context);
-  return { state, requests, storage, clicks, popups, injections,
+  return { state, requests, storage, popups, injections, actionLog, popupConfig,
+    clicks: (info, tab) => { currentTab = tab?.id; return clicks(info, tab); },
     sidePanelBehavior: () => sidePanelBehavior, install: () => installed(),
     analyze: text => context.analyzeSelectedText(text),
     message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
@@ -74,13 +85,27 @@ test('right-click opens the popup in the source window after storing the selecti
   app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
   assert.equal(app.state.analysis.status, 'success');
 });
-test('popup failure does not prevent selected-text analysis or lose its result', async () => {
+test('right-click sets the popup only for its tab, opens it, then restores the toolbar side panel', async () => {
+  const app = worker();
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' }, { id: 12, windowId: 7 });
+  await settle(); await settle();
+  assert.deepEqual(app.actionLog.map(entry => [...entry]), [
+    ['setPopup', 12, 'popup.html?surface=popup'], ['openPopup'], ['setPopup', 12, '']
+  ]);
+  assert.equal(app.popups[0].popup, 'popup.html?surface=popup');
+  assert.equal(app.popupConfig[12], '', 'The toolbar must open the side panel again on this tab');
+  assert.equal(app.popupConfig.global, '', 'No global popup may override the side panel');
+  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
+});
+test('popup failure does not prevent selected-text analysis, lose its result or leave a popup configured', async () => {
   const app = worker({ popupFailure: true });
-  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' });
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' }, { id: 12 });
   await settle();
   app.requests[0].resolve({ alert: true, workflow: { released: true } }); await scan;
   assert.equal(app.state.analysis.selectedText, 'Selected text');
   assert.equal(app.state.analysis.status, 'success');
+  assert.equal(app.popupConfig[12], '');
+  assert.equal(app.popupConfig.global, '');
 });
 test('right-click preserves paragraph breaks, repeated spaces and tabs from the source frame', async () => {
   const original = 'Dear team,\n\n  Review\tthe agenda.\n\nRegards,\nNicole';

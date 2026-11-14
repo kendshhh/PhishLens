@@ -478,6 +478,16 @@ async function run() {
     const popupContexts = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['POPUP'] }));
     assert.ok(popupContexts.length > 0, 'The selection handler must open the real Chrome action popup');
     evidence.popup_document_urls = popupContexts.map(context => new URL(context.documentUrl).pathname + new URL(context.documentUrl).search);
+    // A configured popup takes priority over openPanelOnActionClick. After the right-click
+    // popup has opened, no popup may remain configured, so the toolbar opens the side panel.
+    const toolbarState = await worker.evaluate(async tabId => ({
+      tab_popup: await chrome.action.getPopup({ tabId }),
+      global_popup: await chrome.action.getPopup({}),
+      open_panel_on_action_click: (await chrome.sidePanel.getPanelBehavior()).openPanelOnActionClick,
+    }), sourceTab.id);
+    assert.deepEqual(toolbarState, { tab_popup: '', global_popup: '', open_panel_on_action_click: true },
+      'After right-click, the toolbar must have no popup configured so it opens the side panel');
+    evidence.toolbar_state_after_right_click = toolbarState;
     const popupView = await page.evaluate(() => {
       const view = chrome.extension.getViews({ type: 'popup' })[0];
       return view && { surface: view.document.documentElement.classList.contains('popup-surface'),
