@@ -93,6 +93,38 @@ Chrome 156.0.8078.79 and carried forward in the November 8 issue update. This
 close-out did not re-open Chrome's security-permission page or change the
 setting. The ON state is documented, not freshly re-verified in this pass.
 
+## Fresh Render and Neon identity check — 2026-11-14
+
+The user selected the PhishLens Render workspace. Read-only service metadata
+and live GET checks on November 14 confirmed:
+
+| Render service | Current live SHA | Deployment / behavior |
+| --- | --- | --- |
+| `phishlens-api` (production) | `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8` | `dep-dbs4h215efls73eapv3g`; `/health` and `/ready` returned 200; `/model-info` reported `provider_mode=unavailable`. Auto-deploy is enabled after checks. |
+| `phishlens-staging` | `cd913b5c7c7cf6796b4cdb12a854c709a173a12f` | `dep-dbs3jj6k1f9s73864st0`; `/health` and `/ready` returned 200; `/model-info` reported TF-IDF. Auto-deploy is off. |
+
+The Dashboard's staging Environment page showed these variable names:
+`AI_MODE`, `APP_ENV`, `DATABASE_URL`, `PYTHON_VERSION`,
+`STAGING_APP_DATABASE_ROLE`, `STAGING_DATABASE_HOST`, and
+`STAGING_MIGRATION_DATABASE_URL`. No environment group is linked. The values
+remained masked and were not opened or copied. This confirms configuration
+placement and names only, not the contents of either database URL.
+
+The Neon project `phishlens` (`patient-bird-25428852`) currently lists
+`production` (`br-orange-sky-b3zzzyqc`) as its primary/default branch and
+`pr-58-staging` (`br-delicate-paper-b381z98i`) as a separate ready branch.
+Neon marks the current `production` branch's snapshot restore as finalized on
+November 14.
+Both branches contain databases named `phishlens_dev` and `neondb`, so the
+database name alone cannot identify which branch a Render service reaches.
+
+**Result:** The service SHAs, health, staging variable names, linked-group
+state, and Neon branch inventory are freshly recorded. The actual
+service-to-Neon branch/database mapping and effective external Render API-key
+scopes remain unverified because the connection values were not inspected.
+Readiness proves connectivity only. Keep #37 open and do not run hosted writes
+or promote until the environment owner verifies both targets safely.
+
 ## Disposition
 
 The local example and GitHub/Render secret placement review are documented.

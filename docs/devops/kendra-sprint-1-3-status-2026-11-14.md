@@ -123,12 +123,14 @@ records.
   `environment=staging`, healthy/readiness responses, `provider_mode=tfidf`, and
   model SHA-256 `a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`.
   These read-only GET checks confirm live app identities and connectivity only.
-  The Neon project branch inventory includes a default/primary `production`
-  branch and a separate `pr-58-staging` branch, but the Render connector did
-  not expose service environment-variable identity, so neither deployed
-  `DATABASE_URL` can be mapped to a Neon branch/database. The name
-  `phishlens_dev` exists on multiple branches, and `/ready` does not identify a
-  target. Render metadata still identifies separate `phishlens-api` and
+  The fresh Neon inventory includes default/primary `production`
+  (`br-orange-sky-b3zzzyqc`) and separate `pr-58-staging`
+  (`br-delicate-paper-b381z98i`) branches. The staging Dashboard page confirms
+  the `DATABASE_URL`, `STAGING_DATABASE_HOST`, and
+  `STAGING_MIGRATION_DATABASE_URL` key names, but all values remained masked
+  and unopened. Both candidate branches contain `phishlens_dev`; neither the
+  name nor `/ready` identifies a target. Render metadata still identifies
+  separate `phishlens-api` and
   `phishlens-staging` services on source branch `main`; production autodeploys
   after checks and staging autodeploy is off. Effective Render API-key scopes
   also remain unverified. The installed Render CLI v2.34.0 could not be used
