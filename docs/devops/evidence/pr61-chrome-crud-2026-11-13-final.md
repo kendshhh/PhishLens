@@ -19,20 +19,26 @@ This supplemental manual run records the final requested detail-read and delete-
 
 The extension ID shown in the supplied text was one character short; the 32-character ID above is the ID in Chrome's installed profile. The ZIP's embedded `preview-info.json` establishes that the package was built for the same SHA as the supplied staging `/version`.
 
+### Backend-identity caveat
+
+The staging `/version` value above was supplied for the run and the preview evidence was recorded at `13:44 UTC`, before the manual requests (`14:03–14:06 UTC`). The Network captures show requests to `https://phishlens-staging.onrender.com`, but no captured response header or body identifies the backend commit or deployment that served them. The captures therefore do not independently prove that `dep-dbrh6q5bedkc73djudkg` / `e2f9ee46cf25ec029bd9ba3851412fd800df6fa1` served these CRUD requests. That backend identity is inferred from the supplied `/version` and the preceding preview evidence, not observed in the browser evidence.
+
 ## Manual CRUD journey
 
-The synthetic Chrome-run record ID was `f66f9c0-b3e3-42b8-82cf-1f4f3c0a0295`. The captures show it being created, opened, edited, fetched, deleted, then absent from the saved list after reopening the popup and refreshing history.
+The synthetic Chrome-run record ID was `f66fc9c0-b3e3-42b8-82cf-1f4f3c0a0295`. The captures show it being created, opened, edited, fetched, deleted, then absent from the saved list after reopening the popup and refreshing history.
+
+The ID was transcribed from the retained Network captures: the request URLs in `09`, `10`, and `13`, and the Network request list visible in `07`, `09`, `10`, and `13`. An earlier revision of this file dropped one character (`f66f9c0-…`). That was a transcription error only, and no write requests were rerun to correct it.
 
 | Check | Evidence |
 |---|---|
 | Create and open record | `01-create-and-open-detail.png` |
 | Edit notes and feedback; save and reload detail | `02-edit-form.png`, `03-edit-save-success.png`, `04-detail-after-history-reload.png` |
 | Delete; success and empty history | `05-delete-success-empty-list.png` |
-| Detail request for the same record | `GET /api/analyses/f66f9c0-b3e3-42b8-82cf-1f4f3c0a0295` — `200 OK`; `09-network-detail-get-200.png` |
-| Delete request for the same record | `DELETE /api/analyses/f66f9c0-b3e3-42b8-82cf-1f4f3c0a0295` — `204 No Content`; `13-network-delete-204.png` |
+| Detail request for the same record | `GET /api/analyses/f66fc9c0-b3e3-42b8-82cf-1f4f3c0a0295` — `200 OK`; `09-network-detail-get-200.png` |
+| Delete request for the same record | `DELETE /api/analyses/f66fc9c0-b3e3-42b8-82cf-1f4f3c0a0295` — `204 No Content`; `13-network-delete-204.png` |
 | Reopen and verify absence | `16-popup-reopened-empty-list.png`; refreshed `GET /api/analyses` — `200 OK`, empty-list response; `17-network-reopened-list-get-200.png` |
 
-Other redacted Network captures show create `POST /api/analyses` — `201 Created`, history `GET /api/analyses` — `200 OK`, edit `PATCH /api/analyses/f66f9c0-b3e3-42b8-82cf-1f4f3c0a0295` — `200 OK`, and refreshed history. The screenshots show methods, paths, and statuses without cookies, authorization values, tokens, credentials, or personal data.
+Other redacted Network captures show create `POST /api/analyses` — `201 Created`, history `GET /api/analyses` — `200 OK`, edit `PATCH /api/analyses/f66fc9c0-b3e3-42b8-82cf-1f4f3c0a0295` — `200 OK`, and refreshed history. The screenshots show methods, paths, and statuses without cookies, authorization values, tokens, credentials, or personal data.
 
 The manual browser request timestamps visible in Network span approximately `2026-11-13 14:03–14:06 UTC`. The tester reports that saved feedback also persisted after closing and reopening the popup; the supplied reopened-detail screenshot shows the edited content, while the screenshots do not independently establish the feedback field value after reopening.
 
