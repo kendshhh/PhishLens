@@ -1,6 +1,79 @@
 # PhishLens Pipeline
 
-## Main and stage observation — October 28, 2026
+## Current delivery and acceptance snapshot — November 14, 2026
+
+This dated snapshot supersedes the October 28 observations below. GitHub
+`main` is `8c02a7c86e8b2052d127b5a6a0422a5a80ffa9ea`. The repository is public,
+as intended by the owner. The active main ruleset requires one review approval
+and ten status checks, including `Dependency security` and
+`Dependency graph review (GitHub Advanced Security)`. The AI evaluation check
+is running on AI-changing PRs but is not yet a required main check.
+
+Four focused DevOps PRs are open and none has been merged: [#196 AI evaluation
+and spend controls](https://github.com/kendshhh/PhishLens/pull/196), [#197
+dependency security](https://github.com/kendshhh/PhishLens/pull/197), [#198
+production smoke and acceptance](https://github.com/kendshhh/PhishLens/pull/198),
+and [#199 delivery metrics](https://github.com/kendshhh/PhishLens/pull/199).
+PR #197 has green required checks but still needs review; its fixes have not yet
+changed the default branch. GitHub currently reports twelve high Dependabot
+alerts on main, all `pyasn1` advisories in three lockfiles. PR #197 updates
+`pyasn1` to 0.6.5 and `opentelemetry-api` to 1.45.2. PRs based on the current
+main still fail the old lockfile audit until that fix is merged and their checks
+are rerun.
+
+### Live service targets
+
+- **Production:** Render serves SHA
+  `2c293f3739fc712fa4622906cc4df2846c880029`; `/health` and `/ready` return
+  200, but `/model-info` reports `provider_mode=unavailable`. The exact-SHA
+  feature smoke therefore failed before inference and made zero analysis
+  requests, provider calls, or database writes. Production AI behavior is not
+  accepted. See the [smoke procedure](docs/devops/production-deploy-smoke.md)
+  and [reliability record](docs/devops/reliability-acceptance-2026-11-14.md).
+- **Staging:** Render currently serves
+  `c3ce2fff382f01014b4a846755a4c6007f642ec6` from a test branch, not main. The
+  Render host was matched to Neon branch `pr-58-staging`; `/version`, `/health`,
+  `/ready`, and `/model-info` passed. Guarded synthetic CRUD passed and deleted
+  its test row. This establishes backend behavior for that test-branch SHA; it
+  does not establish current-main or browser-extension acceptance. The earlier
+  `8c02a7c` main acceptance was superseded when staging changed to the test SHA.
+  See the [staging acceptance record](docs/devops/staging-acceptance-2026-11-14.md).
+- **Restore and objectives:** The November 14 production snapshot restore changed
+  Neon branch identity/default topology, so it is not accepted as a safe restore
+  rehearsal. Recovery time was not measured. Team-approved SLI/SLO and RPO/RTO
+  targets are absent; proposed targets remain explicitly unapproved.
+
+### Candidate workflow changes and remaining gates
+
+PR #196 adds a deterministic 40-case, provider-free evaluation for AI logic,
+prompt, and model-setting changes. The run completed with 18.75% phishing
+recall; no quality threshold has been approved. The configured runtime Gemini
+cost guard is an estimate per request, and the local evaluation scripts enforce
+per-run request/dollar ceilings. There is no shared daily/monthly production
+budget or verified provider-side quota, and no paid provider run was made.
+
+PR #198 adds exact-SHA post-deploy behavior checks, but the workflow is manual
+because Render currently has no production deployment event for this service and
+workspace webhooks require a higher Render plan. It does not yet run immediately
+after every production deploy. An uptime monitor is also not configured.
+
+PR #199 records the 28-day run-level sample and comparison limits. The PR
+workflow median is 4.58 minutes (682 attempts across 110 head branches), but the
+mean is 175.87 minutes because protected staging waits sometimes last days. Main
+pipeline median is 1.18 minutes (86 successful pushes). There were 69 production
+deploy records, zero failures observed, and 64 matched merge-to-live samples
+(median 3.42 minutes). With zero failures, time-to-recovery sample size is zero
+and recovery time is unknown. The existing pipeline optimization comparison is
+still only n=2 before and n=2 after at the Backend-job level; no end-to-end
+improvement has been established. See [the metrics log](docs/devops/metrics.md)
+and [optimization log](docs/devops/optimizations.md).
+
+Participant-sourced standup, retrospective, and consultation evidence is still
+missing. No records have been reconstructed or invented. The production
+post-deploy trigger, approved reliability targets, safe restore proof, accepted
+AI quality threshold, and participant records remain release/course gaps.
+
+## Historical main and stage observation — October 28, 2026
 
 Observed at 2026-10-28 15:39 UTC: GitHub `main` pointed to
 [`6414914dfa8eb8322839597c4cd6912145a442a0`](https://github.com/kendshhh/PhishLens/commit/6414914dfa8eb8322839597c4cd6912145a442a0).
