@@ -42,11 +42,15 @@ def summarize(rows: list[dict]) -> dict:
     legitimate = [row for row in rows if row["expected"] == "legitimate"]
     spam = [row for row in rows if row["expected"] == "spam"]
     negatives = [row for row in rows if row["expected"] != "phishing"]
+    scored_negatives = [row for row in negatives if row.get("prediction") is not None]
+    scored_legitimate = [row for row in legitimate if row.get("prediction") is not None]
+    scored_spam = [row for row in spam if row.get("prediction") is not None]
+    negative_errors = len(negatives) - len(scored_negatives)
     tp = sum(row.get("prediction") == "phishing" for row in phishing)
-    fp = sum(row.get("prediction") == "phishing" for row in negatives)
-    legitimate_alerts = sum(row.get("prediction") == "phishing" for row in legitimate)
-    spam_alerts = sum(row.get("prediction") == "phishing" for row in spam)
-    non_phishing_rate = fp / len(negatives) if negatives else None
+    fp = sum(row.get("prediction") == "phishing" for row in scored_negatives)
+    legitimate_alerts = sum(row.get("prediction") == "phishing" for row in scored_legitimate)
+    spam_alerts = sum(row.get("prediction") == "phishing" for row in scored_spam)
+    non_phishing_rate = fp / len(scored_negatives) if scored_negatives else None
     correct = sum((r["prediction"] == "phishing") == (r["expected"] == "phishing") for r in completed)
     latencies = sorted(r["seconds"] for r in completed)
     precision = tp / (tp + fp) if tp + fp else 0
@@ -58,10 +62,14 @@ def summarize(rows: list[dict]) -> dict:
         "phishing_tp": tp, "phishing_fp": fp, "phishing_cases": len(phishing),
         "phishing_precision": precision, "phishing_recall": recall,
         "phishing_f1": 2 * precision * recall / (precision + recall) if recall and precision else 0,
-        "legitimate_cases": len(legitimate), "legitimate_false_positives": legitimate_alerts,
-        "legitimate_false_positive_rate": legitimate_alerts / len(legitimate) if legitimate else None,
-        "spam_cases": len(spam), "spam_phishing_alerts": spam_alerts,
-        "spam_phishing_alert_rate": spam_alerts / len(spam) if spam else None,
+        "non_phishing_scored_cases": len(scored_negatives), "non_phishing_errors": negative_errors,
+        "legitimate_cases": len(legitimate), "legitimate_scored_cases": len(scored_legitimate),
+        "legitimate_errors": len(legitimate) - len(scored_legitimate),
+        "legitimate_false_positives": legitimate_alerts,
+        "legitimate_false_positive_rate": legitimate_alerts / len(scored_legitimate) if scored_legitimate else None,
+        "spam_cases": len(spam), "spam_scored_cases": len(scored_spam),
+        "spam_errors": len(spam) - len(scored_spam), "spam_phishing_alerts": spam_alerts,
+        "spam_phishing_alert_rate": spam_alerts / len(scored_spam) if scored_spam else None,
         "non_phishing_false_positive_rate": non_phishing_rate,
         "false_positive_rate": non_phishing_rate,
         "three_class_accuracy": sum(r["prediction"] == r["expected"] for r in completed) / len(rows) if rows else None,
