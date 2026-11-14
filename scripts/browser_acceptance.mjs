@@ -596,9 +596,10 @@ async function run() {
     await page.locator("#detail-heading").getByText(providerFixtureSubject, { exact: true }).waitFor();
     assert.match(await providerDetail.textContent(), /Spam/);
     assert.match(await providerDetail.textContent(), /Synthetic provider fixture explanation/);
-    assert.match(await providerDetail.textContent(), /Provider-backed AI analysis/);
-    assert.match(await providerDetail.textContent(), /Provider: Gemini/);
-    assert.match(await providerDetail.textContent(), /synthetic-provider-fixture-v1/);
+    await providerDetail.locator("details").filter({ hasText: "About this result" }).locator("summary").click();
+    assert.match(await providerDetail.innerText(), /Automated analysis recorded when saved/);
+    assert.match(await providerDetail.innerText(), /Provider: Gemini/);
+    assert.match(await providerDetail.innerText(), /Model: synthetic-provider-fixture-v1/);
     assert.equal(await providerDetail.locator("img, script").count(), 0,
       "Untrusted subject and email content must remain text, not markup");
     assert.ok(createdRecordId && records.get(createdRecordId)?.analysis_mode === "real",
