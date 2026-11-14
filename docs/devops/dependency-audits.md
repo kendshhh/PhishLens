@@ -36,13 +36,23 @@ Historical note: an earlier audit found `pyasn1==0.6.4` with CVEs
 `CVE-2026-119197`; the lockfile was updated to `0.6.5`. The current dependency
 workflow re-audits the full locks on each PR and main push.
 
-## November 14 refresh
+November 14, 2026: PR #168's audit flagged `opentelemetry-api==1.45.1`
+for `CVE-2026-126360` / `GHSA-mf5v-w3w3-f6cg`. The
+[upstream advisory](https://github.com/open-telemetry/opentelemetry-python/security/advisories/GHSA-mf5v-w3w3-f6cg)
+identifies `1.45.2` as patched. The runtime input now requires
+`opentelemetry-api>=1.45.2,<2`; runtime and development locks were regenerated
+for Python 3.12/Linux using uv 0.13.8. Only that package's pinned version changed.
 
-The pinned Python scan found `opentelemetry-api==1.45.1` affected by
-`CVE-2026-126360`; the advisory listed `1.45.2` as the fixed version. The
-source requirement now constrains `opentelemetry-api>=1.45.2,<2`, and both
-runtime and development locks were regenerated with `1.45.2`. The post-fix
-local checks passed: `pip-audit --no-deps -r backend/requirements-dev.txt`
-reported no known vulnerabilities, and `npm audit --audit-level=high
---package-lock-only` reported zero vulnerabilities. The CI workflow repeats
-these scans for the PR and main push.
+Local verification used a fresh Python 3.12.5 environment installed from the
+updated development lock. `pip check` passed; the backend suite reported
+293 passed and 45 skipped. Both Python locks passed `pip-audit==2.10.1`, and
+the npm lock audit reported zero vulnerabilities. These are local results;
+PostgreSQL-specific CI and hosted Auth acceptance remain separate. No audit
+exception, workflow bypass, or shared-environment change was introduced.
+
+To run the optional GitHub dependency-review job, set
+`DEPENDENCY_REVIEW_ENABLED` to the string `true` after confirming dependency
+graph access for the repository's current visibility. If the pending private
+visibility change completes, confirm GitHub Advanced Security licensing first.
+When the variable is unset or `false`, the job is skipped while the lockfile
+audits still run.

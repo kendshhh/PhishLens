@@ -1,8 +1,9 @@
+import os
 from functools import lru_cache
 from threading import Lock
 from typing import Literal
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request, Response
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -19,6 +20,7 @@ from backend.ai.schemas import (
     AnalysisValidationErrorResponse,
 )
 from backend.ai.service import AIService
+from backend.ai.spend_limit import GeminiSpendPolicy, SpendLimitExceeded
 from backend.app.routers.history import router as history_router
 from backend.core.config import PROJECT_ROOT, get_ai_config
 
@@ -117,7 +119,15 @@ def _get_cached_ai_service() -> tuple[AIService, Literal["mock", "gemini", "loca
         return AIService(LocalProvider(cache_dir=cache_dir)), "local"
     if api_key is None or model is None:
         raise RuntimeError("Gemini configuration is incomplete")
-    return AIService(GeminiProvider(api_key=api_key, model=model)), "gemini"
+    spend_policy = GeminiSpendPolicy.from_environment(
+        cap_variable="GEMINI_PER_REQUEST_COST_CAP_USD",
+        model_id=model,
+    )
+    return AIService(GeminiProvider(
+        api_key=api_key,
+        model=model,
+        spend_policy=spend_policy,
+    )), "gemini"
 
 
 @app.get("/health")
@@ -128,8 +138,6 @@ def health():
 @app.get("/version")
 def version():
     """Public deployment identity only; never expose environment or credential values."""
-    import os
-
     return {
         "commit": os.getenv("RENDER_GIT_COMMIT", "unknown"),
         "environment": os.getenv("APP_ENV", "development"),
@@ -154,11 +162,30 @@ def model_info():
 
             load_live_models()
             return {"provider_mode": mode, "model_sha256": MODEL_SHA256,
+                    "supports_required_provider": True,
                     "alert_threshold_score": sigmoid(INTERCEPT), "accepts_tfidf_reports": True,
                     "accepts_local_reviews": True}
+        if mode == "gemini":
+            _, _, model = get_ai_config()
+            policy = GeminiSpendPolicy.from_environment(
+                cap_variable="GEMINI_PER_REQUEST_COST_CAP_USD",
+                model_id=model,
+            )
+            return {
+                "provider_mode": mode,
+                "model": model,
+                "spend_guard_enabled": True,
+                "per_request_cost_cap_usd": str(policy.cap_usd.normalize()),
+                "accepts_tfidf_reports": False,
+                "accepts_local_reviews": False,
+            }
     except (RuntimeError, OSError, ValueError, KeyError):
         pass
-    return {"provider_mode": "unavailable", "accepts_tfidf_reports": False}
+    return {
+        "provider_mode": "unavailable",
+        "accepts_tfidf_reports": False,
+        "supports_required_provider": True,
+    }
 
 
 @app.post(
@@ -180,7 +207,13 @@ def model_info():
         },
     },
 )
-def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
+def analyze_email(
+    request: AnalysisRequest,
+    require_provider: Literal["tfidf"] | None = Header(
+        default=None,
+        alias="X-Require-Provider",
+    ),
+) -> AnalysisResponse | JSONResponse:
     try:
         service, mode = get_ai_service()
     except RuntimeError:
@@ -188,6 +221,13 @@ def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
             503,
             "analysis_unavailable",
             "Analysis temporarily unavailable",
+        )
+
+    if require_provider is not None and mode != require_provider:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Required analysis provider is unavailable",
         )
 
     try:
@@ -203,6 +243,12 @@ def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
             "Analysis temporarily unavailable",
         )
     except DailyQuotaExceeded:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Analysis temporarily unavailable",
+        )
+    except SpendLimitExceeded:
         return analysis_error(
             503,
             "analysis_unavailable",
@@ -225,6 +271,53 @@ def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
         risk_level=risk_level,
         mode=mode,
     )
+
+
+@app.post(
+    "/analyses/revision/{expected_sha}",
+    response_model=AnalysisResponse,
+    response_model_exclude_none=True,
+    responses={
+        409: {
+            "model": AnalysisFailureResponse,
+            "description": "Request reached a different deployment revision",
+        },
+        422: {
+            "model": AnalysisValidationErrorResponse,
+            "description": "Invalid email input",
+        },
+        502: {
+            "model": AnalysisFailureResponse,
+            "description": "Analysis failed",
+        },
+        503: {
+            "model": AnalysisFailureResponse,
+            "description": "Analysis unavailable",
+        },
+    },
+)
+def analyze_email_for_revision(
+    expected_sha: str,
+    request: AnalysisRequest,
+    response: Response,
+    require_provider: Literal["tfidf"] = Header(alias="X-Require-Provider"),
+) -> AnalysisResponse | JSONResponse:
+    """Run smoke analysis only on the requested source revision and provider."""
+    serving_sha = os.getenv("RENDER_GIT_COMMIT", "unknown")
+    response.headers["X-PhishLens-Revision"] = serving_sha
+    if expected_sha != serving_sha:
+        mismatch = analysis_error(
+            409,
+            "deployment_revision_mismatch",
+            "Analysis request reached a different deployment revision",
+        )
+        mismatch.headers["X-PhishLens-Revision"] = serving_sha
+        return mismatch
+
+    result = analyze_email(request, require_provider=require_provider)
+    if isinstance(result, JSONResponse):
+        result.headers["X-PhishLens-Revision"] = serving_sha
+    return result
 
 
 def check_database():

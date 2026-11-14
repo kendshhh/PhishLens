@@ -90,6 +90,44 @@ def test_all_crud_requires_authentication(signed, method, path, body):
     finally:
         app.dependency_overrides = old
 
+
+@pytest.mark.parametrize("method,path,body", [
+    ("GET", "/api/analyses", None),
+    ("GET", "/api/analyses/00000000-0000-0000-0000-000000000001", None),
+    ("POST", "/api/analyses", {"body": "Synthetic email"}),
+    ("PATCH", "/api/analyses/00000000-0000-0000-0000-000000000001", {"notes": "test"}),
+    ("DELETE", "/api/analyses/00000000-0000-0000-0000-000000000001", None),
+])
+@pytest.mark.parametrize("kind,status", [
+    ("malformed", 401), ("expired", 401), ("unverified", 403), ("banned", 403),
+])
+def test_rejected_bearers_block_all_crud_before_mapping(signed, monkeypatch, method, path, body, kind, status):
+    tokens = {
+        "malformed": "not-a-signed-token",
+        "expired": signed(exp=1),
+        "unverified": signed(emailVerified=False),
+        "banned": signed(banned=True),
+    }
+    token = tokens[kind]
+    resolve = Mock(side_effect=AssertionError("Rejected bearer reached user mapping"))
+    monkeypatch.setattr(auth, "resolve_user", resolve)
+    old = app.dependency_overrides.copy()
+    # A route reaching storage with this dependency would fail, rather than
+    # silently passing against an unrelated local or hosted database.
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        with TestClient(app) as client:
+            response = client.request(method, path, json=body,
+                                      headers={"Authorization": "Bearer " + token})
+        assert response.status_code == status
+        resolve.assert_not_called()
+        assert token not in response.text
+        assert "a@example.test" not in response.text
+        if status == 401:
+            assert response.headers["www-authenticate"] == "Bearer"
+    finally:
+        app.dependency_overrides = old
+
 # SQLite exercises actual owner filters without a hosted database. PostgreSQL
 # locks, migrations, grants and pooled contexts need separate integration tests.
 @compiles(JSONB, "sqlite")

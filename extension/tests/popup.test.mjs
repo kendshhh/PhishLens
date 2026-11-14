@@ -88,10 +88,11 @@ test("a local save completed over an open detail restores the report library", a
   assert.equal(ui.get("detail-heading").textContent, "New local report");
 });
 
- test("HTML provides associated labels, focusable CRUD controls, and a bounded popup", async () => {
+test("HTML provides associated labels, focusable CRUD controls, a bounded popup and responsive side panel", async () => {
   const html = await readFile(new URL("../popup.html", import.meta.url), "utf8");
   const css = await readFile(new URL("../css/popup.css", import.meta.url), "utf8");
   const popup = await readFile(new URL("../js/popup.js", import.meta.url), "utf8");
+  const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
   for (const [label, control] of [["create-subject", "create-subject"], ["create-body", "create-body"], ["edit-notes", "edit-notes"], ["edit-feedback", "edit-feedback"]]) {
     assert.match(html, new RegExp(`<label for="${label}">`));
     assert.match(html, new RegExp(`id="${control}"`));
@@ -103,8 +104,16 @@ test("a local save completed over an open detail restores the report library", a
   assert.match(html, /Analyze selection with PhishLens/);
   assert.match(html, /<button id="create-button" type="submit">Analyze and save<\/button>/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
-  assert.match(css, /width:\s*380px/);
-  assert.match(css, /max-height:\s*600px/);
+  // Split flow: right-click opens a tab-scoped action popup (chrome.action.openPopup, Chrome 127+);
+  // the toolbar opens the side panel, so the manifest must not define a default popup.
+  assert.equal(manifest.minimum_chrome_version, "127");
+  assert.equal(manifest.action.default_popup, undefined);
+  assert.equal(manifest.side_panel.default_path, "popup.html");
+  assert.ok(manifest.permissions.includes("sidePanel"));
+  assert.match(css, /\.popup-surface body \{[^}]*width:\s*380px[^}]*max-height:\s*600px/);
+  assert.match(css, /width:\s*min\(100vw,\s*460px\)/);
+  assert.match(css, /min-width:\s*300px/);
+  assert.match(css, /max-width:\s*520px/);
   assert.match(css, /overflow-y:\s*auto/);
   assert.match(popup, /createAnalysisClient\(API_BASE_URL, fetchImpl, \{ requiredModel: MODEL_SHA256 \}\)/);
   assert.doesNotMatch(popup, /in-memory-analysis-client/);
@@ -304,8 +313,8 @@ test("saved report uncertainty and missing results are described without inventi
   assert.match(detail.children[4].children[1].textContent, /not assessed/i);
   assert.match(detail.children[5].children[1].textContent, /Not provided/);
   assert.match(detail.children[6].children[1].textContent, /not been analyzed/i);
-  assert.match(detail.children[9].children[1].textContent, /provenance unknown/i);
-  assert.match(detail.children[9].children[1].textContent, /Model: fixture-model/);
+  assert.match(detail.children[9].children[1].textContent, /source unknown/i);
+  assert.doesNotMatch(detail.children[9].children[1].textContent, /fixture-model/);
 });
 
 test("provider provenance is labeled explicitly", async () => {
@@ -318,7 +327,7 @@ test("provider provenance is labeled explicitly", async () => {
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
-  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Automated analysis recorded when saved/);
   assert.match(text, /Provider: Gemini/);
   assert.match(text, /Model: fixture-gemini-model/);
   assert.match(text, /Model revision: fixture-revision/);
@@ -333,7 +342,7 @@ test("real reports without provider metadata explain the missing provenance", as
   const { ui, controller } = setup(createInMemoryAnalysisClient([data]));
   await controller.loadDetail(id);
   const text = ui.get("detail-content").children[9].children[1].textContent;
-  assert.match(text, /Provider-backed AI analysis/);
+  assert.match(text, /Automated analysis recorded when saved/);
   assert.match(text, /Provider and model were not reported/);
 });
 
@@ -446,7 +455,8 @@ test("notes and feedback stay disabled until edit save settles", async () => {
   assert.equal(ui.get("edit-notes").disabled, false);
   assert.equal(ui.get("edit-feedback").disabled, false);
   assert.equal(ui.get("detail-content").children[7].children[1].textContent, "Draft saved");
-  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Flagged, but I think it’s legitimate");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent,
+    "Flagged, but I think it’s legitimate");
 });
 
 test("a delayed older detail response cannot replace an open editor draft", async () => {

@@ -1,7 +1,9 @@
 // Installed-extension integration smoke test. All API responses are intercepted;
 // this is software verification, not a new accuracy or latency benchmark.
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, rm, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,11 +15,27 @@ if (!chromePath || !playwrightPath) throw Error('Set PHISHLENS_CHROME and PHISHL
 const { chromium } = await import(pathToFileURL(playwrightPath).href);
 const profile = await mkdtemp(path.join(os.tmpdir(), 'phishlens-browser-'));
 let context;
-const evidence = { scope: 'installed-extension software smoke; intercepted API, no database',
+const evidence = { scope: 'installed unpacked extension and side-panel page software smoke; intercepted API, no database',
   recorded_at: new Date().toISOString(), platform: os.platform(), os_release: os.release(),
   checks: [], accuracy_test: false, database_persistence_tested: false };
 const check = name => evidence.checks.push(name);
 try {
+  const packageIdentity = JSON.parse(await readFile(path.join(root, 'output/extension/evidence.json'), 'utf8'));
+  const archive = await readFile(path.join(root, 'output/extension/PhishLens-Extension.zip'));
+  assert.equal(createHash('sha256').update(archive).digest('hex'), packageIdentity.archive_sha256);
+  assert.equal(packageIdentity.runtime_or_packaging_changes, false,
+    'The installed Chrome smoke must use package inputs from a clean revision');
+  const manifest = JSON.parse(await readFile(path.join(root, 'extension/manifest.json'), 'utf8'));
+  assert.equal(manifest.version, packageIdentity.extension_version);
+  for (const [asset, expected] of Object.entries(packageIdentity.files_sha256)) {
+    const content = await readFile(path.join(root, 'extension', asset));
+    assert.equal(createHash('sha256').update(content).digest('hex'), expected,
+      `The Chrome smoke source differs from the packaged asset: ${asset}`);
+  }
+  evidence.source_commit = packageIdentity.source_commit;
+  evidence.extension_version = packageIdentity.extension_version;
+  evidence.package_sha256 = packageIdentity.archive_sha256;
+  check('Chrome smoke source files match the exact clean packaged revision');
   context = await chromium.launchPersistentContext(profile, {
     executablePath: chromePath, headless: true, ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--enable-unsafe-extension-debugging', '--disable-background-networking', '--no-first-run']
@@ -60,35 +78,31 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('chrome-extension://' + id + '/popup.html');
   await page.locator('#empty-state').waitFor({ state: 'visible' });
-  assert.equal(requests.length, 0); check('Popup opens without API or text-upload requests');
+  const panelBehavior = await page.evaluate(() => chrome.sidePanel.getPanelBehavior());
+  assert.equal(panelBehavior.openPanelOnActionClick, true);
+  // A configured popup takes priority over openPanelOnActionClick, so none may be set.
+  assert.equal(await page.evaluate(() => chrome.action.getPopup({})), '');
+  check('Actual Chrome reports no toolbar popup and openPanelOnActionClick, so the toolbar opens the side panel');
+  assert.equal(requests.length, 0); check('Side-panel page opens without API or text-upload requests');
   await page.evaluate(async text => {
     await chrome.runtime.sendMessage({ type: 'phishlens-analyze-text', text });
   }, record.body);
   await page.locator('#result-state').waitFor({ state: 'visible' });
   assert.equal(requests.length, 0);
-  assert.match(await page.locator('#threshold').innerText(), /88.71%/);
-  assert.doesNotMatch(await page.locator('#evidence').innerText(), /undefined/);
-  check('Actual service worker scans locally and popup displays verified English insights');
+  assert.match(await page.locator('#classification').innerText(), /Suspicious|No strong warning signs|Uncertain/);
+  assert.doesNotMatch(await page.locator('#result-state').innerText(), /undefined|NaN/);
+  check('Actual service worker scans locally and the side-panel page displays a labeled result');
   const out = path.join(root, 'output/tfidf-integration-20261029');
   await mkdir(out, { recursive: true });
   await page.screenshot({ path: path.join(out, 'extension-scan.png'), fullPage: true });
-  await page.click('#save-report'); assert.equal(requests.length, 0);
-  check('Save requires explicit upload consent');
-  await page.fill('#report-subject', 'Software smoke <script>alert(1)</script>');
-  await page.check('#save-consent'); await page.click('#save-report');
-  await page.getByText('Saved and reread successfully.', { exact: true }).waitFor();
-  assert.equal(requests.filter(r => r.method === 'POST').length, 1);
-  check('Save, fresh detail reread and history refresh use the contributors API contract (intercepted)');
+  // This smoke loads the real source folder without a test session, so personal report saving
+  // must stay unavailable. Saved-report CRUD is covered by npm run test:browser with a mock session.
+  assert.equal(await page.locator('#save-report').isDisabled(), true);
+  assert.equal(await page.locator('#save-consent').isDisabled(), true);
+  assert.equal(requests.length, 0);
+  check('Report saving stays disabled and uploads nothing while signed out');
   assert.equal(await page.locator('script:not([src])').count(), 0);
-  await page.getByRole('button', { name: 'Edit notes and feedback', exact: true }).click();
-  await page.fill('#edit-notes', 'Smoke test feedback');
-  await page.selectOption('#edit-feedback', 'false_positive'); await page.click('#save-edit');
-  await page.getByText('Changes saved successfully.', { exact: true }).waitFor();
-  assert.equal(record.feedback, 'false_positive'); check('Notes and feedback update without changing model weights');
-  await page.getByRole('button', { name: 'Delete analysis', exact: true }).click();
-  await page.click('#confirm-delete');
-  await page.locator('#detail-panel').waitFor({ state: 'hidden' });
-  assert.equal(deleted, true); check('Explicit delete and empty history rendering work');
+  check('No inline script is present in the rendered side-panel page');
   await page.evaluate(async () => { await chrome.storage.session.set({ phishlensDebugFailNext: true });
     await chrome.runtime.sendMessage({ type: 'phishlens-analyze-text', text: 'Meeting agenda' }); });
   await page.locator('#error-state').waitFor({ state: 'visible' });
@@ -98,7 +112,74 @@ try {
   await page.locator('#result-state').waitFor({ state: 'visible' });
   await page.click('#clear-button'); await page.locator('#empty-state').waitFor({ state: 'visible' });
   check('Retry and Clear work in the installed extension');
-  assert.deepEqual(errors, []); check('No popup JavaScript errors observed');
+
+  // Keyboard-only checks in installed Chrome (Issue #136): no clicks or programmatic focus.
+  const describeFocus = () => page.evaluate(() => {
+    const element = document.activeElement;
+    if (!element || element === document.body) return null;
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const parentStyle = element.parentElement ? getComputedStyle(element.parentElement) : null;
+    const labelled = element.getAttribute('aria-labelledby')
+      ?.split(/\s+/).map(labelId => document.getElementById(labelId)?.textContent ?? '').join(' ');
+    const name = (element.getAttribute('aria-label') || labelled || element.labels?.[0]?.textContent
+      || element.textContent || element.getAttribute('title') || '').replace(/\s+/g, ' ').trim();
+    const outlined = value => value && value.outlineStyle !== 'none' && parseFloat(value.outlineWidth) > 0;
+    return { id: element.id, tag: element.tagName.toLowerCase(), name,
+      visible: box.width > 0 && box.height > 0 && style.visibility !== 'hidden',
+      indicator: Boolean(outlined(style) || outlined(parentStyle)) };
+  });
+  const tabUntil = async (matches, limit = 60) => {
+    for (let step = 0; step < limit; step++) {
+      await page.keyboard.press('Tab');
+      const focused = await describeFocus();
+      if (focused && matches(focused)) return focused;
+    }
+    throw Error('Keyboard focus did not reach the expected control');
+  };
+  // Walk the full Tab cycle (wrapping past the end of the page) and stop when a control repeats.
+  const tabCycle = async view => {
+    const seen = [];
+    let outsidePage = 0;
+    for (let step = 0; step < 80; step++) {
+      await page.keyboard.press('Tab');
+      const focused = await describeFocus();
+      if (!focused) { if (++outsidePage > 3) break; continue; }
+      const key = `${focused.tag}#${focused.id}:${focused.name}`;
+      if (seen.includes(key)) break;
+      seen.push(key);
+      assert.ok(focused.visible, `${view}: keyboard focus reached a hidden control (${key})`);
+      assert.ok(focused.name, `${view}: focused control has no accessible name (${key})`);
+      assert.ok(focused.indicator, `${view}: focused control has no visible focus indicator (${key})`);
+    }
+    assert.ok(seen.length >= 3, `${view}: Tab must reach the page controls`);
+    return seen;
+  };
+  evidence.keyboard_tab_order = { check_email: await tabCycle('Check email view') };
+  await tabUntil(focused => focused.tag === 'summary' && /paste email text/i.test(focused.name));
+  await page.keyboard.press('Enter');
+  await tabUntil(focused => focused.id === 'scan-body');
+  await page.keyboard.type('Synthetic keyboard check: please review the attached agenda before Friday.');
+  await tabUntil(focused => focused.id === 'scan-button');
+  await page.keyboard.press('Enter');
+  await page.locator('#result-state').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#classification').innerText(), /Suspicious|No strong warning signs|Uncertain/);
+  assert.doesNotMatch(await page.locator('#classification').innerText(), /\b(safe|genuine|legitimate)\b/i,
+    'A local result must never be presented as a safe verdict');
+  assert.equal(requests.length, 0);
+  check('Keyboard-only paste and Check this email shows a labeled result without a safe verdict');
+  await tabUntil(focused => focused.id === 'show-reports');
+  await page.keyboard.press('Enter');
+  await page.locator('#reports-view').waitFor({ state: 'visible' });
+  await page.locator('#reports-account-gate').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#show-reports').getAttribute('aria-pressed'), 'true');
+  evidence.keyboard_tab_order.saved_reports_signed_out = await tabCycle('Saved reports view (signed out)');
+  assert.ok(evidence.keyboard_tab_order.saved_reports_signed_out.some(key => key.includes('reports-sign-in')),
+    'Signed out, Tab must reach the sign-in action for saved reports');
+  check('Keyboard Tab cycles reach only visible, named controls with a focus indicator in both views');
+  assert.equal(requests.length, 0);
+
+  assert.deepEqual(errors, []); check('No side-panel page JavaScript errors observed');
   evidence.api_requests_intercepted = requests.length;
   evidence.installed_extension = true; evidence.success = true;
 } catch (error) {
