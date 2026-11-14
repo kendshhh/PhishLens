@@ -15,7 +15,8 @@
     "package": "python scripts/package_extension.py",
     "phishlens": "node scripts/phishlens.mjs",
     "doctor": "node scripts/phishlens.mjs doctor",
-    "model:check": "node scripts/phishlens.mjs model-check"
+    "model:check": "node scripts/phishlens.mjs model-check",
+    "test:accounts": "node scripts/test_account_ui.mjs"
   },
   "repository": {
     "type": "git",
@@ -29,10 +30,15 @@
   },
   "homepage": "https://github.com/kendshhh/PhishLens#readme",
   "devDependencies": {
+    "better-auth": "1.7.18",
+    "esbuild": "0.28.2",
     "eslint": "^10.14.0",
     "playwright": "^1.65.0"
   },
   "overrides": {
     "minimatch": "11.0.1"
+  },
+  "dependencies": {
+    "@neon/auth": "0.8.2"
   }
 }
