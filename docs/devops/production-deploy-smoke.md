@@ -40,9 +40,11 @@ runbook action, not automatic deployment evidence.
 
 ## Current production result
 
-On 2026-11-14 the script was run against SHA
-`2c293f3739fc712fa4622906cc4df2846c880029`. It failed closed because public
-`/model-info` returned `provider_mode=unavailable`. The script sent zero
-analysis requests, made zero database writes, and made zero paid provider calls.
-Production health and readiness passed, but AI feature acceptance did not.
-See [reliability-acceptance-2026-11-14.md](reliability-acceptance-2026-11-14.md).
+On 2026-11-14 the production SHA advanced to
+`76551f68ff7dc02971cf127fa82f1f35e79cc2ab` after PR #197. A fresh exact-SHA
+manual run failed closed because `/model-info` returned
+`provider_mode=unavailable`. The script sent zero analysis requests, made zero
+database writes, and made zero paid provider calls. Production health and
+readiness passed, but AI feature acceptance did not. A prior run on
+`2c293f3739fc712fa4622906cc4df2846c880029` failed for the same reason. See
+[reliability-acceptance-2026-11-14.md](reliability-acceptance-2026-11-14.md).

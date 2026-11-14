@@ -4,12 +4,12 @@
 
 Production Render service `phishlens-api` is configured to deploy from `main`
 after checks pass. At the latest read-only verification it served commit
-`2c293f3739fc712fa4622906cc4df2846c880029`; `/health` and `/ready` both
+`76551f68ff7dc02971cf127fa82f1f35e79cc2ab`; `/health` and `/ready` both
 returned HTTP 200. Readiness confirms database connectivity only. The app did
 not expose enough information to prove which Neon branch it reached.
 
 The production `/model-info` endpoint returned `provider_mode=unavailable`.
-The new exact-SHA smoke was run against `2c293f…`; it stopped at this
+The new exact-SHA smoke was run against `76551f…`; it stopped at this
 pre-inference check and made zero analysis/provider requests and zero database
 writes. This is a production AI feature failure even though process health and
 database readiness are green. The public endpoint does not disclose whether the

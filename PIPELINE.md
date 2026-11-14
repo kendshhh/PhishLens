@@ -3,20 +3,19 @@
 ## Current delivery and acceptance snapshot — November 14, 2026
 
 This dated snapshot supersedes the October 28 observations below. GitHub
-`main` is `76551f68ff7dc02971cf127fa82f1f35e79cc2ab` (`Block vulnerable
-dependencies in CI`, PR #197). The repository is public, as intended by the
-owner. The active main ruleset requires one review approval and ten status
+`main` is `36cb0d4c1c197b5a4a2bead38dcf9fa966719f53` (PR #199, refresh delivery
+and deployment metrics). The repository is public, as intended by the owner.
+The active main ruleset requires one review approval and ten status
 checks, including `Dependency security` and
 `Dependency graph review (GitHub Advanced Security)`. The AI evaluation check
 is running on AI-changing PRs but is not yet a required main check.
 
-Three focused DevOps PRs remain open: [#196 AI evaluation and spend
-controls](https://github.com/kendshhh/PhishLens/pull/196), [#198 production
-smoke and acceptance](https://github.com/kendshhh/PhishLens/pull/198), and [#199
-delivery metrics](https://github.com/kendshhh/PhishLens/pull/199). They are
-rebased on current main. Their latest automated checks pass; #196 still has a
-requested-changes review, #198 needs review, and #199 is approved. PR #197 is
-merged; no other DevOps PR is merged.
+Two focused DevOps PRs remain open: [#196 AI evaluation and spend
+controls](https://github.com/kendshhh/PhishLens/pull/196) and [#198 production
+smoke and acceptance](https://github.com/kendshhh/PhishLens/pull/198). PR #197
+dependency security and PR #199 delivery metrics have merged. Both open PRs
+are based on current main; #196 still has a requested-changes review and #198
+needs review.
 
 The GitHub Dependabot API still lists fifteen open alerts: twelve high
 `pyasn1` alerts and three medium `opentelemetry-api` alerts across the three
@@ -27,14 +26,14 @@ records with GitHub's refreshed dependency graph; do not treat the API count
 alone as evidence that the pinned versions remain vulnerable or as evidence
 that the alerts are closed.
 
-A fresh Gitleaks v8.30.1 scan after the sync/rebase scanned 524 commits across
-all local refs and found no leaks. This records the credential scan result; it
+A fresh Gitleaks v8.30.1 history scan across all refs after the sync/rebase
+found no leaks. This records the credential scan result; it
 does not establish broader application security.
 
 ### Live service targets
 
 - **Production:** Render serves SHA
-  `2c293f3739fc712fa4622906cc4df2846c880029`; `/health` and `/ready` return
+  `76551f68ff7dc02971cf127fa82f1f35e79cc2ab`; `/health` and `/ready` return
   200, but `/model-info` reports `provider_mode=unavailable`. The exact-SHA
   feature smoke therefore failed before inference and made zero analysis
   requests, provider calls, or database writes. Production AI behavior is not
@@ -72,9 +71,9 @@ because Render currently has no production deployment event for this service and
 workspace webhooks require a higher Render plan. It does not yet run immediately
 after every production deploy. An uptime monitor is also not configured.
 
-PR #199 records the 28-day run-level sample through 2026-11-14 03:12 UTC, before
-PR #197 merged, and the comparison limits. The PR
-workflow median is 4.58 minutes (682 attempts across 110 head branches), but the
+The merged metrics log records a frozen 28-day run-level sample through
+2026-11-14 03:12 UTC, before PRs #197 and #199 merged, and the comparison limits.
+The PR workflow median is 4.58 minutes (682 attempts across 110 head branches), but the
 mean is 175.87 minutes because protected staging waits sometimes last days. Main
 pipeline median is 1.18 minutes (86 successful pushes). There were 69 production
 deploy records, zero failures observed, and 64 matched merge-to-live samples
