@@ -154,11 +154,16 @@ def model_info():
 
             load_live_models()
             return {"provider_mode": mode, "model_sha256": MODEL_SHA256,
+                    "supports_required_provider": True,
                     "alert_threshold_score": sigmoid(INTERCEPT), "accepts_tfidf_reports": True,
                     "accepts_local_reviews": True}
     except (RuntimeError, OSError, ValueError, KeyError):
         pass
-    return {"provider_mode": "unavailable", "accepts_tfidf_reports": False}
+    return {
+        "provider_mode": "unavailable",
+        "accepts_tfidf_reports": False,
+        "supports_required_provider": True,
+    }
 
 
 @app.post(

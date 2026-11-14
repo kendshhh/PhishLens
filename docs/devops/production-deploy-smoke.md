@@ -6,9 +6,22 @@
 and `scripts/production_deploy_smoke.py` take a full deployment SHA, wait for
 production `/version` to report that exact SHA, then check `/health`, `/ready`,
 the configured provider/model identity, and two fixed synthetic analysis cases.
-The behavior checks run only when the live provider is TF-IDF. They make no
-saved-report/database write and no paid provider request. A failed identity or
-provider preflight stops before analysis.
+The preflight also requires `/model-info` to advertise
+`supports_required_provider=true`. Each analysis request sends
+`X-Require-Provider: tfidf`, and the API checks the active provider before
+inference. Older API versions that do not confirm this guard fail closed before
+analysis. The behavior checks run only when the live provider is TF-IDF. They
+make no saved-report/database write and no paid provider request. A failed
+identity or provider preflight stops before analysis.
+
+## Workflow trust boundary
+
+The workflow is `workflow_dispatch` only, and its job runs only when the
+selected ref is `main`. It checks out that run's `github.sha` with persisted
+credentials disabled. Its `GITHUB_TOKEN` permission is limited to
+`contents: read`; the workflow does not reference repository secrets, write
+repository contents, or modify branch protection or required checks. Artifact
+upload is the only retained output.
 
 The workflow is currently manual. Run it from Actions after a production
 deployment and supply the full SHA reported by Render. It uploads a redacted

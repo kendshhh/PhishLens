@@ -113,6 +113,10 @@ def verify_deployment(
     if ready != {"status": "ready", "database": "connected"}:
         raise RuntimeError("Production readiness response did not match the API contract")
     model_info = get_json(base + "/model-info")
+    if model_info.get("supports_required_provider") is not True:
+        raise RuntimeError(
+            "Production API does not confirm required-provider enforcement; refusing analysis"
+        )
     if model_info.get("provider_mode") != "tfidf":
         raise RuntimeError(
             "Safe production behavior smoke requires the non-paid TF-IDF provider "
