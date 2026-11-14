@@ -1,17 +1,27 @@
 import asyncio
 import os
+from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from google.genai import errors
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from backend.ai import gemini_provider
 from backend.ai.mock_provider import MockProvider
 from backend.ai.schemas import AIAnalysisResult, EvidenceItem
 from backend.ai.service import AIService
-from backend.app import analysis_deadlines, analysis_persistence, analysis_service, main
+from backend.app import (
+    analysis_deadlines,
+    analysis_execution,
+    analysis_persistence,
+    analysis_service,
+    analysis_worker,
+    main,
+)
 from backend.app.analysis_deadlines import AnalysisTimeoutError
 from backend.app.analysis_execution import (
     AnalysisInferenceError,
@@ -25,13 +35,23 @@ pytestmark = pytest.mark.skipif(
     reason="Requires a disposable local PostgreSQL database",
 )
 
+_ALLOWED_TEST_DATABASES = {
+    "phishlens_s2_t1_test",
+    "phishlens_s3_t2_test",
+}
+
 
 @pytest.fixture
 def saved_postgres_context(monkeypatch):
     from backend.core.database import engine
 
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database == "phishlens_s2_t1_test"
+    expected_database = os.getenv(
+        "SAVED_CREATE_TEST_DATABASE",
+        "phishlens_s2_t1_test",
+    )
+    assert expected_database in _ALLOWED_TEST_DATABASES
+    assert engine.url.database == expected_database
 
     user_id = uuid4()
     email = f"crud-http-{user_id}@phishlens.test"
@@ -461,6 +481,99 @@ def test_failed_inference_does_not_save(
             .where(AnalyzedEmail.user_id == user_id)
         )
         assert count == 0
+
+
+@pytest.mark.parametrize(
+    "fault, expected_status, expected_code, expected_message",
+    [
+        ("rate-limit", 503, "analysis_unavailable", "Email analysis is temporarily unavailable"),
+        ("daily-quota", 503, "analysis_unavailable", "Email analysis is temporarily unavailable"),
+        ("malformed-json", 502, "analysis_failed", "Email analysis failed"),
+        ("unsupported-verdict", 502, "analysis_failed", "Email analysis failed"),
+    ],
+)
+def test_gemini_failure_has_no_row_and_same_key_can_recover(
+    saved_postgres_context, monkeypatch,
+    fault, expected_status, expected_code, expected_message,
+):
+    """Exercise the real adapter/worker mapping with synthetic SDK responses.
+
+    The worker runs inline to inject SDK faults on Windows and macOS alike;
+    process supervision is covered separately, with no live provider calls here.
+    """
+    client, engine, user_id = saved_postgres_context
+    private_marker = "synthetic-private-provider-detail"
+    if fault in {"rate-limit", "daily-quota"}:
+        details = [] if fault == "rate-limit" else [
+            {"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel"}]}
+        ]
+        failed_response = errors.APIError(
+            code=429,
+            response_json={"error": {"message": private_marker, "details": details}},
+        )
+    else:
+        failed_response = SimpleNamespace(text=(
+            private_marker if fault == "malformed-json"
+            else '{"classification":"safe","explanation":"' + private_marker + '"}'
+        ))
+    sdk = Mock()
+    sdk.models.generate_content.side_effect = [
+        failed_response,
+        SimpleNamespace(text='{"classification":"legitimate"}'),
+    ]
+    constructor = Mock(return_value=sdk)
+    monkeypatch.setattr(gemini_provider.genai, "Client", constructor)
+    monkeypatch.setattr(
+        saved_create, "get_ai_config",
+        lambda: ("gemini", "synthetic-key", "gemini-test"),
+    )
+    monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "1")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "gemini-test")
+
+    def inline_inference(*, deadline, **kwargs):
+        deadline.inference_remaining()
+        channel = Mock()
+        analysis_worker.run_analysis_worker(channel, **kwargs)
+        channel.send.assert_called_once()
+        channel.close.assert_called_once()
+        return analysis_execution._read_result(channel.send.call_args.args[0])
+
+    monkeypatch.setattr(analysis_service, "run_saved_inference", inline_inference)
+    body = "Synthetic provider failure and recovery email"
+    headers = {"Idempotency-Key": "provider-failure-recovery"}
+    rejected = client.post("/api/analyses", json={"body": body}, headers=headers)
+    assert rejected.status_code == expected_status
+    assert rejected.json() == {"detail": expected_message, "code": expected_code}
+    assert private_marker not in rejected.text
+    assert sdk.models.generate_content.call_count == 1
+    with Session(engine) as verification:
+        assert verification.scalar(
+            select(func.count()).select_from(AnalyzedEmail)
+            .where(AnalyzedEmail.user_id == user_id)
+        ) == 0
+
+    accepted = client.post("/api/analyses", json={"body": body}, headers=headers)
+    assert accepted.status_code == 201
+    record_id = UUID(accepted.json()["id"])
+    assert accepted.json()["prediction"] == "legitimate"
+    assert sdk.models.generate_content.call_count == 2
+    assert sdk.close.call_count == 2
+    for call in constructor.call_args_list:
+        assert call.kwargs["http_options"].timeout == 15_000
+        assert call.kwargs["http_options"].retry_options.attempts == 1
+    with Session(engine) as verification:
+        rows = verification.scalars(
+            select(AnalyzedEmail).where(AnalyzedEmail.user_id == user_id)
+        ).all()
+        assert len(rows) == 1
+        assert rows[0].id == record_id
+        assert rows[0].body == body
+        assert rows[0].prediction == "legitimate"
+    reread = client.get(f"/api/analyses/{record_id}")
+    assert reread.status_code == 200
+    assert reread.json()["prediction"] == "legitimate"
 
 
 def test_invalid_evidence_does_not_save_and_next_request_succeeds(

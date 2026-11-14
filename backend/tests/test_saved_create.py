@@ -220,6 +220,39 @@ def test_local_create_is_unavailable(create_context):
     context.service.assert_not_awaited()
 
 
+def test_tfidf_saved_create_rejects_wrong_model_before_storage_or_replay(
+    create_context,
+    monkeypatch,
+):
+    context = create_context
+    context.ai_config.return_value = ("tfidf", None, None)
+    idempotency_lookup = AsyncMock()
+    monkeypatch.setattr(
+        saved_create,
+        "find_idempotent_saved_analysis",
+        idempotency_lookup,
+    )
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Synthetic email body"},
+        headers={
+            "Idempotency-Key": "wrong-model-hash-retry",
+            "X-PhishLens-Model": "0" * 64,
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "The matching TF-IDF save service is unavailable",
+        "code": "analysis_unavailable",
+    }
+    context.ai_config.assert_called_once_with()
+    context.database_config.assert_not_called()
+    idempotency_lookup.assert_not_awaited()
+    context.service.assert_not_awaited()
+
+
 def test_bad_database_configuration_never_calls_service(
     create_context,
 ):

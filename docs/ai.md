@@ -103,7 +103,15 @@ Neither path visits URLs, scans attachments, or authenticates a sender.
 Configuration failures return HTTP 503. Invalid provider output, unsupported
 evidence, and inference failures return HTTP 502. Recognized Google daily quota
 exhaustion returns HTTP 503; the benchmark stops rather than repeatedly retrying
-that exhausted quota. Hosted requests have a 30-second timeout and one SDK attempt.
+that exhausted quota. The unsaved `POST /analyses` path configures a 30-second
+Gemini SDK timeout and one SDK attempt. Persistent `POST /api/analyses` has a
+separate 15-second inference budget, a 20-second overall operation budget, and
+configures Gemini for a 15-second SDK timeout and one SDK attempt. Its inference
+runs in a supervised worker; concurrency admission is limited to one inference
+per API process, not globally across a multi-process deployment. The persistent
+endpoint returns 504 `analysis_timeout` on its deadline. See
+`docs/s2-t1-backend-handoff.md` for persistence, idempotency, and remaining
+runtime qualifications.
 
 ## Tests and optional provider smoke
 
