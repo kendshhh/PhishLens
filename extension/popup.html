@@ -59,14 +59,14 @@
   <button id="clear-button" class="secondary full-width clear-button" type="button">Clear local scan</button>
 
   <details class="panel create-panel" aria-labelledby="create-heading">
-    <summary id="create-heading">Analyze and save text</summary>
-    <p class="field-help">Sends your text to the team API and shared history. Submit only text you are allowed to share.</p>
+    <summary id="create-heading">Analyze and save with the PhishLens API</summary>
+    <p class="field-help">This separate action sends entered text to the PhishLens API for analysis and saves its returned result to shared history. Submit only text you are allowed to share.</p>
     <form id="create-form">
       <label for="create-subject">Subject <span class="muted">(optional)</span></label>
       <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
       <label for="create-body">Email body <span class="required">(required)</span></label>
       <textarea id="create-body" name="body" maxlength="30000" rows="4" required></textarea>
-      <button id="create-button" class="full-width" type="submit">Save analysis</button>
+      <button id="create-button" class="full-width" type="submit">Analyze and save</button>
     </form>
   </details>
 
@@ -94,7 +94,7 @@
     </form>
   </section>
 
-  <footer><p>A second opinion, not a safety guarantee.</p><p>Sender, links, and attachments are not verified.</p></footer>
+  <footer><p>A second opinion, not a safety guarantee.</p><p>Local scans stay in Chrome. The separate Analyze and save action sends entered text to the API and shared history.</p><p>Sender, links, and attachments are not verified.</p></footer>
 </main>
 <script type="module" src="popup.js"></script>
 </body>

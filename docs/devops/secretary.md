@@ -195,7 +195,19 @@ already known from `git remote`; the placeholder in the request did not block wo
 
 The new controller won't deploy unrelated documentation-only PRs; it writes
 `Secretary staging: success — not applicable`, avoiding a permanently pending
-gate after the legacy bootstrap has been retired.
+gate after the legacy bootstrap has been retired. Application PRs also need the
+`needs-hosted-staging` label before either hosted controller will deploy. Add the
+label, then rerun CI for the current PR head to request shared staging; the
+existing `staging` environment approval still gates deployment. The repository
+variable `SECRETARY_PREVIEW_ENABLED` must also be `true`; when it is off, the
+check asks for that setting and does not deploy. Without the label,
+`Secretary staging` succeeds with the title **Hosted staging not requested**.
+That outcome means no hosted preview ran and does not count as live staging
+acceptance; the Secretary report states the same and does not wait on hosted
+evidence for an unlabelled PR. Removing the label opts the PR out of later hosted
+runs. Because staging is still shared, another opted-in deployment can replace
+a preview that is still under review; use the label only for the PR currently
+being tested.
 The temporary legacy job skips drafts/forks before requesting environment
 access. That skip is not preview acceptance; the new controller records drafts
 and relevant forks as `action_required` on its separate check after installation.
@@ -278,9 +290,9 @@ context menus, badges, permissions or session storage.
 
 ## Recommended merge checks (owner verifies, bot never changes)
 
-Require `Backend checks`, `Extension checks`, `Staging integration`, and
-`Secretary staging` after proving the new controller. Keep `Hosted staging`
-required during bootstrap until its replacement is required. Require an
+Require `Backend checks`, `Extension checks`, and `Staging integration`.
+`Secretary staging` is opt-in: require hosted evidence for a change by adding
+`needs-hosted-staging` and rerunning CI for the current head. Keep an
 up-to-date branch, resolved conversations, at least
 one independent approval and dismissal of stale approvals, with no bypass.
 The reporter itself is advisory and is **not** a required AI merge gate. If it
@@ -289,10 +301,12 @@ fails, use the normal documented human review process; do not infer approval.
 On a new commit GitHub requires checks for that head; the bot reads current PR
 state before posting. The preview controller rejects old CI attempts and checks
 head again after deployment. A successful shared preview's check is changed to
-`action_required` before another PR takes the staging slot. The report also marks
-displaced evidence stale. There is a small unavoidable race between API reads and
-a concurrent push; the next PR/CI event reconciles it. Humans must always compare
-the SHA, and branch up-to-date/stale-review rules remain essential.
+`action_required` only after Render reports that another exact SHA is live. A
+failed or cancelled deployment leaves the prior live preview and its check valid.
+The report also marks displaced evidence stale. There is a small unavoidable
+race between API reads and a concurrent push; the next PR/CI event reconciles it.
+Humans must always compare the SHA, and branch up-to-date/stale-review rules
+remain essential.
 
 ## Costs, public access and cleanup
 

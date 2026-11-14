@@ -1,14 +1,52 @@
 # AI classification contract and runtime
 
-Implementation reviewed on October 18, 2026. This documents the proposed code in
-PR #26; it does not establish a deployed production provider or teammate approval.
-Related work: #8, #20, #21, and #23.
+TF-IDF v12a is the primary PhishLens classifier. The extension scores selected
+text locally. For a saved report, the backend scores the submitted body again
+and stores its own classification, risk, evidence and model revision.
+
+## TF-IDF contract
+
+- Set `AI_MODE=tfidf` for the matching backend. The bundled model is
+  `word_plus_char_wb_C1p0`, SHA-256
+  `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
+  See the [artifact attribution and source rights](../extension/ai/ATTRIBUTION.md).
+  The backend scorer runs on CPU with the bundled JSON artifact.
+- The scorer uses the visible body, masks email local parts, phone-like patterns
+  and long numbers, and collapses whitespace. After cleaning, long input is
+  reduced to the first 2,000 and last 300 Unicode code points. The backend accepts
+  a subject and sender, which do not contribute to the TF-IDF score.
+- Word and within-word character features produce a raw margin. A margin at or
+  above zero triggers a phishing alert. The frozen sigmoid maps that boundary
+  to a displayed phishing score of about 88.71%. The score is tied to the study
+  mixture. TF-IDF emits two labels: `phishing` and `legitimate` (below the
+  threshold). It does not emit `spam` or a predicted-class confidence.
+- The backend maps the label to risk and validates quoted evidence against the
+  request. Word-feature contributions are partial statistical explanations.
+  A below-threshold result does not authenticate the sender, links or attachments.
+- The separate browser review uses KRR, LightGBM and a local judge. It can return
+  `Uncertain`. The backend records the judge output as browser-reported and
+  persists the server's primary TF-IDF provenance. See the
+  [browser workflow](ai/live-workflow.md) for its assets and requirements.
+
+`GET /model-info` advertises the matching save capability and model hash.
+`POST /analyses` runs inference without saving. The extension's
+`POST /api/analyses` sends `X-PhishLens-Model` with the expected hash.
+A mismatched model returns `503 analysis_unavailable` before database setup.
+
+```sh
+python scripts/ai_smoke.py --mode tfidf
+python scripts/verify_tfidf_evaluation.py
+```
+
+The [sprint verification handoff](ai/tfidf-sprint-closeout.md) records local
+runtime checks, historical held-out results, model quality limits and what the
+release owner still needs to verify on the chosen deployment.
 
 ## Provider selection
 
-`AI_MODE` selects `mock`, `gemini`, or `local`. The default is `mock`.
-The developer's current private configuration selects `gemini` with
-`GEMINI_MODEL=gemini-3.1-flash-lite`. Deployment configuration is separate.
+`AI_MODE` also supports `mock`, `gemini`, and legacy `local` DistilBERT.
+The default is `mock` for development and ordinary CI.
+
 `gemini` uses the Google GenAI API and requires `GEMINI_API_KEY` and
 `GEMINI_MODEL`. The adapter has a separate explicit-schema path for hosted Gemma;
 mocked tests cover that path, but this handoff contains no live Gemma evidence.
@@ -21,7 +59,7 @@ Its cached model card declares Apache-2.0 and English; its configuration identif
 loads safetensors on CPU, and uses four PyTorch threads. It does not train or
 fine-tune the checkpoint.
 
-## Input, tokenizer, and score policy
+## Optional provider input, tokenizer, and score policy
 
 - `POST /analyses` accepts `text` (1 to 30,000 characters, excluding blank-only
   input), optional `subject` and `sender` (each at most 320 characters).
@@ -47,7 +85,7 @@ fine-tune the checkpoint.
 - The API maps `legitimate` to `low`, `spam` to `medium`, and `phishing` to `high`.
   These are category mappings, not additional numeric score bands.
 
-## Indicators and validation
+## Optional provider indicators and validation
 
 Local indicators are explicit regular-expression matches for sensitive-information
 terms, urgency, payment requests, and links in the subject/body. Evidence includes
@@ -67,7 +105,7 @@ evidence, and inference failures return HTTP 502. Recognized Google daily quota
 exhaustion returns HTTP 503; the benchmark stops rather than repeatedly retrying
 that exhausted quota. Hosted requests have a 30-second timeout and one SDK attempt.
 
-## Reproduction
+## Tests and optional provider smoke
 
 From the repository root in an activated Python 3.12 virtual environment:
 
@@ -104,7 +142,7 @@ Hosted smoke calls use `python scripts/ai_smoke.py --mode gemini`; configure the
 private credentials first. Hosted benchmarks consume provider quota and may incur
 cost. No new hosted calls were made during this review handoff.
 
-## Recorded evidence and limitations
+## Historical DistilBERT evidence
 
 See [the October 18 DevOps handoff](devops/ai-review-2026-10-18.md) and
 [actual local benchmark summary](devops/evidence/ai-local-2026-10-18.json).

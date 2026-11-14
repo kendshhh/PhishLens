@@ -16,7 +16,7 @@ const classificationLabels = new Map([
   ["phishing", "Phishing"], ["legitimate", "Legitimate"], ["spam", "Spam"]
 ]);
 const providerLabels = new Map([
-  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"]
+  ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"], ["tfidf", "TF-IDF"]
 ]);
 
 function node(doc, tag, className, text) {
@@ -64,7 +64,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete]) {
       button.disabled = value;
     }
-    ui.createButton.textContent = value ? "Saving…" : "Save analysis";
+    ui.createButton.textContent = value ? "Analyzing and saving…" : "Analyze and save";
     ui.saveEdit.textContent = value ? "Saving…" : "Save changes";
     ui.deleteButton.textContent = value ? "Deleting…" : "Delete analysis";
   }
@@ -207,6 +207,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
   function openEdit() {
     if (busy || !selected) return;
+    detailRequest++;
     ui.notes.value = selected.notes || "";
     ui.feedback.value = selected.feedback === null ? "null" : selected.feedback;
     show(ui.editForm, true);
@@ -250,6 +251,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     setBusy(true);
     try {
       selected = await client.updateAnalysis(selected.id, {
@@ -273,6 +275,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
   ui.deleteConfirm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !selected) return;
+    detailRequest++;
     setBusy(true);
     try {
       const deletedId = selected.id;

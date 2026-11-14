@@ -26,9 +26,16 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("neon_auth_subject", name="uq_users_neon_auth_subject"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    neon_auth_subject: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     analyzed_emails: Mapped[list["AnalyzedEmail"]] = relationship(
