@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,8 +13,8 @@ sys.path.insert(0, str(ROOT))
 from backend.ai.evaluation_cases import CASES
 from backend.ai.gemini_provider import GeminiProvider
 from backend.ai.local_provider import DEFAULT_CACHE, download_model
-from backend.ai.spend_limit import GeminiEvaluationBudget
 from backend.ai.service import AIService
+from backend.ai.spend_limit import GeminiEvaluationBudget
 from backend.core.config import get_ai_config
 
 
@@ -31,7 +31,7 @@ def main() -> int:
         os.environ["GEMINI_MODEL"] = args.model
     cases = (CASES[0], CASES[16], CASES[27])
     report = {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "source_commit": os.getenv("SOURCE_COMMIT", "local"),
         "mode": args.mode or os.getenv("AI_MODE", "mock"),
         "requested_model": os.getenv("GEMINI_MODEL") if (args.mode == "gemini" or os.getenv("AI_MODE") == "gemini") else None,
@@ -71,7 +71,7 @@ def main() -> int:
             try:
                 if mode == "gemini":
                     report["provider_requests"] += 1
-                result = service.analyze_email(subject=None, sender=None, body=case.body)
+                service.analyze_email(subject=None, sender=None, body=case.body)
                 report["cases"].append({"case": case.id, "status": "completed", "mode": mode})
             except RuntimeError:
                 report["cases"].append({"case": case.id, "status": "failed"})

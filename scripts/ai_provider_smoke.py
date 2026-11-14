@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
-import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -206,7 +205,7 @@ def main() -> int:
     output = ROOT / "output/ai-provider-smoke"
     output.mkdir(parents=True, exist_ok=True)
     report = {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "workflow_run_id": os.getenv("GITHUB_RUN_ID", "local"),
         "workflow_source_sha": os.getenv("GITHUB_SHA", "unavailable"),
         "target": "staging",
@@ -229,7 +228,7 @@ def main() -> int:
             report["analysis_requests"] = 1
             report["provider_request_attempts"] = 1
             report["provider_calls_observed"] = PROVIDER_CALLS_OBSERVED
-    except Exception as exc:  # keep raw exception text out of logs and artifacts
+    except Exception as exc:  # noqa: BLE001 -- preserve a redacted failure record
         report["status"] = "failed"
         report["reason"] = f"unexpected_{type(exc).__name__}"
         if PROVIDER_REQUEST_ATTEMPTED:

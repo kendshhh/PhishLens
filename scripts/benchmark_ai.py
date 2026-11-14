@@ -32,8 +32,8 @@ sys.path.insert(0, str(ROOT))
 from backend.ai.evaluation_cases import CASES, CASESET_VERSION
 from backend.ai.gemini_provider import DailyQuotaExceeded
 from backend.ai.prompts import PROMPT_VERSION
-from backend.ai.spend_limit import GeminiEvaluationBudget, SpendLimitExceeded
 from backend.ai.service import AIService
+from backend.ai.spend_limit import GeminiEvaluationBudget, SpendLimitExceeded
 from backend.core.config import get_ai_config
 
 
