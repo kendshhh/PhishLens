@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from zipfile import ZipFile
 
+from scripts.package_staging_extension import auth_settings, build as build_package, checkout_revision
 from scripts.verify_staging_extension_package import (
     PRODUCTION_HOST,
     STAGING_HOSTS,
@@ -27,16 +28,27 @@ class StagingPackageVerificationTests(unittest.TestCase):
         self.expected = "a" * 40
         self.build()
 
-    def build(self, *, hosts=None, config_origin=STAGING_ORIGIN, extra=None):
+    def build(self, *, hosts=None, config_origin=STAGING_ORIGIN, extra=None, auth_enabled=False):
         files = {name: f"asset:{name}".encode() for name in ASSETS}
+        auth_url = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
+        auth_origin = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech"
+        auth_database = "neondb"
+        expected_hosts = STAGING_HOSTS + ([auth_origin + "/*"] if auth_enabled else [])
         files["manifest.json"] = json.dumps({
             "manifest_version": 3,
-            "name": "PhishLens Staging",
+            "name": "PhishLens Staging Auth" if auth_enabled else "PhishLens Staging",
             "version": "1.2.3",
-            "host_permissions": hosts or STAGING_HOSTS,
+            "host_permissions": hosts or expected_hosts,
         }).encode()
         files["js/config.js"] = (
             f'export const API_BASE_URL = "{config_origin}";\n'.encode()
+        )
+        files["js/auth-config.js"] = (
+            ("export const AUTH_CONFIG = " + json.dumps({
+                "enabled": True, "authUrl": auth_url, "database": auth_database,
+                "apiOrigin": STAGING_ORIGIN,
+            }, separators=(",", ":")) + ";\n").encode()
+            if auth_enabled else b"export const AUTH_CONFIG = null;\n"
         )
         if extra:
             files.update(extra)
@@ -47,7 +59,13 @@ class StagingPackageVerificationTests(unittest.TestCase):
         self.evidence = {
             "environment": "staging",
             "api_origin": STAGING_ORIGIN,
-            "host_permissions": STAGING_HOSTS,
+            "host_permissions": expected_hosts,
+            "auth_enabled": auth_enabled,
+            "auth_url": auth_url if auth_enabled else None,
+            "auth_database": auth_database if auth_enabled else None,
+            "auth_origin": auth_origin if auth_enabled else None,
+            "chrome_extension_id": None,
+            "trusted_chrome_origin": None,
             "observed_staging_commit": self.expected,
             "package_checkout_commit": self.expected,
             "packager_checkout_commit": "b" * 40,
@@ -103,6 +121,103 @@ class StagingPackageVerificationTests(unittest.TestCase):
         self.build(extra={"unexpected.js": b"untracked"})
         with self.assertRaisesRegex(ValueError, "inventory"):
             verify(self.archive, self.sidecar, self.expected)
+
+    def test_auth_enabled_package_has_exact_staging_and_auth_hosts(self):
+        self.build(auth_enabled=True)
+        result = verify(self.archive, self.sidecar, self.expected)
+        self.assertEqual(result["files_verified"], len(ASSETS))
+
+    def test_auth_enabled_package_rejects_extra_host_permission(self):
+        auth_origin = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech"
+        self.build(auth_enabled=True, hosts=STAGING_HOSTS + [auth_origin + "/*", "https://*.neon.tech/*"])
+        with self.assertRaisesRegex(ValueError, "host permissions"):
+            verify(self.archive, self.sidecar, self.expected)
+
+    def test_auth_enabled_package_rejects_mismatched_config(self):
+        self.build(auth_enabled=True, extra={"js/auth-config.js": b"export const AUTH_CONFIG = null;\n"})
+        with self.assertRaisesRegex(ValueError, "Auth configuration"):
+            verify(self.archive, self.sidecar, self.expected)
+
+    def test_auth_url_requires_exact_neon_database_path(self):
+        base = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech"
+        with self.assertRaisesRegex(ValueError, "canonical Neon Auth"):
+            auth_settings(base + "/other/auth", "neondb")
+
+    def test_auth_url_rejects_credentials_and_query(self):
+        host = "ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech"
+        with self.assertRaisesRegex(ValueError, "canonical Neon Auth"):
+            auth_settings(f"https://user:password@{host}/neondb/auth", "neondb")
+        with self.assertRaisesRegex(ValueError, "canonical Neon Auth"):
+            auth_settings(f"https://{host}/neondb/auth?token=secret", "neondb")
+
+    def test_disabled_package_does_not_claim_trusted_origin(self):
+        self.evidence["trusted_chrome_origin"] = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "Disabled Auth package"):
+            verify(self.archive, self.sidecar, self.expected)
+
+    def test_trusted_origin_must_match_the_recorded_chrome_id(self):
+        self.build(auth_enabled=True)
+        self.evidence["chrome_extension_id"] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        self.evidence["trusted_chrome_origin"] = "chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        self.save()
+        with self.assertRaisesRegex(ValueError, "match the observed extension ID"):
+            verify(self.archive, self.sidecar, self.expected)
+
+    def test_verified_chrome_origin_pair_is_reported(self):
+        self.build(auth_enabled=True)
+        extension_id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        origin = f"chrome-extension://{extension_id}"
+        self.evidence["chrome_extension_id"] = extension_id
+        self.evidence["trusted_chrome_origin"] = origin
+        self.save()
+        self.assertEqual(verify(self.archive, self.sidecar, self.expected)["trusted_chrome_origin"], origin)
+
+    def test_auth_overlay_builds_separate_package_without_source_edits(self):
+        source_config = (Path(__file__).resolve().parents[2] / "extension/js/auth-config.js").read_bytes()
+        source_manifest = json.loads((Path(__file__).resolve().parents[2] / "extension/manifest.json").read_text())
+        auth_url = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "PhishLens-Staging-Auth.zip"
+            evidence = Path(directory) / "auth-evidence.json"
+            sha = checkout_revision(Path(__file__).resolve().parents[2])
+            built = build_package(
+                Path(__file__).resolve().parents[2], archive, evidence, sha,
+                auth_url=auth_url, auth_database="neondb",
+            )
+            verified = verify(archive, evidence, sha)
+            with ZipFile(archive) as package:
+                config = package.read("js/auth-config.js")
+                manifest = json.loads(package.read("manifest.json"))
+            self.assertTrue(built["auth_enabled"])
+            self.assertTrue(verified["auth_enabled"])
+            self.assertEqual(config, (
+                "export const AUTH_CONFIG = " + json.dumps({
+                    "enabled": True, "authUrl": auth_url, "database": "neondb",
+                    "apiOrigin": STAGING_ORIGIN,
+                }, separators=(",", ":")) + ";\n"
+            ).encode())
+            self.assertEqual(manifest["host_permissions"], [
+                STAGING_ORIGIN + "/*",
+                "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/*",
+            ])
+        self.assertEqual(
+            (Path(__file__).resolve().parents[2] / "extension/js/auth-config.js").read_bytes(),
+            source_config,
+        )
+        self.assertEqual(
+            json.loads((Path(__file__).resolve().parents[2] / "extension/manifest.json").read_text()),
+            source_manifest,
+        )
+
+    def test_builder_rejects_outputs_inside_source_checkout(self):
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as directory:
+            archive = root / "must-not-be-created.zip"
+            evidence = Path(directory) / "evidence.json"
+            with self.assertRaisesRegex(ValueError, "separate from the source checkout"):
+                build_package(root, archive, evidence, checkout_revision(root))
+            self.assertFalse(archive.exists())
 
     def test_readonly_staging_evidence_is_bound_to_package(self):
         observed = {

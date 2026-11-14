@@ -59,6 +59,38 @@ The helper validates public SHA/readiness/model/auth-denial checks; it cannot
 prove the Neon mapping, inspect Render variables or verify rotation. The plan's
 confirmation references record the operator's prior checks, not automated proof.
 
+## Build the staging Auth package
+
+The normal production package remains unchanged and Auth stays disabled in the
+tracked source. After Kendra confirms the exact paired backend revision and
+Leyan supplies the confirmed Auth URL/database, the staging packager can create
+an opt-in Auth-enabled ZIP as an overlay. It writes only to the requested ZIP
+and evidence paths; it does not edit the source manifest or `auth-config.js`.
+Keep both outputs outside the repository and use the verified backend source
+checkout whose full commit SHA is supplied to `--expected-staging`:
+
+```sh
+python scripts/package_staging_extension.py \
+  --source-root /path/to/verified/source \
+  --expected-staging FULL_VERIFIED_BACKEND_SHA \
+  --auth-url https://CONFIRMED_NEON_AUTH_HOST/neondb/auth \
+  --auth-database neondb \
+  --output /private/path/PhishLens-Staging-Auth.zip \
+  --evidence /private/path/PhishLens-Staging-Auth-evidence.json
+```
+
+The Auth URL must be a canonical HTTPS Neon Auth URL for the selected database.
+The package receives only the staging API host and that exact Auth origin as
+required host permissions. The builder rejects credentials, query strings,
+extra hosts, non-Neon Auth domains and source checkouts whose extension inputs
+are dirty. The evidence intentionally leaves `trusted_chrome_origin` unset:
+after Leyan installs this exact ZIP, record the observed Chrome ID and matching
+`chrome-extension://` origin, then have the Neon administrator verify that
+origin before any Auth setting change. This local package build is preparation;
+it does not install the extension, update Neon trusted origins, configure
+Render, or authorize hosted testing. The trusted Secretary controller must be
+reviewed and promoted before its hosted preview can use a new packager revision.
+
 ## Identity and write limits
 
 Use exactly the two approved disposable Auth accounts and private inboxes.
