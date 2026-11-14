@@ -226,7 +226,7 @@ source package targets production; the separate staging package targets staging.
 
 ## Install in Chrome
 
-PhishLens requires Chrome 116 or newer. There is no Chrome Web Store listing yet.
+PhishLens requires Chrome 127 or newer. There is no Chrome Web Store listing yet.
 To install from the public GitHub repository:
 
 1. Download the repository ZIP and extract it to a folder you will keep.
@@ -235,11 +235,12 @@ To install from the public GitHub repository:
    report **Uncertain** when the full review cannot run.
 3. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
    and select the extracted `extension` folder.
-4. Pin PhishLens from Chrome's Extensions menu if you want its toolbar button.
-   Click the button to open the side panel, or select email text, right-click, and
-   choose **Analyze selection with PhishLens**.
+4. To check an email, select its text, right-click, and choose **Analyze selection
+   with PhishLens**. The PhishLens popup opens with your selection and the result.
+5. Optionally, pin PhishLens from Chrome's Extensions menu. Its toolbar button opens
+   the same view in the side panel, which stays open while you read email.
 
-The side panel shows a ready state before scanning, progress while local models load,
+PhishLens shows a ready state before scanning, progress while local models load,
 a result or an explicit uncertainty/error state, and a Clear action. Scanning stays
 in Chrome. The full local review also requires WebGPU with shader-f16 support.
 Saving a report or refreshing shared history contacts the configured API.
