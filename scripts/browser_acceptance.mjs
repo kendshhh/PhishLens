@@ -464,7 +464,7 @@ async function run() {
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await page.locator("#empty-state").waitFor({ state: "visible" });
     await page.locator("#load-history").click();
-    await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    await page.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
     assert.equal(await page.locator("#history-list li").getByText("Synthetic browser CRUD", { exact: true }).count(), 0);
     evidence.tests.push("deleted synthetic analysis stays absent after popup reopen");
 
