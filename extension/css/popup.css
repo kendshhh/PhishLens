@@ -7,8 +7,9 @@
   line-height: 1.5;
 }
 * { box-sizing: border-box; }
-/* The side panel can be resized, so fill its width instead of a fixed popup size. */
+/* The side panel can be resized, so fill its width; the action popup keeps a fixed size. */
 body { min-width: 300px; width: min(100vw, 460px); min-height: 100vh; margin: 0 auto; overflow-y: auto; background: #f4f7fb; }
+.popup-surface body { width: 380px; min-width: 0; min-height: 0; max-height: 600px; }
 .container { max-width: 520px; margin: 0 auto; padding: 20px 18px 14px; }
 header { margin: 0 0 18px; }
 h1 { margin: 0; color: #173b70; font-size: 22px; font-weight: 750; letter-spacing: -.6px; line-height: 1.2; }

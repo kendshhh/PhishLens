@@ -63,7 +63,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Read the visible selection from the source frame. Context-menu text
+// Read the visible selection before the popup takes focus. Context-menu text
 // can flatten paragraph breaks; accept the page value only for the same words.
 async function readSelectedText(info, tab) {
   if (!Number.isInteger(tab?.id)) return info.selectionText;
@@ -92,19 +92,16 @@ async function readSelectedText(info, tab) {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === MENU_ID && typeof info.selectionText === 'string') {
-    // sidePanel.open() requires the user gesture, so call it before any await.
-    // The click's tab arrives as the second argument; OnClickData has no tabId.
-    const panelTarget = Number.isInteger(tab?.id) ? { tabId: tab.id }
-      : Number.isInteger(tab?.windowId) ? { windowId: tab.windowId } : null;
-    if (panelTarget) {
-      chrome.sidePanel.open(panelTarget).catch(() => {
-        console.warn('PhishLens could not open the side panel. Open it from the toolbar to view this scan.');
-      });
-    }
     const request = ++analysisGeneration;
     const selectedText = await readSelectedText(info, tab);
     if (request !== analysisGeneration) return;
-    return analyzeSelectedText(selectedText).catch(() => {
+    return analyzeSelectedText(selectedText, { onStarted: async () => {
+      try {
+        await chrome.action.openPopup(Number.isInteger(tab?.windowId) ? { windowId: tab.windowId } : {});
+      } catch {
+        console.warn('PhishLens could not open the popup. Open it from the toolbar to view this scan.');
+      }
+    } }).catch(() => {
       console.error('PhishLens could not save the local scan state.');
     });
   }

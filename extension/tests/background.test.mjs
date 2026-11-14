@@ -10,9 +10,9 @@ function deferred() {
   let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; });
   return { promise, resolve, reject };
 }
-function worker({ firstWrite, panelFailure = false, selectionResult, selectionFailure = false } = {}) {
+function worker({ firstWrite, popupFailure = false, selectionResult, selectionFailure = false } = {}) {
   let listener, clicks, installed, sidePanelBehavior, writes = 0;
-  const requests = [], panels = [], injections = [], state = { analysis: undefined, badge: '' };
+  const requests = [], popups = [], injections = [], state = { analysis: undefined, badge: '' };
   const storage = {};
   const context = vm.createContext({
     console, crypto: globalThis.crypto,
@@ -23,14 +23,8 @@ function worker({ firstWrite, panelFailure = false, selectionResult, selectionFa
       runtime: { id: 'self', onInstalled: { addListener(fn) { installed = fn; } },
         onMessage: { addListener(fn) { listener = fn; } } },
       contextMenus: { removeAll() {}, create() {}, onClicked: { addListener(fn) { clicks = fn; } } },
-      sidePanel: {
-        async setPanelBehavior(value) { sidePanelBehavior = value; },
-        open(options) {
-          // Recorded synchronously so tests can prove the call happens inside the user gesture.
-          panels.push({ options, beforeSelectionRead: injections.length === 0, status: state.analysis?.status });
-          return panelFailure ? Promise.reject(Error('Side panel unavailable')) : Promise.resolve();
-        }
-      },
+      sidePanel: { async setPanelBehavior(value) { sidePanelBehavior = value; },
+        open() { throw Error('Right-click must open the popup, not the side panel'); } },
       scripting: { async executeScript(options) {
         injections.push(options);
         if (selectionFailure) throw Error('Frame access denied');
@@ -44,11 +38,14 @@ function worker({ firstWrite, panelFailure = false, selectionResult, selectionFa
         },
         async remove(key) { delete storage[key]; state.analysis = storage.veriqoAnalysis; }
       } },
-      action: { async setBadgeText({ text }) { state.badge = text; } }
+      action: { async setBadgeText({ text }) { state.badge = text; }, async openPopup(options) {
+        popups.push({ options, status: state.analysis?.status, text: state.analysis?.selectedText });
+        if (popupFailure) throw Error('Popup unavailable');
+      } }
     }
   });
   vm.runInContext(source, context);
-  return { state, requests, storage, clicks, panels, injections,
+  return { state, requests, storage, clicks, popups, injections,
     sidePanelBehavior: () => sidePanelBehavior, install: () => installed(),
     analyze: text => context.analyzeSelectedText(text),
     message: (message, sender = { id: 'self' }) => listener(message, sender, () => {}),
@@ -60,35 +57,26 @@ function worker({ firstWrite, panelFailure = false, selectionResult, selectionFa
     })
   };
 }
-test('installation makes the toolbar action open the side panel', async () => {
+test('installation makes the toolbar button open the side panel as a secondary entry point', async () => {
   const app = worker();
   app.install();
   await settle();
   assert.equal(app.sidePanelBehavior().openPanelOnActionClick, true);
 });
-test('right-click opens the side panel for the source tab within the gesture, before reading the selection', async () => {
+test('right-click opens the popup in the source window after storing the selection, before inference finishes', async () => {
   const app = worker();
-  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected <img src=x> text' }, { id: 12, windowId: 7 });
-  assert.equal(app.panels.length, 1, 'sidePanel.open must be called synchronously in the click handler');
-  assert.deepEqual({ ...app.panels[0].options }, { tabId: 12 });
-  assert.equal(app.panels[0].beforeSelectionRead, true);
-  assert.equal(app.panels[0].status, undefined);
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected <img src=x> text' }, { windowId: 7 });
   await settle();
-  assert.equal(app.state.analysis.status, 'loading');
-  assert.equal(app.state.analysis.selectedText, 'Selected <img src=x> text');
+  assert.equal(app.popups.length, 1);
+  assert.equal(app.popups[0].options.windowId, 7);
+  assert.equal(app.popups[0].status, 'loading');
+  assert.equal(app.popups[0].text, 'Selected <img src=x> text');
   app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
   assert.equal(app.state.analysis.status, 'success');
 });
-test('right-click without a tab id opens the side panel for the source window', async () => {
-  const app = worker();
-  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' }, { windowId: 7 });
-  assert.deepEqual({ ...app.panels[0].options }, { windowId: 7 });
-  await settle();
-  app.requests[0].resolve({ alert: false, workflow: { released: true } }); await scan;
-});
-test('side panel failure does not prevent selected-text analysis or lose its result', async () => {
-  const app = worker({ panelFailure: true });
-  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' }, { id: 12 });
+test('popup failure does not prevent selected-text analysis or lose its result', async () => {
+  const app = worker({ popupFailure: true });
+  const scan = app.clicks({ menuItemId: 'phishlens-analyze-selection', selectionText: 'Selected text' });
   await settle();
   app.requests[0].resolve({ alert: true, workflow: { released: true } }); await scan;
   assert.equal(app.state.analysis.selectedText, 'Selected text');

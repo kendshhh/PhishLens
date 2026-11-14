@@ -15,8 +15,8 @@ const evidencePath = path.join(root, "output", "extension", "browser-acceptance.
 const screenshotDirectory = path.join(root, "output", "extension", "browser-evidence");
 const expectedTests = [
   "packaged side-panel page loads synthetic history in the browser",
-  "toolbar action is configured to open the side panel",
-  "selection handler sends the highlighted text to the side-panel page",
+  "toolbar button is configured to open the side panel as a secondary entry point",
+  "right-click selection opens the action popup with the highlighted text",
   "synthetic analysis shows a clearly labeled local result or readable error",
   "local scan saves once and keeps its title and save marker after popup reload",
   "Clear during a local scan prevents a stale result from returning",
@@ -416,7 +416,7 @@ async function run() {
     await page.locator("#empty-state").waitFor({ state: "visible" });
     const panelBehavior = await worker.evaluate(async () => chrome.sidePanel.getPanelBehavior());
     assert.equal(panelBehavior.openPanelOnActionClick, true);
-    evidence.tests.push("toolbar action is configured to open the side panel");
+    evidence.tests.push("toolbar button is configured to open the side panel as a secondary entry point");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-check.png") });
     await page.locator("#personal-reports:not(.hidden)").waitFor({ state: "attached" });
@@ -473,9 +473,20 @@ async function run() {
     });
     assert.ok(preview.height <= 150 && preview.overflows && preview.scroll > 0, 'Selection preview must retain its height and scroll vertically');
     assert.equal(preview.whitespace, 'break-spaces');
-    // sidePanel.open() needs a real user gesture, which automation cannot supply; the handler
-    // falls back to logging, and the side-panel page receives the stored selection.
-    evidence.tests.push("selection handler sends the highlighted text to the side-panel page");
+    // Primary flow: the right-click handler opens the real action popup even though the
+    // toolbar button is configured for the side panel.
+    const popupContexts = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['POPUP'] }));
+    assert.ok(popupContexts.length > 0, 'The selection handler must open the real Chrome action popup');
+    evidence.popup_document_urls = popupContexts.map(context => new URL(context.documentUrl).pathname + new URL(context.documentUrl).search);
+    const popupView = await page.evaluate(() => {
+      const view = chrome.extension.getViews({ type: 'popup' })[0];
+      return view && { surface: view.document.documentElement.classList.contains('popup-surface'),
+        width: Math.round(view.document.body.getBoundingClientRect().width) };
+    });
+    assert.deepEqual(popupView, { surface: true, width: 380 }, 'The action popup must keep its fixed popup layout');
+    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('popup-surface')), false,
+      'Non-popup surfaces such as the side panel use the fluid layout');
+    evidence.tests.push("right-click selection opens the action popup with the highlighted text");
     await page.bringToFront();
     await sourcePage.close();
     await page.evaluate(() => scrollTo(0, 0));
@@ -682,14 +693,14 @@ async function run() {
     assert.equal(await keyboardPage.locator("#show-reports").getAttribute("aria-pressed"), "true");
     await tabUntil(focused => focused.id === "load-history");
     await keyboardPage.keyboard.press("Enter");
-    await keyboardPage.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    await keyboardPage.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
     evidence.keyboard_tab_order.reports = await checkTabOrder("Saved reports view");
     evidence.tests.push("keyboard Tab order reaches only visible, named controls with a focus indicator");
 
-    const keyboardRecord = [...records.values()].find(record => record.subject === "Synthetic account notice");
+    const keyboardRecord = [...records.values()].find(record => record.subject === "Synthetic <script>alert(1)</script>");
     assert.ok(keyboardRecord, "Seeded synthetic report must be available for the keyboard check");
     const keyboardRecordBefore = JSON.stringify(keyboardRecord);
-    await tabUntil(focused => focused.name === "View Synthetic account notice");
+    await tabUntil(focused => focused.name === "View Synthetic <script>alert(1)</script>");
     await keyboardPage.keyboard.press("Enter");
     await keyboardPage.locator("#detail-panel").waitFor({ state: "visible" });
     assert.equal((await describeFocus())?.id, "detail-heading");

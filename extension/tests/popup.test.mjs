@@ -88,7 +88,7 @@ test("a local save completed over an open detail restores the report library", a
   assert.equal(ui.get("detail-heading").textContent, "New local report");
 });
 
-test("HTML provides associated labels, focusable CRUD controls, and a responsive side panel", async () => {
+test("HTML provides associated labels, focusable CRUD controls, a bounded popup and a responsive side panel", async () => {
   const html = await readFile(new URL("../popup.html", import.meta.url), "utf8");
   const css = await readFile(new URL("../css/popup.css", import.meta.url), "utf8");
   const popup = await readFile(new URL("../js/popup.js", import.meta.url), "utf8");
@@ -103,9 +103,13 @@ test("HTML provides associated labels, focusable CRUD controls, and a responsive
   assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
-  assert.equal(manifest.minimum_chrome_version, "116");
+  // Split flow: right-click opens the action popup (chrome.action.openPopup, Chrome 127+);
+  // the toolbar button opens the side panel via setPanelBehavior.
+  assert.equal(manifest.minimum_chrome_version, "127");
+  assert.equal(manifest.action.default_popup, "popup.html?surface=popup");
   assert.equal(manifest.side_panel.default_path, "popup.html");
-  assert.equal(manifest.action.default_popup, undefined);
+  assert.ok(manifest.permissions.includes("sidePanel"));
+  assert.match(css, /\.popup-surface body \{[^}]*width:\s*380px[^}]*max-height:\s*600px/);
   assert.match(css, /width:\s*min\(100vw,\s*460px\)/);
   assert.match(css, /min-width:\s*300px/);
   assert.match(css, /max-width:\s*520px/);

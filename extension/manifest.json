@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PhishLens",
   "version": "0.1.0",
-  "minimum_chrome_version": "116",
+  "minimum_chrome_version": "127",
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
     "contextMenus",
@@ -20,7 +20,8 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Toggle PhishLens side panel"
+    "default_title": "PhishLens",
+    "default_popup": "popup.html?surface=popup"
   },
   "side_panel": {
     "default_path": "popup.html"
