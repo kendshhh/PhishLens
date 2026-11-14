@@ -1,7 +1,9 @@
 // Installed-extension integration smoke test. All API responses are intercepted;
 // this is software verification, not a new accuracy or latency benchmark.
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, rm, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,6 +20,22 @@ const evidence = { scope: 'installed unpacked extension and side-panel page soft
   checks: [], accuracy_test: false, database_persistence_tested: false };
 const check = name => evidence.checks.push(name);
 try {
+  const packageIdentity = JSON.parse(await readFile(path.join(root, 'output/extension/evidence.json'), 'utf8'));
+  const archive = await readFile(path.join(root, 'output/extension/PhishLens-Extension.zip'));
+  assert.equal(createHash('sha256').update(archive).digest('hex'), packageIdentity.archive_sha256);
+  assert.equal(packageIdentity.runtime_or_packaging_changes, false,
+    'The installed Chrome smoke must use package inputs from a clean revision');
+  const manifest = JSON.parse(await readFile(path.join(root, 'extension/manifest.json'), 'utf8'));
+  assert.equal(manifest.version, packageIdentity.extension_version);
+  for (const [asset, expected] of Object.entries(packageIdentity.files_sha256)) {
+    const content = await readFile(path.join(root, 'extension', asset));
+    assert.equal(createHash('sha256').update(content).digest('hex'), expected,
+      `The Chrome smoke source differs from the packaged asset: ${asset}`);
+  }
+  evidence.source_commit = packageIdentity.source_commit;
+  evidence.extension_version = packageIdentity.extension_version;
+  evidence.package_sha256 = packageIdentity.archive_sha256;
+  check('Chrome smoke source files match the exact clean packaged revision');
   context = await chromium.launchPersistentContext(profile, {
     executablePath: chromePath, headless: true, ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--enable-unsafe-extension-debugging', '--disable-background-networking', '--no-first-run']

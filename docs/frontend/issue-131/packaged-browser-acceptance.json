@@ -1,0 +1,24 @@
+{
+  "source_commit": "24584cc383fe64d00128a88ff5084305555add00",
+  "tested_commit": "24584cc383fe64d00128a88ff5084305555add00",
+  "environment": "isolated synthetic browser",
+  "scope": "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The extension side-panel page is opened directly for UI checks; the installed toolbar behavior is checked through the Side Panel API. The API origin/host permission are redirected only to a local synthetic server. Browser tests cover keyboard focus, safe rendering, local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
+  "tests": [
+    "keyboard navigation reaches visible controls with a visible focus indicator",
+    "installed extension configures the toolbar action to open the side panel",
+    "packaged side-panel page loads synthetic history in the browser",
+    "history subjects render as literal text without creating markup",
+    "synthetic analysis shows a clearly labeled local result or readable error",
+    "Clear during a local scan prevents a stale result from returning",
+    "synthetic saved analysis can be created and viewed",
+    "synthetic saved analysis can be edited and deleted",
+    "empty history and history API failure states render clearly"
+  ],
+  "result": "passed",
+  "package_sha256": "df6e1b6b6a03d91b586b9ba1c7a1fb469606ed8c3fbba165e94a4f19b9a5c967",
+  "runtime_or_packaging_changes": false,
+  "extension_version": "0.1.0",
+  "browser_channel": "chromium",
+  "local_analysis_outcome": "Uncertain — full review not confirmed",
+  "browser_version": "156.0.8078.4"
+}
