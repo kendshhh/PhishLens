@@ -13,9 +13,15 @@ same-day observations; newer facts in the handoff supersede them.
 **Open related PRs:** [#107](https://github.com/kendshhh/PhishLens/pull/107),
 [#156](https://github.com/kendshhh/PhishLens/pull/156),
 [#202](https://github.com/kendshhh/PhishLens/pull/202),
-[#206](https://github.com/kendshhh/PhishLens/pull/206),
-[#207](https://github.com/kendshhh/PhishLens/pull/207),
-[#208](https://github.com/kendshhh/PhishLens/pull/208)
+[#208](https://github.com/kendshhh/PhishLens/pull/208),
+[#209](https://github.com/kendshhh/PhishLens/pull/209)
+
+PRs [#206](https://github.com/kendshhh/PhishLens/pull/206) and
+[#207](https://github.com/kendshhh/PhishLens/pull/207) merged into the protected
+`feat/96-bounded-inference` branch; they did not merge that branch into `main`.
+The current #107 head is `81b13485d0e773a0f9301a8453a5eb83b16ea8e3`. Its
+automated checks pass, hosted staging checks were skipped, and reviewer
+re-approval is still required.
 
 This is a current evidence crosswalk, not a claim that closed issue checkboxes
 prove every course acceptance item. The course guide distinguishes a checked

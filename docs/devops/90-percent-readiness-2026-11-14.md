@@ -10,11 +10,12 @@ score.
 - GitHub repository: `kendshhh/PhishLens`, public visibility is intended.
 - Current `main`: `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`.
 - Issues: 24 closed and 40 open out of 64 (37.5% raw issue closure).
-- Five other pull requests were open when this snapshot was captured, before
-  this handoff PR (#208) was opened. #206 and #207 are approved, clean follow-ups
-  into `feat/96-bounded-inference`; they are not merges to `main`. #107 remains
-  behind `main` with changes requested. #156 is dirty with changes requested,
-  and #202 is blocked with changes requested.
+- Current open PRs are #107, #156, #202, #208, and #209. PRs #206 and #207
+  have since merged into `feat/96-bounded-inference`; neither merged into
+  `main`. Current #107 head is `81b13485d0e773a0f9301a8453a5eb83b16ea8e3`.
+  Its Backend, Extension, Staging integration, dependency, lint, and AI checks
+  pass; hosted staging and the read-only package preflight were skipped. Its
+  review decision remains `CHANGES_REQUESTED`, so it needs reviewer follow-up.
 - [PR #196](https://github.com/kendshhh/PhishLens/pull/196) merged as
   `591a2beaafcc4cc3706d176f8c79f2ffde300e89`. Its deterministic AI workflow,
   fail-closed saved-analysis spend policy, and 40-case TF-IDF development run
@@ -37,14 +38,15 @@ score.
 | [#94 provider smoke and spend controls](https://github.com/kendshhh/PhishLens/issues/94) | Kendra (`kendshhh`) and Wilberr | Approved provider/model and provider quota or durable shared budget, then one bounded synthetic smoke and redacted result | No. The merged per-run estimate does not establish provider quota. |
 | [#95 AI failure and recovery drill](https://github.com/kendshhh/PhishLens/issues/95) | Kendra; Wilberr review | Approved protected-staging failure matrix, exact revisions, simulated/live labels, measured detection/recovery, stop and rollback evidence | No. A staging window and owner approval are prerequisites. |
 | [#37 environment identity](https://github.com/kendshhh/PhishLens/issues/37) and [#133 controls](https://github.com/kendshhh/PhishLens/issues/133) | Kendra | Fresh, read-only Render-to-Neon target mapping for staging and production; readiness alone proves connectivity, not database identity | No. It requires current host configuration evidence. |
-| [#143 candidate and #153 release gate](https://github.com/kendshhh/PhishLens/issues/153) | Kendra and the team | Reviewed candidate SHA, exact live SHA, successful changed-feature smoke, approved SLI/SLO, clean backup restore with RPO/RTO, tag/changelog | No. These require deployment and team acceptance evidence. |
+| [#143 candidate](https://github.com/kendshhh/PhishLens/issues/143) and [#153 release gate](https://github.com/kendshhh/PhishLens/issues/153) | Kendra and the team | Reviewed candidate SHA, exact live SHA, successful changed-feature smoke, approved SLI/SLO, clean backup restore with RPO/RTO, tag/changelog | No. These require deployment and team acceptance evidence. |
 | [#41 participant records](https://github.com/kendshhh/PhishLens/issues/41) and [#148 closeout](https://github.com/kendshhh/PhishLens/issues/148) | Whole team; Kendra records | Actual dated standup, retrospective, consultation and attendance evidence | No. Records must come from participants; they must not be reconstructed. |
 
 ## Order for tonight
 
-1. Reconcile PRs #206/#207 on the protected feature branch, then refresh #107
-   checks and obtain its required reviewer decision. Do not count those branch
-   PRs as merged to `main` until they are.
+1. PRs #206/#207 are merged into the protected feature branch. Refresh #107's
+   reviewer decision on head `81b1348`; its current automated checks pass, but
+   hosted staging checks were skipped. Do not count the feature branch as merged
+   to `main` or as current staging acceptance.
 2. Before any staging write or promotion, have the environment owner verify the
    selected SHA and exact Neon target read-only; then run one approved synthetic
    acceptance flow and clean it up.
