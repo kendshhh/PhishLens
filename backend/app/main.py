@@ -2,7 +2,7 @@ from functools import lru_cache
 from threading import Lock
 from typing import Literal
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -180,7 +180,13 @@ def model_info():
         },
     },
 )
-def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
+def analyze_email(
+    request: AnalysisRequest,
+    require_provider: Literal["tfidf"] | None = Header(
+        default=None,
+        alias="X-Require-Provider",
+    ),
+) -> AnalysisResponse | JSONResponse:
     try:
         service, mode = get_ai_service()
     except RuntimeError:
@@ -188,6 +194,13 @@ def analyze_email(request: AnalysisRequest) -> AnalysisResponse | JSONResponse:
             503,
             "analysis_unavailable",
             "Analysis temporarily unavailable",
+        )
+
+    if require_provider is not None and mode != require_provider:
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Required analysis provider is unavailable",
         )
 
     try:

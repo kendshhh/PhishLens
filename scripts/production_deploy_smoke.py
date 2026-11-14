@@ -26,7 +26,13 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _json_request(url: str, *, payload: dict | None = None, timeout: int = 15) -> dict:
+def _json_request(
+    url: str,
+    *,
+    payload: dict | None = None,
+    timeout: int = 15,
+    extra_headers: dict[str, str] | None = None,
+) -> dict:
     headers = {"Accept": "application/json"}
     data = None
     method = "GET"
@@ -34,6 +40,8 @@ def _json_request(url: str, *, payload: dict | None = None, timeout: int = 15) -
         headers["Content-Type"] = "application/json"
         data = json.dumps(payload).encode("utf-8")
         method = "POST"
+    if extra_headers:
+        headers.update(extra_headers)
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
     opener = urllib.request.build_opener(NoRedirect())
     with opener.open(request, timeout=timeout) as response:
@@ -120,7 +128,12 @@ def verify_deployment(
     behavior = []
     for case_id, expected in CASES.items():
         case = case_map[case_id]
-        result = post_json(base + "/analyses", payload={"text": case.body}, timeout=30)
+        result = post_json(
+            base + "/analyses",
+            payload={"text": case.body},
+            timeout=30,
+            extra_headers={"X-Require-Provider": "tfidf"},
+        )
         behavior.append(_validate_analysis(
             result, expected=expected, model_sha=model_sha, case_id=case_id,
         ))

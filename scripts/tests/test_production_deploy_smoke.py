@@ -20,7 +20,7 @@ def test_production_smoke_waits_for_exact_sha_and_checks_behavior():
             return {"provider_mode": "tfidf", "model_sha256": MODEL_SHA}
         raise AssertionError(url)
 
-    def post_json(url, *, payload, timeout):
+    def post_json(url, *, payload, timeout, extra_headers=None):
         posts.append((url, payload, timeout))
         expected = "phishing" if "account will be closed" in payload["text"] else "legitimate"
         return {
