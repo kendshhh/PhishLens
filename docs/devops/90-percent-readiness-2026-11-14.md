@@ -31,8 +31,20 @@ score.
   is manual. The latest recorded run checked production SHA
   `591a2beaafcc4cc3706d176f8c79f2ffde300e89`, then failed closed because
   `provider_mode=unavailable`; it sent zero analysis requests, made zero
-  provider calls, and made zero database writes. That run does not prove the
-  current `main` SHA above is live or that AI behavior works in production.
+  provider calls, and made zero database writes. A separate read-only probe on
+  November 14 now confirms production `/version` reports current `main`
+  `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`; `/health` was `ok`, `/ready` was
+  `ready` with database `connected`, and `/model-info` still reported
+  `provider_mode=unavailable`. Current `main` is live and ready, but production
+  AI behavior remains unavailable and no changed-feature CRUD acceptance is
+  established by these endpoints.
+
+  The same read-only probe found staging at
+  `cd913b5c7c7cf6796b4cdb12a854c709a173a12f`, with `environment=staging`,
+  healthy/readiness responses, `provider_mode=tfidf`, and model SHA-256
+  `a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`.
+  These GET checks made no application write or paid provider request. Neither
+  `/ready` response identifies its Neon branch/database.
 
 ## Highest-value remaining work
 
@@ -41,7 +53,7 @@ score.
 | [#92 held-out evaluation](https://github.com/kendshhh/PhishLens/issues/92) | Wilberr (`EnviousCoal`), with team review | Rights/provenance, reviewed labels, frozen split and overlap report, pinned model/preprocessing, complete results and an owner decision | No. It requires approved data and human review. |
 | [#94 provider smoke and spend controls](https://github.com/kendshhh/PhishLens/issues/94) | Kendra (`kendshhh`) and Wilberr | Approved provider/model and provider quota or durable shared budget, then one bounded synthetic smoke and redacted result | No. The merged per-run estimate does not establish provider quota. |
 | [#95 AI failure and recovery drill](https://github.com/kendshhh/PhishLens/issues/95) | Kendra; Wilberr review | Approved protected-staging failure matrix, exact revisions, simulated/live labels, measured detection/recovery, stop and rollback evidence | No. A staging window and owner approval are prerequisites. |
-| [#37 environment identity](https://github.com/kendshhh/PhishLens/issues/37) and [#133 controls](https://github.com/kendshhh/PhishLens/issues/133) | Kendra | Fresh, read-only Render-to-Neon target mapping for staging and production; readiness alone proves connectivity, not database identity | No. It requires current host configuration evidence. |
+| [#37 environment identity](https://github.com/kendshhh/PhishLens/issues/37) and [#133 controls](https://github.com/kendshhh/PhishLens/issues/133) | Kendra | Fresh, read-only Render-to-Neon target mapping for staging and production; readiness alone proves connectivity, not database identity | No. Current service and health identities are refreshed, but the service-to-Neon mapping and effective secret scopes remain unavailable from read-only metadata. |
 | [#143](https://github.com/kendshhh/PhishLens/issues/143) candidate; [#153](https://github.com/kendshhh/PhishLens/issues/153) release gate | Kendra and the team | Reviewed candidate SHA, exact live SHA, successful changed-feature smoke, approved SLI/SLO, clean backup restore with RPO/RTO, tag/changelog | No. These require deployment and team acceptance evidence. |
 | [#41 participant records](https://github.com/kendshhh/PhishLens/issues/41) and [#148 closeout](https://github.com/kendshhh/PhishLens/issues/148) | Whole team; Kendra records | Actual dated standup, retrospective, consultation and attendance evidence | No. Records must come from participants; they must not be reconstructed. |
 

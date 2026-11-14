@@ -75,7 +75,12 @@ records.
   `591a2beaafcc4cc3706d176f8c79f2ffde300e89`, not the current `main` SHA above.
   It verified health/readiness but stopped before inference because
   `/model-info` reported `provider_mode=unavailable`; production AI behavior on
-  current `main` remains unproven.
+  that smoke revision was not verified. A separate read-only GET probe on
+  November 14 confirmed that current `main`
+  `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8` is now live: `/health` was `ok`,
+  `/ready` was `ready` with the database connected, and `/model-info` still
+  reports `provider_mode=unavailable`. This proves deployed identity and
+  readiness only, not production AI behavior or changed-feature CRUD.
 - Attach the actual required teammate/instructor acceptance evidence. Issue
   closure alone is not the evidence.
 
@@ -106,19 +111,24 @@ records.
 - [#37](https://github.com/kendshhh/PhishLens/issues/37): the Neon role grant
   state is now read-only verified, but the live Render `DATABASE_URL` branch and
   database mapping remain unverified. A fresh November 14 read-only probe
-  reported production `/version` at `ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213`
-  with `provider_mode=unavailable`, and staging at
-  `dcd234e0e012e1a869e182e64d34728343d17637` with `provider_mode=tfidf`.
-  Both `/health` and `/ready` returned HTTP 200; readiness said the database was
-  connected but does not establish the branch/database target. The name `phishlens_dev`
-  exists on multiple branches, and `/ready` only establishes a working database
-  connection. Read-only Render metadata identifies `phishlens-api` and
-  `phishlens-staging`, both on `main`; production auto-deploys after checks and
-  staging auto-deploy is off. The connector did not return an environment-variable
-  inventory, so it did not establish either database target or effective Render
-  API-key scopes. The
-  `production-observer` environment has administrator bypass enabled. Do not run
-  hosted writes or promotion until the target is verified.
+  reported production `/version` at current `main`
+  `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`, with `/health=ok`,
+  `/ready=ready` and database `connected`, and `/model-info` still
+  `provider_mode=unavailable`. Staging reported SHA
+  `cd913b5c7c7cf6796b4cdb12a854c709a173a12f`,
+  `environment=staging`, healthy/readiness responses, `provider_mode=tfidf`, and
+  model SHA-256 `a2f13c256dd46c3267263d8fde8f4f822206c5b0ceda96658713e2523a7f9559c`.
+  These read-only GET checks confirm live app identities and connectivity only.
+  The Neon project branch inventory includes a default/primary `production`
+  branch and a separate `pr-58-staging` branch, but the Render connector did
+  not expose service environment-variable identity, so neither deployed
+  `DATABASE_URL` can be mapped to a Neon branch/database. The name
+  `phishlens_dev` exists on multiple branches, and `/ready` does not identify a
+  target. Render metadata still identifies separate `phishlens-api` and
+  `phishlens-staging` services on source branch `main`; production autodeploys
+  after checks and staging autodeploy is off. Effective Render API-key scopes
+  also remain unverified. Do not run hosted writes or promotion until the
+  database targets are verified.
 - [#41](https://github.com/kendshhh/PhishLens/issues/41): the repository still
   lacks participant-sourced async standups, a retrospective, whole-team
   rehearsal/attendance, and exact instructor feedback. These cannot be recreated
