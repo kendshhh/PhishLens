@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
           changed_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
-          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|analysis_worker|tfidf_provider|saved_provider_pipeline)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|train_live_reevaluators)\.py$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
+          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|analysis_worker|tfidf_provider|saved_provider_pipeline|provider_error_contract)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|train_live_reevaluators)\.py$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
             echo "ai_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "ai_changed=false" >> "$GITHUB_OUTPUT"
@@ -82,6 +82,7 @@ jobs:
         run: >-
           python -m pytest
           backend/tests/test_ai_providers.py
+          backend/tests/test_provider_error_contract.py
           backend/tests/test_ai_service.py
           backend/tests/test_analysis_worker.py
           backend/tests/test_tfidf_provider.py
