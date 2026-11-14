@@ -410,7 +410,7 @@ test("notes and feedback stay disabled until edit save settles", async () => {
   assert.equal(ui.get("edit-notes").disabled, false);
   assert.equal(ui.get("edit-feedback").disabled, false);
   assert.equal(ui.get("detail-content").children[7].children[1].textContent, "Draft saved");
-  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "False positive");
+  assert.equal(ui.get("detail-content").children[8].children[1].textContent, "Flagged, but I think it’s legitimate");
 });
 
 test("a delayed older detail response cannot replace an open editor draft", async () => {
