@@ -42,8 +42,10 @@ records.
   two-account Neon Auth acceptance procedure; it made no live Auth calls or
   hosted writes.
 - `.env.example` is checked in and `.env` is ignored. The repository-process
-  record includes a 499-commit history scan with no recognized secrets, while
-  also preserving the known personal-provider commit-email attribution finding.
+  record includes a 499-commit history scan with no recognized secrets. It also
+  records personal-provider email identities in commit metadata; the owner chose
+  to preserve that attribution. This is not a clean-history claim, so the guide's
+  clean-history criterion remains unmet if it includes author/committer identity.
 
 ### Still needed for course-level acceptance
 
@@ -86,7 +88,11 @@ records.
   state is now read-only verified, but the live Render `DATABASE_URL` branch and
   database mapping was not read or freshly confirmed. The name `phishlens_dev`
   exists on multiple branches, and `/ready` only establishes a working database
-  connection. Render API-key internal scopes also remain unknown; the
+  connection. Read-only Render metadata identifies `phishlens-api` and
+  `phishlens-staging`, both on `main`; production auto-deploys after checks and
+  staging auto-deploy is off. The connector did not return an environment-variable
+  inventory, so it did not establish either database target or effective Render
+  API-key scopes. The
   `production-observer` environment has administrator bypass enabled. Do not run
   hosted writes or promotion until the target is verified.
 - [#41](https://github.com/kendshhh/PhishLens/issues/41): the repository still
@@ -115,7 +121,8 @@ records.
   rate. It is a regression-development set, not a held-out test or release
   threshold. The run made zero provider calls.
 - [#94](https://github.com/kendshhh/PhishLens/issues/94): the provider smoke is
-  manual-only and guarded. Owner-approved provider/model selection, staging
+  manual-only and guarded. The course guide's scheduled live-smoke criterion is
+  not met. Owner-approved provider/model selection, staging
   identity/approval, provider-side quota or shared durable budget, and a redacted
   real-provider run are absent. PR #196's dollar calculation is a configurable
   estimate, not a quota or account-wide spend cap. Keep production Gemini
