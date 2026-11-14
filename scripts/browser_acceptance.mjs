@@ -14,8 +14,9 @@ const packagePath = path.join(root, "output", "extension", "PhishLens-Extension.
 const evidencePath = path.join(root, "output", "extension", "browser-acceptance.json");
 const screenshotDirectory = path.join(root, "output", "extension", "browser-evidence");
 const expectedTests = [
-  "packaged popup loads synthetic history in the browser",
-  "selection handler opens the action popup with the highlighted text",
+  "packaged side-panel page loads synthetic history in the browser",
+  "toolbar button is configured to open the side panel as a secondary entry point",
+  "right-click selection opens the action popup with the highlighted text",
   "synthetic analysis shows a clearly labeled local result or readable error",
   "local scan saves once and keeps its title and save marker after popup reload",
   "Clear during a local scan prevents a stale result from returning",
@@ -48,7 +49,7 @@ const evidence = {
 
 const seededRecord = {
   id: "29d80c39-ec0d-4db8-a6e5-87444ba2600c",
-  subject: "Synthetic account notice",
+  subject: "Synthetic <script>alert(1)</script>",
   prediction: "phishing",
   confidence: 0.93,
   risk_level: "high",
@@ -304,9 +305,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 """
 worker_path.write_text(worker, encoding="utf-8")
 `;
-  const explicitPython = process.env.PHISHLENS_PYTHON ?? process.env.PYTHON;
-  const python = explicitPython ?? (process.platform === "win32" ? "py" : "python3");
-  const pythonArgs = process.platform === "win32" && !explicitPython ? ["-3.12"] : [];
+  const python = process.env.PHISHLENS_PYTHON ?? process.env.PYTHON ??
+    (process.platform === "win32" ? "python" : "python3");
+  const pythonArgs = [];
   execFileSync(python, [...pythonArgs, "-c", prepare, archivePath, destination, apiOrigin, evidencePath], { stdio: "inherit" });
 }
 
@@ -317,6 +318,14 @@ async function setState(baseUrl, state) {
     body: JSON.stringify(state),
   });
   assert.equal(response.status, 200);
+}
+
+async function openCreatePanel(page) {
+  if (!(await page.locator("#reports-view").isVisible())) await page.locator("#show-reports").click();
+  const panel = page.locator("#server-create");
+  if (!(await panel.evaluate(element => element.open))) {
+    await panel.locator(":scope > summary").click();
+  }
 }
 
 async function run() {
@@ -405,18 +414,23 @@ async function run() {
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
 
     await page.locator("#empty-state").waitFor({ state: "visible" });
+    const panelBehavior = await worker.evaluate(async () => chrome.sidePanel.getPanelBehavior());
+    assert.equal(panelBehavior.openPanelOnActionClick, true);
+    evidence.tests.push("toolbar button is configured to open the side panel as a secondary entry point");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-check.png") });
     await page.locator("#personal-reports:not(.hidden)").waitFor({ state: "attached" });
     await page.locator("#show-reports").click();
     await page.locator("#load-history").click();
-    await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    await page.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
+    assert.equal(await page.locator("#history-list script, #history-list img").count(), 0,
+      "Untrusted history titles must render as text");
     assert.match(await page.locator("#history-list li").textContent(), /phishing/i);
     assert.ok(await page.locator("#history-list time").getAttribute('datetime'));
     assert.match(await page.locator("#history-list .history-preview").textContent(), /Synthetic browser acceptance/);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-history-populated.png") });
-    evidence.tests.push("packaged popup loads synthetic history in the browser");
+    evidence.tests.push("packaged side-panel page loads synthetic history in the browser");
 
     await page.locator("#show-check").click();
     const sourcePage = await context.newPage();
@@ -459,9 +473,30 @@ async function run() {
     });
     assert.ok(preview.height <= 150 && preview.overflows && preview.scroll > 0, 'Selection preview must retain its height and scroll vertically');
     assert.equal(preview.whitespace, 'break-spaces');
+    // Primary flow: the right-click handler opens the real action popup even though the
+    // toolbar button is configured for the side panel.
     const popupContexts = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['POPUP'] }));
     assert.ok(popupContexts.length > 0, 'The selection handler must open the real Chrome action popup');
-    evidence.tests.push("selection handler opens the action popup with the highlighted text");
+    evidence.popup_document_urls = popupContexts.map(context => new URL(context.documentUrl).pathname + new URL(context.documentUrl).search);
+    // A configured popup takes priority over openPanelOnActionClick. After the right-click
+    // popup has opened, no popup may remain configured, so the toolbar opens the side panel.
+    const toolbarState = await worker.evaluate(async tabId => ({
+      tab_popup: await chrome.action.getPopup({ tabId }),
+      global_popup: await chrome.action.getPopup({}),
+      open_panel_on_action_click: (await chrome.sidePanel.getPanelBehavior()).openPanelOnActionClick,
+    }), sourceTab.id);
+    assert.deepEqual(toolbarState, { tab_popup: '', global_popup: '', open_panel_on_action_click: true },
+      'After right-click, the toolbar must have no popup configured so it opens the side panel');
+    evidence.toolbar_state_after_right_click = toolbarState;
+    const popupView = await page.evaluate(() => {
+      const view = chrome.extension.getViews({ type: 'popup' })[0];
+      return view && { surface: view.document.documentElement.classList.contains('popup-surface'),
+        width: Math.round(view.document.body.getBoundingClientRect().width) };
+    });
+    assert.deepEqual(popupView, { surface: true, width: 380 }, 'The action popup must keep its fixed popup layout');
+    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('popup-surface')), false,
+      'Non-popup surfaces such as the side panel use the fluid layout');
+    evidence.tests.push("right-click selection opens the action popup with the highlighted text");
     await page.bringToFront();
     await sourcePage.close();
     await page.evaluate(() => scrollTo(0, 0));
@@ -606,7 +641,7 @@ async function run() {
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await page.locator("#show-reports").click();
     await page.locator("#load-history").click();
-    await page.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    await page.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
     assert.equal(await page.locator("#history-list li").getByText("Synthetic browser CRUD", { exact: true }).count(), 0);
     evidence.tests.push("deleted synthetic analysis stays absent after popup reopen");
 
@@ -668,14 +703,14 @@ async function run() {
     assert.equal(await keyboardPage.locator("#show-reports").getAttribute("aria-pressed"), "true");
     await tabUntil(focused => focused.id === "load-history");
     await keyboardPage.keyboard.press("Enter");
-    await keyboardPage.locator("#history-list li").getByText("Synthetic account notice").waitFor();
+    await keyboardPage.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
     evidence.keyboard_tab_order.reports = await checkTabOrder("Saved reports view");
     evidence.tests.push("keyboard Tab order reaches only visible, named controls with a focus indicator");
 
-    const keyboardRecord = [...records.values()].find(record => record.subject === "Synthetic account notice");
+    const keyboardRecord = [...records.values()].find(record => record.subject === "Synthetic <script>alert(1)</script>");
     assert.ok(keyboardRecord, "Seeded synthetic report must be available for the keyboard check");
     const keyboardRecordBefore = JSON.stringify(keyboardRecord);
-    await tabUntil(focused => focused.name === "View Synthetic account notice");
+    await tabUntil(focused => focused.name === "View Synthetic <script>alert(1)</script>");
     await keyboardPage.keyboard.press("Enter");
     await keyboardPage.locator("#detail-panel").waitFor({ state: "visible" });
     assert.equal((await describeFocus())?.id, "detail-heading");
@@ -748,6 +783,7 @@ async function run() {
     const failedSubject = "Synthetic controlled provider failure";
     const failedBody = "Synthetic email retained after a simulated provider outage.";
     const recordsBeforeFailure = records.size;
+    await openCreatePanel(page);
     await page.locator("#create-subject").fill(failedSubject);
     await page.locator("#create-body").fill(failedBody);
     await page.locator("#create-button").click();
@@ -763,6 +799,7 @@ async function run() {
 
     await setState(apiOrigin, { providerFailure: false, historyMode: "error", analysisMode: "real" });
     const historyFailureSubject = "Synthetic history refresh failure";
+    await openCreatePanel(page);
     await page.locator("#create-subject").fill(historyFailureSubject);
     await page.locator("#create-body").fill("Synthetic provider-backed record with a controlled history refresh error.");
     await page.locator("#create-button").click();

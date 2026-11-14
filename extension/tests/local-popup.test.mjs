@@ -48,10 +48,18 @@ async function popup(fetchImpl = async () => { throw Error('Unexpected API call'
   };
   if (overrides.sendMessage) chromeImpl.runtime.sendMessage = overrides.sendMessage;
   if (overrides.setSession) chromeImpl.storage.session.set = overrides.setSession;
-  const app = initializePopup({ documentImpl: { getElementById: id => elements.get(id),
-    createElement: () => new Element(), createTextNode: value => ({ textContent: value }) }, chromeImpl, fetchImpl });
-  await settle(); return { app, dom: elements, shared };
+  const documentElement = new Element();
+  const app = initializePopup({ documentImpl: { getElementById: id => elements.get(id), documentElement,
+    createElement: () => new Element(), createTextNode: value => ({ textContent: value }) }, chromeImpl, fetchImpl,
+  locationImpl: overrides.location ?? { search: '' } });
+  await settle(); return { app, dom: elements, shared, documentElement };
 }
+test('the right-click popup keeps a fixed size while the side panel stays fluid', async () => {
+  const popupSurface = await popup(undefined, undefined, { location: { search: '?surface=popup' } });
+  assert.equal(popupSurface.documentElement.classList.contains('popup-surface'), true);
+  const sidePanel = await popup(undefined, undefined, { location: { search: '' } });
+  assert.equal(sidePanel.documentElement.classList.contains('popup-surface'), false);
+});
 const ok = (data, status = 200) => ({ ok: true, status, json: async () => data });
 test('opening popup and showing a scan makes no network request', async () => {
   let calls = 0; const { dom } = await popup(async () => { calls++; throw Error('network'); });

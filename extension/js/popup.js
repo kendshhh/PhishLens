@@ -423,7 +423,14 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
 
 export function initializePopup({ documentImpl = document, chromeImpl = globalThis.chrome,
-    fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve() } = {}) {
+    fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve(),
+    locationImpl = globalThis.location } = {}) {
+    // popup.html serves both the right-click action popup and the toolbar side panel. The
+    // manifest opens the popup as popup.html?surface=popup; a popup sizes itself from its
+    // content, so it keeps a fixed width, while the side panel fills its width.
+    if (new globalThis.URLSearchParams(locationImpl?.search ?? '').get('surface') === 'popup') {
+        documentImpl.documentElement?.classList.add('popup-surface');
+    }
     const $ = id => documentImpl.getElementById(id);
     const client = clientImpl || createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
     let state, stateGeneration = 0, accountEpoch = 0;

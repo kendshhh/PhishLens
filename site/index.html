@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fc">
+  <meta name="description" content="PhishLens helps you inspect suspicious email text with a private, local-first Chrome extension.">
+  <title>PhishLens — See the signs before you click</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar wrap">
+    <a class="brand" href="#top" aria-label="PhishLens home"><span class="brand-mark">P</span><span>PhishLens</span></a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="#privacy">Privacy</a>
+    </nav>
+    <div class="account-links">
+      <button class="button button-quiet" data-auth="login">Log in</button>
+      <button class="button button-dark" data-auth="signup">Sign up <span aria-hidden="true">↗</span></button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span> A clearer look at suspicious email</div>
+        <h1>Pause. Inspect.<br><span>Then decide.</span></h1>
+        <p class="hero-lead">PhishLens is a Chrome extension that helps you spot warning signs in email text. Highlight a message, run a local scan, and read the analysis right beside the page.</p>
+        <div class="hero-actions">
+          <a class="button button-dark button-large" href="https://github.com/kendshhh/PhishLens#install-in-chrome">Install from GitHub <span aria-hidden="true">→</span></a>
+          <a class="button button-quiet" href="#how-it-works">How it works</a>
+          <span class="microcopy">Built for a more thoughtful click.</span>
+        </div>
+        <div class="trust-row"><span class="shield" aria-hidden="true">◇</span><span>Scans run locally in Chrome</span><span class="dot-separator">·</span><span>You choose what to save</span></div>
+      </div>
+
+      <div class="product-stage" aria-label="Illustration of PhishLens analyzing an email in a browser side panel">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="browser-card">
+          <div class="browser-top"><div class="window-dots"><i></i><i></i><i></i></div><div class="address-bar"><span class="lock">⌑</span> mail.example.com</div><span class="browser-menu">•••</span></div>
+          <div class="browser-body">
+            <aside class="mail-rail"><div class="mail-logo">M</div><span class="rail-line active"></span><span class="rail-line"></span><span class="rail-line"></span><span class="rail-line short"></span></aside>
+            <article class="email-view"><div class="email-toolbar"><span>←</span><span>▱</span><span>⋯</span></div><div class="email-tag">INBOX</div><h3>Action required: verify your account</h3><div class="sender"><span class="avatar">S</span><span><b>Security Team</b><small>to me · just now</small></span><span class="more">⋯</span></div><div class="email-text"><p>Hello,</p><p>Your account access will be suspended today. Please <mark>verify your password immediately</mark> using the secure link below.</p><p class="link-line">Continue to verification →</p><p>Thank you,<br>Account Security</p></div><div class="scan-hint"><span>↖</span> Highlight text to analyze with PhishLens</div></article>
+            <aside class="lens-panel"><div class="panel-head"><span class="mini-mark">P</span><b>PhishLens</b><span class="panel-menu">•••</span></div><div class="scan-label"><span class="scan-dot"></span> LOCAL SCAN COMPLETE</div><div class="risk-card"><div class="risk-icon">!</div><div><small>ASSESSMENT</small><strong>Review carefully</strong></div></div><div class="score-row"><span>Primary risk score</span><b>78%</b></div><div class="meter"><span></span></div><div class="panel-section"><h4>What stood out</h4><div class="insight"><span>↗</span><p>Urgent pressure to act quickly</p></div><div class="insight"><span>↗</span><p>Requests for sensitive credentials</p></div></div><div class="panel-note">Signals are clues, not proof. Verify the sender independently.</div><button class="save-demo" type="button" tabindex="-1">Save report</button></aside>
+          </div>
+        </div>
+        <div class="float-chip"><span class="chip-check">✓</span> Your text stays in your browser</div>
+        <div class="stage-spark spark-a">✳</div><div class="stage-spark spark-b">✦</div>
+      </div>
+    </section>
+
+    <section class="how-section" id="how-it-works">
+      <div class="wrap">
+        <div class="section-heading"><div class="eyebrow">A calmer way to check</div><h2>From uneasy to informed<br>in three small steps.</h2><p>Keep the message in view while PhishLens explains the signals it finds.</p></div>
+        <div class="steps-grid">
+          <article class="step-card"><span class="step-number">01</span><div class="step-icon icon-select">⌖</div><h3>Select the text</h3><p>Highlight the email text you want to inspect in Chrome.</p></article>
+          <article class="step-card"><span class="step-number">02</span><div class="step-icon icon-scan">⌕</div><h3>Open PhishLens</h3><p>Right-click and choose “Analyze selection with PhishLens.”</p></article>
+          <article class="step-card"><span class="step-number">03</span><div class="step-icon icon-read">▤</div><h3>Review the signals</h3><p>Read the assessment in the browser side panel and decide your next step.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="privacy-section wrap" id="privacy">
+      <div class="privacy-icon">⌑</div><div><div class="eyebrow">Privacy by choice</div><h2>Your scan stays close.</h2><p>PhishLens runs its scan in Chrome. It doesn’t send email text to an AI provider. Saving a report is optional and uploads the selected content to the project’s shared API history, so only save material you’re authorized to share.</p></div><div class="privacy-badge">LOCAL<br><b>BY DEFAULT</b></div>
+    </section>
+  </main>
+
+  <footer class="footer wrap"><a class="brand" href="#top"><span class="brand-mark">P</span><span>PhishLens</span></a><p>Helpful signals. Your judgment.</p><span>© 2026 PhishLens</span></footer>
+
+  <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">
+    <button class="dialog-close" type="button" aria-label="Close">×</button>
+    <div class="dialog-mark">P</div><div class="eyebrow">PhishLens account</div><h2 id="auth-title">Welcome back</h2>
+    <p class="auth-note">Account sign-in is not connected yet. Credentials are not submitted to a service or saved.</p>
+    <form id="auth-form"><label for="auth-email">Email address</label><input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" required><label for="auth-password">Password</label><input id="auth-password" type="password" autocomplete="current-password" minlength="8" placeholder="At least 8 characters" required><button class="button button-dark auth-submit" type="submit">Continue</button></form>
+    <p class="auth-switch"><span id="auth-switch-prompt">New to PhishLens?</span> <button type="button" id="auth-switch">Create an account</button></p>
+    <p class="auth-status" id="auth-status" role="status" aria-live="polite"></p>
+  </dialog>
+</body>
+</html>
