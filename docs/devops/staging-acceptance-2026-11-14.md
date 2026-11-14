@@ -44,7 +44,7 @@ its outcome is recorded in
 [reliability-acceptance-2026-11-14.md](reliability-acceptance-2026-11-14.md).
 An agreed RPO/RTO and a repeatable safe restore remain open.
 
-## Current staging target recheck — 2026-11-14
+## Superseded staging target recheck — c3ce2fff (2026-11-14)
 
 An external/API-triggered Render deployment replaced the above main deployment
 after that run. Render reports auto-deploy `off`, so this was not an automatic
@@ -61,7 +61,7 @@ compute lookup maps that endpoint to branch `pr-58-staging`
 the target branch identity; the Render integration does not expose a separate
 read-only environment-variable listing through its current connected API.
 
-At the exact current SHA, read-only checks returned `/version` with the same
+At that exact SHA, read-only checks returned `/version` with the same
 commit and `environment=staging`, `/health` HTTP 200, `/ready` HTTP 200 with
 `database=connected`, and `/model-info` with provider `tfidf` and model SHA
 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
@@ -71,6 +71,38 @@ The guarded CRUD verifier was rerun with
 read, update, clear, delete, and post-delete 404 checks for synthetic record
 `9856b33d-8e08-44de-97a1-d319cda04f5f`; the script reported
 `cleanedUp=true`. The request used TF-IDF, made no paid provider request, and
-made no production write. This proves the current feature branch's backend
-CRUD behavior on the staging target. It does not prove main's current target or
-the feature branch's browser-extension behavior.
+made no production write. This proves that feature branch's backend CRUD
+behavior on the staging target. It does not prove main's current target or the
+feature branch's browser-extension behavior. A later external deployment
+replaced it.
+
+## Latest staging target and acceptance — 2026-11-14
+
+Render now serves commit `3b6101b0d77d3a5282d245c83b29c3b684fe780d`, the current
+head of open PR #61 on branch `test/47-verify-installed-browser-crud`. The
+commit is 58 ahead of and 0 behind `main`; it is not a main deployment. A fresh
+`/version` request returned that exact SHA and `environment=staging`. Fresh
+`/health` and `/ready` requests returned HTTP 200, and `/model-info` reported
+TF-IDF model SHA
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
+
+Before the acceptance write, the Render staging host had been matched to the
+Neon pooled endpoint
+`ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech`, which Neon maps
+to branch `pr-58-staging` (`br-delicate-paper-b381z98i`) in project
+`patient-bird-25428852`, database `phishlens_dev`. Render's connected API does
+not expose a read-only environment-variable listing; the configured host was
+inspected in the Render dashboard. `/ready` alone is not database identity proof.
+
+Ran the guarded verifier against the exact live SHA:
+
+```text
+node scripts/verify_crud.mjs --base-url https://phishlens-staging.onrender.com --environment staging --expected-sha 3b6101b0d77d3a5282d245c83b29c3b684fe780d --allow-writes
+```
+
+It passed create, read, update, clear, delete, and post-delete 404 checks for
+synthetic record `56ee2dc4-7dd9-4e6d-bb3e-8c14638146e7`; the verifier reported
+`cleanedUp=true`. It used TF-IDF, made no paid-provider request, and made no
+production write. A follow-up `/version` request still reported the same SHA.
+This is backend CRUD acceptance for PR #61's test branch only. It is not
+acceptance of current `main`, Chrome behavior, or a production release.

@@ -31,13 +31,15 @@ are rerun.
   accepted. See the [smoke procedure](docs/devops/production-deploy-smoke.md)
   and [reliability record](docs/devops/reliability-acceptance-2026-11-14.md).
 - **Staging:** Render currently serves
-  `c3ce2fff382f01014b4a846755a4c6007f642ec6` from a test branch, not main. The
-  Render host was matched to Neon branch `pr-58-staging`; `/version`, `/health`,
-  `/ready`, and `/model-info` passed. Guarded synthetic CRUD passed and deleted
-  its test row. This establishes backend behavior for that test-branch SHA; it
-  does not establish current-main or browser-extension acceptance. The earlier
-  `8c02a7c` main acceptance was superseded when staging changed to the test SHA.
-  See the [staging acceptance record](docs/devops/staging-acceptance-2026-11-14.md).
+  `3b6101b0d77d3a5282d245c83b29c3b684fe780d` from open PR #61's test branch,
+  not main. It is 58 commits ahead of main. The Render host was matched to Neon
+  branch `pr-58-staging`; `/version`, `/health`, `/ready`, and `/model-info`
+  passed. Guarded synthetic CRUD passed on this exact SHA and cleaned up record
+  `56ee2dc4-7dd9-4e6d-bb3e-8c14638146e7`. This establishes backend behavior for
+  the test branch; it does not establish current-main or browser-extension
+  acceptance. Earlier `8c02a7c` and `c3ce2fff` acceptances were superseded when
+  staging changed. See the
+  [staging acceptance record](docs/devops/staging-acceptance-2026-11-14.md).
 - **Restore and objectives:** The November 14 production snapshot restore changed
   Neon branch identity/default topology, so it is not accepted as a safe restore
   rehearsal. Recovery time was not measured. Team-approved SLI/SLO and RPO/RTO
