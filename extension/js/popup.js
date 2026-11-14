@@ -100,10 +100,12 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
     const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "AI provenance unknown"];
-    if (typeof provenance.provider_mode === "string" && provenance.provider_mode.trim()) {
+    const hasProvider = typeof provenance.provider_mode === "string" && Boolean(provenance.provider_mode.trim());
+    const hasModel = typeof provenance.model === "string" && Boolean(provenance.model.trim());
+    if (hasProvider) {
       provenanceLines.push(`Provider: ${providerLabels.get(provenance.provider_mode) || `Unrecognized (${provenance.provider_mode})`}`);
     }
-    if (typeof provenance.model === "string" && provenance.model.trim()) provenanceLines.push(`Model: ${provenance.model}`);
+    if (hasModel) provenanceLines.push(`Model: ${provenance.model}`);
     if (typeof provenance.model_revision === "string" && provenance.model_revision.trim()) {
       provenanceLines.push(`Model revision: ${provenance.model_revision}`);
     }
@@ -114,8 +116,8 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       provenanceLines.push(`Explanation source: ${provenance.explanation_source}`);
     }
     if (provenance.local_review) provenanceLines.push('The local review was reported by the browser.');
-    if (provenanceLines.length === 1 && record.analysis_mode === "real") {
-      provenanceLines.push("Provider and model were not reported.");
+    if (record.analysis_mode === "real" && !hasProvider) {
+      provenanceLines.push(hasModel ? "Provider was not reported." : "Provider and model were not reported.");
     }
     ui.modeWarning.textContent = record.analysis_mode === 'mock' ? 'Demo result — this is not a real email assessment.' :
       record.analysis_mode !== 'real' ? 'The analysis source was not recorded. Treat this report as unverified.' : '';
