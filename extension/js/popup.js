@@ -73,7 +73,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete, ui.back]) {
       button.disabled = value;
     }
-    ui.createButton.textContent = value ? "Saving…" : "Save analysis";
+    ui.createButton.textContent = value ? "Analyzing and saving…" : "Analyze and save";
     ui.saveEdit.textContent = value ? "Saving…" : "Save changes";
     ui.deleteButton.textContent = value ? "Deleting…" : "Delete report";
   }
