@@ -122,7 +122,8 @@ session renewal supplies a replacement token for the same subject.
 | `replay-a`, `list-a-replay` | Same POST body and key as A; reread history | **201**, same ID; **200**, one record; do not create a new key |
 | `conflict-a`, `list-a-conflict` | Same key, changed body; reread history | **409** `idempotency_conflict`; **200**, no extra report |
 | `create-b`, `read-b`, `list-b` | B initial POST uses the same key; GET B detail/history | **201/200**, different ID; B sees only B's report |
-| `cross-read`, `read-a-after-cross` | B's token, GET A's report; A's token reread | **404**, then **200**; A's report remains readable by A |
+| `cross-read`, `cross-read-b` | B's token GETs A's report; A's token GETs B's report | **404** for both |
+| `read-a-after-cross`, `read-b-after-cross` | Each owner rereads their own report after both cross-account denials | **200** for both; both reports remain readable by their owners |
 | `cross-patch-a`, `cross-delete-a`, `cross-patch-b`, `cross-delete-b` | Each other account attempts PATCH and DELETE on the recorded report ID | **404** for all four; subsequent owner reads confirm records remain unchanged |
 | Optional `patch-a`, `patch-b`, `read-a-after-patch`, `read-b-after-patch` | Each owner PATCHes only synthetic notes/feedback, then rereads | **200**; notes/feedback match; prediction/body/provenance/ID unchanged |
 | `delete-a`, `delete-b` | DELETE each report as its owner | **204** |

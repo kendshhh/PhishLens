@@ -128,6 +128,9 @@ test('A replay and conflict and B create share a key; only conflict changes payl
   p.accounts.b.report_id = idB;
   assert.equal(requestSpec(p, 'cross-read').account, 'b');
   assert.equal(requestSpec(p, 'cross-read').route, '/api/analyses/' + idA);
+  assert.equal(requestSpec(p, 'cross-read-b').account, 'a');
+  assert.equal(requestSpec(p, 'cross-read-b').route, '/api/analyses/' + idB);
+  assert.equal(requestSpec(p, 'cross-read-b').expected_status, 404);
   p.include_updates = true;
   for (const [step, owner, method] of [
     ['cross-patch-a', 'a', 'PATCH'], ['cross-delete-a', 'a', 'DELETE'],
@@ -198,8 +201,8 @@ test('the complete simulated two-account sequence makes only two distinct report
   };
   const ordered = ['list-a-before', 'list-b-before', 'create-a', 'read-a', 'list-a',
     'replay-a', 'list-a-replay', 'conflict-a', 'list-a-conflict', 'create-b', 'read-b',
-    'list-b', 'cross-read', 'cross-patch-a', 'cross-delete-a', 'cross-patch-b',
-    'cross-delete-b', 'read-a-after-cross', 'patch-a', 'patch-b',
+    'list-b', 'cross-read', 'cross-read-b', 'cross-patch-a', 'cross-delete-a', 'cross-patch-b',
+    'cross-delete-b', 'read-a-after-cross', 'read-b-after-cross', 'patch-a', 'patch-b',
     'read-a-after-patch', 'read-b-after-patch', 'delete-a', 'delete-b',
     'missing-a', 'missing-b', 'list-a-after', 'list-b-after'];
   for (const step of ordered) {

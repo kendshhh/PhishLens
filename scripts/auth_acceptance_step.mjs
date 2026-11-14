@@ -10,8 +10,9 @@ const hash = /^[0-9a-f]{64}$/;
 export const steps = [
   'list-a-before', 'list-b-before', 'create-a', 'read-a', 'list-a',
   'replay-a', 'list-a-replay', 'conflict-a', 'list-a-conflict',
-  'create-b', 'read-b', 'list-b', 'cross-read', 'cross-patch-a', 'cross-delete-a',
-  'cross-patch-b', 'cross-delete-b', 'read-a-after-cross',
+  'create-b', 'read-b', 'list-b', 'cross-read', 'cross-read-b',
+  'cross-patch-a', 'cross-delete-a', 'cross-patch-b', 'cross-delete-b',
+  'read-a-after-cross', 'read-b-after-cross',
   'patch-a', 'patch-b', 'read-a-after-patch', 'read-b-after-patch', 'delete-a', 'delete-b',
   'missing-a', 'missing-b', 'list-a-after', 'list-b-after'
 ];
@@ -40,7 +41,7 @@ export function requestSpec(plan, step, executing = false) {
       method = 'PATCH'; body = { notes: 'Synthetic acceptance note', feedback: 'false_positive' };
     }
     if (step.startsWith('delete-') || step.startsWith('cross-delete-')) { method = 'DELETE'; status = step.startsWith('cross-') ? 404 : 204; }
-    if (step.startsWith('missing-') || step === 'cross-read' || step.startsWith('cross-patch-')) status = 404;
+    if (step.startsWith('missing-') || step.startsWith('cross-read') || step.startsWith('cross-patch-')) status = 404;
   }
   if (executing && step.startsWith('create-')) assert.equal(id, null, 'Initial save already has a recorded ID');
   return { step, account, method, route: '/api/analyses' + suffix, body,
