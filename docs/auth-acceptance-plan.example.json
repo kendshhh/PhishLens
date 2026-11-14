@@ -1,0 +1,31 @@
+{
+  "run_id": null,
+  "base_url": "https://phishlens-staging.onrender.com",
+  "backend_sha": null,
+  "model_sha": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+  "neon_project": "patient-bird-25428852",
+  "neon_branch": "br-delicate-paper-b381z98i",
+  "application_database": "phishlens_dev",
+  "cleanup_database_host": "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech",
+  "auth_database": "neondb",
+  "auth_url": "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth",
+  "package_source_sha": null,
+  "package_zip_sha256": null,
+  "installed_extension_id": null,
+  "trusted_origin": null,
+  "authorization_reference": null,
+  "window_start": null,
+  "window_end": null,
+  "timezone": "Asia/Manila",
+  "target_confirmation_reference": null,
+  "application_mappings_preverified": false,
+  "allow_mapping_creation": false,
+  "include_updates": false,
+  "evidence_directory": null,
+  "operators": { "api": null, "reports": null, "application_cleanup": null, "auth_admin": null, "deployment": null },
+  "accounts": {
+    "a": { "auth_subject": null, "application_user_id": null, "token_file": null, "report_id": null },
+    "b": { "auth_subject": null, "application_user_id": null, "token_file": null, "report_id": null }
+  },
+  "cleanup": { "reports_absent": false, "clients_stopped": false, "auth_accounts_removed": false, "application_mappings_removed": false }
+}

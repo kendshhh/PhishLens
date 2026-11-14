@@ -1,5 +1,13 @@
 # Kendra DevOps release evidence — 2026-11-08
 
+## Visibility status addendum — 2026-11-14
+
+The visibility statements below record the November 8 point-in-time status and
+are not current. GitHub reports the repository as public, and the owner has
+confirmed that public visibility is intended. No private-visibility change is
+pending. See [repository-process-status-2026-11-14.md](repository-process-status-2026-11-14.md)
+for the current setting and remaining process evidence.
+
 This point-in-time record supports issues [#129](https://github.com/kendshhh/PhishLens/issues/129), [#133](https://github.com/kendshhh/PhishLens/issues/133), [#143](https://github.com/kendshhh/PhishLens/issues/143), [#148](https://github.com/kendshhh/PhishLens/issues/148), and the production gate [#153](https://github.com/kendshhh/PhishLens/issues/153). It records evidence and remaining blockers; it is not a release approval. The linked course spreadsheet could not be read through the connected tools, so the seven rows below group the release requirements stated in #153 and do not claim to reproduce a separate grading rubric.
 
 ## Seven release-evidence areas
