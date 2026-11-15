@@ -76,8 +76,24 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  // Issue #146: the release package must show no console errors or permission warnings.
+  const consoleIssues = [];
+  page.on('console', message => {
+    if (message.type() === 'error' || (message.type() === 'warning' && /permission/i.test(message.text()))) {
+      consoleIssues.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  context.on('weberror', webError => consoleIssues.push(`weberror: ${webError.error().message}`));
   await page.goto('chrome-extension://' + id + '/popup.html');
   await page.locator('#empty-state').waitFor({ state: 'visible' });
+  const manifestPermissions = JSON.parse(await readFile(path.join(root, 'extension/manifest.json'), 'utf8'));
+  const granted = await page.evaluate(() => chrome.permissions.getAll());
+  assert.deepEqual([...granted.permissions].sort(), [...manifestPermissions.permissions].sort(),
+    'Chrome must grant exactly the manifest permissions');
+  assert.deepEqual([...granted.origins].sort(), [...manifestPermissions.host_permissions].sort(),
+    'Chrome must grant exactly the manifest host permissions');
+  evidence.granted_permissions = { permissions: [...granted.permissions].sort(), origins: [...granted.origins].sort() };
+  check('Actual Chrome grants exactly the manifest permissions and host permissions');
   const panelBehavior = await page.evaluate(() => chrome.sidePanel.getPanelBehavior());
   assert.equal(panelBehavior.openPanelOnActionClick, true);
   // A configured popup takes priority over openPanelOnActionClick, so none may be set.
@@ -180,6 +196,9 @@ try {
   assert.equal(requests.length, 0);
 
   assert.deepEqual(errors, []); check('No side-panel page JavaScript errors observed');
+  evidence.console_issues = consoleIssues;
+  assert.deepEqual(consoleIssues, [], 'The page must log no console errors or permission warnings');
+  check('No console errors or permission warnings observed');
   evidence.api_requests_intercepted = requests.length;
   evidence.installed_extension = true; evidence.success = true;
 } catch (error) {
