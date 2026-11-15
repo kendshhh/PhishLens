@@ -286,13 +286,15 @@ class StagingPackageVerificationTests(unittest.TestCase):
         source_config = (Path(__file__).resolve().parents[2] / "extension/js/auth-config.js").read_bytes()
         source_manifest = json.loads((Path(__file__).resolve().parents[2] / "extension/manifest.json").read_text())
         auth_url = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
+        # The source manifest carries the approved public key; the overlay must reuse it.
+        manifest_key = source_manifest.get("key", self.manifest_key)
         with tempfile.TemporaryDirectory() as directory:
             archive = Path(directory) / "PhishLens-Staging-Auth.zip"
             evidence = Path(directory) / "auth-evidence.json"
             sha = checkout_revision(Path(__file__).resolve().parents[2])
             built = build_package(
                 Path(__file__).resolve().parents[2], archive, evidence, sha,
-                auth_url=auth_url, auth_database="neondb", manifest_key=self.manifest_key,
+                auth_url=auth_url, auth_database="neondb", manifest_key=manifest_key,
             )
             verified = verify(archive, evidence, sha)
             with ZipFile(archive) as package:
@@ -301,10 +303,10 @@ class StagingPackageVerificationTests(unittest.TestCase):
                 embedded = json.loads(package.read(IN_ARCHIVE_EVIDENCE))
             self.assertTrue(built["auth_enabled"])
             self.assertTrue(verified["auth_enabled"])
-            self.assertEqual(manifest["key"], self.manifest_key)
+            self.assertEqual(manifest["key"], manifest_key)
             self.assertEqual(verified["source_commit"], sha)
             self.assertEqual(embedded["source_commit"], sha)
-            self.assertEqual(verified["chrome_extension_id"], chrome_extension_id(self.manifest_key))
+            self.assertEqual(verified["chrome_extension_id"], chrome_extension_id(manifest_key))
             self.assertEqual(config, (
                 "export const AUTH_CONFIG = " + json.dumps({
                     "enabled": True, "authUrl": auth_url, "database": "neondb",
@@ -323,6 +325,20 @@ class StagingPackageVerificationTests(unittest.TestCase):
             json.loads((Path(__file__).resolve().parents[2] / "extension/manifest.json").read_text()),
             source_manifest,
         )
+
+    def test_auth_overlay_rejects_a_key_that_differs_from_the_source_manifest(self):
+        root = Path(__file__).resolve().parents[2]
+        source_manifest = json.loads((root / "extension/manifest.json").read_text())
+        self.assertIn("key", source_manifest, "The source manifest must carry the approved public key")
+        self.assertNotEqual(source_manifest["key"], VALID_TEST_PUBLIC_KEY)
+        auth_url = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "does not match the source manifest key"):
+                build_package(
+                    root, Path(directory) / "PhishLens-Staging-Auth.zip", Path(directory) / "auth-evidence.json",
+                    checkout_revision(root), auth_url=auth_url, auth_database="neondb",
+                    manifest_key=VALID_TEST_PUBLIC_KEY,
+                )
 
     def test_builder_rejects_outputs_inside_source_checkout(self):
         root = Path(__file__).resolve().parents[2]

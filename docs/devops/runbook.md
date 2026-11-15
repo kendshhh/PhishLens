@@ -206,6 +206,10 @@ the health check; do not change ports or suppress errors without evidence.
 Rolling back application code does not automatically reverse
 database migrations. Coordinate database recovery with Trixia.
 
+Local migration compatibility and PostgreSQL dump/restore evidence is recorded in
+[`migration-compatibility-recovery-2026-11-15.md`](../migration-compatibility-recovery-2026-11-15.md).
+It covers disposable PostgreSQL only; it does not establish hosted backup or recovery.
+
 ## Candidate-compatible staging rollback — 2026-11-08
 
 This bounded rehearsal covered application rollback and restore on Render staging only. It used no production writes and no live-provider request.
