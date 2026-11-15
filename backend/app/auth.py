@@ -16,9 +16,15 @@ from backend.models import User
 
 
 def auth_mode():
+    hosted = os.getenv("RENDER", "").strip().lower() == "true"
+    configured_mode = os.getenv("REPORT_AUTH_MODE")
     load_dotenv(config.ENV_FILE, override=False)
-    # Legacy demo remains explicitly selectable during the staged rollout.
-    mode = os.getenv("REPORT_AUTH_MODE", "demo")
+    # Keep the local demo default, but never silently expose hosted saved-report
+    # routes without an explicit Render service setting. A bundled .env file is
+    # useful locally but is not a hosted deployment decision.
+    if hosted and configured_mode is None:
+        raise HTTPException(503, "Authentication configuration unavailable")
+    mode = os.getenv("REPORT_AUTH_MODE", "demo").strip().lower()
     if mode not in {"demo", "neon"}:
         raise HTTPException(503, "Authentication configuration unavailable")
     return mode
