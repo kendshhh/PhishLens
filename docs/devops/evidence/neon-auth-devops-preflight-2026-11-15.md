@@ -68,6 +68,7 @@ Still pending before any live Auth run:
 3. Kendra and Trixia agree on the exact backend SHA paired with Leyan's final package, the test window, operator availability, and a pause of other staging work.
 4. Leyan supplies package source/ZIP hashes and installed-Chrome identity; the expected extension origin remains untrusted until separately reviewed and authorized.
 
-The supplied local commit `0f1650e0ebe5313723a8e81cb06e0ef3fed118c` is not present in the current checkout. The checkout was already dirty and five commits behind its tracked branch; no pull or push was performed.
+The supplied local commit `0f1650e0ebe5313723a8e81cb06e0ef3fed118c` is not present in the current checkout. That checkout was already dirty and five commits behind its tracked branch, so it was left untouched. This note was published separately on `codex/neon-auth-devops-preflight-20261115`.
+
 
 
