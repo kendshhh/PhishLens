@@ -70,52 +70,144 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 "phishlens_staging_app",
             )
 
-    def test_hosted_urls_reject_query_identity_overrides_on_both_credentials(self):
+    def test_hosted_urls_reject_conninfo_injection_payloads_on_both_credentials(self):
         from scripts.start_staging import validate_hosted_database_urls
 
-        conflicting_runtime = make_url(
-            f"{DATABASE_URL}&user=neondb_owner&dbname=neondb"
+        payloads = (
+            (
+                "user",
+                "&sslmode%3Drequire%20user=neondb_owner",
+                "&sslmode%3Drequire%20user=neondb_owner",
+            ),
+            (
+                "dbname",
+                "&application_name%3Dx%20dbname=neondb",
+                "&application_name%3Dx%20dbname=neondb",
+            ),
+            (
+                "options",
+                "&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+                "&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+            ),
         )
-        conflicting_migration = make_url(
-            f"{MIGRATION_URL}&user=phishlens_staging_app&dbname=neondb"
-        )
-        cases = (
-            ("runtime", conflicting_runtime, make_url(MIGRATION_URL)),
-            ("migration", make_url(DATABASE_URL), conflicting_migration),
-        )
-        for name, runtime, migration in cases:
-            with self.subTest(name=name), self.assertRaisesRegex(
-                SystemExit, "connection identity via query parameters"
+        for field, runtime_payload, migration_payload in payloads:
+            for credential, payload in (
+                ("runtime", runtime_payload),
+                ("migration", migration_payload),
             ):
-                validate_hosted_database_urls(
-                    runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                runtime = make_url(
+                    DATABASE_URL + payload if credential == "runtime" else DATABASE_URL
                 )
+                migration = make_url(
+                    MIGRATION_URL + payload if credential == "migration" else MIGRATION_URL
+                )
+                with self.subTest(field=field, credential=credential), self.assertRaisesRegex(
+                    SystemExit, "unsupported query parameter"
+                ):
+                    validate_hosted_database_urls(
+                        runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                    )
+
+    def test_hosted_urls_reject_case_encoded_and_repeated_identity_keys(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        invalid_queries = (
+            "&user=neondb_owner",
+            "&USER=neondb_owner",
+            "&%75ser=neondb_owner",
+            "&user=phishlens_staging_app&user=neondb_owner",
+        )
+        for credential in ("runtime", "migration"):
+            for query in invalid_queries:
+                runtime = make_url(
+                    DATABASE_URL + query if credential == "runtime" else DATABASE_URL
+                )
+                migration = make_url(
+                    MIGRATION_URL + query if credential == "migration" else MIGRATION_URL
+                )
+                with self.subTest(credential=credential, query=query), self.assertRaisesRegex(
+                    SystemExit, "unsupported query parameter"
+                ):
+                    validate_hosted_database_urls(
+                        runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                    )
+
+    def test_effective_driver_parameters_reject_conninfo_injection_without_connecting(self):
+        from scripts.start_staging import _validate_effective_connection_identity
+
+        payloads = (
+            (
+                "runtime-user",
+                f"{DATABASE_URL}&sslmode%3Drequire%20user=neondb_owner",
+                "runtime",
+            ),
+            (
+                "migration-user",
+                f"{MIGRATION_URL}&sslmode%3Drequire%20user=phishlens_staging_app",
+                "migration",
+            ),
+            (
+                "runtime-dbname",
+                f"{DATABASE_URL}&application_name%3Dx%20dbname=neondb",
+                "runtime",
+            ),
+            (
+                "migration-dbname",
+                f"{MIGRATION_URL}&application_name%3Dx%20dbname=neondb",
+                "migration",
+            ),
+            (
+                "runtime-options",
+                f"{DATABASE_URL}&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+                "runtime",
+            ),
+            (
+                "migration-options",
+                f"{MIGRATION_URL}&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+                "migration",
+            ),
+        )
+        for name, url, credential in payloads:
+            with self.subTest(name=name), self.assertRaises(SystemExit):
+                _validate_effective_connection_identity(make_url(url), credential)
 
     def test_hosted_startup_rejects_query_identity_overrides_before_dns_or_migration(self):
-        runtime_url = f"{DATABASE_URL}&user=neondb_owner&dbname=neondb"
-        migration_url = f"{MIGRATION_URL}&user=phishlens_staging_app&dbname=neondb"
-        with (
-            patch.dict(
-                os.environ,
-                {
-                    "RENDER": "true",
-                    "APP_ENV": "staging",
-                    "STAGING_DATABASE_HOST": DATABASE_HOST,
-                    "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
-                    "DATABASE_URL": runtime_url,
-                    "STAGING_MIGRATION_DATABASE_URL": migration_url,
-                },
-                clear=True,
+        cases = (
+            (
+                "runtime",
+                f"{DATABASE_URL}&sslmode%3Drequire%20user=neondb_owner",
+                MIGRATION_URL,
             ),
-            patch("scripts.start_staging.get_database_url", return_value=runtime_url),
-            patch("scripts.start_staging.socket.getaddrinfo") as lookup,
-            patch("scripts.start_staging.subprocess.run") as run,
-            self.assertRaisesRegex(SystemExit, "connection identity via query parameters"),
-        ):
-            main()
+            (
+                "migration",
+                DATABASE_URL,
+                f"{MIGRATION_URL}&application_name%3Dx%20dbname=neondb",
+            ),
+        )
+        for credential, runtime_url, migration_url in cases:
+            with self.subTest(credential=credential):
+                with (
+                    patch.dict(
+                        os.environ,
+                        {
+                            "RENDER": "true",
+                            "APP_ENV": "staging",
+                            "STAGING_DATABASE_HOST": DATABASE_HOST,
+                            "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
+                            "DATABASE_URL": runtime_url,
+                            "STAGING_MIGRATION_DATABASE_URL": migration_url,
+                        },
+                        clear=True,
+                    ),
+                    patch("scripts.start_staging.get_database_url", return_value=runtime_url),
+                    patch("scripts.start_staging.socket.getaddrinfo") as lookup,
+                    patch("scripts.start_staging.subprocess.run") as run,
+                    self.assertRaisesRegex(SystemExit, "unsupported query parameter"),
+                ):
+                    main()
 
-        lookup.assert_not_called()
-        run.assert_not_called()
+                lookup.assert_not_called()
+                run.assert_not_called()
 
     def test_direct_and_pooled_hosts_for_verified_staging_endpoint_are_allowed(self):
         from scripts.start_staging import validate_hosted_database_urls

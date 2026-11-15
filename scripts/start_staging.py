@@ -1,14 +1,17 @@
 """Start only against the separately configured staging database."""
 import queue
+import re
 import socket
 import subprocess
 import sys
 import threading
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from sqlalchemy.dialects.postgresql.psycopg import PGDialect_psycopg
 from sqlalchemy.engine import URL, make_url
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.core.config import get_database_url
 
@@ -26,18 +29,7 @@ STAGING_NEON_ENDPOINT_HOSTS = frozenset({
     f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
     f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
 })
-CONNECTION_IDENTITY_QUERY_PARAMETERS = frozenset({
-    "database",
-    "dbname",
-    "host",
-    "hostaddr",
-    "options",
-    "port",
-    "service",
-    "servicefile",
-    "user",
-    "username",
-})
+ALLOWED_HOSTED_CONNECTION_QUERY_PARAMETERS = frozenset({"sslmode", "channel_binding"})
 
 
 def resolve_ipv4_addresses(host: str, port: int) -> list[tuple]:
@@ -94,18 +86,56 @@ def pin_ipv4_addresses(database: URL) -> URL:
     return database.set(host=",".join([host] * len(addresses)), query=query)
 
 
+def _validate_hosted_connection_query(database: URL, name: str) -> None:
+    for key, value in database.query.items():
+        if not re.fullmatch(r"[a-z_]+", key) or key not in ALLOWED_HOSTED_CONNECTION_QUERY_PARAMETERS:
+            raise SystemExit(
+                f"Hosted staging {name} URL contains an unsupported query parameter."
+            )
+        if not isinstance(value, str):
+            raise SystemExit(
+                f"Hosted staging {name} URL must not repeat query parameters."
+            )
+
+
+def _validate_effective_connection_identity(database: URL, name: str) -> None:
+    """Check the parameters psycopg will actually pass to libpq, without connecting."""
+    try:
+        _, connect_args = PGDialect_psycopg().create_connect_args(database)
+        effective = conninfo_to_dict(make_conninfo(**connect_args))
+    except Exception as exc:
+        raise SystemExit(
+            f"Hosted staging {name} URL cannot be parsed safely by the PostgreSQL driver."
+        ) from exc
+
+    expected = {
+        "user": database.username,
+        "dbname": database.database,
+        "host": database.host,
+        "port": str(database.port or 5432),
+    }
+    actual = {
+        "user": effective.get("user"),
+        "dbname": effective.get("dbname"),
+        "host": effective.get("host"),
+        "port": effective.get("port", "5432"),
+    }
+    if actual != expected:
+        raise SystemExit(
+            f"Hosted staging {name} URL has effective driver parameters that do not match its validated identity."
+        )
+
+    forbidden = {"hostaddr", "options", "service", "servicefile"}
+    if forbidden.intersection(effective):
+        raise SystemExit(
+            f"Hosted staging {name} URL must not set alternate routing or libpq service parameters."
+        )
+
+
 def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: str, app_role: str) -> None:
     """Reject production, owner-runtime, or mixed-branch staging credentials."""
     for name, database in (("runtime", runtime), ("migration", migration)):
-        overrides = sorted(
-            key for key in database.query
-            if key.lower() in CONNECTION_IDENTITY_QUERY_PARAMETERS
-        )
-        if overrides:
-            raise SystemExit(
-                f"Hosted staging {name} URL must not override connection identity via query parameters: "
-                f"{', '.join(overrides)}."
-            )
+        _validate_hosted_connection_query(database, name)
 
     normalized_host = expected_host.rstrip(".").lower()
     if normalized_host not in STAGING_NEON_ENDPOINT_HOSTS:
@@ -120,6 +150,8 @@ def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: s
         raise SystemExit("Staging DATABASE_URL must use the configured non-owner app role.")
     if migration.username != "neondb_owner" or migration.username == runtime.username:
         raise SystemExit("Staging migrations require the isolated Neon owner credential, separate from the app role.")
+    _validate_effective_connection_identity(runtime, "runtime")
+    _validate_effective_connection_identity(migration, "migration")
 
 
 def main():
