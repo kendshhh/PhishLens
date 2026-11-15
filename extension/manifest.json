@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "PhishLens",
   "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo6CrWK5I9dUPqZI9n5hJlKVob68CmXbRpFoTtS8Li8IKYtzWfikiYxhbfO6Jg6+zxhSiZTUg83Y4alQdoOkEOSXQddjBvX2PS3p9QaDnD17h68cb59lpLtptEa3TYzlZMWxd2P1qImW/58DNc69/PaDNcB5qiDmwI92mCQmUnTzw1ITqe22o1a1B89CvjLI+y2c5yWEORMGU0Y11+ULQ1il4sB5HWVVzlLXYDtJL6xp+/bDYo9+LFNNnezAn4NKYB1mgDipL0xQ6bXP4dqy4RFT/656QFrWHv11xbNoo6iuWNl6+kBh+s0zXrs5sSjKbkSGH76fhF5orYX3+TS93SwIDAQAB",
   "minimum_chrome_version": "127",
   "description": "Analyze highlighted email text for possible phishing indicators.",
   "permissions": [
