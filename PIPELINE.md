@@ -4,11 +4,15 @@
 
 This is the current snapshot. Older dated observations below are historical;
 use the [current Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
-and [current-main staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
+and [November 15 staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
 for detailed evidence.
 
-GitHub `main` is
-[`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f).
+At the November 15 staging acceptance, GitHub `main` was
+[`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f) (PR #215). It later advanced to
+[`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224). PR #224 changed the browser-acceptance harness
+and added acceptance evidence; it did not change backend or extension runtime
+files. The staging run below therefore verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as
+deployed at that time, not a deployment of the later `main` commit.
 The repository is public, as intended by the owner. The active main ruleset
 requires one approval and 11 status checks, including deterministic AI
 evaluation and dependency security. The deterministic AI workflow path-filters
@@ -46,13 +50,14 @@ a passing AI evaluation.
   validation; it made zero analysis requests, paid provider calls, or database
   writes. Separately, the [production-drift check
   #43639445224](https://github.com/kendshhh/PhishLens/actions/runs/43639445224)
-  failed because production's SHA did not match current `main`. Production
+  failed because production's SHA did not match then-current `main` SHA `8c4795f`. Production
   behavior is not accepted.
-- **Staging:** Render is live on exact current `main` SHA
-  `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`. The guarded synthetic CRUD
-  acceptance passed and cleaned its record against the mapped staging Neon
-  branch. This is one backend staging run, not browser or production
-  acceptance.
+- **Staging:** Render was live on exact application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` during
+  the November 15 acceptance (then-current `main`, PR #215). After PR #224,
+  `main` advanced to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` with test-harness and documentation changes
+  only. The recorded CRUD run remains evidence for SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; no deploy
+  of `c568b7a39a7abf3a99ed7aa318d490397d21bd30` is claimed. This is one backend staging run, not browser or
+  production acceptance.
 - **Restore and objectives:** The November 14 production snapshot restore
   changed Neon branch identity/default topology and is not accepted as a safe
   restore rehearsal. Recovery time was not measured. Team-approved SLI/SLO and
