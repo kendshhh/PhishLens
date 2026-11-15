@@ -3,7 +3,7 @@
 ## Source and target
 
 - GitHub repository: `kendshhh/PhishLens` (public; public visibility is intended).
-- GitHub `main` at acceptance time: `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` (PR #215). PR #224 later advanced `main` to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` by changing browser-acceptance checks and adding evidence only; backend and extension runtime files did not change. This record covers exact deployed application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`, not a deployment of the later `main` commit.
+- GitHub `main` at acceptance time: `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` (PR #215). PR #224 later advanced `main` to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` by changing browser-acceptance checks and adding evidence, and PR #221 advanced it again to `bfa0d61040ea671a81317102f2de536cf86a9844` with a documentation audit. Neither changed backend or extension runtime files. This record covers exact deployed application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`, not a deployment of current `main`.
 - Render service: `phishlens-staging` (`srv-db92irlg1s2s739404i0`), linked to `main`, auto-deploy off.
 - Render deployment: `dep-dbsfqtbbc2fs73bes84g`, status `live`, finished `2026-11-15T00:33:10Z`, exact SHA matched.
 - Staging database endpoint `ep-soft-fog-b3orfa8a` maps in Neon project `patient-bird-25428852` to branch `pr-58-staging` (`br-delicate-paper-b381z98i`) and database `phishlens_dev`. The runtime role is `phishlens_staging_app`; migrations use the separate `neondb_owner` role. No connection string or password was read or recorded.

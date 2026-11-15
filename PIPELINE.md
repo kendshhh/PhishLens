@@ -9,22 +9,25 @@ for detailed evidence.
 
 At the November 15 staging acceptance, GitHub `main` was
 [`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f) (PR #215). It later advanced to
-[`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224). PR #224 changed the browser-acceptance harness
-and added acceptance evidence; it did not change backend or extension runtime
-files. The staging run below therefore verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as
-deployed at that time, not a deployment of the later `main` commit.
-The repository is public, as intended by the owner. The active main ruleset
-requires one approval and 11 status checks, including deterministic AI
-evaluation and dependency security. The deterministic AI workflow path-filters
-its evaluation workload to AI-related changes. The AI owner approved a
+[`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224), and then to
+[`bfa0d61040ea671a81317102f2de536cf86a9844`](https://github.com/kendshhh/PhishLens/commit/bfa0d61040ea671a81317102f2de536cf86a9844) (PR #221). PR #224 changed the browser-acceptance harness and added evidence; PR #221 added a documentation audit. Neither changed backend or extension runtime files. The staging run below verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as deployed at that time, not a deployment of current `main`.
+
+The repository is public, as intended by the owner. The API-visible active main
+ruleset #26782191 currently requires one approval and six status checks: Backend
+checks, Extension checks, Staging integration, Workflow lint, CodeQL, and
+Dependency security. It does not list an AI evaluation context. The deterministic
+AI workflow path-filters its workload, but the job named `Deterministic AI
+Evaluation` is now always reported: it runs the evaluation for AI-related changes
+and emits an explicit not-applicable result for unrelated changes. The connected
+GitHub API cannot read classic branch-protection settings; an earlier PR checks
+view showed this context as Expected, so verify that policy view if the requirement
+differs from the API-visible ruleset. The AI owner approved a
 zero-tolerance rule in [#93](https://github.com/kendshhh/PhishLens/issues/93):
 every selected contract/failure case must run and pass, and applicable AI-change
 runs must complete all 40 `synthetic-v1` cases with valid results, expected
 identity, zero paid/external inference, and no model-weight downloads. The
-40-case suite has no numeric model-quality cutoff. Unrelated changes may skip
-the workload, but the ruleset still requires the separate
-`Deterministic AI Evaluation` context; the workflow must report an explicit
-not-applicable status. A missing context is unresolved, not a pass.
+40-case suite has no numeric model-quality cutoff. Unrelated changes skip only the workload, not the status job. A failed change
+detector fails closed. Missing required status is unresolved, not a pass.
 
 #### Observed required-check state on PR #220 — 2026-11-15
 
@@ -54,9 +57,7 @@ a passing AI evaluation.
   behavior is not accepted.
 - **Staging:** Render was live on exact application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` during
   the November 15 acceptance (then-current `main`, PR #215). After PR #224,
-  `main` advanced to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` with test-harness and documentation changes
-  only. The recorded CRUD run remains evidence for SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; no deploy
-  of `c568b7a39a7abf3a99ed7aa318d490397d21bd30` is claimed. This is one backend staging run, not browser or
+  `main` then advanced to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` through PR #224 and now points to `bfa0d61040ea671a81317102f2de536cf86a9844` after PR #221; both changed tests/evidence or documentation only. The recorded CRUD run remains evidence for SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; no deploy of current `main` is claimed. This is one backend staging run, not browser or
   production acceptance.
 - **Restore and objectives:** The November 14 production snapshot restore
   changed Neon branch identity/default topology and is not accepted as a safe
@@ -71,7 +72,7 @@ successful exact-SHA changed-behavior smoke remain outstanding. The production
 smoke workflow is manual-only: no deploy-ended webhook trigger is configured or
 verified. Render documents workspace webhooks as a Pro-or-higher feature, but
 the current workspace plan is not exposed by the connected read-only metadata.
-The AI owner has approved the [#93 deterministic rule](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424), but enforcement of the full rule and required-context reporting for unrelated paths still need verification. On this docs-only PR the evaluation job skipped and the required context remained expected. The 40-case development suite has no numeric model-quality cutoff. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, with approved thresholds of at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. Broader contemporary-source evaluation remains open. The per-run cost estimate is not a provider-side quota or shared spend budget. Participant-sourced team records, approved reliability targets, and safe restore evidence are also outstanding.
+The AI owner has approved the [#93 deterministic rule](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424). This workflow now always reports the exact `Deterministic AI Evaluation` check context: AI-related changes run the full workload, and unrelated changes report explicit N/A. This PR changes the workflow, so it must run the full workload; verify that result on the updated head. The new N/A path still needs confirmation on a later unrelated-change PR. The 40-case development suite has no numeric model-quality cutoff. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, with approved thresholds of at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. Broader contemporary-source evaluation remains open. The per-run cost estimate is not a provider-side quota or shared spend budget. Participant-sourced team records, approved reliability targets, and safe restore evidence are also outstanding.
 GitHub still reports 15 open Dependabot alerts (12 high `pyasn1`, 3 medium
 `opentelemetry-api`) despite the patched versions pinned in the requirements;
 reconcile the alert state before treating those findings as resolved.
