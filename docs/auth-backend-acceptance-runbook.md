@@ -59,6 +59,55 @@ The helper validates public SHA/readiness/model/auth-denial checks; it cannot
 prove the Neon mapping, inspect Render variables or verify rotation. The plan's
 confirmation references record the operator's prior checks, not automated proof.
 
+## Build the staging Auth package
+
+The normal production package remains unchanged and Auth stays disabled in the
+tracked source. After Kendra confirms the exact paired backend revision and
+Leyan supplies the confirmed Auth URL/database and the extension owner's public
+manifest key, the staging packager can create an opt-in Auth-enabled ZIP as an
+overlay. The public key is required to make Chrome's extension ID deterministic
+and bind it to the package. Never request, store, or pass the private signing
+key. Do not invent a new extension identity: if the owner cannot provide the
+authoritative public key, stop and agree whether a keyless unpacked extension
+ID is acceptable before building. The builder writes only to the requested ZIP
+and evidence paths; it does not edit the source manifest or `auth-config.js`.
+Keep both outputs outside the repository and use the verified backend source
+checkout whose full commit SHA is supplied to `--expected-staging`:
+
+```sh
+python scripts/package_staging_extension.py \
+  --source-root /path/to/verified/source \
+  --expected-staging FULL_VERIFIED_BACKEND_SHA \
+  --auth-url https://CONFIRMED_NEON_AUTH_HOST/neondb/auth \
+  --auth-database neondb \
+  --manifest-key-file /private/path/extension-public-key.txt \
+  --output /private/path/PhishLens-Staging-Auth.zip \
+  --evidence /private/path/PhishLens-Staging-Auth-evidence.json
+```
+
+The key file contains only the extension owner's canonical base64 RSA
+SubjectPublicKeyInfo DER public manifest key. The builder rejects malformed or
+unsupported key encodings. It embeds `phishlens-build-evidence.json` in the ZIP with
+the full source/backend SHA, packager SHA, Auth target, exact host permissions,
+public-key digest, and derived Chrome ID/origin. It also writes a sidecar with
+the ZIP and per-file hashes. Keep the ZIP and sidecar together; send both from
+the same build. Leyan should independently hash the received ZIP and run the
+verifier before installation. A hash mismatch means the received archive is
+not the verified candidate and must not be installed.
+
+The Auth URL must be a canonical HTTPS Neon Auth URL for the selected database.
+The package receives only the staging API host and that exact Auth origin as
+required host permissions. The builder rejects credentials, query strings,
+extra hosts, non-Neon Auth domains, missing or mismatched public keys and source
+checkouts whose extension inputs are dirty. The evidence records the expected
+Chrome ID from the public key and leaves `trusted_chrome_origin` unset. After
+Leyan independently confirms the installed ID matches, have the Neon
+administrator verify that exact
+origin before any Auth setting change. This local package build is preparation;
+it does not install the extension, update Neon trusted origins, configure
+Render, or authorize hosted testing. The trusted Secretary controller must be
+reviewed and promoted before its hosted preview can use a new packager revision.
+
 ## Identity and write limits
 
 Use exactly the two approved disposable Auth accounts and private inboxes.
