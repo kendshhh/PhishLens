@@ -1,0 +1,60 @@
+{
+  "scope": "installed unpacked extension and side-panel page software smoke; intercepted API, no database",
+  "recorded_at": "2026-11-15T06:51:53.109Z",
+  "platform": "win32",
+  "os_release": "10.0.26200",
+  "checks": [
+    "Chrome smoke source files match the exact clean packaged revision",
+    "Actual unpacked extension loaded in isolated Chrome profile",
+    "Actual Chrome grants exactly the manifest permissions and host permissions",
+    "Actual Chrome reports no toolbar popup and openPanelOnActionClick, so the toolbar opens the side panel",
+    "Side-panel page opens without API or text-upload requests",
+    "Actual service worker scans locally and the side-panel page displays a labeled result",
+    "Report saving stays disabled and uploads nothing while signed out",
+    "No inline script is present in the rendered side-panel page",
+    "Simulated model failure shows Unable to assess with no released verdict",
+    "Retry and Clear work in the installed extension",
+    "Keyboard-only paste and Check this email shows a labeled result without a safe verdict",
+    "Keyboard Tab cycles reach only visible, named controls with a focus indicator in both views",
+    "No side-panel page JavaScript errors observed",
+    "No console errors or permission warnings observed"
+  ],
+  "accuracy_test": false,
+  "database_persistence_tested": false,
+  "source_commit": "8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f",
+  "extension_version": "0.1.0",
+  "package_sha256": "4172f2aeab03d105e64192e75478cb410b1832295f3f29a5dfc25d26eb7903ba",
+  "chrome": "157.0.8103.79",
+  "granted_permissions": {
+    "permissions": [
+      "activeTab",
+      "contextMenus",
+      "offscreen",
+      "scripting",
+      "sidePanel",
+      "storage"
+    ],
+    "origins": [
+      "https://phishlens-api-ocvt.onrender.com/*"
+    ]
+  },
+  "keyboard_tab_order": {
+    "check_email": [
+      "button#show-reports:Saved reports",
+      "button#show-account:Sign in",
+      "summary#:Or paste email text",
+      "button#show-check:Check email"
+    ],
+    "saved_reports_signed_out": [
+      "button#show-account:Sign in",
+      "button#reports-sign-in:Sign in to view reports",
+      "button#show-check:Check email",
+      "button#show-reports:Saved reports"
+    ]
+  },
+  "console_issues": [],
+  "api_requests_intercepted": 0,
+  "installed_extension": true,
+  "success": true,
+  "temporary_profile_removed": true
+}
