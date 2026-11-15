@@ -46,6 +46,9 @@ The 40-case TF-IDF run is development-only; held-out quality approval and a bloc
 threshold still need the AI owner. The per-run cost estimate is not a
 provider-side quota or shared spend budget. Participant-sourced team records,
 approved reliability targets, and safe restore evidence are also outstanding.
+GitHub still reports 15 open Dependabot alerts (12 high `pyasn1`, 3 medium
+`opentelemetry-api`) despite the patched versions pinned in the requirements;
+reconcile the alert state before treating those findings as resolved.
 
 The latest delivery metrics end at `2026-11-14 03:12 UTC`: PR workflow
 median 4.58 minutes (`n=682` attempts across 110 branches), main pipeline

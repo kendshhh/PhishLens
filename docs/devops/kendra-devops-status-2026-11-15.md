@@ -7,6 +7,7 @@ weighted project-completion percentage.
 
 ## Current repository and controls
 
+- GitHub reports 15 open Dependabot alerts: 12 high for `pyasn1` and 3 medium for `opentelemetry-api` across the three requirements manifests. Current `main` pins the patched versions `pyasn1==0.6.5` and `opentelemetry-api==1.45.2`; the alerts remain open and were not dismissed. Reconcile the dependency graph/alert state before calling them resolved.
 - Repository `kendshhh/PhishLens` is public; the owner has confirmed that public visibility is intended.
 - Current `main`: `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` (PR #215).
 - Issue tracker: 30 closed and 34 open of 64 total (46.9% raw closure, not a project-progress score). Issue #133 is closed after the documented control evidence was merged.
@@ -16,7 +17,7 @@ weighted project-completion percentage.
 
 ## Security history scan — 2026-11-15
 
-Gitleaks v8.30.1 scanned all local Git refs (607 commits, about 21.22 MB). It
+Gitleaks v8.30.1 scanned all local Git refs (608 commits, about 21.22 MB). It
 reported seven `generic-api-key` findings in historical package-identity JSON
 files under `docs/frontend/issue-131`, `issue-136`, and `issue-141`. Review of
 the redacted matches and JSON structure showed these are SHA-256 file digests
