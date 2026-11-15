@@ -7,7 +7,7 @@
 - Render service: `phishlens-staging` (`srv-db92irlg1s2s739404i0`), linked to `main`, auto-deploy off.
 - Render deployment: `dep-dbsfqtbbc2fs73bes84g`, status `live`, finished `2026-11-15T00:33:10Z`, exact SHA matched.
 - Staging database endpoint `ep-soft-fog-b3orfa8a` maps in Neon project `patient-bird-25428852` to branch `pr-58-staging` (`br-delicate-paper-b381z98i`) and database `phishlens_dev`. The runtime role is `phishlens_staging_app`; migrations use the separate `neondb_owner` role. No connection string or password was read or recorded.
-- The merged startup guard in `scripts/start_staging.py` permits only the verified staging endpoint and validates the runtime and migration targets, database, and role before migration/startup. `/ready` is recorded as connectivity evidence only, not database identity evidence.
+- The merged startup guard pins the host to the verified staging endpoint and checks the parsed URL host, database path, and username for the runtime and migration URLs. It does not currently reject `user` or `dbname` query parameters, which the PostgreSQL driver can honor over those parsed fields. A crafted URL can therefore pass the field checks while selecting another role or database. The November 15 deployment, mapping, and CRUD results remain point-in-time observations; the connection URLs were not read and this run did not test conflicting query parameters. Track the code-level fix in [issue #227](https://github.com/kendshhh/PhishLens/issues/227); the [offline reproduction is documented in PR #222's review](https://github.com/kendshhh/PhishLens/pull/222#pullrequestreview-5909501325). `/ready` is recorded as connectivity evidence only, not database identity evidence.
 
 ## Read-only preflight
 

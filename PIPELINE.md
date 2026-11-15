@@ -10,21 +10,28 @@ for detailed evidence.
 GitHub `main` is
 [`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f).
 The repository is public, as intended by the owner. The active main ruleset
-requires one approval and 11 status checks, including the deterministic AI
-evaluation and dependency security checks. The required AI check is scoped to
-AI-related changes; this does not convert its development set into a quality
-threshold.
+requires one approval and 11 status checks, including deterministic AI
+evaluation and dependency security. The deterministic AI workflow path-filters
+its evaluation workload to AI-related changes. The AI owner approved a
+zero-tolerance rule in [#93](https://github.com/kendshhh/PhishLens/issues/93):
+every selected contract/failure case must run and pass, and applicable AI-change
+runs must complete all 40 `synthetic-v1` cases with valid results, expected
+identity, zero paid/external inference, and no model-weight downloads. The
+40-case suite has no numeric model-quality cutoff. Unrelated changes may skip
+the workload, but the ruleset still requires the separate
+`Deterministic AI Evaluation` context; the workflow must report an explicit
+not-applicable status. A missing context is unresolved, not a pass.
 
 #### Observed required-check state on PR #220 — 2026-11-15
 
-On reviewed head `03c67454faad3b6f9f1466ea5df214e2f53ce29e`,
+On reviewed head `918f773337523c7227a58e6bf8b0d00624096df9`,
 `Detect AI evaluation changes` passed, while the path-filtered
 `Deterministic AI evaluation` Actions job was skipped because the documentation
 change did not touch AI paths. The separate required ruleset context,
 `Deterministic AI Evaluation`, remained **Expected — Waiting for status to be
 reported**. The skipped job did not satisfy that required context, so the gate
 was unresolved on this head. See the [PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks)
-and [skipped evaluation job](https://github.com/kendshhh/PhishLens/actions/runs/43687974542/job/132732387179).
+and [skipped evaluation job](https://github.com/kendshhh/PhishLens/actions/runs/43689309017/job/132736380931).
 Recheck the required context on each PR head; do not report this skipped job as
 a passing AI evaluation.
 
@@ -59,10 +66,7 @@ successful exact-SHA changed-behavior smoke remain outstanding. The production
 smoke workflow is manual-only: no deploy-ended webhook trigger is configured or
 verified. Render documents workspace webhooks as a Pro-or-higher feature, but
 the current workspace plan is not exposed by the connected read-only metadata.
-The 40-case TF-IDF run is development-only; held-out quality approval and a blocking
-threshold still need the AI owner. The per-run cost estimate is not a
-provider-side quota or shared spend budget. Participant-sourced team records,
-approved reliability targets, and safe restore evidence are also outstanding.
+The AI owner has approved the [#93 deterministic rule](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424), but enforcement of the full rule and required-context reporting for unrelated paths still need verification. On this docs-only PR the evaluation job skipped and the required context remained expected. The 40-case development suite has no numeric model-quality cutoff. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, with approved thresholds of at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. Broader contemporary-source evaluation remains open. The per-run cost estimate is not a provider-side quota or shared spend budget. Participant-sourced team records, approved reliability targets, and safe restore evidence are also outstanding.
 GitHub still reports 15 open Dependabot alerts (12 high `pyasn1`, 3 medium
 `opentelemetry-api`) despite the patched versions pinned in the requirements;
 reconcile the alert state before treating those findings as resolved.
@@ -245,10 +249,16 @@ artifact includes `ai-regression.json`: the source SHA, frozen synthetic
 development-case version/hash and label inventory, selected deterministic AI
 contract-test counts, failures, and simulated failure IDs. It deliberately does
 not report model predictions or accuracy. Required AI and failure-path test cases,
-including expected parameter counts, are explicit in `scripts/ai_ci_report.py`;
-missing or skipped cases fail Backend checks. AI-owner-approved regression thresholds
-and held-out evaluation remain pending; no live provider or model weights are used
-in ordinary pull request CI.
+including expected parameter counts, are explicit in `scripts/ai_ci_report.py`.
+The #93 owner decision approves zero missing, failed, or skipped selected
+contract/failure cases and requires the applicable 40-case run to return valid
+results with expected identity and no paid/external inference or model download.
+The backend artifact alone does not verify enforcement of the full approved rule
+or the required ruleset context on unrelated changes; those checks remain open.
+The 40-case suite has no numeric model-quality cutoff. The separate #92
+acceptance is limited to TF-IDF v12a advisory screening on its frozen
+English source-pair cohort; broader contemporary evaluation remains open. No
+live provider or model weights are used in ordinary pull request CI.
 
 `docs/devops/ai-provider-smoke.md` documents the separate manual
 `.github/workflows/ai-provider-smoke.yml`. It requires the protected `staging`
