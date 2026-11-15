@@ -17,13 +17,14 @@ threshold.
 
 #### Observed required-check state on PR #220 — 2026-11-15
 
-The path-filter detector passed, and the `Deterministic AI evaluation` Actions
-job was skipped because this documentation-only change did not touch AI paths.
-The separate required branch-protection context, `Deterministic AI Evaluation`,
-remained **Expected — Waiting for status to be reported**. A skipped workflow
-job did not satisfy that required context; the gate was unresolved on this PR
-head. See the [PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks)
-and [skipped evaluation job](https://github.com/kendshhh/PhishLens/actions/runs/43660721082/job/132649233633).
+On reviewed head `03c67454faad3b6f9f1466ea5df214e2f53ce29e`,
+`Detect AI evaluation changes` passed, while the path-filtered
+`Deterministic AI evaluation` Actions job was skipped because the documentation
+change did not touch AI paths. The separate required ruleset context,
+`Deterministic AI Evaluation`, remained **Expected — Waiting for status to be
+reported**. The skipped job did not satisfy that required context, so the gate
+was unresolved on this head. See the [PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks)
+and [skipped evaluation job](https://github.com/kendshhh/PhishLens/actions/runs/43687974542/job/132732387179).
 Recheck the required context on each PR head; do not report this skipped job as
 a passing AI evaluation.
 
