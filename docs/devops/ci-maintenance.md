@@ -29,13 +29,12 @@ The first run may cost more time to save the cache.
 
 ## Dependency review
 
-The pull-request dependency review is advisory and runs by default. It has
-read-only repository and pull-request permissions, flags high-severity
-introduced vulnerabilities, and uses `warn-only: true`, so findings remain
-visible without blocking an otherwise valid delivery check. Set the repository
-variable `DEPENDENCY_REVIEW_ENABLED` to the string `false` only when the scan is
-intentionally disabled; leaving it unset keeps the review enabled. Check the
-Actions result on each PR rather than treating a skipped job as a clean scan.
+The pull-request dependency review runs on every PR with read-only repository
+and pull-request permissions. It fails on introduced high or critical
+vulnerabilities and is a required main-branch check. The obsolete
+`DEPENDENCY_REVIEW_ENABLED` repository variable was removed because the current
+workflow does not use an opt-in gate. Check the Actions result on each PR rather
+than treating a skipped job as a clean scan.
 
 ## Validation and review
 

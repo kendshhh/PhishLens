@@ -76,8 +76,24 @@ try {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  // Issue #146: the release package must show no console errors or permission warnings.
+  const consoleIssues = [];
+  page.on('console', message => {
+    if (message.type() === 'error' || (message.type() === 'warning' && /permission/i.test(message.text()))) {
+      consoleIssues.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  context.on('weberror', webError => consoleIssues.push(`weberror: ${webError.error().message}`));
   await page.goto('chrome-extension://' + id + '/popup.html');
   await page.locator('#empty-state').waitFor({ state: 'visible' });
+  const manifestPermissions = JSON.parse(await readFile(path.join(root, 'extension/manifest.json'), 'utf8'));
+  const granted = await page.evaluate(() => chrome.permissions.getAll());
+  assert.deepEqual([...granted.permissions].sort(), [...manifestPermissions.permissions].sort(),
+    'Chrome must grant exactly the manifest permissions');
+  assert.deepEqual([...granted.origins].sort(), [...manifestPermissions.host_permissions].sort(),
+    'Chrome must grant exactly the manifest host permissions');
+  evidence.granted_permissions = { permissions: [...granted.permissions].sort(), origins: [...granted.origins].sort() };
+  check('Actual Chrome grants exactly the manifest permissions and host permissions');
   const panelBehavior = await page.evaluate(() => chrome.sidePanel.getPanelBehavior());
   assert.equal(panelBehavior.openPanelOnActionClick, true);
   // A configured popup takes priority over openPanelOnActionClick, so none may be set.
@@ -112,7 +128,77 @@ try {
   await page.locator('#result-state').waitFor({ state: 'visible' });
   await page.click('#clear-button'); await page.locator('#empty-state').waitFor({ state: 'visible' });
   check('Retry and Clear work in the installed extension');
+
+  // Keyboard-only checks in installed Chrome (Issue #136): no clicks or programmatic focus.
+  const describeFocus = () => page.evaluate(() => {
+    const element = document.activeElement;
+    if (!element || element === document.body) return null;
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const parentStyle = element.parentElement ? getComputedStyle(element.parentElement) : null;
+    const labelled = element.getAttribute('aria-labelledby')
+      ?.split(/\s+/).map(labelId => document.getElementById(labelId)?.textContent ?? '').join(' ');
+    const name = (element.getAttribute('aria-label') || labelled || element.labels?.[0]?.textContent
+      || element.textContent || element.getAttribute('title') || '').replace(/\s+/g, ' ').trim();
+    const outlined = value => value && value.outlineStyle !== 'none' && parseFloat(value.outlineWidth) > 0;
+    return { id: element.id, tag: element.tagName.toLowerCase(), name,
+      visible: box.width > 0 && box.height > 0 && style.visibility !== 'hidden',
+      indicator: Boolean(outlined(style) || outlined(parentStyle)) };
+  });
+  const tabUntil = async (matches, limit = 60) => {
+    for (let step = 0; step < limit; step++) {
+      await page.keyboard.press('Tab');
+      const focused = await describeFocus();
+      if (focused && matches(focused)) return focused;
+    }
+    throw Error('Keyboard focus did not reach the expected control');
+  };
+  // Walk the full Tab cycle (wrapping past the end of the page) and stop when a control repeats.
+  const tabCycle = async view => {
+    const seen = [];
+    let outsidePage = 0;
+    for (let step = 0; step < 80; step++) {
+      await page.keyboard.press('Tab');
+      const focused = await describeFocus();
+      if (!focused) { if (++outsidePage > 3) break; continue; }
+      const key = `${focused.tag}#${focused.id}:${focused.name}`;
+      if (seen.includes(key)) break;
+      seen.push(key);
+      assert.ok(focused.visible, `${view}: keyboard focus reached a hidden control (${key})`);
+      assert.ok(focused.name, `${view}: focused control has no accessible name (${key})`);
+      assert.ok(focused.indicator, `${view}: focused control has no visible focus indicator (${key})`);
+    }
+    assert.ok(seen.length >= 3, `${view}: Tab must reach the page controls`);
+    return seen;
+  };
+  evidence.keyboard_tab_order = { check_email: await tabCycle('Check email view') };
+  await tabUntil(focused => focused.tag === 'summary' && /paste email text/i.test(focused.name));
+  await page.keyboard.press('Enter');
+  await tabUntil(focused => focused.id === 'scan-body');
+  await page.keyboard.type('Synthetic keyboard check: please review the attached agenda before Friday.');
+  await tabUntil(focused => focused.id === 'scan-button');
+  await page.keyboard.press('Enter');
+  await page.locator('#result-state').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#classification').innerText(), /Suspicious|No strong warning signs|Uncertain/);
+  assert.doesNotMatch(await page.locator('#classification').innerText(), /\b(safe|genuine|legitimate)\b/i,
+    'A local result must never be presented as a safe verdict');
+  assert.equal(requests.length, 0);
+  check('Keyboard-only paste and Check this email shows a labeled result without a safe verdict');
+  await tabUntil(focused => focused.id === 'show-reports');
+  await page.keyboard.press('Enter');
+  await page.locator('#reports-view').waitFor({ state: 'visible' });
+  await page.locator('#reports-account-gate').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#show-reports').getAttribute('aria-pressed'), 'true');
+  evidence.keyboard_tab_order.saved_reports_signed_out = await tabCycle('Saved reports view (signed out)');
+  assert.ok(evidence.keyboard_tab_order.saved_reports_signed_out.some(key => key.includes('reports-sign-in')),
+    'Signed out, Tab must reach the sign-in action for saved reports');
+  check('Keyboard Tab cycles reach only visible, named controls with a focus indicator in both views');
+  assert.equal(requests.length, 0);
+
   assert.deepEqual(errors, []); check('No side-panel page JavaScript errors observed');
+  evidence.console_issues = consoleIssues;
+  assert.deepEqual(consoleIssues, [], 'The page must log no console errors or permission warnings');
+  check('No console errors or permission warnings observed');
   evidence.api_requests_intercepted = requests.length;
   evidence.installed_extension = true; evidence.success = true;
 } catch (error) {

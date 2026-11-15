@@ -142,16 +142,40 @@ They do not replace automated checks or reviewer approval.
 
 ## Local Setup
 
-The backend database schema, synthetic demo seed and FastAPI scaffold can run now.
+The backend database schema, synthetic demo seed and FastAPI scaffold can run locally.
+For schema rehearsal, use an empty disposable PostgreSQL 17 database; the current CI
+runtime uses Python 3.12 and PostgreSQL 17. See [the schema and migration guide](docs/schema.md)
+for the migration chain, schema details, and seed side effects. Local results do not
+establish hosted staging or production behavior.
 
 ### Backend Setup
 
-Create a Python virtual environment, install `requirements.txt`, and set a development
-Neon `DATABASE_URL` in a private `.env`. The backend explicitly loads this file. The
-database role needs `CONNECT` on the development database and `USAGE, CREATE` on its
-`public` schema so Alembic can apply migrations. Use the Neon URL format
+Create a Python virtual environment, install `requirements.txt`, and set `DATABASE_URL`
+in a private `.env` to an empty disposable local PostgreSQL database. The backend
+explicitly loads this file. For a local disposable database, use a role that owns the
+database and can create objects in its `public` schema so Alembic can apply migrations.
+Do not place staging or production credentials in this file. Use the URL format
 `postgresql://USER:URL_ENCODED_PASSWORD@HOST/phishlens_dev?sslmode=require`;
-the backend uses the `psycopg` driver. The current Alembic setup reads `DATABASE_URL`.
+for Neon; for local PostgreSQL, a local URL such as
+`postgresql+psycopg://phishlens:local-only-password@127.0.0.1:55432/phishlens_dev`
+works with the `psycopg` driver. The current Alembic setup reads `DATABASE_URL`.
+
+To create a disposable PostgreSQL 17 database with Docker (Docker Desktop or Docker
+Engine must already be installed), run this from any terminal:
+
+```sh
+docker run --detach --name phishlens-docs-db \
+  --env POSTGRES_USER=phishlens \
+  --env POSTGRES_PASSWORD=local-only-password \
+  --env POSTGRES_DB=phishlens_dev \
+  --publish 55432:5432 postgres:17
+```
+
+Use `postgresql+psycopg://phishlens:local-only-password@127.0.0.1:55432/phishlens_dev`
+for this container. The password is only a disposable local example; never reuse it
+for a hosted database. If port `55432` is occupied, choose another host port and use
+that port in `DATABASE_URL`. When finished, `docker rm --force phishlens-docs-db`
+removes the container and its disposable database.
 
 From the repository root on macOS/Linux:
 
@@ -175,8 +199,9 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 .\.venv\Scripts\python.exe scripts/seed_demo.py
 ```
 
-The seed uses only synthetic data, refuses a database other than `phishlens_dev`, and
-is safe to run more than once. Each teammate needs their own private `.env`; Git does
+The seed uses only synthetic data and refuses a database other than `phishlens_dev`.
+It is safe to repeat on the disposable database, but it can create the fixed demo rows
+or correct the fixed analysis subject. Each teammate needs their own private `.env`; Git does
 not distribute credentials. See [docs/schema.md](docs/schema.md) for field types and
 the deletion policy. `.env.example` contains only settings read by the local app.
 Hosted staging credentials and GitHub environment secrets are listed by name in
@@ -258,6 +283,10 @@ The Chrome extension does not automatically read `.env` files.
 Its public backend origin is configured in `extension/js/config.js` for both
 analysis and history. See [staging instructions](docs/devops/staging.md) for the
 separate acceptance package.
+
+For a presenter-ready synthetic walkthrough with exact package identity, accessible
+keyboard steps, screenshots and environment labels, see the
+[clean-install and demo guide](docs/frontend/issue-141/demo-guide.md).
 
 ## Project Requirements
 

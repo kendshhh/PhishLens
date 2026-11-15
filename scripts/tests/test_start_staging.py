@@ -8,9 +8,11 @@ from sqlalchemy.engine import make_url
 
 from scripts.start_staging import main, pin_ipv4_addresses
 
-DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-round-dew.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-DATABASE_HOST = "ep-round-dew.c-4.ap-southeast-1.aws.neon.tech"
+DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+DATABASE_HOST = "ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech"
+DIRECT_DATABASE_HOST = "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech"
+PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
 
 
 def ipv4_records(*addresses):
@@ -66,6 +68,166 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 make_url(MIGRATION_URL.replace("neondb_owner:owner-example-password", "phishlens_staging_app:example-password")),
                 DATABASE_HOST,
                 "phishlens_staging_app",
+            )
+
+    def test_hosted_urls_reject_conninfo_injection_payloads_on_both_credentials(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        payloads = (
+            (
+                "user",
+                "&sslmode%3Drequire%20user=neondb_owner",
+                "&sslmode%3Drequire%20user=neondb_owner",
+            ),
+            (
+                "dbname",
+                "&application_name%3Dx%20dbname=neondb",
+                "&application_name%3Dx%20dbname=neondb",
+            ),
+            (
+                "options",
+                "&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+                "&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+            ),
+        )
+        for field, runtime_payload, migration_payload in payloads:
+            for credential, payload in (
+                ("runtime", runtime_payload),
+                ("migration", migration_payload),
+            ):
+                runtime = make_url(
+                    DATABASE_URL + payload if credential == "runtime" else DATABASE_URL
+                )
+                migration = make_url(
+                    MIGRATION_URL + payload if credential == "migration" else MIGRATION_URL
+                )
+                with self.subTest(field=field, credential=credential), self.assertRaisesRegex(
+                    SystemExit, "unsupported query parameter"
+                ):
+                    validate_hosted_database_urls(
+                        runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                    )
+
+    def test_hosted_urls_reject_case_encoded_and_repeated_identity_keys(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        invalid_queries = (
+            "&user=neondb_owner",
+            "&USER=neondb_owner",
+            "&%75ser=neondb_owner",
+            "&user=phishlens_staging_app&user=neondb_owner",
+        )
+        for credential in ("runtime", "migration"):
+            for query in invalid_queries:
+                runtime = make_url(
+                    DATABASE_URL + query if credential == "runtime" else DATABASE_URL
+                )
+                migration = make_url(
+                    MIGRATION_URL + query if credential == "migration" else MIGRATION_URL
+                )
+                with self.subTest(credential=credential, query=query), self.assertRaisesRegex(
+                    SystemExit, "unsupported query parameter"
+                ):
+                    validate_hosted_database_urls(
+                        runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                    )
+
+    def test_effective_driver_parameters_reject_conninfo_injection_without_connecting(self):
+        from scripts.start_staging import _validate_effective_connection_identity
+
+        payloads = (
+            (
+                "runtime-user",
+                f"{DATABASE_URL}&sslmode%3Drequire%20user=neondb_owner",
+                "runtime",
+            ),
+            (
+                "migration-user",
+                f"{MIGRATION_URL}&sslmode%3Drequire%20user=phishlens_staging_app",
+                "migration",
+            ),
+            (
+                "runtime-dbname",
+                f"{DATABASE_URL}&application_name%3Dx%20dbname=neondb",
+                "runtime",
+            ),
+            (
+                "migration-dbname",
+                f"{MIGRATION_URL}&application_name%3Dx%20dbname=neondb",
+                "migration",
+            ),
+            (
+                "runtime-options",
+                f"{DATABASE_URL}&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+                "runtime",
+            ),
+            (
+                "migration-options",
+                f"{MIGRATION_URL}&sslmode%3Drequire%20options=-c%20role%3Dneondb_owner",
+                "migration",
+            ),
+        )
+        for name, url, credential in payloads:
+            with self.subTest(name=name), self.assertRaises(SystemExit):
+                _validate_effective_connection_identity(make_url(url), credential)
+
+    def test_hosted_startup_rejects_query_identity_overrides_before_dns_or_migration(self):
+        cases = (
+            (
+                "runtime",
+                f"{DATABASE_URL}&sslmode%3Drequire%20user=neondb_owner",
+                MIGRATION_URL,
+            ),
+            (
+                "migration",
+                DATABASE_URL,
+                f"{MIGRATION_URL}&application_name%3Dx%20dbname=neondb",
+            ),
+        )
+        for credential, runtime_url, migration_url in cases:
+            with self.subTest(credential=credential):
+                with (
+                    patch.dict(
+                        os.environ,
+                        {
+                            "RENDER": "true",
+                            "APP_ENV": "staging",
+                            "STAGING_DATABASE_HOST": DATABASE_HOST,
+                            "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
+                            "DATABASE_URL": runtime_url,
+                            "STAGING_MIGRATION_DATABASE_URL": migration_url,
+                        },
+                        clear=True,
+                    ),
+                    patch("scripts.start_staging.get_database_url", return_value=runtime_url),
+                    patch("scripts.start_staging.socket.getaddrinfo") as lookup,
+                    patch("scripts.start_staging.subprocess.run") as run,
+                    self.assertRaisesRegex(SystemExit, "unsupported query parameter"),
+                ):
+                    main()
+
+                lookup.assert_not_called()
+                run.assert_not_called()
+
+    def test_direct_and_pooled_hosts_for_verified_staging_endpoint_are_allowed(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        direct_runtime = DATABASE_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
+        direct_migration = MIGRATION_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
+        validate_hosted_database_urls(
+            make_url(direct_runtime), make_url(direct_migration), DIRECT_DATABASE_HOST,
+            "phishlens_staging_app",
+        )
+
+    def test_matching_production_host_is_rejected_even_when_all_vars_agree(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        production_runtime = DATABASE_URL.replace(DATABASE_HOST, PRODUCTION_DATABASE_HOST)
+        production_migration = MIGRATION_URL.replace(DATABASE_HOST, PRODUCTION_DATABASE_HOST)
+        with self.assertRaisesRegex(SystemExit, "verified Neon staging endpoint"):
+            validate_hosted_database_urls(
+                make_url(production_runtime), make_url(production_migration),
+                PRODUCTION_DATABASE_HOST, "phishlens_staging_app",
             )
 
     def test_fails_clearly_when_host_has_no_ipv4_address(self):
