@@ -9,10 +9,10 @@ weighted project-completion percentage.
 
 - GitHub reports 15 open Dependabot alerts: 12 high for `pyasn1` and 3 medium for `opentelemetry-api` across the three requirements manifests. Current `main` pins the patched versions `pyasn1==0.6.5` and `opentelemetry-api==1.45.2`; the alerts remain open and were not dismissed. Reconcile the dependency graph/alert state before calling them resolved.
 - Repository `kendshhh/PhishLens` is public; the owner has confirmed that public visibility is intended.
-- Current `main`: `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` (PR #215).
+- Current `main`: `c568b7a39a7abf3a99ed7aa318d490397d21bd30` (PR #224). PR #224 added browser-acceptance checks and evidence for the application candidate at `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; it changed the test harness and documentation, not backend or extension runtime files.
 - Issue tracker: 30 closed and 34 open of 64 total (46.9% raw closure, not a project-progress score). Issue #133 is closed after the documented control evidence was merged.
 - Main ruleset `26782191` is active and requires 11 contexts, including deterministic AI evaluation, dependency security, and dependency graph review.
-- Current-main push runs for CI, Workflow lint, and Dependency security completed successfully: [CI #43610239369](https://github.com/kendshhh/PhishLens/actions/runs/43610239369), [Workflow lint #43610239268](https://github.com/kendshhh/PhishLens/actions/runs/43610239268), and [Dependency security #43610239226](https://github.com/kendshhh/PhishLens/actions/runs/43610239226). The [AI evaluation workflow #43610239261](https://github.com/kendshhh/PhishLens/actions/runs/43610239261) completed with its evaluation job skipped because this change did not touch AI paths; it made no paid provider request.
+- Main push runs for application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` before PR #224 completed successfully: [CI #43610239369](https://github.com/kendshhh/PhishLens/actions/runs/43610239369), [Workflow lint #43610239268](https://github.com/kendshhh/PhishLens/actions/runs/43610239268), and [Dependency security #43610239226](https://github.com/kendshhh/PhishLens/actions/runs/43610239226). The [AI evaluation workflow #43610239261](https://github.com/kendshhh/PhishLens/actions/runs/43610239261) completed with its evaluation job skipped because this change did not touch AI paths; it made no paid provider request.
 - The 40-case synthetic suite is development-only and has no numeric model-quality cutoff. The AI owner approved the zero-tolerance deterministic rule in [#93](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424), but full workflow enforcement and explicit required-context reporting for unrelated paths still need verification; the required context was unresolved on PR #220. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, meeting its approved recall, legitimate-only false-positive, and valid-output criteria. Broader contemporary-source coverage remains open.
 
 ## Security history scan — 2026-11-15
@@ -26,9 +26,9 @@ scanned separately with zero findings. No repository history was rewritten and
 no finding was suppressed. This is heuristic secret scanning, not proof that
 every kind of sensitive information is absent.
 
-## Staging: current-main acceptance passed
+## Staging: exact-SHA acceptance passed
 
-Staging now serves the exact current-main SHA after PR #215. The verified
+The November 15 run recorded staging serving exact application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`, which was main after PR #215 and before PR #224. PR #224 later advanced main to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` with test-harness and documentation changes only; no backend or extension runtime files changed. The verified
 Render-to-Neon staging mapping, health/readiness/model preflight, and one
 synthetic CRUD create/read/update/delete/cleanup run are recorded in
 [the November 15 staging acceptance](staging-acceptance-2026-11-15.md).
@@ -56,7 +56,7 @@ process/database checks. The [exact-SHA production smoke run #43610307606](https
 failed closed at the provider preflight and made zero analysis requests, paid
 provider calls, or database writes. The latest [production drift run
 #43639445224](https://github.com/kendshhh/PhishLens/actions/runs/43639445224)
-also failed because production did not match current `main`.
+also failed because production did not match then-current `main` SHA `8c4795f`.
 
 Do not report production acceptance or release completion from `/health` or
 `/ready`. A Render deploy of current `main`, a working production provider
