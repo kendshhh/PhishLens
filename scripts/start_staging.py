@@ -1,20 +1,35 @@
 """Start only against the separately configured staging database."""
 import queue
+import re
 import socket
 import subprocess
 import sys
 import threading
 from pathlib import Path
 
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from sqlalchemy.dialects.postgresql.psycopg import PGDialect_psycopg
+from sqlalchemy.engine import URL, make_url
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.core.config import get_database_url
-from sqlalchemy.engine import URL, make_url
 
 DNS_TIMEOUT_SECONDS = 15
 DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
+
+# Pin hosted staging to the verified `pr-58-staging` Neon endpoint. Updating this
+# pin requires a reviewed Neon project/branch mapping; Render variables alone
+# must not be able to redirect startup to production or another branch.
+STAGING_NEON_ENDPOINT_ID = "ep-soft-fog-b3orfa8a"
+STAGING_NEON_ENDPOINT_SUFFIX = ".c-4.ap-southeast-1.aws.neon.tech"
+STAGING_NEON_ENDPOINT_HOSTS = frozenset({
+    f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
+    f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
+})
+ALLOWED_HOSTED_CONNECTION_QUERY_PARAMETERS = frozenset({"sslmode", "channel_binding"})
 
 
 def resolve_ipv4_addresses(host: str, port: int) -> list[tuple]:
@@ -71,9 +86,61 @@ def pin_ipv4_addresses(database: URL) -> URL:
     return database.set(host=",".join([host] * len(addresses)), query=query)
 
 
+def _validate_hosted_connection_query(database: URL, name: str) -> None:
+    for key, value in database.query.items():
+        if not re.fullmatch(r"[a-z_]+", key) or key not in ALLOWED_HOSTED_CONNECTION_QUERY_PARAMETERS:
+            raise SystemExit(
+                f"Hosted staging {name} URL contains an unsupported query parameter."
+            )
+        if not isinstance(value, str):
+            raise SystemExit(
+                f"Hosted staging {name} URL must not repeat query parameters."
+            )
+
+
+def _validate_effective_connection_identity(database: URL, name: str) -> None:
+    """Check the parameters psycopg will actually pass to libpq, without connecting."""
+    try:
+        _, connect_args = PGDialect_psycopg().create_connect_args(database)
+        effective = conninfo_to_dict(make_conninfo(**connect_args))
+    except Exception as exc:
+        raise SystemExit(
+            f"Hosted staging {name} URL cannot be parsed safely by the PostgreSQL driver."
+        ) from exc
+
+    expected = {
+        "user": database.username,
+        "dbname": database.database,
+        "host": database.host,
+        "port": str(database.port or 5432),
+    }
+    actual = {
+        "user": effective.get("user"),
+        "dbname": effective.get("dbname"),
+        "host": effective.get("host"),
+        "port": effective.get("port", "5432"),
+    }
+    if actual != expected:
+        raise SystemExit(
+            f"Hosted staging {name} URL has effective driver parameters that do not match its validated identity."
+        )
+
+    forbidden = {"hostaddr", "options", "service", "servicefile"}
+    if forbidden.intersection(effective):
+        raise SystemExit(
+            f"Hosted staging {name} URL must not set alternate routing or libpq service parameters."
+        )
+
+
 def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: str, app_role: str) -> None:
     """Reject production, owner-runtime, or mixed-branch staging credentials."""
-    if not expected_host or app_role != "phishlens_staging_app":
+    for name, database in (("runtime", runtime), ("migration", migration)):
+        _validate_hosted_connection_query(database, name)
+
+    normalized_host = expected_host.rstrip(".").lower()
+    if normalized_host not in STAGING_NEON_ENDPOINT_HOSTS:
+        raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
+    if app_role != "phishlens_staging_app":
         raise SystemExit("Hosted staging requires an isolated host and the phishlens_staging_app role.")
     if runtime.database != "phishlens_dev" or migration.database != "phishlens_dev":
         raise SystemExit("Staging requires both database URLs to target phishlens_dev.")
@@ -83,6 +150,8 @@ def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: s
         raise SystemExit("Staging DATABASE_URL must use the configured non-owner app role.")
     if migration.username != "neondb_owner" or migration.username == runtime.username:
         raise SystemExit("Staging migrations require the isolated Neon owner credential, separate from the app role.")
+    _validate_effective_connection_identity(runtime, "runtime")
+    _validate_effective_connection_identity(migration, "migration")
 
 
 def main():

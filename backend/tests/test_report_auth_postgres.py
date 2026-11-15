@@ -40,7 +40,7 @@ def auth_pg(monkeypatch):
     def claims(name, **changes):
         now = datetime.now(UTC)
         payload = {"sub": f"{prefix}-{name}", "email": f"{prefix}-{name}@example.test",
-                   "emailVerified": True, "iss": "https://auth.example.test",
+                   "emailVerified": True, "banned": False, "iss": "https://auth.example.test",
                    "aud": "https://auth.example.test", "iat": now,
                    "exp": now + timedelta(minutes=15)}
         payload.update(changes)
