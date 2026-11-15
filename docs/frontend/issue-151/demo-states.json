@@ -1,0 +1,48 @@
+{
+  "scope": "installed extension presenter states; synthetic text; all network blocked",
+  "recorded_at": "2026-11-15T06:54:11.480Z",
+  "states": [
+    {
+      "file": "01-ready.png",
+      "state": "Ready before a check",
+      "observed": "Your email stays with you",
+      "sha256": "db10c06492e02538835c2b40d28b23faebeff00d66cf330980f61f86823e5ed4"
+    },
+    {
+      "file": "02-loading.png",
+      "state": "Loading while the local check runs",
+      "observed": "Checking your selection…",
+      "sha256": "b35c1927932e442e55feed239a98d5b16dbf7ab00ce0167aad122674bce58be3"
+    },
+    {
+      "file": "03-result.png",
+      "state": "Local result with its stated limits",
+      "observed": "Uncertain — check before acting",
+      "sha256": "5cca3da99e70de3ff4be10a9f9cf050cd7e66b5cceed14e0a86b2b061c8b541a"
+    },
+    {
+      "file": "04-controlled-failure.png",
+      "state": "Controlled local-model failure (built-in one-shot debug flag)",
+      "observed": "We couldn’t assess this email",
+      "sha256": "2c9080e92ee470de9459a6ae2df44a322cf3484e1aef3dbd55c37c87d93f3164"
+    },
+    {
+      "file": "05-recovery.png",
+      "state": "Recovery after Try again",
+      "observed": "Uncertain — check before acting",
+      "sha256": "2840c82d71e61f3f02dca652e13ecf7ff23231a142b2a0c8e02619a92752c2ca"
+    },
+    {
+      "state": "Clear returns to ready",
+      "observed": "Ready state shown"
+    }
+  ],
+  "source_commit": "8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f",
+  "package_sha256": "4172f2aeab03d105e64192e75478cb410b1832295f3f29a5dfc25d26eb7903ba",
+  "extension_version": "0.1.0",
+  "chrome": "157.0.8103.79",
+  "extension_id": "gmnoahmbodfpmlkjjfkhdpfjnaghcnie",
+  "blocked_network_requests": 0,
+  "success": true,
+  "temporary_profile_removed": true
+}
