@@ -27,7 +27,7 @@ After this PR's Extension checks pass, presenters can download the
 `PhishLens-Extension` artifact from its Actions run and compare its sidecar file
 hashes with [the package identity](demo-package-identity.json). That CI artifact
 is retained for seven days. No Web Store listing or hosted extension preview is
-available. The Vercel site is a separate information page, not an extension host.
+available.
 
 ## Prepare a clean install
 
