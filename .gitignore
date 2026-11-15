@@ -30,3 +30,11 @@ datasets/private/
 # Local implementation dependencies and provisioned LLM weights (never commit).
 /.runtime/
 /extension/model-assets/
+
+# Extension private signing keys (never commit). The approved key is kept outside
+# the repository; these cover where it would land by accident, including the
+# <folder>.pem file that Chrome's "Pack extension" writes next to the extension folder.
+# The public key lives in extension/manifest.json (see docs/extension-identity.md).
+/key.pem
+/extension.pem
+/extension/key.pem

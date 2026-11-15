@@ -46,7 +46,9 @@ def verify_identity(token):
     subject, email = claims.get("sub"), claims.get("email")
     if not isinstance(subject, str) or not 1 <= len(subject) <= 255:
         raise HTTPException(401, "Sign in to access saved reports")
-    if claims.get("emailVerified") is not True or claims.get("banned") is True:
+    # Require an explicit active value so missing or malformed status claims
+    # cannot silently pass verification.
+    if claims.get("emailVerified") is not True or claims.get("banned") is not False:
         raise HTTPException(403, "A verified, active account is required")
     if not isinstance(email, str) or not 3 <= len(email) <= 320 or "@" not in email:
         raise HTTPException(401, "Sign in to access saved reports")
