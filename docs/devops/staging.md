@@ -137,6 +137,11 @@ Startup rejects mismatched hosts, database names, or role identities before
 migrations or seed run. The trusted hosted-staging controller checks the
 environment variables without logging their values. The name check cannot
 distinguish Neon branches, so verify the host and branch privately in Neon.
+Hosted staging accepts only the `sslmode` and `channel_binding` query keys from
+the configured URLs. Before DNS or migration, startup also checks the effective
+psycopg/libpq role, database, host, and port, and rejects `hostaddr`, `options`,
+`service`, and `servicefile`. IPv4 pinning adds its own `hostaddr` only after
+these checks pass.
 Never reuse the production connection or put either credential in an extension.
 Before any new hosted CRUD acceptance, confirm the protected deployment SHA and
 migration revision; the recorded exact-SHA result is below.
