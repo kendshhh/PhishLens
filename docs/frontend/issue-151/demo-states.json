@@ -1,6 +1,6 @@
 {
   "scope": "installed extension presenter states; synthetic text; all network blocked",
-  "recorded_at": "2026-11-15T06:54:11.480Z",
+  "recorded_at": "2026-11-15T08:08:48.353Z",
   "states": [
     {
       "file": "01-ready.png",
@@ -12,7 +12,7 @@
       "file": "02-loading.png",
       "state": "Loading while the local check runs",
       "observed": "Checking your selection…",
-      "sha256": "b35c1927932e442e55feed239a98d5b16dbf7ab00ce0167aad122674bce58be3"
+      "sha256": "afb42f0bbd1d4a129771363f4f886c22450b5caec549808b8f6a0459c64bbc9e"
     },
     {
       "file": "03-result.png",

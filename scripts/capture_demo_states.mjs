@@ -65,15 +65,20 @@ try {
     (await page.locator('#empty-state h2').innerText()).trim());
 
   await analyze(SYNTHETIC_EMAIL);
+  // The loading screenshot is required. Only a timeout means the state was missed, and that
+  // fails the run; any other error (including a screenshot write) propagates unchanged.
   const loading = page.locator('#loading-state');
-  try {
-    await loading.waitFor({ state: 'visible', timeout: 3000 });
-    await capture('02-loading.png', 'Loading while the local check runs',
-      (await page.locator('#loading-state h2').innerText()).trim());
-  } catch {
-    record.states.push({ state: 'Loading while the local check runs',
-      observed: 'Finished before it could be captured; not shown' });
-  }
+  const loadingShown = await loading.waitFor({ state: 'visible', timeout: 3000 }).then(
+    () => true,
+    error => { if (error?.name === 'TimeoutError') return false; throw error; },
+  );
+  assert.ok(loadingShown, 'The loading state finished before it could be captured; rerun the capture');
+  const loadingHeading = (await page.locator('#loading-state h2').innerText()).trim();
+  await capture('02-loading.png', 'Loading while the local check runs', loadingHeading);
+  // A check only moves from loading to its outcome, so loading visible both before and after
+  // the screenshot proves the image shows the loading state.
+  assert.equal(await loading.isVisible(), true,
+    'The check completed during the loading screenshot; rerun the capture');
   await page.locator('#result-state').waitFor({ state: 'visible', timeout: 120000 });
   const label = (await page.locator('#classification').innerText()).trim();
   assert.match(label, /Suspicious|No strong warning signs|Uncertain/);
