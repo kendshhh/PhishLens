@@ -15,15 +15,31 @@ evaluation and dependency security checks. The required AI check is scoped to
 AI-related changes; this does not convert its development set into a quality
 threshold.
 
+#### Observed required-check state on PR #220 — 2026-11-15
+
+The path-filter detector passed, and the `Deterministic AI evaluation` Actions
+job was skipped because this documentation-only change did not touch AI paths.
+The separate required branch-protection context, `Deterministic AI Evaluation`,
+remained **Expected — Waiting for status to be reported**. A skipped workflow
+job did not satisfy that required context; the gate was unresolved on this PR
+head. See the [PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks)
+and [skipped evaluation job](https://github.com/kendshhh/PhishLens/actions/runs/43660721082/job/132649233633).
+Recheck the required context on each PR head; do not report this skipped job as
+a passing AI evaluation.
+
 ### Live service targets
 
 - **Production:** Render's last live deployment is
   `205ec26f8b5d04104a6e8fdfa0c9efa490ecdf02`, behind `main`. `/health` and
   `/ready` return HTTP 200, but `/model-info` reports
-  `provider_mode=unavailable`. The exact-SHA production smoke failed closed
-  before inference, with zero analysis requests, provider calls, or database
-  writes. The latest production-drift check also failed on the SHA mismatch.
-  Production behavior is not accepted.
+  `provider_mode=unavailable`. The [exact-SHA production smoke
+  #43610307606](https://github.com/kendshhh/PhishLens/actions/runs/43610307606)
+  targeted this deployed SHA and failed at provider preflight, not SHA
+  validation; it made zero analysis requests, paid provider calls, or database
+  writes. Separately, the [production-drift check
+  #43639445224](https://github.com/kendshhh/PhishLens/actions/runs/43639445224)
+  failed because production's SHA did not match current `main`. Production
+  behavior is not accepted.
 - **Staging:** Render is live on exact current `main` SHA
   `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`. The guarded synthetic CRUD
   acceptance passed and cleaned its record against the mapped staging Neon
