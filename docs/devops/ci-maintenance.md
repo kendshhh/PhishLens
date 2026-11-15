@@ -39,13 +39,17 @@ The first run may cost more time to save the cache.
 
 ## Dependency security gates on current main
 
-The `Dependency security` workflow job runs on pull requests and main pushes.
-It fails on high-severity npm findings and audits the pinned Python runtime and
-development requirements with `pip-audit`. The main ruleset requires this
-context. The PR-only `Dependency graph review (GitHub Advanced Security)` job
-also fails on introduced high-severity dependencies and is separately required
-by the main ruleset. Neither current job uses `warn-only` or the former
-`DEPENDENCY_REVIEW_ENABLED` variable. A skipped check is not a clean scan.
+The `Dependency security` workflow runs on pull requests and pushes to `main`.
+It rejects high-severity npm findings and audits the pinned Python runtime and
+development requirements with `pip-audit`. The optional CPU inference lock is
+also audited with strict OSV collection. The main ruleset requires this context.
+
+The PR-only `Dependency graph review (GitHub Advanced Security)` job runs on
+every pull request with read-only `contents` and `pull-requests` permissions.
+It fails on introduced high or critical findings, and the main ruleset separately
+requires this context. The obsolete `DEPENDENCY_REVIEW_ENABLED` variable was
+removed; neither current job uses `warn-only` or an opt-in gate. Check the Actions
+result on every PR rather than treating a skipped job as a clean scan.
 
 ## Validation and review
 
