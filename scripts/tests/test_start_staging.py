@@ -70,6 +70,53 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 "phishlens_staging_app",
             )
 
+    def test_hosted_urls_reject_query_identity_overrides_on_both_credentials(self):
+        from scripts.start_staging import validate_hosted_database_urls
+
+        conflicting_runtime = make_url(
+            f"{DATABASE_URL}&user=neondb_owner&dbname=neondb"
+        )
+        conflicting_migration = make_url(
+            f"{MIGRATION_URL}&user=phishlens_staging_app&dbname=neondb"
+        )
+        cases = (
+            ("runtime", conflicting_runtime, make_url(MIGRATION_URL)),
+            ("migration", make_url(DATABASE_URL), conflicting_migration),
+        )
+        for name, runtime, migration in cases:
+            with self.subTest(name=name), self.assertRaisesRegex(
+                SystemExit, "connection identity via query parameters"
+            ):
+                validate_hosted_database_urls(
+                    runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                )
+
+    def test_hosted_startup_rejects_query_identity_overrides_before_dns_or_migration(self):
+        runtime_url = f"{DATABASE_URL}&user=neondb_owner&dbname=neondb"
+        migration_url = f"{MIGRATION_URL}&user=phishlens_staging_app&dbname=neondb"
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "RENDER": "true",
+                    "APP_ENV": "staging",
+                    "STAGING_DATABASE_HOST": DATABASE_HOST,
+                    "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
+                    "DATABASE_URL": runtime_url,
+                    "STAGING_MIGRATION_DATABASE_URL": migration_url,
+                },
+                clear=True,
+            ),
+            patch("scripts.start_staging.get_database_url", return_value=runtime_url),
+            patch("scripts.start_staging.socket.getaddrinfo") as lookup,
+            patch("scripts.start_staging.subprocess.run") as run,
+            self.assertRaisesRegex(SystemExit, "connection identity via query parameters"),
+        ):
+            main()
+
+        lookup.assert_not_called()
+        run.assert_not_called()
+
     def test_direct_and_pooled_hosts_for_verified_staging_endpoint_are_allowed(self):
         from scripts.start_staging import validate_hosted_database_urls
 

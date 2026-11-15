@@ -26,6 +26,18 @@ STAGING_NEON_ENDPOINT_HOSTS = frozenset({
     f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
     f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
 })
+CONNECTION_IDENTITY_QUERY_PARAMETERS = frozenset({
+    "database",
+    "dbname",
+    "host",
+    "hostaddr",
+    "options",
+    "port",
+    "service",
+    "servicefile",
+    "user",
+    "username",
+})
 
 
 def resolve_ipv4_addresses(host: str, port: int) -> list[tuple]:
@@ -84,6 +96,17 @@ def pin_ipv4_addresses(database: URL) -> URL:
 
 def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: str, app_role: str) -> None:
     """Reject production, owner-runtime, or mixed-branch staging credentials."""
+    for name, database in (("runtime", runtime), ("migration", migration)):
+        overrides = sorted(
+            key for key in database.query
+            if key.lower() in CONNECTION_IDENTITY_QUERY_PARAMETERS
+        )
+        if overrides:
+            raise SystemExit(
+                f"Hosted staging {name} URL must not override connection identity via query parameters: "
+                f"{', '.join(overrides)}."
+            )
+
     normalized_host = expected_host.rstrip(".").lower()
     if normalized_host not in STAGING_NEON_ENDPOINT_HOSTS:
         raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
