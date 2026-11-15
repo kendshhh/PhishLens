@@ -1,6 +1,10 @@
 # Deployment and Recovery Runbook
 
-## Historical October 21 playbook handoff
+> The deployment and recovery entries below are dated observations. Current
+> production and staging state is summarized in the
+> [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+
+## October 21 playbook handoff
 
 See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
 the corrected Week 2 instructions and remaining integration gates. Production

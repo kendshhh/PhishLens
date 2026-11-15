@@ -1,5 +1,9 @@
 # Reliability and restore evidence — 2026-11-14
 
+> Restore and target observations below are historical. Current deployment
+> identity and acceptance state are recorded in the
+> [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+
 ## Current service identity
 
 Production Render service `phishlens-api` is configured to deploy from `main`

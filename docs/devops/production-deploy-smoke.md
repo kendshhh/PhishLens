@@ -1,5 +1,9 @@
 # Production deployment smoke
 
+> This runbook describes the workflow; its November 14 production result is a
+> historical snapshot. See the [November 15 DevOps status](kendra-devops-status-2026-11-15.md)
+> for the current live production SHA and provider-mode result.
+
 ## What the check verifies
 
 [`production-deploy-smoke.yml`](../../.github/workflows/production-deploy-smoke.yml)
@@ -33,10 +37,13 @@ acceptance.
 
 ## Why it is not automatically deploy-triggered yet
 
-The production Render service is on the Free plan with `autoDeploy=checksPass`.
+The production Render service is configured with `autoDeploy=checksPass`.
 The connected GitHub deployment inventory for the current production SHA has
-staging records but no production deployment event. Render workspace webhooks,
-which can emit a `deploy_ended` event, require a Pro plan or higher. A
+staging records but no production deployment event. Render documents workspace
+webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
+([Render Webhooks](https://render.com/docs/webhooks)). The connected read-only
+workspace metadata does not expose the current workspace plan, and no
+deploy-ended webhook is configured or verified. A
 `workflow_run` check on the same default-branch commit could also become a
 pending check while Render is waiting for checks to deploy that commit, so this
 workflow does not register that trigger and risk a check/deploy cycle.
@@ -54,7 +61,7 @@ automatically after every production deployment**. To close the gap, either:
 Until one of those paths is configured and verified, the manual run is a
 runbook action, not automatic deployment evidence.
 
-## Current production result
+## Production result — 2026-11-14 snapshot
 
 On 2026-11-14 the production SHA advanced to
 `76551f68ff7dc02971cf127fa82f1f35e79cc2ab` after PR #197. A fresh exact-SHA

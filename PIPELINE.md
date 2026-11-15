@@ -1,6 +1,65 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 14, 2026
+## Current delivery and acceptance snapshot — November 15, 2026
+
+This is the current snapshot. Older dated observations below are historical;
+use the [current Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
+and [current-main staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
+for detailed evidence.
+
+GitHub `main` is
+[`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f).
+The repository is public, as intended by the owner. The active main ruleset
+requires one approval and 11 status checks, including the deterministic AI
+evaluation and dependency security checks. The required AI check is scoped to
+AI-related changes; this does not convert its development set into a quality
+threshold.
+
+### Live service targets
+
+- **Production:** Render's last live deployment is
+  `205ec26f8b5d04104a6e8fdfa0c9efa490ecdf02`, behind `main`. `/health` and
+  `/ready` return HTTP 200, but `/model-info` reports
+  `provider_mode=unavailable`. The exact-SHA production smoke failed closed
+  before inference, with zero analysis requests, provider calls, or database
+  writes. The latest production-drift check also failed on the SHA mismatch.
+  Production behavior is not accepted.
+- **Staging:** Render is live on exact current `main` SHA
+  `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`. The guarded synthetic CRUD
+  acceptance passed and cleaned its record against the mapped staging Neon
+  branch. This is one backend staging run, not browser or production
+  acceptance.
+- **Restore and objectives:** The November 14 production snapshot restore
+  changed Neon branch identity/default topology and is not accepted as a safe
+  restore rehearsal. Recovery time was not measured. Team-approved SLI/SLO and
+  RPO/RTO targets are absent.
+
+### Remaining delivery gates
+
+The provider-mode failure currently blocks production feature acceptance. A
+current-main production deploy, known-good provider configuration, and
+successful exact-SHA changed-behavior smoke remain outstanding. The production
+smoke workflow is manual-only: no deploy-ended webhook trigger is configured or
+verified. Render documents workspace webhooks as a Pro-or-higher feature, but
+the current workspace plan is not exposed by the connected read-only metadata.
+The 40-case TF-IDF run is development-only; held-out quality approval and a blocking
+threshold still need the AI owner. The per-run cost estimate is not a
+provider-side quota or shared spend budget. Participant-sourced team records,
+approved reliability targets, and safe restore evidence are also outstanding.
+
+The latest delivery metrics end at `2026-11-14 03:12 UTC`: PR workflow
+median 4.58 minutes (`n=682` attempts across 110 branches), main pipeline
+median 1.18 minutes (`n=86` successful pushes), 69 production deploy records,
+and 64 matched merge-to-live samples. Recovery time is unknown (`n=0`). The
+optimization comparison is only `n=2` before and `n=2` after for Backend jobs;
+it does not establish an end-to-end improvement. See
+[metrics](docs/devops/metrics.md) and [optimization evidence](docs/devops/optimizations.md).
+
+## Historical delivery and acceptance snapshot — November 14, 2026
+
+> The following section preserves the previous November 14 point-in-time
+> snapshot. Its SHA and service observations are superseded by the current
+> section above.
 
 This dated snapshot supersedes the October 28 observations below. GitHub
 `main` is `36cb0d4c1c197b5a4a2bead38dcf9fa966719f53` (PR #199, refresh delivery

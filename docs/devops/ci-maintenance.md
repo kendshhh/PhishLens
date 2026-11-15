@@ -1,6 +1,16 @@
 # CI runtime and package-cache maintenance
 
-## Problem and change
+> This page includes historical October maintenance notes. Current deployment
+> and security state is summarized in the [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+
+## Current pinned Actions — 2026-11-15
+
+The checked-in workflows currently pin `actions/checkout` v7 to
+`3d3c42e5aac5ba805825da76410c181273ba90b1` and `actions/setup-python` v7 to
+`6d4fd22b20465ccc0f7354476588e8df7c9ca0e0`. The older setup-python hash in the
+historical note below is no longer used.
+
+## Historical October 14 action update
 
 GitHub reported a Node.js 20 deprecation warning for checkout v4 and
 setup-python v5. This change uses the official v7 implementations, pinned to
@@ -27,15 +37,15 @@ improvement; see [optimization evidence](optimizations.md). Compare cold and war
 runs with the same database/test coverage, recording setup/install/job durations.
 The first run may cost more time to save the cache.
 
-## Dependency review
+## Dependency security gates on current main
 
-The pull-request dependency review is advisory and runs by default. It has
-read-only repository and pull-request permissions, flags high-severity
-introduced vulnerabilities, and uses `warn-only: true`, so findings remain
-visible without blocking an otherwise valid delivery check. Set the repository
-variable `DEPENDENCY_REVIEW_ENABLED` to the string `false` only when the scan is
-intentionally disabled; leaving it unset keeps the review enabled. Check the
-Actions result on each PR rather than treating a skipped job as a clean scan.
+The `Dependency security` workflow job runs on pull requests and main pushes.
+It fails on high-severity npm findings and audits the pinned Python runtime and
+development requirements with `pip-audit`. The main ruleset requires this
+context. The PR-only `Dependency graph review (GitHub Advanced Security)` job
+also fails on introduced high-severity dependencies and is separately required
+by the main ruleset. Neither current job uses `warn-only` or the former
+`DEPENDENCY_REVIEW_ENABLED` variable. A skipped check is not a clean scan.
 
 ## Validation and review
 
@@ -45,4 +55,5 @@ Actions result on each PR rather than treating a skipped job as a clean scan.
   PostgreSQL tests must pass without skipping in CI; backend and extension suites
   grow as reviewed feature tests land.
 - Required Backend checks and teammate approval remain necessary before merge.
-- No changes to application features, hosting plan, secrets or branch protection.
+- The original runtime/cache update did not change application features,
+  hosting plan, secrets or branch protection.

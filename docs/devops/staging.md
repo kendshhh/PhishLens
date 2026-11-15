@@ -1,5 +1,8 @@
 # Pre-merge staging
 
+> The current live staging SHA and latest acceptance are recorded in
+> [the November 15 current-main run](staging-acceptance-2026-11-15.md).
+
 Delivery order: task branch → PR component checks → isolated staging integration
 → hosted staging → Chrome verification and teammate approval → merge to main
 → main CI → production Render deployment → production verification.
