@@ -9,8 +9,7 @@ for detailed evidence.
 
 At the November 15 staging acceptance, GitHub `main` was
 [`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f) (PR #215). It later advanced to
-[`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224), and then to
-[`bfa0d61040ea671a81317102f2de536cf86a9844`](https://github.com/kendshhh/PhishLens/commit/bfa0d61040ea671a81317102f2de536cf86a9844) (PR #221). PR #224 changed the browser-acceptance harness and added evidence; PR #221 added a documentation audit. Neither changed backend or extension runtime files. The staging run below verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as deployed at that time, not a deployment of current `main`.
+[`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224), then to [`bfa0d61040ea671a81317102f2de536cf86a9844`](https://github.com/kendshhh/PhishLens/commit/bfa0d61040ea671a81317102f2de536cf86a9844) (PR #221), and now to [`56fba3952b588d289cf539623f9b4149b03258fc`](https://github.com/kendshhh/PhishLens/commit/56fba3952b588d289cf539623f9b4149b03258fc) (PR #226). PR #224 changed the browser-acceptance harness and added evidence; PR #221 added a documentation audit; PR #226 hardened hosted-staging PostgreSQL URL validation and added offline regressions. The staging run below verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as deployed at that time, before PR #226's fix, not a deployment of current `main`.
 
 The repository is public, as intended by the owner. The API-visible active main
 ruleset #26782191 currently requires one approval and six status checks: Backend
@@ -32,15 +31,13 @@ detector fails closed. Missing required status is unresolved, not a pass.
 #### Observed required-check state on PR #220 — 2026-11-15
 
 On reviewed head `918f773337523c7227a58e6bf8b0d00624096df9`,
-`Detect AI evaluation changes` passed, while the path-filtered
-`Deterministic AI evaluation` Actions job was skipped because the documentation
-change did not touch AI paths. The separate required ruleset context,
-`Deterministic AI Evaluation`, remained **Expected — Waiting for status to be
-reported**. The skipped job did not satisfy that required context, so the gate
-was unresolved on this head. See the [PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks)
-and [skipped evaluation job](https://github.com/kendshhh/PhishLens/actions/runs/43689309017/job/132736380931).
-Recheck the required context on each PR head; do not report this skipped job as
-a passing AI evaluation.
+`Detect AI evaluation changes` passed and the path-filtered
+`Deterministic AI evaluation` workload skipped because the documentation
+change did not touch AI paths. The separate `Deterministic AI Evaluation`
+context was then **Expected — Waiting for status to be reported**; that skipped
+job did not satisfy it. After the workflow was changed to always report the
+exact context, PR #220 head `eceb9afac1fd7241ca56aa0fa12703f166625e0d` reported
+`Deterministic AI Evaluation` as successful in [run 43696099538](https://github.com/kendshhh/PhishLens/actions/runs/43696099538/job/132756889596). The change detector and full deterministic workload passed; the N/A step was skipped because this PR also changes the AI workflow. This resolves the missing-context observation for that head. It does not verify the N/A path on an unrelated PR or establish AI quality. See the [PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks).
 
 ### Live service targets
 
@@ -57,7 +54,7 @@ a passing AI evaluation.
   behavior is not accepted.
 - **Staging:** Render was live on exact application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` during
   the November 15 acceptance (then-current `main`, PR #215). After PR #224,
-  `main` then advanced to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` through PR #224 and now points to `bfa0d61040ea671a81317102f2de536cf86a9844` after PR #221; both changed tests/evidence or documentation only. The recorded CRUD run remains evidence for SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; no deploy of current `main` is claimed. This is one backend staging run, not browser or
+  `main` then advanced to `c568b7a39a7abf3a99ed7aa318d490397d21bd30` through PR #224, to `bfa0d61040ea671a81317102f2de536cf86a9844` through PR #221, and to `56fba3952b588d289cf539623f9b4149b03258fc` through PR #226. PR #226 fixed the hosted-staging URL identity guard; the November 15 run predates that fix and did not test it. The recorded CRUD run remains evidence for SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; no deploy of current `main` is claimed. This is one backend staging run, not browser or
   production acceptance.
 - **Restore and objectives:** The November 14 production snapshot restore
   changed Neon branch identity/default topology and is not accepted as a safe
@@ -72,7 +69,7 @@ successful exact-SHA changed-behavior smoke remain outstanding. The production
 smoke workflow is manual-only: no deploy-ended webhook trigger is configured or
 verified. Render documents workspace webhooks as a Pro-or-higher feature, but
 the current workspace plan is not exposed by the connected read-only metadata.
-The AI owner has approved the [#93 deterministic rule](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424). This workflow now always reports the exact `Deterministic AI Evaluation` check context: AI-related changes run the full workload, and unrelated changes report explicit N/A. On PR #220 head `1f005fd607dc33be180ccb5fa5be3a7eb18fbd13`, the exact-name `Deterministic AI Evaluation` check and full AI workload passed in [workflow run 43695815600](https://github.com/kendshhh/PhishLens/actions/runs/43695815600). Its not-applicable step was skipped because the workflow change is an AI-related path. The N/A path still needs verification on a later unrelated-change PR. The 40-case development suite has no numeric model-quality cutoff. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, with approved thresholds of at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. Broader contemporary-source evaluation remains open. The per-run cost estimate is not a provider-side quota or shared spend budget. Participant-sourced team records, approved reliability targets, and safe restore evidence are also outstanding.
+The AI owner has approved the [#93 deterministic rule](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424). This workflow now always reports the exact `Deterministic AI Evaluation` check context: AI-related changes run the full workload, and unrelated changes report explicit N/A. On PR #220 head `1f005fd607dc33be180ccb5fa5be3a7eb18fbd13`, the exact-name check and full AI workload passed in [workflow run 43695815600](https://github.com/kendshhh/PhishLens/actions/runs/43695815600). On the later docs head `eceb9afac1fd7241ca56aa0fa12703f166625e0d`, [run 43696099538](https://github.com/kendshhh/PhishLens/actions/runs/43696099538) again reported the exact context successfully and passed the full deterministic workload. The N/A path still needs verification on a later unrelated-change PR. The 40-case development suite has no numeric model-quality cutoff. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, with approved thresholds of at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. Broader contemporary-source evaluation remains open. The per-run cost estimate is not a provider-side quota or shared spend budget. Participant-sourced team records, approved reliability targets, and safe restore evidence are also outstanding.
 GitHub still reports 15 open Dependabot alerts (12 high `pyasn1`, 3 medium
 `opentelemetry-api`) despite the patched versions pinned in the requirements;
 reconcile the alert state before treating those findings as resolved.

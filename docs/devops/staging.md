@@ -1,7 +1,9 @@
 # Pre-merge staging
 
-> The current live staging SHA and latest acceptance are recorded in
-> [the November 15 current-main run](staging-acceptance-2026-11-15.md).
+> The November 15 point-in-time staging deployment and CRUD acceptance are recorded in
+> [the staging acceptance record](staging-acceptance-2026-11-15.md). That run predates
+> PR #226's URL identity fix and does not establish that current `main` is deployed
+> or verified in staging.
 
 Delivery order: task branch → PR component checks → isolated staging integration
 → hosted staging → Chrome verification and teammate approval → merge to main
