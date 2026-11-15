@@ -31,10 +31,20 @@ def signed(monkeypatch):
     key = Ed25519PrivateKey.generate()
     monkeypatch.setattr(auth, "jwks_client", lambda base: SimpleNamespace(
         get_signing_key_from_jwt=lambda token: SimpleNamespace(key=key.public_key())))
-    def token(**changes):
+    def token(*, without=(), **changes):
         now = datetime.now(UTC)
-        claims = {"sub": "subject-a", "email": "a@example.test", "emailVerified": True,
-                      "iss": ORIGIN, "aud": ORIGIN, "iat": now, "exp": now + timedelta(minutes=15)}
+        claims = {
+            "sub": "subject-a",
+            "email": "a@example.test",
+            "emailVerified": True,
+            "banned": False,
+            "iss": ORIGIN,
+            "aud": ORIGIN,
+            "iat": now,
+            "exp": now + timedelta(minutes=15),
+        }
+        for name in without:
+            claims.pop(name, None)
         claims.update(changes)
         return jwt.encode(claims, key, algorithm="EdDSA", headers={"kid": "offline-test"})
     return token
@@ -47,7 +57,7 @@ def test_valid_signed_identity(signed):
     ({"iss": "https://other.test"}, 401), ({"aud": "other"}, 401),
     ({"sub": ""}, 401), ({"email": None}, 401),
     ({"emailVerified": False}, 403), ({"emailVerified": "true"}, 403),
-    ({"banned": True}, 403),
+    ({"banned": True}, 403), ({"banned": None}, 403), ({"banned": "false"}, 403),
 ])
 def test_rejected_claims(signed, changes, status):
     with pytest.raises(HTTPException) as error:
@@ -100,6 +110,7 @@ def test_all_crud_requires_authentication(signed, method, path, body):
 ])
 @pytest.mark.parametrize("kind,status", [
     ("malformed", 401), ("expired", 401), ("unverified", 403), ("banned", 403),
+    ("missing_banned", 403), ("malformed_banned", 403),
 ])
 def test_rejected_bearers_block_all_crud_before_mapping(signed, monkeypatch, method, path, body, kind, status):
     tokens = {
@@ -107,6 +118,8 @@ def test_rejected_bearers_block_all_crud_before_mapping(signed, monkeypatch, met
         "expired": signed(exp=1),
         "unverified": signed(emailVerified=False),
         "banned": signed(banned=True),
+        "missing_banned": signed(without=("banned",)),
+        "malformed_banned": signed(banned="false"),
     }
     token = tokens[kind]
     resolve = Mock(side_effect=AssertionError("Rejected bearer reached user mapping"))

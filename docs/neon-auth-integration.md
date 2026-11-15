@@ -40,12 +40,27 @@ on a personal-report deployment. Existing health/model endpoints stay public.
 Configure NEON_AUTH_BASE_URL to the exact auth-enabled test branch's HTTPS Auth
 URL. JWKS is loaded from that URL plus /.well-known/jwks.json; issuer and audience
 must match its origin (not its full path). The server accepts EdDSA only, requires
-subject, expiry, issued-at, issuer and audience, and checks emailVerified and
-banned status. Tokens are not taken from request bodies or URLs. Missing,
+subject, expiry, issued-at, issuer and audience, and requires
+`emailVerified=true` and `banned=false`; missing or malformed account-status
+claims fail closed. Tokens are not taken from request bodies or URLs. Missing,
 invalid and expired tokens return 401; unverified/banned users return 403; key
-service/configuration outages return 503. JWT logout/revocation is not immediate:
-an already-issued token can remain valid until expiry. UI logout must clear the
-session and account state; this draft does not implement server revocation.
+service/configuration outages return 503. Neon documents these account-status
+fields in its signed JWT payload and a fixed 15-minute access-token lifetime
+(see [Neon's JWT guide](https://neon.com/docs/auth/guides/plugins/jwt)). The
+backend therefore verifies the status snapshot carried by the token; it does
+not perform a live account-status lookup. A status change after issuance may
+not be reflected until that token expires. This is an inference from the
+signed-token model and documented expiry, not a guarantee about Neon revocation
+timing. The checked JWT guide documents JWKS signature verification, but not a
+general introspection endpoint for these bearer JWTs. A direct lookup in the
+Auth database would require a separate, narrowly scoped connection and a
+stable supported query contract; neither is part of this draft. The initial
+rollout accepts this bounded, up-to-15-minute account-status freshness window.
+If immediate account disablement becomes a requirement, JWT-only verification
+is insufficient and rollout must wait for a separately reviewed revocation or
+live-status design. JWT logout/revocation is not immediate: an already-issued
+token can remain valid until expiry. UI logout must clear the session and
+account state; this draft does not implement server revocation.
 
 Migration 0004 adds a unique nullable neon_auth_subject to application users.
 The verified subject resolves to an internal UUID. First access creates the
