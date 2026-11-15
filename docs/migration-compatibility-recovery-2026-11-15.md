@@ -64,8 +64,22 @@ runtime behavior.
 
 The old backend snapshot was exported from that Git revision with
 `git archive 270b7db2fb41334cd729f510a90000a0249b602a backend` and its two PostgreSQL
-test files were run with `PYTHONPATH` set to the extracted snapshot. The test command
-was:
+test files were run with `PYTHONPATH` set to the extracted snapshot.
+
+The interpreter is the isolated `.venv` at the root of the current repository
+checkout (`/private/tmp/phishlens-issue-134/.venv`), not inside the extracted old
+snapshot (`/private/tmp/phishlens-issue134-old`). To recreate that environment from
+the repository root, create it with Python 3.12 and install the pinned development
+requirements:
+
+```sh
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements-dev.txt
+```
+
+The extracted old source is placed on `PYTHONPATH`; the test runner and dependencies
+come from the current checkout's `.venv`. The commands below recreate the snapshot
+and rerun the 11 compatibility tests:
 
 ```sh
 mkdir -p /private/tmp/phishlens-issue134-old
