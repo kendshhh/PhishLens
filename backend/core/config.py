@@ -9,8 +9,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
+def is_render() -> bool:
+    return os.getenv("RENDER", "").strip().lower() == "true"
+
+
+def load_local_settings() -> None:
+    if not is_render():
+        load_dotenv(ENV_FILE, override=False)
+
+
 def get_database_url() -> str:
-    load_dotenv(ENV_FILE, override=False)
+    load_local_settings()
     url = os.getenv("DATABASE_URL", "").strip()
     if not url:
         raise RuntimeError(f"DATABASE_URL is missing; set it in {ENV_FILE} or the environment")
@@ -24,7 +33,7 @@ def get_database_url() -> str:
 
 
 def get_ai_config() -> tuple[str, str | None, str | None]:
-    load_dotenv(ENV_FILE, override=False)
+    load_local_settings()
     mode = os.getenv("AI_MODE", "mock").strip().lower()
 
     if mode in {"mock", "local", "tfidf"}:

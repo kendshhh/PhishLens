@@ -4,7 +4,6 @@ from functools import lru_cache
 from urllib.parse import urlsplit
 
 import jwt
-from dotenv import load_dotenv
 from fastapi import Header, HTTPException
 from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWTError
@@ -16,15 +15,10 @@ from backend.models import User
 
 
 def auth_mode():
-    hosted = os.getenv("RENDER", "").strip().lower() == "true"
-    configured_mode = os.getenv("REPORT_AUTH_MODE")
-    load_dotenv(config.ENV_FILE, override=False)
     # Keep the local demo default, but never silently expose hosted saved-report
-    # routes without an explicit Render service setting. A bundled .env file is
-    # useful locally but is not a hosted deployment decision.
-    if hosted and configured_mode is None:
-        raise HTTPException(503, "Authentication configuration unavailable")
-    mode = os.getenv("REPORT_AUTH_MODE", "demo").strip().lower()
+    # routes without an explicit Render service setting.
+    config.load_local_settings()
+    mode = os.getenv("REPORT_AUTH_MODE", "" if config.is_render() else "demo").strip().lower()
     if mode not in {"demo", "neon"}:
         raise HTTPException(503, "Authentication configuration unavailable")
     return mode
