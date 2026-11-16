@@ -460,9 +460,14 @@ def main():
                     continue
         if action == "stale":
             continue
-        if assess and action == "deploy":
-            with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-                output.write("deploy=true\n")
+        if assess:
+            if action == "deploy":
+                with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+                    output.write("deploy=true\n")
+            else:
+                state = "success" if action == "success" else "failure"
+                publish_preview_status(api, run["head_sha"], config, state, message, log)
+                print(message)
             continue
         publish_preview_status(
             api, run["head_sha"], config, "pending",

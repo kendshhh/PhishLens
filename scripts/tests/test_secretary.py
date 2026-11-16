@@ -415,6 +415,58 @@ class PreviewTests(unittest.TestCase):
             for call in api.request.call_args_list
         ))
 
+    def test_failed_assessment_posts_required_status_without_check_run(self):
+        from scripts.secretary.preview import main
+
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        api.pages.return_value = []
+        api.request.return_value = fixture()["pr"]
+        api.pull_request_files.return_value = fixture()["files"]
+        event = {
+            "workflow_run": {
+                "id": 7,
+                "run_attempt": 1,
+                "event": "pull_request",
+                "head_sha": SHA,
+                "conclusion": "failure",
+                "pull_requests": [{"number": 123}],
+            }
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            (root / ".github/secretary.json").write_text(json.dumps(CONFIG))
+            event_path = root / "event.json"
+            event_path.write_text(json.dumps(event))
+            output_path = root / "output.txt"
+            with patch.dict(os.environ, {
+                "GITHUB_EVENT_PATH": str(event_path),
+                "GITHUB_OUTPUT": str(output_path),
+                "GITHUB_RUN_ID": "8",
+                "SECRETARY_PREVIEW_ENABLED": "true",
+            }, clear=True), \
+                    patch("scripts.secretary.preview.ROOT", root), \
+                    patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.sys.argv", ["preview.py", "--assess"]), \
+                    patch(
+                        "scripts.secretary.preview.latest_jobs",
+                        return_value=({}, {"id": 7, "run_attempt": 1}),
+                    ):
+                main()
+            output_contents = output_path.read_text()
+
+        status_calls = [
+            call for call in api.request.call_args_list
+            if call.args[0] == "statuses/" + SHA
+        ]
+        self.assertEqual(len(status_calls), 1)
+        self.assertEqual(status_calls[0].args[1]["state"], "failure")
+        self.assertEqual(status_calls[0].args[1]["context"], "Secretary staging")
+        self.assertFalse(any(call.args[0] == "check-runs" for call in api.request.call_args_list))
+        self.assertEqual(output_contents, "deploy=false\n")
+
     def test_required_secretary_context_is_published_as_commit_status(self):
         api = Mock()
         log = "https://github.com/kendshhh/PhishLens/actions/runs/123"
