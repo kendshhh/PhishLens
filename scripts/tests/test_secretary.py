@@ -540,18 +540,30 @@ class PreviewTests(unittest.TestCase):
 
     def test_wrong_live_commit_invalidates_old_preview_before_rejecting(self):
         api = Mock()
-        api.request.side_effect = [
+        api.request.side_effect = lambda path, *args: (
             [{"id": 2, "sha": "b" * 40, "creator": {"login": "github-actions[bot]"},
-              "payload": {"secretary": 1}}],
-            {},
+              "payload": {"secretary": 1}}]
+            if path.startswith("deployments?") else {}
+        )
+        api.pages.side_effect = [
+            [{"id": 8, "app": {"slug": "github-actions"}, "conclusion": "success"}],
+            [{"id": 9, "app": {"slug": "github-actions"}, "conclusion": "success"}],
         ]
-        api.pages.return_value = [{"id": 8, "app": {"slug": "github-actions"}, "conclusion": "success"}]
         with self.assertRaisesRegex(RuntimeError, "wrong commit"):
             confirm_live_deployment(
                 api, CONFIG, {"status": "live", "commit": {"id": "c" * 40}}, SHA
             )
-        self.assertEqual(api.request.call_args_list[1].args[1]["conclusion"], "action_required")
-        self.assertEqual(api.request.call_args_list[1].args[2], "PATCH")
+        status_call = next(
+            call for call in api.request.call_args_list
+            if call.args[0] == "statuses/" + "b" * 40
+        )
+        self.assertEqual(status_call.args[1]["state"], "failure")
+        patch_calls = [
+            call for call in api.request.call_args_list
+            if len(call.args) > 2 and call.args[2] == "PATCH"
+        ]
+        self.assertEqual({call.args[0] for call in patch_calls}, {"check-runs/8", "check-runs/9"})
+        self.assertTrue(all(call.args[1]["conclusion"] == "action_required" for call in patch_calls))
 
     def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
         api = Mock()
