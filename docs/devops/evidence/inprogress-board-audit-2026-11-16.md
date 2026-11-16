@@ -43,15 +43,15 @@ All 14 remain **In Progress**. No item was changed to Done because each issue ha
 
 The default `npm run package` invocation resolved system Python 3.10.11 and failed at Python 3.11-only `hashlib.file_digest`; rerunning `scripts/package_extension.py` and the verifier with the repository's Python 3.12 environment passed. CI pins Python 3.12.
 
-## Current read-only deployment identity
+## Read-only deployment evidence — refreshed 2026-11-16
 
-| Service | `/version` | `/health` | `/ready` | `/model-info` |
-| --- | --- | --- | --- | --- |
-| Production | `6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c` (`production`) | 200 | 200, database connected | 200, provider unavailable |
-| Staging | `a448fbba4acad48ac9026658c42a879cd3d2fa4a` (`staging`) | 200 | 200, database connected | 200, TF-IDF |
+The earlier successful GET-only responses recorded in this audit are historical observations. Fresh GET-only /version retries to production and staging around 03:11 UTC each timed out after 8 seconds, so neither service returned a runtime identity during the latest check.
 
-Render service metadata lists both `phishlens-api` and `phishlens-staging` as configured from branch `main`. The live staging SHA is the open PR #156 head, not current main. Neon lists `production` as the primary/default branch and `pr-58-staging` as a separate branch. Readiness confirms connectivity only; it does not identify the branch or database behind `DATABASE_URL`. The Render connector does not expose a service-variable inventory, so this audit cannot verify effective URL mapping or external Render API-key scopes. No write was attempted.
+At 03:14:58 UTC, Render's deployment API still listed the latest phishlens-staging deployment as live at the [PR #156 revision](https://github.com/kendshhh/PhishLens/pull/156), SHA a448fbba4acad48ac9026658c42a879cd3d2fa4a (deploy dep-dbt6d9m7bikc73d6a7r0; last updated 03:11:31 UTC). This is control-plane evidence, not a successful current /version response.
 
+The staging target is now corroborated at the source/configuration level: Render service metadata names python scripts/start_staging.py as the startup command; the exact deployed [PR #156 staging guard](https://github.com/kendshhh/PhishLens/blob/a448fbba4acad48ac9026658c42a879cd3d2fa4a/scripts/start_staging.py) pins the allowed endpoint to Neon endpoint ep-soft-fog-b3orfa8a; Neon maps that endpoint to branch pr-58-staging. The script checks the runtime and migration URLs against the expected database and roles. This identifies the intended isolated target for that exact revision, but the timed-out runtime check means the effective live connection was not re-proven in this pass. No database values or secret values were read.
+
+Production's Render service runs Uvicorn directly and has no equivalent source-level branch pin. Its Neon branch mapping remains unverified. The Render connector does not expose service-variable inventory or effective external API-key scopes, so those remain unverified for both services. No write was attempted.
 ## Remaining owner-sourced inputs
 
 - AI evaluation owner: approve evaluation data provenance/rights, the held-out split, model revision, and any deterministic blocking threshold before evaluating or enforcing it.
