@@ -79,6 +79,26 @@ def test_benchmark_metrics_count_errors_as_failed_opportunities():
     assert summary["errors"] == 1
 
 
+def test_false_positive_rates_exclude_failed_negative_cases():
+    from scripts.benchmark_ai import summarize
+
+    summary = summarize([
+        {"expected": "phishing", "prediction": "phishing", "seconds": 1},
+        {"expected": "legitimate", "error": "unavailable", "seconds": 2},
+        {"expected": "legitimate", "prediction": "legitimate", "seconds": 3},
+        {"expected": "spam", "prediction": "phishing", "seconds": 4},
+    ])
+
+    assert summary["false_positive_rate"] == .5
+    assert summary["non_phishing_false_positive_rate"] == .5
+    assert summary["non_phishing_scored_cases"] == 2
+    assert summary["non_phishing_errors"] == 1
+    assert summary["legitimate_false_positive_rate"] == 0
+    assert summary["legitimate_errors"] == 1
+    assert summary["spam_phishing_alert_rate"] == 1
+    assert summary["errors"] == 1
+
+
 def test_evaluation_cases_are_unique_balanced_and_within_api_limits():
     from backend.ai.evaluation_cases import CASES
 

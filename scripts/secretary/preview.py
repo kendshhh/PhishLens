@@ -428,15 +428,20 @@ def main():
         pr = api.request(f"pulls/{number}")
         if not current_pr_head_matches(pr, run["head_sha"]):
             continue
+        jobs, latest = latest_jobs(api, run["head_sha"])
+        if (
+            not latest
+            or latest["id"] != run["id"]
+            or latest.get("run_attempt", 1) != run.get("run_attempt", 1)
+        ):
+            print("Older CI completion ignored; a newer run or attempt exists")
+            continue
         files = api.pull_request_files(pr["number"])
         action, message = eligibility(
             pr, files, run, api.repo, config.get("preview_opt_in_label")
         )
         log = f"https://github.com/{api.repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
         if action == "deploy":
-            jobs, latest = latest_jobs(api, run["head_sha"])
-            if not latest or latest["id"] != run["id"] or latest.get("run_attempt", 1) != run.get("run_attempt", 1):
-                continue  # An older completion must not override a newer CI attempt.
             if any(jobs.get(name, {}).get("conclusion") != "success" for name in config["required_ci_jobs"]):
                 action, message = "failure", "Required CI jobs are missing, pending or unsuccessful"
             elif not preview_gate_enabled():
@@ -455,9 +460,14 @@ def main():
                     continue
         if action == "stale":
             continue
-        if assess and action == "deploy":
-            with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-                output.write("deploy=true\n")
+        if assess:
+            if action == "deploy":
+                with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+                    output.write("deploy=true\n")
+            else:
+                state = "success" if action == "success" else "failure"
+                publish_preview_status(api, run["head_sha"], config, state, message, log)
+                print(message)
             continue
         publish_preview_status(
             api, run["head_sha"], config, "pending",

@@ -102,6 +102,15 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("- [ ] Exact-head staging saved-report CRUD and cleanup have not passed", body)
         self.assertIn("- [ ] Real AI acceptance is not checked", body)
 
+    def test_unrequested_staging_keeps_formal_review_unchecked(self):
+        snapshot = fixture()
+        snapshot["preview_requested"] = False
+        body = render(snapshot, {"status": "disabled"}, "test")
+        checklist = body.split("### Automated and human follow-up checklist", 1)[1].split("### Recommended next action", 1)[0]
+        self.assertIn("- [ ] Hosted staging was not requested", checklist)
+        self.assertIn("- [ ] Formal teammate review is a separate required approval", checklist)
+        self.assertNotIn("- [x] Exact-head staging", checklist)
+
     def test_mock_staging_checks_crud_but_never_ai_acceptance(self):
         snapshot = fixture()
         snapshot["preview"].update({"analysis_mode": "mock", "provider_mode": "mock"})
@@ -358,6 +367,106 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(status_calls[0].args[1]["state"], "success")
         self.assertEqual(status_calls[0].args[1]["context"], "Secretary staging")
 
+    def test_old_failed_ci_attempt_cannot_overwrite_latest_success(self):
+        from scripts.secretary.preview import main
+
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        api.pages.return_value = []
+        api.request.return_value = fixture()["pr"]
+        event = {
+            "workflow_run": {
+                "id": 7,
+                "run_attempt": 1,
+                "event": "pull_request",
+                "head_sha": SHA,
+                "conclusion": "failure",
+                "pull_requests": [{"number": 123}],
+            }
+        }
+        latest_jobs = {
+            name: {"conclusion": "success"}
+            for name in CONFIG["required_ci_jobs"]
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            (root / ".github/secretary.json").write_text(json.dumps(CONFIG))
+            event_path = root / "event.json"
+            event_path.write_text(json.dumps(event))
+            with patch.dict(os.environ, {
+                "GITHUB_EVENT_PATH": str(event_path),
+                "GITHUB_RUN_ID": "8",
+                "SECRETARY_PREVIEW_ENABLED": "true",
+            }, clear=True), \
+                    patch("scripts.secretary.preview.ROOT", root), \
+                    patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch(
+                        "scripts.secretary.preview.latest_jobs",
+                        return_value=(latest_jobs, {"id": 7, "run_attempt": 2}),
+                    ):
+                main()
+
+        self.assertEqual(api.request.call_args_list[0].args[0], "pulls/123")
+        api.pull_request_files.assert_not_called()
+        self.assertFalse(any(
+            call.args[0] == "statuses/" + SHA
+            for call in api.request.call_args_list
+        ))
+
+    def test_failed_assessment_posts_required_status_without_check_run(self):
+        from scripts.secretary.preview import main
+
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        api.pages.return_value = []
+        api.request.return_value = fixture()["pr"]
+        api.pull_request_files.return_value = fixture()["files"]
+        event = {
+            "workflow_run": {
+                "id": 7,
+                "run_attempt": 1,
+                "event": "pull_request",
+                "head_sha": SHA,
+                "conclusion": "failure",
+                "pull_requests": [{"number": 123}],
+            }
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            (root / ".github/secretary.json").write_text(json.dumps(CONFIG))
+            event_path = root / "event.json"
+            event_path.write_text(json.dumps(event))
+            output_path = root / "output.txt"
+            with patch.dict(os.environ, {
+                "GITHUB_EVENT_PATH": str(event_path),
+                "GITHUB_OUTPUT": str(output_path),
+                "GITHUB_RUN_ID": "8",
+                "SECRETARY_PREVIEW_ENABLED": "true",
+            }, clear=True), \
+                    patch("scripts.secretary.preview.ROOT", root), \
+                    patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.sys.argv", ["preview.py", "--assess"]), \
+                    patch(
+                        "scripts.secretary.preview.latest_jobs",
+                        return_value=({}, {"id": 7, "run_attempt": 1}),
+                    ):
+                main()
+            output_contents = output_path.read_text()
+
+        status_calls = [
+            call for call in api.request.call_args_list
+            if call.args[0] == "statuses/" + SHA
+        ]
+        self.assertEqual(len(status_calls), 1)
+        self.assertEqual(status_calls[0].args[1]["state"], "failure")
+        self.assertEqual(status_calls[0].args[1]["context"], "Secretary staging")
+        self.assertFalse(any(call.args[0] == "check-runs" for call in api.request.call_args_list))
+        self.assertEqual(output_contents, "deploy=false\n")
+
     def test_required_secretary_context_is_published_as_commit_status(self):
         api = Mock()
         log = "https://github.com/kendshhh/PhishLens/actions/runs/123"
@@ -528,6 +637,33 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(api.request.call_args_list[1].args[1]["state"], "failure")
         self.assertEqual(api.request.call_args_list[1].args[1]["context"], "Secretary staging")
         self.assertEqual(api.request.call_args.args[1]["conclusion"], "action_required")
+
+    def test_wrong_live_commit_invalidates_old_preview_before_rejecting(self):
+        api = Mock()
+        api.request.side_effect = lambda path, *args: (
+            [{"id": 2, "sha": "b" * 40, "creator": {"login": "github-actions[bot]"},
+              "payload": {"secretary": 1}}]
+            if path.startswith("deployments?") else {}
+        )
+        api.pages.side_effect = [
+            [{"id": 8, "app": {"slug": "github-actions"}, "conclusion": "success"}],
+            [{"id": 9, "app": {"slug": "github-actions"}, "conclusion": "success"}],
+        ]
+        with self.assertRaisesRegex(RuntimeError, "wrong commit"):
+            confirm_live_deployment(
+                api, CONFIG, {"status": "live", "commit": {"id": "c" * 40}}, SHA
+            )
+        status_call = next(
+            call for call in api.request.call_args_list
+            if call.args[0] == "statuses/" + "b" * 40
+        )
+        self.assertEqual(status_call.args[1]["state"], "failure")
+        patch_calls = [
+            call for call in api.request.call_args_list
+            if len(call.args) > 2 and call.args[2] == "PATCH"
+        ]
+        self.assertEqual({call.args[0] for call in patch_calls}, {"check-runs/8", "check-runs/9"})
+        self.assertTrue(all(call.args[1]["conclusion"] == "action_required" for call in patch_calls))
 
     def test_failed_render_deploy_does_not_invalidate_previous_preview(self):
         api = Mock()
