@@ -2,7 +2,11 @@
 
 ## Scope and method
 
-Read the GitHub Project **PhishLens — Sprint 3**, view **Sprint 3 — Backlog by person**, and the acceptance criteria for every item shown as **In Progress**. The alternate **Sprint 3 — S3 tasks** view currently has a `label:sprint-3 -label:carryover` filter with zero matching items. The full backlog-by-person view has 14 In Progress items across four assignees; the five Kendra items visible in the supplied screenshot are only part of that list.
+Read the GitHub Project **PhishLens — Sprint 3**, view **Sprint 3 — Backlog by person**, and the acceptance criteria for every item shown as **In Progress**. The alternate **Sprint 3 — S3 tasks** view has a `label:sprint-3 -label:carryover` filter and currently shows 14 matching items; because that filter excludes carryover work, it is not the full backlog view. The full backlog-by-person view has 14 In Progress items across four assignees; the five Kendra items visible in the supplied screenshot are only part of that list.
+
+The signed-in board was rechecked while updating the existing audit PR #233. The same 14 target issues remain In Progress; no additional In Progress item appeared in the full view. The current board owner choices and evidence needed to resume each blocked acceptance are in [the owner decision packet](inprogress-owner-decisions-2026-11-16.md).
+
+PR #233 was rechecked before this update: it is open, draft, based on `main`, and review is required. On its initial audit head `9293b8b`, backend, extension, staging integration, CodeQL, dependency checks, migration preflight and workflow lint passed. `Secretary staging` returned `action_required` with “Draft: mark ready for review to request staging”; hosted staging and preflight were skipped. It remains draft because no exact protected target, database mapping or owner approval is available for a hosted write.
 
 The repository checks below ran from an isolated worktree at main `6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c`. The pre-existing workspace's dirty files were left untouched. Live probes were GET-only. No hosted writes, provider calls, failure injection, database mutations, secret reads, or human sign-offs were performed or inferred.
 
