@@ -175,9 +175,10 @@ retained input/idempotency keys, explicit retry-key reuse and absence of automat
 or detail/history refresh after failure. See [acceptance status](client-acceptance-status.md).
 
 The local client/HTTP tests and documented examples are preparation.
-On November 10 the six-status FastAPI/client replay passed against the source
-above, along with 81 focused client/HTTP tests and schema validation of all four
-JSON examples. Inference and database faults were controlled substitutes; no
+On November 10 the six-status FastAPI/client replay passed against source snapshot
+fa9a23fbb5d1d60c45d0fc06333c50415d04d57e, along with 81 focused client/HTTP tests
+and schema validation of all four JSON examples. That dated run is not verification of
+the November 16 source snapshot cited above. Inference and database faults were controlled substitutes; no
 external record was written. See the acceptance status for remaining live checks.
 October 31 API evidence on #103 is dated mock-mode evidence for its exact earlier SHA, not the
 current release. PR #103 is merged. The November 7 evidence audit records later TF-IDF staging
