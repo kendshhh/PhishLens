@@ -28,6 +28,7 @@ from scripts.secretary.preview import (
     eligibility,
     package,
     preview_gate_enabled,
+    publish_preview_status,
     verify_environment,
     verify_service,
 )
@@ -315,6 +316,94 @@ class GitHubPaginationTests(unittest.TestCase):
 
 
 class PreviewTests(unittest.TestCase):
+    def test_duplicate_verified_deployment_republishes_required_context(self):
+        from scripts.secretary.preview import main
+
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        api.pages.return_value = []
+        api.request.return_value = fixture()["pr"]
+        api.pull_request_files.return_value = fixture()["files"]
+        event = {
+            "workflow_run": {
+                "id": 7,
+                "run_attempt": 1,
+                "event": "pull_request",
+                "head_sha": SHA,
+                "conclusion": "success",
+                "pull_requests": [{"number": 123}],
+            }
+        }
+        jobs = {name: {"conclusion": "success"} for name in CONFIG["required_ci_jobs"]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            (root / ".github/secretary.json").write_text(json.dumps(CONFIG))
+            event_path = root / "event.json"
+            event_path.write_text(json.dumps(event))
+            with patch.dict(os.environ, {
+                "GITHUB_EVENT_PATH": str(event_path),
+                "GITHUB_RUN_ID": "7",
+                "SECRETARY_PREVIEW_ENABLED": "true",
+            }, clear=True), \
+                    patch("scripts.secretary.preview.ROOT", root), \
+                    patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.latest_jobs", return_value=(jobs, {"id": 7, "run_attempt": 1})), \
+                    patch("scripts.secretary.preview.completed_event", return_value=True):
+                main()
+
+        status_calls = [call for call in api.request.call_args_list if call.args[0] == "statuses/" + SHA]
+        self.assertEqual(len(status_calls), 1)
+        self.assertEqual(status_calls[0].args[1]["state"], "success")
+        self.assertEqual(status_calls[0].args[1]["context"], "Secretary staging")
+
+    def test_required_secretary_context_is_published_as_commit_status(self):
+        api = Mock()
+        log = "https://github.com/kendshhh/PhishLens/actions/runs/123"
+
+        publish_preview_status(api, SHA, CONFIG, "pending", "Staging verification running", log)
+        publish_preview_status(api, SHA, CONFIG, "success", "Staging verification passed", log)
+
+        self.assertEqual(api.request.call_args_list[0].args, (
+            "statuses/" + SHA,
+            {
+                "state": "pending",
+                "context": "Secretary staging",
+                "description": "Staging verification running",
+                "target_url": log,
+            },
+        ))
+        self.assertEqual(api.request.call_args_list[1].args, (
+            "statuses/" + SHA,
+            {
+                "state": "success",
+                "context": "Secretary staging",
+                "description": "Staging verification passed",
+                "target_url": log,
+            },
+        ))
+
+    def test_failure_and_controller_error_stay_non_green(self):
+        api = Mock()
+
+        publish_preview_status(api, SHA, CONFIG, "failure", "Staging verification did not pass")
+        publish_preview_status(api, SHA, CONFIG, "error", "Controller error")
+
+        self.assertEqual(api.request.call_args_list[0].args[1]["state"], "failure")
+        self.assertEqual(api.request.call_args_list[1].args[1]["state"], "error")
+        self.assertTrue(all(call.args[1]["context"] == "Secretary staging" for call in api.request.call_args_list))
+
+    def test_required_status_rejects_invalid_states_and_bounds_description(self):
+        api = Mock()
+
+        with self.assertRaises(ValueError):
+            publish_preview_status(api, SHA, CONFIG, "action_required", "No green status")
+        api.request.assert_not_called()
+
+        publish_preview_status(api, SHA, CONFIG, "failure", "x" * 200)
+        self.assertEqual(len(api.request.call_args.args[1]["description"]), 140)
+
     def test_preview_gate_normalizes_case_and_whitespace(self):
         with patch.dict(os.environ, {"SECRETARY_PREVIEW_ENABLED": "  TRUE \t"}):
             self.assertTrue(preview_gate_enabled())
@@ -435,6 +524,9 @@ class PreviewTests(unittest.TestCase):
             api, CONFIG, {"status": "live", "commit": {"id": SHA}}, SHA
         )
         self.assertTrue(confirmed)
+        self.assertEqual(api.request.call_args_list[1].args[0], "statuses/" + "c" * 40)
+        self.assertEqual(api.request.call_args_list[1].args[1]["state"], "failure")
+        self.assertEqual(api.request.call_args_list[1].args[1]["context"], "Secretary staging")
         self.assertEqual(api.request.call_args.args[1]["conclusion"], "action_required")
 
     def test_failed_render_deploy_does_not_invalidate_previous_preview(self):

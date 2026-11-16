@@ -68,6 +68,18 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("if: needs.assess.outputs.deploy == 'true'", preview)
         self.assertIn("group: phishlens-hosted-staging", preview)
 
+    def test_secretary_required_context_uses_commit_status_from_trusted_controller(self):
+        workflow = (WORKFLOWS / "secretary-preview.yml").read_text(encoding="utf-8")
+        permissions = workflow.split("jobs:", 1)[0]
+        controller = (ROOT / "scripts/secretary/preview.py").read_text(encoding="utf-8")
+
+        self.assertIn("checks: write", permissions)
+        self.assertIn("statuses: write", permissions)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", workflow)
+        self.assertIn('api.request("statuses/" + sha, payload)', controller)
+        self.assertIn('"context": config["preview_check"]', controller)
+        self.assertIn('"name": preview_check_run_name(config)', controller)
+
     def test_report_runs_once_after_workflow_completion(self):
         workflow = (WORKFLOWS / "secretary-report.yml").read_text(encoding="utf-8")
         workflow_run = workflow.split("  schedule:", 1)[0]
