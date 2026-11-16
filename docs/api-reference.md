@@ -23,7 +23,7 @@ await client.deleteAnalysis(saved.id);
 Andrei injects this five-method object into the UI. Inject fetch as the second factory argument for tests;
 the third argument accepts createTimeoutMs (default 25000), requiredModel and getAccessToken.
 Reads/PATCH/DELETE use 10000 milliseconds. requiredModel sends X-PhishLens-Model on create;
-getAccessToken supplies the current Bearer token per CRUD request. See [session contract](client-sessions.md).
+getAccessToken is called for each CRUD request when a caller supplies it; the client then sends that token as Bearer. This hook does not establish that Auth is enabled in a hosted service or packaged extension. See [session contract](client-sessions.md).
 The legacy getAnalyses(baseUrl) export still returns the history array. HTTP belongs in api.js.
 
 ## Saved CRUD
