@@ -51,3 +51,15 @@ Provide decisions or records in this shape; “defer” is a valid answer and le
 - Environment evidence for #37 and connected CRUD tasks: redacted Render-service-to-Neon-branch mapping, API-key scope names, staging isolation and synthetic-write authorization.
 - Consultation records for #41: actual dated standups, retro, rehearsal attendance and delivered explanations, or confirmation that the events still need to be held.
 - #37 history criterion: non-rewrite remediation or explicit owner-approved criterion exception consistent with the existing no-rewrite disposition.
+
+## User response — 2026-11-16
+
+Kendra replied to the decision request as follows:
+
+- **#92/#93:** defer. The issue's TF-IDF v12a candidate remains a proposal; no data protocol, final threshold or EnviousCoal approval was supplied. Keep the holdout untouched and the deterministic gate unchanged.
+- **#94/#95/#96:** defer live provider and staging failure work. No provider request, quota spend or failure injection is authorized by this reply.
+- **Environment/connected CRUD (#37/#42/#44/#45/#7/#23/#87/#98):** Kendra does not know the Render-to-Neon mapping, effective scope names, or write authorization. The environment owner must provide the redacted attestation; the relevant API/frontend owners then run their acceptance against the confirmed exact staging revision.
+- **#41:** Kendra does not have the actual consultation and sprint-process records. The actual participants must supply them, or the team must hold the real activities and document them contemporaneously.
+- **#37 history criterion:** no change to the recorded no-rewrite disposition was requested; the criterion remains unresolved. Kendra and reviewer inaki3023 must identify a criterion-satisfying non-rewrite path or explicitly resolve the criterion through the project's review process.
+
+These replies narrow the blockers but do not satisfy the remaining acceptance criteria. All 14 items stay In Progress pending the named owner evidence and real records above.
