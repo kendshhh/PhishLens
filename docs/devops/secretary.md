@@ -208,6 +208,13 @@ evidence for an unlabelled PR. Removing the label opts the PR out of later hoste
 runs. Because staging is still shared, another opted-in deployment can replace
 a preview that is still under review; use the label only for the PR currently
 being tested.
+
+The required `Secretary staging` context is published as a commit status on the
+exact PR head SHA by the trusted `workflow_run` controller. A separate
+`Secretary staging verification` Check Run carries the detailed staging result.
+The controller uses only trusted default-branch code and posts success only after
+the required staging checks finish; failures and superseded shared previews stay
+non-green.
 The temporary legacy job skips drafts/forks before requesting environment
 access. That skip is not preview acceptance; the new controller records drafts
 and relevant forks as `action_required` on its separate check after installation.
