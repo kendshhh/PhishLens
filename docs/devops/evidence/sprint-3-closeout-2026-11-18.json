@@ -148,5 +148,21 @@
     "automatic_retries": 0,
     "enabled_or_dispatched": false,
     "gemini_positive_cap_preserved": true
+  },
+  "synthetic_diagnostic": {
+    "run_status": "finished",
+    "source_commit": "8322fb802f59dd1db0b00563211e188b1cf858d4",
+    "cases": 45,
+    "valid_outputs": 45,
+    "primary_phishing_detected": 1,
+    "primary_phishing_cases": 12,
+    "primary_legitimate_false_alerts": 0,
+    "primary_legitimate_cases": 12,
+    "actual_mail_screening": "unassessed",
+    "quality_acceptance": false,
+    "private_report_sha256": "42bbc9acbae2acdfc1beea4441072a3bd99ace171058a77203b34839cb1123b5",
+    "owner_exception_reference": "https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6983613256",
+    "independent_final_review": "pending",
+    "report": "../../ai/tfidf-synthetic-diagnostic-2026-11-18.md"
   }
 }

@@ -32,7 +32,21 @@ The historical diagnostic lock records Pydantic 2.13.4 even though its source
 requirements pin is 2.14.1. Reproducing the lock required installing its recorded
 version in a separate environment. This is a disclosed historical diagnostic
 environment, not a claim of current-release dependency acceptance. The reviewed
-lock and bundle were not modified. No contemporary candidate was scored.
+lock and bundle were not modified during preflight. A later owner-authorized
+single synthetic scoring run is recorded below; no contemporary actual-mail
+cohort was scored.
+
+### Subsequent owner-authorized diagnostic result
+
+The user's existing self-freeze/self-scoring authorization was applied with an
+explicit protocol exception recorded before inference; Trixia's final corrected
+lock approval remains pending. All 45 synthetic cases completed with valid output.
+The primary split detected **1/12 phishing** and missed **11/12**, with **0/12**
+legitimate false alerts. This is a material quality gap, not an acceptance pass.
+The 95% recall interval is 1.49–35.39%; actual-mail screening remains unassessed.
+The [full report and aggregate JSON](../../ai/tfidf-synthetic-diagnostic-2026-11-18.md)
+record the first run, review exception, error analysis, provenance/split and timing.
+The remaining #92 quality/coverage gate stays open. No model/threshold was tuned.
 
 The first local PostgreSQL harness attempt started the disposable server but
 timed out collecting its startup output. It reached no migration or test phase.
@@ -72,7 +86,7 @@ raw mail and per-message historical predictions are intentionally absent.
 
 | Cards | Evidence resolved tonight | Remaining acceptance |
 | --- | --- | --- |
-| #92 | Existing source-pair approval confirmed; historical replay passed; exact corrected preflight lock reproduced | Trixia's approval of the corrected lock and first synthetic diagnostic run; contemporary actual-mail rights/coverage and explanation review remain open. The small synthetic cohort cannot satisfy the actual-mail minima. |
+| #92 | Historical replay and exact corrected preflight lock reproduced. One owner-authorized synthetic diagnostic completed: 1/12 primary phishing detected, 11 missed, 45/45 valid outputs; final reviewer approval remains pending and the exception is documented. | Detection improvement plus a different untouched confirmation cohort; contemporary actual-mail rights/coverage and explanation review remain open. The small synthetic cohort does not satisfy actual-mail minima or constitute a quality pass. |
 | #93 | Existing AI-owner approval located; explicit test/case/model baseline and fail-closed artifact guard implemented and tested. The already-reviewed #220 exact-status/N/A fix is reused here. | Review/merge the combined guard; verify applicable and unrelated-change outcomes before Done. |
 | #94 | Guarded controller now supports one revision-bound TF-IDF request with the pinned model, zero external-provider cost, no retries and no saved-report write. Eleven substitute tests cover both TF-IDF guards and retained Gemini cost controls. | Review/merge the controller; confirm the existing target/preflight/idle-window conditions and record a specifically approved exact-target smoke. No workflow was enabled or dispatched and no paid call was authorized or made here. |
 | #95, #96 | Exact #107 rereview approved; local persistence and controlled failures passed; migration/seeder evidence added | Protected-staging failure/recovery evidence and operator stop/recovery verification remain open under the existing authorization limits. Do not convert local timing to hosted recovery/RTO. |
