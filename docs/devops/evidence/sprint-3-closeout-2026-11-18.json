@@ -134,10 +134,10 @@
     "scripts/ai-regression-baseline.json": "00992f035d2a57ea8f0bab5af8bb388294025bc69b582484f8d616f897afb643",
     "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
     "scripts/ai_evaluation_summary.py": "6390bb9ee42befc2529ba5d41e0517392e0438e22b992b6b0e4e374017c14c49",
-    "scripts/ai_provider_smoke.py": "6eb7dc0b7404115530d1988739044e563ff06562feb5041d95bbd374a850f18a",
+    "scripts/ai_provider_smoke.py": "3515b18856a3c8006423e83ab254da6ae936aed9d683e8a58ac63767863ab622",
     "scripts/tests/test_ai_provider_smoke.py": "92a38b6191d9fc63f4465cb33012a6a67f1d39d882f984bdb84ababd27221cd4"
   },
-  "source_hash_note": "tested_changed_source_sha256 hashes the actual Windows working-file bytes. Git normalizes text to LF; committed_changed_source_sha256 hashes those equivalent Git blobs. Normalized content was checked equal for every listed file.",
+  "source_hash_note": "tested_changed_source_sha256 hashes the actual tested Windows working-file bytes. committed_changed_source_sha256 hashes actual Git blobs. Git text conversion can change line endings; content was checked equal after LF normalization for every listed file.",
   "smoke_controller": {
     "local_substitute_tests_passed": 11,
     "subtests_passed": 17,
