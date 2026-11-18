@@ -10,13 +10,11 @@ anyio==4.15.1
     # via
     #   fastapi
     #   google-genai
-    #   httpx
+    #   httpx2
     #   starlette
 certifi==2026.10.23
     # via
     #   -r requirements.in
-    #   httpcore
-    #   httpx
     #   requests
 cffi==2.1.1
     # via cryptography
@@ -34,20 +32,20 @@ fastapi==0.163.0
     # via -r requirements.in
 google-auth==2.62.0
     # via google-genai
-google-genai==2.34.0
+google-genai==3.3.0
     # via -r requirements.in
 h11==0.16.0
     # via
-    #   httpcore
+    #   httpcore2
     #   uvicorn
-httpcore==1.0.9
-    # via httpx
-httpx==0.28.1
+httpcore2==2.16.2
+    # via httpx2
+httpx2==2.16.2
     # via google-genai
 idna==3.20
     # via
     #   anyio
-    #   httpx
+    #   httpx2
     #   requests
 mako==1.4.3
     # via alembic
@@ -95,6 +93,10 @@ starlette==1.8.0
     # via fastapi
 tenacity==9.1.4
     # via google-genai
+truststore==0.10.5
+    # via
+    #   httpcore2
+    #   httpx2
 typing-extensions==4.16.0
     # via
     #   alembic
