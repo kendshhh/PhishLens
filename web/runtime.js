@@ -18,11 +18,25 @@ export async function unavailableJudge() {
 // sessionStorage is per tab and cleared when the tab closes, like the extension's
 // session storage. Private modes or blocked site data can make it throw, so fall
 // back to memory for this page load instead of failing the scan.
-export function createSessionArea(storage = globalThis.sessionStorage) {
+export function createSessionArea(storage) {
   const memory = new Map();
-  const read = key => {
+  // If persistence fails, memory becomes authoritative for that key so an older
+  // value left in sessionStorage cannot replace the newest in-page state.
+  const memoryOverrides = new Set();
+  const getStorage = () => {
     try {
-      const raw = storage?.getItem(STORAGE_PREFIX + key);
+      return storage === undefined ? globalThis.sessionStorage : storage;
+    } catch {
+      // Accessing the sessionStorage property itself can be blocked.
+      return undefined;
+    }
+  };
+  const read = key => {
+    if (memoryOverrides.has(key)) {
+      return memory.has(key) ? structuredClone(memory.get(key)) : undefined;
+    }
+    try {
+      const raw = getStorage()?.getItem(STORAGE_PREFIX + key);
       if (raw != null) return JSON.parse(raw);
     } catch {
       // Unreadable or unavailable storage falls back to memory.
@@ -31,14 +45,32 @@ export function createSessionArea(storage = globalThis.sessionStorage) {
   };
   const write = (key, value) => {
     memory.set(key, structuredClone(value));
-    try { storage?.setItem(STORAGE_PREFIX + key, JSON.stringify(value)); } catch {
-      // Memory still holds the value for this page load.
+    const target = getStorage();
+    if (!target) {
+      memoryOverrides.add(key);
+      return;
+    }
+    try {
+      target.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+      memoryOverrides.delete(key);
+    } catch {
+      memoryOverrides.add(key);
+      // Memory still holds the newest value for this page load.
     }
   };
   const remove = key => {
     memory.delete(key);
-    try { storage?.removeItem(STORAGE_PREFIX + key); } catch {
-      // Nothing else to clear.
+    const target = getStorage();
+    if (!target) {
+      memoryOverrides.add(key);
+      return;
+    }
+    try {
+      target.removeItem(STORAGE_PREFIX + key);
+      memoryOverrides.delete(key);
+    } catch {
+      memoryOverrides.add(key);
+      // Keep the removal authoritative for this page load.
     }
   };
   return { read, write, remove };
