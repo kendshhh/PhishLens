@@ -6,7 +6,9 @@ AI owner: EnviousCoal. Policy recorded November 15 and reconciled November 18,
 The ordinary PR gate requires the reviewed contract inventory to pass exactly
 once, with zero missing, extra, duplicated, failed, errored or skipped tests.
 The explicit inventory is in `scripts/ai-regression-baseline.json`. It contains
-102 tests: the 94 existing selected tests and eight tests of the evidence guard.
+113 tests: the 94 existing selected tests, eight tests of the evidence guard and
+11 tests of the bounded provider-smoke controller. Controller tests substitute
+every HTTP response and make no staging/provider request.
 Pytest subtests are reported separately and are not additional inventory items.
 
 All 40 `synthetic-v1` development cases must complete with valid outputs, zero

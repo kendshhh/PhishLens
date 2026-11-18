@@ -19,21 +19,23 @@
     "uv": "uv 0.11.31 (b7fdec626 2026-07-21 x86_64-pc-windows-msvc)"
   },
   "tested_changed_source_sha256": {
-    ".github/workflows/ai-evaluation.yml": "b6535e591615aa43251b2d14e1eeffd31d5f62b44aae5e2edecd80f924a08832",
+    ".github/workflows/ai-evaluation.yml": "e325c481a44dcbe666fae4dbd3f8454bbd6dc0164110a8d4a42b30034a0b7298",
     "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
-    "scripts/ai-regression-baseline.json": "cd9a616cca3f79d067248a8aee60c5ae6f9ba646546c6e024725295c9b372864",
+    "scripts/ai-regression-baseline.json": "256eca7d1f7f8b26f6196ceb55e87eb3b81d1079a67b1a06a6fd233187e934db",
     "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
-    "scripts/ai_evaluation_summary.py": "4a0d7bd1470686d4aa8412e3dcc7067774b09ce288bd623a2ee0910e03df891e"
+    "scripts/ai_evaluation_summary.py": "4a0d7bd1470686d4aa8412e3dcc7067774b09ce288bd623a2ee0910e03df891e",
+    "scripts/ai_provider_smoke.py": "3515b18856a3c8006423e83ab254da6ae936aed9d683e8a58ac63767863ab622",
+    "scripts/tests/test_ai_provider_smoke.py": "92a38b6191d9fc63f4465cb33012a6a67f1d39d882f984bdb84ababd27221cd4"
   },
   "contracts": {
-    "passed": 102,
-    "subtests_passed": 19,
+    "passed": 113,
+    "subtests_passed": 36,
     "skipped": 0
   },
   "full_backend_scripts": {
-    "passed": 577,
+    "passed": 588,
     "skipped": 2,
-    "subtests_passed": 140,
+    "subtests_passed": 157,
     "skips": [
       {
         "classname": "backend.tests.test_auth_acceptance_cleanup",
@@ -45,7 +47,8 @@
         "name": "test_seed_records_and_relationship",
         "reason": "Seed integrity requires RUN_DATABASE_TESTS=1 and RUN_SEED_INTEGRITY_TESTS=1 against local phishlens_dev."
       }
-    ]
+    ],
+    "separate_optin_passed": 2
   },
   "extension": {
     "passed": 300,
@@ -70,14 +73,16 @@
     "seed_runs": [
       {
         "summary": "1|1|Synthetic account notice|t",
-        "fingerprint_sha256": "bed8427a8fb5c22aef12f76fa7a1f83a5bb02a521debe40f96d87974041b3f8d"
+        "fingerprint_sha256": "173c7d9b7984ac3f6133fbe475cde305937facefff355d90d59903189396b383"
       },
       {
         "summary": "1|1|Synthetic account notice|t",
-        "fingerprint_sha256": "bed8427a8fb5c22aef12f76fa7a1f83a5bb02a521debe40f96d87974041b3f8d"
+        "fingerprint_sha256": "173c7d9b7984ac3f6133fbe475cde305937facefff355d90d59903189396b383"
       }
     ],
-    "postgres_stopped": true
+    "postgres_stopped": true,
+    "separate_optin_tests": "2 passed; seed and unrelated fixture preservation verified",
+    "after_optin_seed_counts": "1|1"
   },
   "historical_evaluation_replay": {
     "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
@@ -124,11 +129,24 @@
   "sprint_complete": false,
   "coordination_issue": "https://github.com/kendshhh/PhishLens/issues/243",
   "committed_changed_source_sha256": {
-    ".github/workflows/ai-evaluation.yml": "67e156de25b86151731635e896a848b7fbd3786e5b8edfb43e2eb7dd782664ed",
+    ".github/workflows/ai-evaluation.yml": "bb6a99ca3a0aabe1013cd020680c6ae9e381064f9b3c37d7104df93d7616715e",
     "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
-    "scripts/ai-regression-baseline.json": "dc42ce6ccdfe365783231d3feab3bdc7999fdd59fac9d0679b462ee1f783c00c",
+    "scripts/ai-regression-baseline.json": "00992f035d2a57ea8f0bab5af8bb388294025bc69b582484f8d616f897afb643",
     "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
-    "scripts/ai_evaluation_summary.py": "6390bb9ee42befc2529ba5d41e0517392e0438e22b992b6b0e4e374017c14c49"
+    "scripts/ai_evaluation_summary.py": "6390bb9ee42befc2529ba5d41e0517392e0438e22b992b6b0e4e374017c14c49",
+    "scripts/ai_provider_smoke.py": "6eb7dc0b7404115530d1988739044e563ff06562feb5041d95bbd374a850f18a",
+    "scripts/tests/test_ai_provider_smoke.py": "92a38b6191d9fc63f4465cb33012a6a67f1d39d882f984bdb84ababd27221cd4"
   },
-  "source_hash_note": "tested_changed_source_sha256 hashes the actual Windows working-file bytes. Git normalizes text to LF; committed_changed_source_sha256 hashes those equivalent Git blobs. Normalized content was checked equal for every listed file."
+  "source_hash_note": "tested_changed_source_sha256 hashes the actual Windows working-file bytes. Git normalizes text to LF; committed_changed_source_sha256 hashes those equivalent Git blobs. Normalized content was checked equal for every listed file.",
+  "smoke_controller": {
+    "local_substitute_tests_passed": 11,
+    "subtests_passed": 17,
+    "max_analysis_requests": 1,
+    "tfidf_external_provider_cost_cap_usd": "0",
+    "tfidf_model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "revision_bound_tfidf_endpoint": true,
+    "automatic_retries": 0,
+    "enabled_or_dispatched": false,
+    "gemini_positive_cap_preserved": true
+  }
 }

@@ -17,11 +17,11 @@ locks. Browser checks used Microsoft Edge 157.0.4341.60 with a disposable profil
 
 | Check | Expected | Observed and boundary |
 | --- | --- | --- |
-| Selected AI contracts and guard tests | Every required test passes | 102 passed, 19 subtests passed; zero skipped required tests. |
+| Selected AI contracts and guard tests | Every required test passes | 113 passed, 36 subtests passed; zero skipped required tests. Includes 11 HTTP-substitute controller tests. |
 | Development benchmark plus new baseline guard | 40 cases; exact case/model hashes; zero errors and external provider calls | Passed. Development recall remains 3/16 phishing, with 1/16 legitimate false alerts; this is not a quality acceptance. |
-| Backend and Python script suite on fresh local PostgreSQL | All ordinary/database cases pass with fixture cleanup | 577 passed, 2 skipped, 140 subtests passed. The two separate opt-in checks were Auth cleanup SQL and seed-integrity test entry points. Both skips remain disclosed. Two Alembic configuration deprecation warnings occurred. |
+| Backend and Python script suite on fresh local PostgreSQL | All ordinary/database cases pass with fixture cleanup | 588 passed, 2 skipped, 157 subtests passed. The two separate opt-in entry points (Auth cleanup SQL and seed integrity) then passed in their own run against the local seeded database. All 590 distinct tests ran across the two database setups. Two Alembic configuration deprecation warnings occurred. |
 | Migration upgrade, repeated | Head `0004_neon_auth_subject`; second upgrade makes no change | Both heads matched; second upgrade proposed/executed no revision. |
-| Seeder, repeated in a separate local `phishlens_dev` | One unlinked demo user and one analysis, subject `Synthetic account notice` | Passed twice. Counts, ownership and full-row fingerprint were identical. The test database had zero users/analyses after fixture cleanup. The local PostgreSQL server was stopped. |
+| Seeder, repeated in a separate local `phishlens_dev` | One unlinked demo user and one analysis, subject `Synthetic account notice` | Passed twice. Counts, ownership and full-row fingerprint were identical. The test database had zero users/analyses after fixture cleanup; separate cleanup/seed checks preserved the one-user/one-analysis seed database. The local PostgreSQL server was stopped. |
 | Extension tests | No failures or skips | 300 passed, zero failed/skipped. |
 | Extension lint, manifest and package | Valid assets/package | Passed. No installed staging/Auth acceptance is inferred. |
 | Existing packaged-browser suite | 18 browser scenarios | All 18 passed using a loopback synthetic server and test-only session. Covers CRUD/reopen, keyboard/focus, retained input and error states; substitutes do not establish hosted behavior. |
@@ -74,7 +74,7 @@ raw mail and per-message historical predictions are intentionally absent.
 | --- | --- | --- |
 | #92 | Existing source-pair approval confirmed; historical replay passed; exact corrected preflight lock reproduced | Trixia's approval of the corrected lock and first synthetic diagnostic run; contemporary actual-mail rights/coverage and explanation review remain open. The small synthetic cohort cannot satisfy the actual-mail minima. |
 | #93 | Existing AI-owner approval located; explicit test/case/model baseline and fail-closed artifact guard implemented and tested | Review/merge this guard with #220's required-status fix; verify applicable and unrelated-change outcomes before Done. |
-| #94 | Existing manual-only Gemini workflow and historical TF-IDF success evidence distinguished | Current guarded smoke supports Gemini. A reviewed provider/model/cost disposition and a specifically approved exact-target smoke report are still needed; no paid call was authorized or made here. |
+| #94 | Guarded controller now supports one revision-bound TF-IDF request with the pinned model, zero external-provider cost, no retries and no saved-report write. Eleven substitute tests cover both TF-IDF guards and retained Gemini cost controls. | Review/merge the controller; confirm the existing target/preflight/idle-window conditions and record a specifically approved exact-target smoke. No workflow was enabled or dispatched and no paid call was authorized or made here. |
 | #95, #96 | Exact #107 rereview approved; local persistence and controlled failures passed; migration/seeder evidence added | Protected-staging failure/recovery evidence and operator stop/recovery verification remain open under the existing authorization limits. Do not convert local timing to hosted recovery/RTO. |
 | #37 | Current package/manifest/local verification refreshed | Effective production/staging database and key scope attestations; preserve the history/no-rewrite exception as an unresolved acceptance item. |
 | #42 | Local PostgreSQL CRUD/atomicity/rollback tests now run instead of being skipped | One authorized selected-deployment full CRUD/PATCH/reread run, identities, cleanup and delivery evidence. |
@@ -93,6 +93,13 @@ narrows the older environment blocker. That report still leaves candidate
 deployment/Auth configuration, exact runtime pairing and hosted acceptance on
 hold. Its broader results belong to earlier source `7444d1469de062f1b7c16b8ad53e1dae35f819cd`,
 not automatically to current candidate `af2895e93ce931699386adf823f6768cd5f23913`.
+
+New [PR #244](https://github.com/kendshhh/PhishLens/pull/244) proposes a separate
+web frontend while retaining the extension. Its own record leaves sign-in and
+saved reports disabled and hosted CORS/Auth setup pending. Its local web results
+do not satisfy the existing connected Chrome/API cards or establish a deployed
+web acceptance. No frontend target or acceptance scope was changed in this
+closeout.
 
 ## Slip, ownership and next-sprint risk
 

@@ -18,7 +18,8 @@
     "backend/tests/test_tfidf_provider.py",
     "backend/tests/test_saved_provider_pipeline.py",
     "scripts/tests/test_ai_evaluation_summary.py",
-    "scripts/tests/test_ai_regression_gate.py"
+    "scripts/tests/test_ai_regression_gate.py",
+    "scripts/tests/test_ai_provider_smoke.py"
   ],
   "required_tests": [
     "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[None]",
@@ -115,6 +116,17 @@
     "backend.tests.test_tfidf_provider::test_tfidf_saved_worker_runs_in_supervised_process_without_database",
     "scripts.tests.test_ai_evaluation_summary.AIEvaluationSummaryTests::test_rejects_incomplete_or_paid_development_evaluation",
     "scripts.tests.test_ai_evaluation_summary.AIEvaluationSummaryTests::test_renders_complete_provider_free_development_evaluation",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_disabled_or_wrong_target_is_blocked_before_post",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_gemini_cannot_use_the_zero_cost_tfidf_exception",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_gemini_retains_positive_cap_identity_and_one_attempt",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_gemini_runtime_cap_mismatch_stops_before_post",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_inference_revision_drift_stops_without_retry",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_invalid_output_stops_after_one_attempt",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_response_provider_or_model_substitution_stops_without_retry",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_stale_deployment_model_or_unready_database_blocks_post",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_tfidf_requires_zero_cost_and_the_known_model",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_tfidf_sends_one_revision_bound_nonpersisting_request",
+    "scripts.tests.test_ai_provider_smoke.AIProviderSmokeTests::test_timeout_stops_after_one_attempt",
     "scripts.tests.test_ai_regression_gate.AIRegressionGateTests::test_accepts_identity_match_without_imposing_a_quality_cutoff",
     "scripts.tests.test_ai_regression_gate.AIRegressionGateTests::test_accepts_the_exact_complete_contract_inventory",
     "scripts.tests.test_ai_regression_gate.AIRegressionGateTests::test_rejects_changed_case_model_and_unknown_baseline",
