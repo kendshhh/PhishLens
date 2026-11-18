@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
           changed_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
-          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|analysis_worker|tfidf_provider|saved_provider_pipeline|provider_error_contract)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|train_live_reevaluators)\.py$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
+          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|analysis_worker|tfidf_provider|saved_provider_pipeline|provider_error_contract)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|verify_ai_regression|train_live_reevaluators)\.py$|scripts/ai-regression-baseline\.json$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
             echo "ai_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "ai_changed=false" >> "$GITHUB_OUTPUT"
@@ -88,6 +88,7 @@ jobs:
           backend/tests/test_tfidf_provider.py
           backend/tests/test_saved_provider_pipeline.py
           scripts/tests/test_ai_evaluation_summary.py
+          scripts/tests/test_ai_regression_gate.py
           --junitxml=output/ai-evaluation/contract-tests.xml
 
       - name: Run the deterministic TF-IDF development cohort
@@ -99,6 +100,13 @@ jobs:
           python scripts/benchmark_ai.py --models tfidf --repeats 1 --limit 0 --pause 0 \
             | tee output/ai-evaluation/development-benchmark.jsonl
           python -m scripts.ai_evaluation_summary output/ai-evaluation/development-benchmark.jsonl
+
+      - name: Enforce the AI-owner-approved regression baseline
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
+        run: >-
+          python -m scripts.verify_ai_regression
+          --contracts output/ai-evaluation/contract-tests.xml
+          --benchmark output/ai-evaluation/development-benchmark.jsonl
 
       - name: Preserve redacted evaluation evidence
         if: always()
