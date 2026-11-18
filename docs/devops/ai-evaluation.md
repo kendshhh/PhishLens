@@ -5,22 +5,19 @@ backend/extension AI code, prompt/schema/model settings, evaluation scripts,
 AI tests, or pinned AI dependencies change. It tests provider contracts and
 verifies that Gemini request and per-run dollar caps block inference before the
 provider call. It also evaluates the bundled TF-IDF model over the 40 synthetic
-development cases. This check reports evaluation completion and contract
-conformance; it does not establish held-out or user-facing model quality.
+development cases. This check reports evaluation completion; it does not
+approve model quality until an AI owner has set and reviewed thresholds.
 
 Normal CI and this workflow make no paid provider request. The development
 cohort records model behavior and confusion metrics but is not a held-out test
-set. The AI owner approved complete execution, a pinned case/model identity and
-zero missing, failed or skipped required tests on November 15. The owner kept
-development quality metrics diagnostic, with no numeric quality cutoff. The
-[reviewed policy and inventory](ai-regression-policy.md) enforce that distinction.
-A held-out cohort stays separate and
+set. Current code reports those metrics without enforcing an accuracy threshold
+because the AI owner has not approved one. A held-out cohort stays separate and
 must follow the review protocol in
 `docs/ai/tfidf-sprint-3-evaluation-protocol.md`.
 
 ## Latest local development evaluation
 
-On 2026-11-18, the full 40-case synthetic cohort again completed with zero inference
+On 2026-11-14, the full 40-case synthetic cohort completed with zero inference
 errors using TF-IDF model SHA
 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c` and zero
 Gemini/provider calls. Results were **65% binary accuracy**, **18.75% phishing
@@ -29,11 +26,9 @@ rate (1/16)**. All eight spam cases were predicted as legitimate; this binary
 benchmark does not claim three-class accuracy. These results are on a small
 synthetic development set, not a held-out or production set, but the phishing
 recall is weak and must be reviewed before claiming acceptable AI behavior.
-The result is not a release-quality pass. The workflow blocks incomplete runs,
-inventory/model substitutions and provider-cap regressions; it does not block low
-development model scores. This is a rerun of consumed development data. The
-[closeout evidence](evidence/sprint-3-closeout-2026-11-18.md) records the exact
-environment and the separate remaining acceptance gates.
+The result is not a release-quality pass. No accuracy threshold has been
+approved, so the workflow currently blocks incomplete runs and provider-cap
+regressions but does not block low model scores.
 
 ## Gemini spend guard
 

@@ -122,5 +122,13 @@
   "deployments": 0,
   "consultation_attendance_asserted": false,
   "sprint_complete": false,
-  "coordination_issue": "https://github.com/kendshhh/PhishLens/issues/243"
+  "coordination_issue": "https://github.com/kendshhh/PhishLens/issues/243",
+  "committed_changed_source_sha256": {
+    ".github/workflows/ai-evaluation.yml": "67e156de25b86151731635e896a848b7fbd3786e5b8edfb43e2eb7dd782664ed",
+    "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
+    "scripts/ai-regression-baseline.json": "dc42ce6ccdfe365783231d3feab3bdc7999fdd59fac9d0679b462ee1f783c00c",
+    "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
+    "scripts/ai_evaluation_summary.py": "6390bb9ee42befc2529ba5d41e0517392e0438e22b992b6b0e4e374017c14c49"
+  },
+  "source_hash_note": "tested_changed_source_sha256 hashes the actual Windows working-file bytes. Git normalizes text to LF; committed_changed_source_sha256 hashes those equivalent Git blobs. Normalized content was checked equal for every listed file."
 }
