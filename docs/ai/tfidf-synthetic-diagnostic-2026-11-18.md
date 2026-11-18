@@ -83,7 +83,7 @@ are correlated and receive descriptive rates only.
 
 First measured inference: **22.42 ms**. Warm p50: **0.258 ms**; p95: **0.401 ms**.
 These exclude process/dependency startup and preflight and are not hosted
-cold-start or end-to-end timings. Process RSS was not measured. No provider call,
+cold-start or end-to-end timings. Process RSS was not measured. No external provider call,
 database request/write, staging request or deployment occurred.
 
 ## Error analysis and decision
@@ -113,3 +113,26 @@ cohort with documented rights/labels/overlap and prospective criteria before
 scoring it. Keep the approved actual-mail goals (90% recall, at most 3% legitimate
 FPR, 100% valid output) separate from this small synthetic diagnostic. Do not lower
 the cutoff or rewrite these labels to turn this report into a pass.
+
+## Separate development-only repair comparison
+
+The existing cached DistilBERT provider was also measured on the **40 previously
+consumed development fixtures**, not on the frozen 45-case diagnostic. Both
+development runs use case hash
+`a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f`.
+
+| Development model | Phishing detected | Legitimate false alerts | Spam phishing alerts |
+| --- | --- | --- | --- |
+| TF-IDF v12a | 3/16 | 1/16 | 0/8 |
+| Cached DistilBERT | 12/16 | 4/16 | 8/8 |
+
+DistilBERT checkpoint `dima806/phishing-email-detection`, revision
+`310a5602280486e01dd60e37230980cfcc327b41`, completed 40/40 valid cases with no
+external call or download. Its greater development recall came with **25%
+legitimate false alerts**. This is not an accepted drop-in fix. Measured cold
+inference was 38.72 s, warm p50 16.94 ms, p95 27.13 ms, peak process RSS 684.76 MB;
+hosting suitability remains unverified. The run used Windows CPU PyTorch
+2.9.1+cpu with Transformers 5.23.0, rather than executing the full optional Linux
+lock. [Development aggregate](local-development-comparison-2026-11-18.json).
+No provider/model/configuration was switched and no held-out comparison or
+production improvement is claimed.

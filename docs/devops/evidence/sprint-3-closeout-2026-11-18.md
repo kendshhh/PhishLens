@@ -15,6 +15,14 @@ Psycopg 3.3.9; SQLAlchemy 2.1.8; Alembic 1.20.1; pytest 9.2.0;
 PostgreSQL 17.12; Node 24.13.0. Dependencies came from the checked-in development
 locks. Browser checks used Microsoft Edge 157.0.4341.60 with a disposable profile.
 
+After these runs, main advanced to
+`1805d32395ca6f96d93e41e0997517599919289a` with reviewed FastAPI 0.163.0,
+optional Transformers 5.23.0 and the published Neon preflight. The branch was
+synchronized without conflicts; all 113 selected contracts and the artifact
+guard passed again with FastAPI 0.163.0. The 590-case local result above remains
+at its recorded earlier dependency environment; latest combined CI is linked on
+PR #245 rather than relabeling that older local run.
+
 | Check | Expected | Observed and boundary |
 | --- | --- | --- |
 | Selected AI contracts and guard tests | Every required test passes | 113 passed, 36 subtests passed; zero skipped required tests. Includes 11 HTTP-substitute controller tests. |

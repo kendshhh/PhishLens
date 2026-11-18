@@ -164,5 +164,27 @@
     "owner_exception_reference": "https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6983613256",
     "independent_final_review": "pending",
     "report": "../../ai/tfidf-synthetic-diagnostic-2026-11-18.md"
+  },
+  "subsequent_main_sync": {
+    "main_sha": "1805d32395ca6f96d93e41e0997517599919289a",
+    "fastapi": "0.163.0",
+    "selected_contracts_passed": 113,
+    "subtests_passed": 36,
+    "guard": "passed",
+    "original_590_case_local_environment_unchanged": true
+  },
+  "separate_local_development_comparison": {
+    "caseset_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+    "model_revision": "310a5602280486e01dd60e37230980cfcc327b41",
+    "phishing_detected": 12,
+    "phishing_cases": 16,
+    "legitimate_false_alerts": 4,
+    "legitimate_cases": 16,
+    "spam_alerts": 8,
+    "spam_cases": 8,
+    "errors": 0,
+    "provider_calls": 0,
+    "scope": "development only; no adoption or held-out acceptance",
+    "report": "../../ai/local-development-comparison-2026-11-18.json"
   }
 }
