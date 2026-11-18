@@ -249,6 +249,14 @@ For local development, set `API_BASE_URL` in `extension/js/config.js` to
 `host_permissions`. Reload the extension after changing configuration. The default
 source package targets production; the separate staging package targets staging.
 
+## Web app
+
+PhishLens is moving to a web app. Paste an email's text and check it in the browser tab;
+the text is not uploaded. Run `npm run web:build` and then `npm run web:serve` to preview it
+at http://127.0.0.1:4173/. The repository is ready for Vercel through `vercel.json`. See
+[web/README.md](web/README.md) for deployment steps and current limits. Highlight and
+right-click checking is on hold and remains in the Chrome extension below.
+
 ## Install in Chrome
 
 PhishLens requires Chrome 127 or newer. There is no Chrome Web Store listing yet.
