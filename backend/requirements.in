@@ -6,7 +6,7 @@ SQLAlchemy>=2.1.8,<2.2
 alembic>=1.20.1,<2
 python-dotenv>=1,<2
 certifi>=2026.10.19
-psycopg[binary]>=3.3.8,<4
+psycopg[binary]>=3.3.9,<4
 google-genai>=2.34.0,<3
 pyasn1>=0.6.5,<0.7
 # Security floor for CVE-2026-126360 in FastAPI's transitive dependency.
