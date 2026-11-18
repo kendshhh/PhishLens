@@ -335,6 +335,25 @@ def current_pr_head_matches(pr, expected_head_sha):
     )
 
 
+def preview_check_run_name(config):
+    """Keep detailed evidence separate from the required commit-status context."""
+    return config["preview_check"] + " verification"
+
+
+def publish_preview_status(api, sha, config, state, description, target_url=None):
+    """Publish the required check as a commit status on the exact PR head SHA."""
+    if state not in {"pending", "success", "failure", "error"}:
+        raise ValueError("Invalid Secretary staging status")
+    payload = {
+        "state": state,
+        "context": config["preview_check"],
+        "description": description[:140],
+    }
+    if target_url:
+        payload["target_url"] = target_url
+    api.request("statuses/" + sha, payload)
+
+
 def invalidate_previous(api, config, sha):
     """A displaced shared preview must not retain a green required staging check."""
     rows = api.request("deployments?environment=" + config["preview_environment"] + "&per_page=30")
@@ -343,11 +362,20 @@ def invalidate_previous(api, config, sha):
             continue
         if not isinstance(row.get("payload"), dict) or row["payload"].get("secretary") != 1:
             continue
-        checks = api.pages("commits/" + row["sha"] + "/check-runs?check_name=" + quote(config["preview_check"]) + "&filter=latest", "check_runs")
-        for check in checks:
-            if check.get("app", {}).get("slug") == "github-actions" and check.get("conclusion") == "success":
-                api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": "action_required",
-                    "output": {"title": "Shared staging replaced", "summary": "Another PR successfully replaced shared staging. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
+        publish_preview_status(
+            api, row["sha"], config, "failure",
+            "Shared staging changed; rerun CI for current preview",
+        )
+        names = {config["preview_check"], preview_check_run_name(config)}
+        for name in names:
+            checks = api.pages(
+                "commits/" + row["sha"] + "/check-runs?check_name=" + quote(name) + "&filter=latest",
+                "check_runs",
+            )
+            for check in checks:
+                if check.get("app", {}).get("slug") == "github-actions" and check.get("conclusion") == "success":
+                    api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": "action_required",
+                        "output": {"title": "Shared staging replaced", "summary": "Another PR successfully replaced shared staging. Rerun CI for this PR before using its automated evidence; previous preview evidence is stale."}}, "PATCH")
 
 
 def confirm_live_deployment(api, config, live, expected_sha):
@@ -400,14 +428,20 @@ def main():
         pr = api.request(f"pulls/{number}")
         if not current_pr_head_matches(pr, run["head_sha"]):
             continue
+        jobs, latest = latest_jobs(api, run["head_sha"])
+        if (
+            not latest
+            or latest["id"] != run["id"]
+            or latest.get("run_attempt", 1) != run.get("run_attempt", 1)
+        ):
+            print("Older CI completion ignored; a newer run or attempt exists")
+            continue
         files = api.pull_request_files(pr["number"])
         action, message = eligibility(
             pr, files, run, api.repo, config.get("preview_opt_in_label")
         )
+        log = f"https://github.com/{api.repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
         if action == "deploy":
-            jobs, latest = latest_jobs(api, run["head_sha"])
-            if not latest or latest["id"] != run["id"] or latest.get("run_attempt", 1) != run.get("run_attempt", 1):
-                continue  # An older completion must not override a newer CI attempt.
             if any(jobs.get(name, {}).get("conclusion") != "success" for name in config["required_ci_jobs"]):
                 action, message = "failure", "Required CI jobs are missing, pending or unsuccessful"
             elif not preview_gate_enabled():
@@ -418,16 +452,29 @@ def main():
             else:
                 message = "Required CI jobs passed; exact-head staging requested"
                 if completed_event(api, config, run):
+                    publish_preview_status(
+                        api, run["head_sha"], config, "success",
+                        "Staging verification passed", log,
+                    )
                     print("Identical CI completion already has the current verified preview; no redeployment")
                     continue
         if action == "stale":
             continue
-        if assess and action == "deploy":
-            with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-                output.write("deploy=true\n")
+        if assess:
+            if action == "deploy":
+                with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+                    output.write("deploy=true\n")
+            else:
+                state = "success" if action == "success" else "failure"
+                publish_preview_status(api, run["head_sha"], config, state, message, log)
+                print(message)
             continue
-        check = api.request("check-runs", {"name": config["preview_check"], "head_sha": run["head_sha"], "status": "in_progress",
-            "details_url": f"https://github.com/{api.repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"})
+        publish_preview_status(
+            api, run["head_sha"], config, "pending",
+            "Staging verification running", log,
+        )
+        check = api.request("check-runs", {"name": preview_check_run_name(config), "head_sha": run["head_sha"], "status": "in_progress",
+            "details_url": log})
         deployment = None
         evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
         try:
@@ -519,6 +566,16 @@ def main():
                 "output": {"title": title, "summary": message}}, "PATCH")
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
+            status_state = "success" if action == "success" else "failure"
+            status_description = (
+                "Staging verification passed"
+                if status_state == "success"
+                else "Staging verification did not pass"
+            )
+            publish_preview_status(
+                api, run["head_sha"], config, status_state,
+                status_description, log,
+            )
             if action == "failure":
                 print("Preview failed: " + message, file=sys.stderr)
                 raise SystemExit(1)

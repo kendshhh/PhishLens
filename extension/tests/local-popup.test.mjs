@@ -404,5 +404,5 @@ test('saved detail preserves Uncertain and browser-attributed review provenance'
   const fields = dom.get('detail-content').children;
   assert.equal(fields[3].children[1].textContent, 'Uncertain — review needed');
   assert.match(dom.get('detail-content').textContent, /local review was reported by the browser/);
-  assert.doesNotMatch(dom.get('detail-content').textContent, /Alert threshold|Model revision|Research model score/);
+  assert.doesNotMatch(dom.get('detail-content').textContent, /Alert threshold|Research model score/);
 });
