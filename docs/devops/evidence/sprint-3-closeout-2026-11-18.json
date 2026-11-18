@@ -19,7 +19,7 @@
     "uv": "uv 0.11.31 (b7fdec626 2026-07-21 x86_64-pc-windows-msvc)"
   },
   "tested_changed_source_sha256": {
-    ".github/workflows/ai-evaluation.yml": "e325c481a44dcbe666fae4dbd3f8454bbd6dc0164110a8d4a42b30034a0b7298",
+    ".github/workflows/ai-evaluation.yml": "7e1faf6421dc34c3ec0a2507ab9767ed239a20fd2d6ab5461ab8315c9094a92a",
     "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
     "scripts/ai-regression-baseline.json": "256eca7d1f7f8b26f6196ceb55e87eb3b81d1079a67b1a06a6fd233187e934db",
     "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
@@ -129,7 +129,7 @@
   "sprint_complete": false,
   "coordination_issue": "https://github.com/kendshhh/PhishLens/issues/243",
   "committed_changed_source_sha256": {
-    ".github/workflows/ai-evaluation.yml": "bb6a99ca3a0aabe1013cd020680c6ae9e381064f9b3c37d7104df93d7616715e",
+    ".github/workflows/ai-evaluation.yml": "73b0bfebfed54becabbeb4235054c0d30ce82edd2cd36bb5abf6da519799819f",
     "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
     "scripts/ai-regression-baseline.json": "00992f035d2a57ea8f0bab5af8bb388294025bc69b582484f8d616f897afb643",
     "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",

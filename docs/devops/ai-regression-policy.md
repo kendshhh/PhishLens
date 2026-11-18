@@ -52,10 +52,11 @@ changes this selection.
 
 ## Required-status delivery
 
-The companion [PR #220](https://github.com/kendshhh/PhishLens/pull/220) supplies
-the exact `Deterministic AI Evaluation` status name, a fail-closed change detector,
-and the explicit not-applicable path for unrelated changes. This guard's workflow
-step has the same AI-change condition so it composes with that change. #93 stays
-open until the combined reviewed source is delivered and both applicable and
+This change reuses the already-reviewed workflow fix from
+[PR #220](https://github.com/kendshhh/PhishLens/pull/220): the exact
+`Deterministic AI Evaluation` status name, a fail-closed change detector and
+the explicit not-applicable path for unrelated changes. This guard's workflow
+step has the same AI-change condition. #93 stays
+open until the reviewed source is delivered and both applicable and
 not-applicable status behavior is verified. A passing local workload does not
 prove that GitHub's required status or branch protection is configured correctly.
