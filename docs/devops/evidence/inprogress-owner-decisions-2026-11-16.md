@@ -2,16 +2,19 @@
 
 Prepared 2026-11-16 for the existing board audit PR #233. The current **Sprint 3 — Backlog by person** view was rechecked in the signed-in browser: it still has the same 14 target issues In Progress. The filtered **Sprint 3 — S3 tasks** view is not the complete carryover view. This packet proposes choices and records the exact evidence needed to resume; it does not authorize provider calls, staging writes, failure injection, or a status change.
 
-## 1. AI evaluation decisions — #92 and #93
+## 1. AI evaluation decisions — #92 and #93 (reconciled 2026-11-18)
 
-**Owners:** Wilberr (`EnviousCoal`) for #92; Kendra (`kendshhh`) for #93. The named AI-owner approval for #93 is still EnviousCoal; Trixia (`xxTrixia`) is the #92 reviewer.
+**Owners:** Wilberr (`EnviousCoal`) for #92; Kendra (`kendshhh`) for #93. Trixia (`xxTrixia`) is the #92 reviewer. The AI-owner decisions are recorded; the remaining gates below are evaluation inputs, implementation/review and delivery.
 
-- **#92 candidate:** the issue currently proposes TF-IDF v12a `word_plus_char_wb_C1p0`, model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`, raw-margin cutoff zero. Confirm this candidate for protocol work, or name the alternative model and exact revision. This is not a provider or release decision.
-- **#92 data route:** (A) provide an approved, licensed source and its rights/provenance record; or (B) approve a clearly labeled synthetic holdout with an explicit nonrepresentative limitation. For either route, Wilberr/Trixia must supply score-blind adjudicated labels, labeling rules, class/family counts, duplicate and known-overlap report, frozen split/revision and lock hash, plus final criteria before any scoring. Do not use private inbox content or tune against holdout results.
-- **#92 metrics proposal:** the issue describes 90% recall and at most 3% legitimate-only false positives for primary actual mail, with valid-result and minimum-coverage requirements; security-notice and spam rates are diagnostic. Confirm or replace these proposed criteria before the holdout is frozen. No result exists yet.
-- **#93 gate:** EnviousCoal should approve the current pinned development baseline and zero-tolerance behavior for missing/failed/skipped required cases, or supply a replacement baseline and blocking threshold in a reviewed change. Keep held-out quality thresholds separate from development regression thresholds.
+- **#92 scoped approval (Nov 15):** EnviousCoal accepts TF-IDF v12a `word_plus_char_wb_C1p0`, model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`, raw-margin cutoff zero for advisory screening on the frozen English source-pair cohort. Approved criteria are at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. The accepted result is limited to that cohort and does not establish contemporary-source performance.
+- **#92 corrected synthetic candidate:** The corrected manifest, overlap audit and lock were posted in [the issue update](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891932603). The Nov 18 evidence update reports a byte-identical lock reproduction and replay of saved historical predictions, with zero candidate inferences. Reviewer verification of the corrected bundle and explicit first-scoring approval remain pending. Do not score this candidate until that approval is recorded.
+- **#92 remaining fresh-data gate:** Broader evaluation still needs a rights-cleared contemporary cohort, score-blind labels, independent source families, overlap review, frozen manifest/protocol and revision-linked report. Keep actual-mail coverage and explanation review open; do not use private inbox content or tune against holdout results.
+- **#93 approved policy (Nov 15):** EnviousCoal approved the deterministic development baseline: all required contract/failure cases must run and pass, with zero missing, failed or skipped tests; all 40 development cases must return valid, correctly identified results; paid/external inference and model-weight downloads are prohibited. The development set has no numeric model-quality cutoff. Keep held-out quality thresholds separate under #92.
+- **#93 implementation evidence (Nov 18):** The owner approved the explicit 113-test inventory and pinned 40-case/model identities. The applicable path and explicit not-applicable status path were observed in the issue update and evidence on PRs [#245](https://github.com/kendshhh/PhishLens/pull/245) and [#246](https://github.com/kendshhh/PhishLens/pull/246). Required review, merge and main-branch delivery remain open.
 
-**Next step after decisions:** freeze the reviewed data/protocol artifacts, run the exact named candidate once, publish revision-linked class-wise metrics, failures, latency/limits, limitations and owner review. Until then #92 and #93 remain In Progress.
+Kendra's Nov 16 reply deferred execution of #92/#93 evaluation work. Preserve that as attributed feedback: it did not revoke the AI-owner policy approvals. No fresh cohort was scored and no corrected synthetic candidate inference was approved by that reply.
+
+**Next steps:** For #92, obtain the pending corrected-bundle verification and explicit scoring approval before one offline synthetic run; separately complete the rights-cleared contemporary-data protocol before making broader claims. For #93, complete required review, merge and main-branch delivery of the approved gate. Both issues remain In Progress until their remaining acceptance boundaries are satisfied.
 
 ## 2. Provider smoke and failure drill — #94, #95, #96
 
@@ -46,7 +49,8 @@ Supply the actual dates and records for two or three async standups (done/next/b
 
 Provide decisions or records in this shape; “defer” is a valid answer and leaves the relevant issue open:
 
-- AI owner / decision for #92 and #93: candidate/revision; licensed or synthetic data route; approved final criteria; reviewed development baseline/threshold.
+- #92: complete the rights-cleared contemporary-data/protocol work and obtain explicit approval before scoring the corrected synthetic candidate. The TF-IDF v12a scope/threshold decision is already recorded.
+- #93: complete required review, merge and main-branch delivery of the approved 113-test, 40-case/model-pinned gate; no additional owner threshold decision is outstanding.
 - Provider and staging owner / decision for #94–#96: provider/model revision; spend cap; request cap; timeout/retry/quota controls; failure matrix; exact staging service/SHA and Neon branch; approval for the bounded actions.
 - Environment evidence for #37 and connected CRUD tasks: redacted Render-service-to-Neon-branch mapping, API-key scope names, staging isolation and synthetic-write authorization.
 - Consultation records for #41: actual dated standups, retro, rehearsal attendance and delivered explanations, or confirmation that the events still need to be held.
