@@ -96,6 +96,31 @@ test('state survives a page reload in the same tab, and an interrupted check bec
   assert.deepEqual(await reloaded.runtime.storage.session.get('phishlensScanDraft'), { phishlensScanDraft: 'draft' });
 });
 
+test('accessing a blocked sessionStorage getter falls back to memory', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    get() { throw Error('blocked'); }
+  });
+  try {
+    const area = createSessionArea();
+    area.write('veriqoAnalysis', { selectedText: 'current email' });
+    assert.deepEqual(area.read('veriqoAnalysis'), { selectedText: 'current email' });
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original);
+    else delete globalThis.sessionStorage;
+  }
+});
+
+test('after a quota failure, reads return the latest in-memory value', () => {
+  const storage = memoryStorage();
+  const area = createSessionArea(storage);
+  area.write('veriqoAnalysis', { selectedText: 'previous email' });
+  storage.setItem = () => { throw Error('quota exceeded'); };
+  area.write('veriqoAnalysis', { selectedText: 'new email' });
+  assert.deepEqual(area.read('veriqoAnalysis'), { selectedText: 'new email' });
+});
+
 test('unavailable sessionStorage falls back to memory for the page', async () => {
   const throwing = { getItem() { throw Error('blocked'); }, setItem() { throw Error('blocked'); }, removeItem() { throw Error('blocked'); } };
   const { runtime, analysis } = setup(async () => result, throwing);
