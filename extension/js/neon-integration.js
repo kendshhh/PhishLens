@@ -5,6 +5,7 @@ import { MODEL_SHA256 } from '../ai/local-analyzer.mjs';
 
 export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThis.fetch,
   sdkFactory = createAuthClient, adapterFactory = BetterAuthVanillaAdapter,
+  storage = globalThis.chrome?.storage?.local,
   hostPermissions = globalThis.chrome?.runtime?.getManifest()?.host_permissions || [] } = {}) {
   if (!config?.enabled) return {};
   const url = new URL(config.authUrl);
@@ -16,7 +17,15 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
   const sdk = sdkFactory(url.href, { adapter: adapterFactory({ fetchOptions: {
     credentials: 'include', redirect: 'error', timeout: 10000, retry: 0
   } }) });
-  const adapter = createNeonAccounts(sdk);
+  const key = 'phishlensSignedOut:' + url.href;
+  const signOutStorage = storage && {
+    async isBlocked() { return (await storage.get(key))[key] === true; },
+    async setBlocked(blocked) {
+      if (blocked) await storage.set({ [key]: true });
+      else await storage.remove(key);
+    }
+  };
+  const adapter = createNeonAccounts(sdk, { signOutStorage });
   return { adapter, createClient: session => createAnalysisClient(apiOrigin, fetchImpl, {
     requiredModel: MODEL_SHA256, getAccessToken: () => adapter.getAccessToken(session.user.id)
   }) };

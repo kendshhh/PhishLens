@@ -4,7 +4,6 @@ from functools import lru_cache
 from urllib.parse import urlsplit
 
 import jwt
-from dotenv import load_dotenv
 from fastapi import Header, HTTPException
 from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWTError
@@ -16,9 +15,10 @@ from backend.models import User
 
 
 def auth_mode():
-    load_dotenv(config.ENV_FILE, override=False)
-    # Legacy demo remains explicitly selectable during the staged rollout.
-    mode = os.getenv("REPORT_AUTH_MODE", "demo")
+    # Keep the local demo default, but never silently expose hosted saved-report
+    # routes without an explicit Render service setting.
+    config.load_local_settings()
+    mode = os.getenv("REPORT_AUTH_MODE", "" if config.is_render() else "demo").strip().lower()
     if mode not in {"demo", "neon"}:
         raise HTTPException(503, "Authentication configuration unavailable")
     return mode
