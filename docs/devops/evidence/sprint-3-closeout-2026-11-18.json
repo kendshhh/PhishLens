@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "date": "2026-11-18",
+  "actor": "EnviousCoal",
+  "scope": "local verification plus source changes; hosted acceptance remains open",
+  "source_base_sha": "41951749768f1e5d718b19c087e41c2ec6418923",
+  "environment": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "packages": {
+      "fastapi": "0.162.0",
+      "pydantic": "2.14.1",
+      "psycopg": "3.3.9",
+      "sqlalchemy": "2.1.8",
+      "alembic": "1.20.1",
+      "pytest": "9.2.0"
+    },
+    "node": "v24.13.0",
+    "uv": "uv 0.11.31 (b7fdec626 2026-07-21 x86_64-pc-windows-msvc)"
+  },
+  "tested_changed_source_sha256": {
+    ".github/workflows/ai-evaluation.yml": "7e1faf6421dc34c3ec0a2507ab9767ed239a20fd2d6ab5461ab8315c9094a92a",
+    "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
+    "scripts/ai-regression-baseline.json": "256eca7d1f7f8b26f6196ceb55e87eb3b81d1079a67b1a06a6fd233187e934db",
+    "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
+    "scripts/ai_evaluation_summary.py": "4a0d7bd1470686d4aa8412e3dcc7067774b09ce288bd623a2ee0910e03df891e",
+    "scripts/ai_provider_smoke.py": "3515b18856a3c8006423e83ab254da6ae936aed9d683e8a58ac63767863ab622",
+    "scripts/tests/test_ai_provider_smoke.py": "92a38b6191d9fc63f4465cb33012a6a67f1d39d882f984bdb84ababd27221cd4"
+  },
+  "contracts": {
+    "passed": 113,
+    "subtests_passed": 36,
+    "skipped": 0
+  },
+  "full_backend_scripts": {
+    "passed": 588,
+    "skipped": 2,
+    "subtests_passed": 157,
+    "skips": [
+      {
+        "classname": "backend.tests.test_auth_acceptance_cleanup",
+        "name": "test_cleanup_preview_refusal_and_exact_removal",
+        "reason": "Requires explicit disposable localhost cleanup SQL test opt-in"
+      },
+      {
+        "classname": "backend.tests.test_seed_integrity",
+        "name": "test_seed_records_and_relationship",
+        "reason": "Seed integrity requires RUN_DATABASE_TESTS=1 and RUN_SEED_INTEGRITY_TESTS=1 against local phishlens_dev."
+      }
+    ],
+    "separate_optin_passed": 2
+  },
+  "extension": {
+    "passed": 300,
+    "failed": 0,
+    "skipped": 0,
+    "lint": "passed",
+    "manifest": "passed",
+    "package": "passed"
+  },
+  "packaged_browser": {
+    "result": "passed",
+    "scenario_count": 18,
+    "channel": "msedge",
+    "version": "157.0.4341.60",
+    "synthetic_substitutes_only": true
+  },
+  "local_postgres": {
+    "postgres_version": "PostgreSQL 17.12 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "migration_head_first": "0004_neon_auth_subject",
+    "migration_head_second": "0004_neon_auth_subject",
+    "post_test_fixture_counts": "0|0",
+    "seed_runs": [
+      {
+        "summary": "1|1|Synthetic account notice|t",
+        "fingerprint_sha256": "173c7d9b7984ac3f6133fbe475cde305937facefff355d90d59903189396b383"
+      },
+      {
+        "summary": "1|1|Synthetic account notice|t",
+        "fingerprint_sha256": "173c7d9b7984ac3f6133fbe475cde305937facefff355d90d59903189396b383"
+      }
+    ],
+    "postgres_stopped": true,
+    "separate_optin_tests": "2 passed; seed and unrelated fixture preservation verified",
+    "after_optin_seed_counts": "1|1"
+  },
+  "historical_evaluation_replay": {
+    "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "cohort_sha256": "005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de",
+    "archived_counts": {
+      "tp": 190,
+      "fp": 1,
+      "tn": 999,
+      "fn": 10
+    },
+    "classifier_inferences": 1200,
+    "roles_verified": 6,
+    "saved_prediction_rows_reconciled": 3600,
+    "max_replay_margin_delta": 9.769962616701378e-15,
+    "max_replay_score_delta": 1.1102230246251565e-15
+  },
+  "candidate_preflight": {
+    "exit_code": 0,
+    "reviewed_lock_sha256": "7a5d7280efca7849a8e9b34f498b4e073d7ce5773f6c613ea0d15487286a9b51",
+    "canonical_preflight_sha256": "7a5d7280efca7849a8e9b34f498b4e073d7ce5773f6c613ea0d15487286a9b51",
+    "canonical_bytes_identical": true,
+    "python": "3.12.10",
+    "pydantic": "2.13.4",
+    "environment_note": "Uses the actual Pydantic 2.13.4 recorded in the historical review lock; that differs from the source requirements.txt pin of 2.14.1. This is a historical diagnostic environment, not release validation.",
+    "candidate_inferences": 0,
+    "first_scoring_approval": "pending independent reviewer"
+  },
+  "development": {
+    "cases": 40,
+    "cases_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+    "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "errors": 0,
+    "provider_calls": 0,
+    "phishing_detected": 3,
+    "phishing_cases": 16,
+    "legitimate_false_alerts": 1,
+    "legitimate_cases": 16,
+    "quality_acceptance": false
+  },
+  "hosted_requests": 0,
+  "hosted_writes": 0,
+  "deployments": 0,
+  "consultation_attendance_asserted": false,
+  "sprint_complete": false,
+  "coordination_issue": "https://github.com/kendshhh/PhishLens/issues/243",
+  "committed_changed_source_sha256": {
+    ".github/workflows/ai-evaluation.yml": "73b0bfebfed54becabbeb4235054c0d30ce82edd2cd36bb5abf6da519799819f",
+    "scripts/verify_ai_regression.py": "76d11a16caf1152518e849b3c95a1162509a672ce838faaeabef248077a3a5c7",
+    "scripts/ai-regression-baseline.json": "00992f035d2a57ea8f0bab5af8bb388294025bc69b582484f8d616f897afb643",
+    "scripts/tests/test_ai_regression_gate.py": "dace312f9fae2ff620aeafae01fdcb98022676eddd7a5e71f1fd324d7ffc9b9a",
+    "scripts/ai_evaluation_summary.py": "6390bb9ee42befc2529ba5d41e0517392e0438e22b992b6b0e4e374017c14c49",
+    "scripts/ai_provider_smoke.py": "3515b18856a3c8006423e83ab254da6ae936aed9d683e8a58ac63767863ab622",
+    "scripts/tests/test_ai_provider_smoke.py": "92a38b6191d9fc63f4465cb33012a6a67f1d39d882f984bdb84ababd27221cd4"
+  },
+  "source_hash_note": "tested_changed_source_sha256 hashes the actual tested Windows working-file bytes. committed_changed_source_sha256 hashes actual Git blobs. Git text conversion can change line endings; content was checked equal after LF normalization for every listed file.",
+  "smoke_controller": {
+    "local_substitute_tests_passed": 11,
+    "subtests_passed": 17,
+    "max_analysis_requests": 1,
+    "tfidf_external_provider_cost_cap_usd": "0",
+    "tfidf_model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "revision_bound_tfidf_endpoint": true,
+    "automatic_retries": 0,
+    "enabled_or_dispatched": false,
+    "gemini_positive_cap_preserved": true
+  },
+  "synthetic_diagnostic": {
+    "run_status": "finished",
+    "source_commit": "8322fb802f59dd1db0b00563211e188b1cf858d4",
+    "cases": 45,
+    "valid_outputs": 45,
+    "primary_phishing_detected": 1,
+    "primary_phishing_cases": 12,
+    "primary_legitimate_false_alerts": 0,
+    "primary_legitimate_cases": 12,
+    "actual_mail_screening": "unassessed",
+    "quality_acceptance": false,
+    "private_report_sha256": "42bbc9acbae2acdfc1beea4441072a3bd99ace171058a77203b34839cb1123b5",
+    "owner_exception_reference": "https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6983613256",
+    "independent_final_review": "pending",
+    "report": "../../ai/tfidf-synthetic-diagnostic-2026-11-18.md"
+  },
+  "subsequent_main_sync": {
+    "main_sha": "1805d32395ca6f96d93e41e0997517599919289a",
+    "fastapi": "0.163.0",
+    "selected_contracts_passed": 113,
+    "subtests_passed": 36,
+    "guard": "passed",
+    "original_590_case_local_environment_unchanged": true
+  },
+  "separate_local_development_comparison": {
+    "caseset_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+    "model_revision": "310a5602280486e01dd60e37230980cfcc327b41",
+    "phishing_detected": 12,
+    "phishing_cases": 16,
+    "legitimate_false_alerts": 4,
+    "legitimate_cases": 16,
+    "spam_alerts": 8,
+    "spam_cases": 8,
+    "errors": 0,
+    "provider_calls": 0,
+    "scope": "development only; no adoption or held-out acceptance",
+    "report": "../../ai/local-development-comparison-2026-11-18.json"
+  }
+}
