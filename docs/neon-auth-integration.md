@@ -31,9 +31,14 @@ configured Neon Auth service, not to a database connection URL.
 ## Backend rollout and ownership
 
 REPORT_AUTH_MODE=demo preserves the current shared demo API during rollout
-(also the compatibility default). It is NOT personal storage or a production
-authentication guarantee. REPORT_AUTH_MODE=neon requires authentication for all
-five /api/analyses operations: POST, list GET, detail GET, PATCH and DELETE.
+(also the local-development compatibility default). It is NOT personal storage
+or a production authentication guarantee. On Render, set REPORT_AUTH_MODE
+explicitly; if it is missing, saved-report routes fail closed with HTTP 503
+instead of silently falling back to demo mode. The value must be set in the
+Render service environment; a bundled `.env` file does not satisfy this
+requirement. REPORT_AUTH_MODE=neon requires authentication for all five
+/api/analyses operations: POST, list GET, detail
+GET, PATCH and DELETE.
 An unknown mode fails closed. Do not expose demo mode as a parallel fallback
 on a personal-report deployment. Existing health/model endpoints stay public.
 

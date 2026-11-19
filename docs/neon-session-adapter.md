@@ -53,9 +53,11 @@ Sources inspected November 8, 2026:
   clients are not claimed to appear instantly; checks do not run after popup
   closure. Each new popup restores from the provider.
 - Sign-out blocks local token access before requesting remote sign-out. Failed
-  remote logout cannot restore this instance's access. A fresh popup can still
-  restore a surviving cookie after failed remote logout; the UI limitation must
-  not be represented as global revocation. Already-issued JWTs can survive to expiry.
+  remote logout leaves a boolean in extension storage, scoped to the Auth URL.
+  It blocks automatic restoration of a surviving cookie across popup and browser
+  restarts until a successful explicit sign-in or verification confirms the
+  expected account. Password reset also blocks restoration of the previous
+  session. Already-issued JWTs can survive to expiry.
 - Password recovery uses the documented forgetPassword.emailOtp and
   emailOtp.resetPassword methods. Live delivery and branch configuration are
   unverified; no six-digit example code is accepted as live acceptance evidence.
