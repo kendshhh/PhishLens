@@ -707,6 +707,9 @@ async function run() {
     assert.equal(await keyboardPage.locator("#show-reports").getAttribute("aria-pressed"), "true");
     await tabUntil(focused => focused.id === "load-history");
     await keyboardPage.keyboard.press("Enter");
+    // Wait for the most recent history load before walking the keyboard focus order.
+    await keyboardPage.locator('#history-list[aria-busy="false"]').waitFor({ state: "attached" });
+    await keyboardPage.locator("#loading").waitFor({ state: "hidden" });
     await keyboardPage.locator("#history-list li").getByText("Synthetic <script>alert(1)</script>", { exact: true }).waitFor();
     evidence.keyboard_tab_order.reports = await checkTabOrder("Saved reports view");
     evidence.tests.push("keyboard Tab order reaches only visible, named controls with a focus indicator");
