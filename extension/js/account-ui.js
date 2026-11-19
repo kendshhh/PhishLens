@@ -98,5 +98,7 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     if (signedIn) screen(null, false);
   });
   visible('account-preview-notice', preview);
+  // Synthetic-record notice belongs only to the demo build, never to real accounts.
+  visible('reports-preview-notice', preview);
   return { dispose: unsubscribe };
 }
