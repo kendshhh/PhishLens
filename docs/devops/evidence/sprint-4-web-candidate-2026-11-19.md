@@ -10,6 +10,16 @@ of main `1805d32395ca6f96d93e41e0997517599919289a`, web #244
 This freezes a review candidate; it does not select a live deployment or override
 any prerequisite/review hold on those PRs.
 
+Security follow-up source: `98def7ae6b3bc2a84f78cdca40027338201acc8f`.
+CodeQL initially flagged the preview's full-URL construction and two temporary
+plaintext password files. The preview now sends requests with a configuration-only
+hostname and a separately bounded path, and initdb reads its password through a
+private pipe (Windows prompt compatibility mode). CodeQL passed on that revision.
+All 318 JavaScript tests and eight local browser/database checks passed again;
+cleanup was `0/0`, and all local services stopped. Backend/model implementation
+is unchanged from the original 603-test run. The reproduction harness now targets
+this corrected source. No password-file suppression or security-check bypass was used.
+
 ## Changes
 
 Public build configuration pairs a fixed environment/API and optional Neon Auth
@@ -104,6 +114,9 @@ are wording clues; quote grounding does not prove a correct conclusion.
 This completes the provenance/reproduction audit work for #132 and #137.
 Model-quality approval remains separate in #92/#153; deployment/model pairing in
 #147 is still pending. No threshold was relaxed to close an audit.
+The completed ownership audit #130 has a concrete assigned follow-up in #249 for
+actual Neon claim/lifetime and post-issuance revocation evidence. Closing that
+audit does not resolve the live Auth risk.
 
 ## Remaining release gates
 

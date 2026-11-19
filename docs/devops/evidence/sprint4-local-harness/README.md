@@ -15,7 +15,7 @@ Run from a repository checkout containing these evidence files, using PowerShell
 ```powershell
 $work = Join-Path (Get-Location) 'output/sprint4-local-verification'
 New-Item -ItemType Directory -Force $work | Out-Null
-git worktree add --detach "$work/source" ba67296af4023f89145fe2e509371ca6e9084462
+git worktree add --detach "$work/source" 98def7ae6b3bc2a84f78cdca40027338201acc8f
 py -3.12 -m venv "$work/source/.review-env"
 uv pip sync --python "$work/source/.review-env/Scripts/python.exe" "$work/source/backend/requirements-dev.txt"
 npm --prefix "$work/source" ci

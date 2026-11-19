@@ -38,7 +38,7 @@
     "postgres_stopped": true
   },
   "web": {
-    "source_sha": "ba67296af4023f89145fe2e509371ca6e9084462",
+    "source_sha": "98def7ae6b3bc2a84f78cdca40027338201acc8f",
     "scope": "Loopback web + real FastAPI/TF-IDF/PostgreSQL; substituted Auth SDK/provider/key retrieval. No hosted Auth, cookie, OTP or Vercel acceptance.",
     "tests": [
       {
@@ -280,6 +280,15 @@
     "current-contracts.xml": "152abf6e0325def29d655efce2f925c129976a3c82476ce9f43ed51e964c168b",
     "development-benchmark.jsonl": "5a7f5597144b50a0a0daa53b59c6cc57509d40ed313cc4f7c6e259753e876ff1",
     "client-errors.log": "7eaf474783e63b944c53920b542ddf03940241ce1daff87eeba8cd89e1ab0857",
-    "web-browser-result.json": "72f81acf79a1d094341fdf9fd5ccf2e6b78b3ba8c51cade127455d630d5c4a50"
+    "web-browser-result.json": "c8c114b8dd17a5afc21e51d5e74cac0f688e2cba74a962ca2f0d08b9ca5856b5",
+    "security-fix-javascript-tests.log": "7554416f9e282ca79cc5613d65c1328228e9fb081e5a896d45e548092cdddc8b"
+  },
+  "security_followup": {
+    "source_sha": "98def7ae6b3bc2a84f78cdca40027338201acc8f",
+    "codeql": "passed",
+    "proxy": "configuration-only host; separate bounded path",
+    "test_database_password": "private stdin pipe; no plaintext password file",
+    "javascript_passed": 318,
+    "web_checks_passed": 8
   }
 }
