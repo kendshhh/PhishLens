@@ -312,6 +312,10 @@ workflow. See [setup and debugging](docs/TFIDF_DEBUGGING.md),
 
 Quick developer checks: `npm run doctor`, `npm test`, `npm run lint`, and
 `npm run phishlens -- records-check`. Load `extension/` unpacked in Chrome.
+To review the side panel without loading the extension, run
+`npm run preview:sidebar` and open http://127.0.0.1:8767/. It runs the local check
+in the tab and makes no requests outside that local server; without the LLM review weights, results read
+"Uncertain — check before acting", and right-click selection needs the extension.
 Scanning stays local. Saving requires explicit upload consent and a matching
 `AI_MODE=tfidf` backend. Hosted configuration and databases are managed separately.
 

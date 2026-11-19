@@ -2,29 +2,56 @@
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PhishLens</title><link rel="stylesheet" href="css/popup.css"></head>
-<body><main class="container">
-<header class="app-header"><div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6v5.5c0 4.2 3.1 7.8 7.5 9.5 4.4-1.7 7.5-5.3 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.5 12 2.3 2.3 4.7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h1>PhishLens</h1><p class="subtitle">A second look before you click.</p></div></div><span class="privacy-badge">On-device scanning</span></header>
-<nav class="view-nav" aria-label="Main navigation"><button id="show-check" type="button" aria-controls="check-view" aria-pressed="true">Check email</button><button id="show-reports" type="button" aria-controls="reports-view" aria-pressed="false">Saved reports</button></nav>
+<body>
+<svg class="icon-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+ <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.2 3.1 7.8 7.5 9.5 4.4-1.7 7.5-5.3 7.5-9.5V6L12 3Z"/><path d="m8.5 12 2.3 2.3 4.7-5"/></symbol>
+ <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+ <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m4.5 7 7.5 6 7.5-6"/></symbol>
+ <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
+ <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5"/></symbol>
+ <symbol id="i-highlight" viewBox="0 0 24 24"><path d="m14.5 4.5 5 5-8.5 8.5H6v-5Z"/><path d="M4 21h16"/></symbol>
+ <symbol id="i-pointer" viewBox="0 0 24 24"><path d="m6 4 12.5 7-5.5 1.5L10.5 18Z"/><path d="m13 12.5 4.5 5"/></symbol>
+ <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3.5c.6 3.9 2.6 5.9 6.5 6.5-3.9.6-5.9 2.6-6.5 6.5-.6-3.9-2.6-5.9-6.5-6.5 3.9-.6 5.9-2.6 6.5-6.5Z"/><path d="M18.5 16v4M16.5 18h4"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5Z"/><path d="M14 3.5V8h4M9 12h6M9 15.5h6"/></symbol>
+ <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.6 3.2 17a2 2 0 0 0 1.7 3h14.2a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4M12 16.8v.2"/></symbol>
+ <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.3M12 16.6v.2"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.3 12.2 2.5 2.5 5-5.2"/></symbol>
+ <symbol id="i-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10 9v6M14 9v6"/></symbol>
+ <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 17.5h6M10 20.5h4"/><path d="M12 3.5a5.5 5.5 0 0 0-3.2 10c.7.5 1.2 1.3 1.2 2.2v.3h4v-.3c0-.9.5-1.7 1.2-2.2A5.5 5.5 0 0 0 12 3.5Z"/></symbol>
+ <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+ <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15 9-1.8 4.2L9 15l1.8-4.2Z"/></symbol>
+ <symbol id="i-save" viewBox="0 0 24 24"><path d="M6.5 3.5h9l3 3v11a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2Z"/><path d="M8 3.5V8h7V3.5M8 20v-5.5h8V20"/></symbol>
+ <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 11h6M9 14.5h4"/></symbol>
+ <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+ <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+ <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+ <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V5h5v2M6.5 7l1 13h9l1-13"/></symbol>
+ <symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4.5" width="16" height="6" rx="1.5"/><rect x="4" y="13.5" width="16" height="6" rx="1.5"/><path d="M7.5 7.5h.1M7.5 16.5h.1"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.2"/></symbol>
+</svg>
+<main class="container">
+<header class="app-header"><div class="brand"><span class="brand-mark" aria-hidden="true"><svg class="icon"><use href="#i-shield"/></svg></span><div><h1>PhishLens</h1><p class="subtitle">A second look before you click.</p></div></div><span class="privacy-badge"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>On-device</span></header>
+<nav class="view-nav" aria-label="Main navigation"><button id="show-check" type="button" aria-controls="check-view" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg>Check email</button><button id="show-reports" type="button" aria-controls="reports-view" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg>Saved reports</button></nav>
 
-<div class="account-bar"><span id="account-identity">Keep scanning without an account</span><button id="show-account" class="secondary compact-button" type="button" aria-controls="account-panel">Sign in</button></div>
+<div class="account-bar"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span id="account-identity">No account needed to scan</span><button id="show-account" class="secondary compact-button" type="button" aria-controls="account-panel">Sign in</button></div>
 <section id="account-panel" class="panel hidden" aria-label="Your account">
  <div class="reports-heading"><p class="eyebrow">YOUR ACCOUNT</p><button id="close-account" class="secondary compact-button" type="button" aria-label="Close account">Close</button></div>
  <p id="account-preview-notice" class="shared-notice hidden">Demo accounts only. No email is sent and no live account or personal report is created. Use fictional details.</p>
  <p id="account-status" role="status" aria-live="polite"></p>
- <form id="account-sign-in"><h2 id="account-sign-in-heading" tabindex="-1">Welcome back</h2><p class="intro">Sign in for your personal saved reports. Local scanning works without an account.</p>
+ <form id="account-sign-in"><h2 id="account-sign-in-heading" tabindex="-1">Welcome back</h2><p class="intro">Sign in to keep personal saved reports.</p>
  <label for="account-email">Email</label><input id="account-email" type="email" autocomplete="username" required maxlength="254">
  <label for="account-password">Password</label><input id="account-password" type="password" autocomplete="current-password" required>
  <button class="full-width" type="submit">Sign in</button><div class="actions"><button id="open-sign-up" class="link-button" type="button">Create an account</button><button id="open-recover" class="link-button" type="button">Forgot password?</button><button id="open-verify" class="link-button" type="button">Verify email</button></div></form>
  <form id="account-sign-up" class="hidden"><h2 id="account-sign-up-heading" tabindex="-1">Create your account</h2>
  <label for="signup-name">Name</label><input id="signup-name" autocomplete="name" required maxlength="100">
  <label for="signup-email">Email</label><input id="signup-email" type="email" autocomplete="email" required maxlength="254">
- <label for="signup-password">Password</label><input id="signup-password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="password-help"><p id="password-help" class="field-help">Use at least 8 characters. Live password requirements will follow the account provider.</p>
+ <label for="signup-password">Password</label><input id="signup-password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="password-help"><p id="password-help" class="field-help">At least 8 characters.</p>
  <button class="full-width" type="submit">Create account</button><button id="open-sign-in" class="link-button" type="button">Back to sign in</button></form>
  <form id="account-verify" class="hidden"><h2 id="account-verify-heading" tabindex="-1">Verify your email</h2><p class="intro">Enter the code sent to your email.</p>
  <label for="verify-email">Email</label><input id="verify-email" type="email" autocomplete="email" required>
  <label for="verify-code">Verification code</label><input id="verify-code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
  <button class="full-width" type="submit">Verify email</button><button id="resend-code" class="secondary full-width" type="button">Resend code</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
- <form id="account-recover" class="hidden"><h2 id="account-recover-heading" tabindex="-1">Reset your password</h2><p class="intro">We’ll send recovery instructions if an account exists.</p>
+ <form id="account-recover" class="hidden"><h2 id="account-recover-heading" tabindex="-1">Reset your password</h2><p class="intro">We’ll send instructions if an account exists.</p>
  <label for="recovery-email">Email</label><input id="recovery-email" type="email" autocomplete="email" required>
  <button class="full-width" type="submit">Send recovery instructions</button><button class="link-button" type="button" data-account-back>Back to sign in</button></form>
  <form id="account-reset" class="hidden"><h2 id="account-reset-heading" tabindex="-1">Choose a new password</h2>
@@ -37,53 +64,55 @@
 <div id="save-notice" class="save-notice"><p id="save-status" class="save-message" role="status" tabindex="-1"></p><button id="view-saved-report" class="secondary hidden" type="button">View report <span aria-hidden="true">→</span></button></div>
 <section id="check-view" aria-label="Check an email">
 <section id="selection-instructions" class="panel" aria-labelledby="scan-heading">
- <p class="eyebrow">CHECK AN EMAIL</p><h2 id="scan-heading">Highlight. Right-click. Check.</h2>
- <p class="intro">Get a second opinion without leaving your inbox.</p>
- <ol class="selection-steps"><li>Highlight the email text you want to check.</li><li>Right-click and choose <strong>Analyze selection with PhishLens</strong>.</li><li>PhishLens opens with your selected text and the result.</li></ol>
+ <h2 id="scan-heading">Highlight. Right-click. Check.</h2>
+ <ol class="selection-steps">
+  <li><span class="step-icon" aria-hidden="true"><svg class="icon"><use href="#i-highlight"/></svg></span><span>Highlight the email text.</span></li>
+  <li><span class="step-icon" aria-hidden="true"><svg class="icon"><use href="#i-pointer"/></svg></span><span>Right-click → <strong>Analyze selection with PhishLens</strong>.</span></li>
+  <li><span class="step-icon" aria-hidden="true"><svg class="icon"><use href="#i-sparkle"/></svg></span><span>See the result here.</span></li>
+ </ol>
 </section>
-<section id="selection-preview" class="panel hidden" aria-labelledby="selection-heading"><p class="eyebrow">YOUR SELECTION</p><h2 id="selection-heading">Email text being checked</h2><p id="selection-content" class="selection-content" tabindex="0" role="region" aria-label="Original email text; scroll to read more"></p><p class="field-help">This is the original highlighted or pasted text. Checking it does not upload it.</p></section>
-<section id="empty-state" class="empty-state"><span class="empty-symbol" aria-hidden="true">✓</span><h2>Your email stays with you</h2><p>Checking an email doesn’t upload it. You choose whether to save a report.</p></section>
-<section id="loading-state" class="panel loading-panel hidden" role="status"><span class="spinner" aria-hidden="true"></span><h2>Checking your selection…</h2><p id="workflow-progress">Reading the selected text…</p><p class="field-help">The first check can take longer while the local model loads.</p><button id="cancel-scan" class="secondary full-width" type="button">Cancel check</button><p id="cancel-status" role="status"></p></section>
-<section id="cancelled-state" class="panel hidden" role="status"><p class="eyebrow">CHECK CANCELLED</p><h2>Your text is still here</h2><p>No result was produced. You can check the same text again when you’re ready.</p><button id="resume-scan" class="full-width" type="button">Check again</button></section>
-<section id="error-state" class="panel error-panel hidden" role="alert"><p class="eyebrow">CHECK INCOMPLETE</p><h2>We couldn’t assess this email</h2><p id="error-message"></p><p class="field-help">Your original text is retained. Try checking it again.</p><button id="retry-scan" class="full-width" type="button">Try again</button></section>
+<section id="selection-preview" class="panel hidden" aria-labelledby="selection-heading"><h2 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><span id="selection-heading">Email text being checked</span></h2><p id="selection-content" class="selection-content" tabindex="0" role="region" aria-label="Original email text; scroll to read more"></p><p class="field-help with-icon"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>Not uploaded.</p></section>
+<section id="empty-state" class="empty-state"><span class="empty-symbol" aria-hidden="true"><svg class="icon"><use href="#i-lock"/></svg></span><h2>Your email stays with you</h2><p>Nothing is uploaded unless you save a report.</p></section>
+<section id="loading-state" class="panel loading-panel hidden" role="status"><span class="spinner" aria-hidden="true"></span><h2>Checking your selection…</h2><p id="workflow-progress">Reading the selected text…</p><p class="field-help">The first check may take a little longer.</p><button id="cancel-scan" class="secondary full-width" type="button">Cancel check</button><p id="cancel-status" role="status"></p></section>
+<section id="cancelled-state" class="panel hidden" role="status"><h2 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-pause"/></svg>Check cancelled</h2><p>Your text is still here. Check it again when you’re ready.</p><button id="resume-scan" class="full-width" type="button">Check again</button></section>
+<section id="error-state" class="panel error-panel hidden" role="alert"><h2 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>We couldn’t assess this email</h2><p id="error-message"></p><p class="field-help">Your text is kept. Try again.</p><button id="retry-scan" class="full-width" type="button">Try again</button></section>
 <section id="result-state" class="hidden" aria-live="polite">
- <div class="panel verdict-panel"><p class="eyebrow">YOUR RESULT</p><h2 id="classification" tabindex="-1"></h2><p id="assessment"></p><p id="coverage" class="field-help"></p><h3 class="action-label">Recommended next step</h3><p id="next-action" class="next-action"></p><div class="observations"><h3>What stood out</h3><ul id="evidence"></ul><details id="more-observations" class="inline-details hidden"><summary>More observations</summary><ul id="additional-evidence"></ul></details></div><p class="field-help">These are wording clues, not proof. A text check cannot verify the sender, hidden links, or attachments.</p></div>
- <div class="panel"><h2>More ways to verify</h2><ul id="recommendations" class="advice-list"></ul><details class="inline-details"><summary>What this check can’t tell you</summary><ul id="limitations"></ul></details></div>
- <div class="panel save-panel"><p class="eyebrow">KEEP A RECORD</p><h2>Save this report</h2><p id="report-save-state" class="unsaved-warning" role="status">Not saved yet. This result has no confirmed copy in Saved reports.</p><p class="intro">Personal report saving requires sign-in and uploads the <strong>original email text</strong>. Account saving is not connected yet; local scanning remains available.</p>
+ <div class="panel verdict-panel"><div class="verdict-head"><span class="verdict-icon" aria-hidden="true"><svg class="icon tone-uncertain"><use href="#i-help"/></svg><svg class="icon tone-suspicious"><use href="#i-alert"/></svg><svg class="icon tone-below"><use href="#i-check"/></svg></span><h2 id="classification" tabindex="-1"></h2></div><p id="assessment"></p><p id="coverage" class="field-help"></p><h3 class="action-label icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-compass"/></svg>Next step</h3><p id="next-action" class="next-action"></p><div class="observations"><h3 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>What stood out</h3><ul id="evidence"></ul><details id="more-observations" class="inline-details hidden"><summary>More observations</summary><ul id="additional-evidence"></ul></details></div><p class="field-help">Wording clues, not proof. Sender, links and attachments aren’t verified.</p></div>
+ <div class="panel"><h2 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-bulb"/></svg>More ways to verify</h2><ul id="recommendations" class="advice-list"></ul><details class="inline-details"><summary>What this check can’t tell you</summary><ul id="limitations"></ul></details></div>
+ <div class="panel save-panel"><h2 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg>Save this report</h2><p id="report-save-state" class="unsaved-warning" role="status">Not saved yet. This result has no confirmed copy in Saved reports.</p><p class="intro">Requires sign-in. Saving uploads the <strong>original email text</strong>.</p>
  <label for="report-subject">Report title <span class="muted">(optional)</span></label><input id="report-subject" maxlength="320" placeholder="e.g. Account verification email">
  <label class="consent"><input id="save-consent" type="checkbox"><span>I agree to upload this email text to save a report.</span></label>
  <button id="save-report" class="full-width" type="button">Save report</button></div>
 </section>
 <button id="clear-button" class="secondary full-width" type="button">Clear local scan</button>
-<details id="paste-panel" class="panel"><summary>Or paste email text</summary>
+<details id="paste-panel" class="panel"><summary><svg class="icon" aria-hidden="true"><use href="#i-paste"/></svg>Or paste email text</summary>
  <form id="scan-form">
   <label for="scan-body">Email text</label>
   <textarea id="scan-body" maxlength="30000" rows="5" required placeholder="Paste the complete email here…" aria-describedby="scan-help"></textarea>
-  <p id="scan-help" class="field-help">Checked on your device. Your draft stays for this browser session.</p>
+  <p id="scan-help" class="field-help">Checked on your device.</p>
   <button id="scan-button" class="primary full-width" type="submit">Check this email <span aria-hidden="true">→</span></button>
  </form>
  <p id="scan-status" role="status"></p>
 </details>
 </section>
 <section id="reports-view" class="hidden" aria-label="Saved reports">
-<section id="reports-account-gate" class="panel"><p class="eyebrow">PERSONAL REPORTS</p><h2>Your reports, in one place</h2><p class="intro">Sign in to view and save personal reports. You can still check email locally without an account.</p><button id="reports-sign-in" class="full-width" type="button">Sign in to view reports</button></section>
+<section id="reports-account-gate" class="panel"><h2 class="icon-heading"><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg>Your reports, in one place</h2><p class="intro">Sign in to view and save reports. Scanning works without an account.</p><button id="reports-sign-in" class="full-width" type="button">Sign in to view reports</button></section>
 <div id="personal-reports" class="hidden">
     <p id="crud-status" class="status hidden" role="status" aria-live="polite"></p>
     <div id="reports-list-view">
     <section class="panel history-panel" aria-labelledby="history-heading">
-      <p class="eyebrow">REPORT LIBRARY</p><div class="reports-heading"><h2 id="history-heading" tabindex="-1">Saved reports</h2><button id="load-history" class="secondary compact-button" type="button" aria-label="Refresh saved reports">↻ Refresh</button></div>
-      <p class="intro">Keep track of checks and your follow-up notes.</p>
-      <p class="shared-notice compact-notice"><strong>Account reports</strong> · Live account integration is pending. The demo preview uses synthetic records only.</p>
+      <div class="reports-heading"><h2 id="history-heading" tabindex="-1">Saved reports</h2><button id="load-history" class="secondary compact-button" type="button" aria-label="Refresh saved reports"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Refresh</button></div>
+      <p class="shared-notice compact-notice">Demo preview: synthetic records only.</p>
       <label class="search-label" for="report-search">Find a report</label><div class="report-search-control"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input id="report-search" type="search" placeholder="Search titles or summaries" autocomplete="off" aria-controls="history-list" aria-describedby="report-count"><button id="clear-report-search" class="search-clear hidden" type="button" aria-label="Clear report search">×</button></div>
       <p id="report-count" class="report-count" role="status">Load your saved reports to get started.</p>
       <p id="loading" class="hidden" role="status">Loading reports…</p>
-      <div id="empty" class="hidden library-empty"><span class="empty-symbol" aria-hidden="true">≡</span><h3>No reports yet</h3><p>Check an email, then save the result to keep it here.</p><button id="start-new-check" class="secondary" type="button">Check an email</button></div>
-      <div id="no-report-matches" class="hidden library-empty"><h3>No matching reports</h3><p>Try a different word, or clear your search to see all loaded reports.</p><button id="reset-report-search" class="secondary" type="button">Clear search</button></div>
+      <div id="empty" class="hidden library-empty"><span class="empty-symbol" aria-hidden="true"><svg class="icon"><use href="#i-folder"/></svg></span><h3>No reports yet</h3><p>Save a check to keep it here.</p><button id="start-new-check" class="secondary" type="button">Check an email</button></div>
+      <div id="no-report-matches" class="hidden library-empty"><h3>No matching reports</h3><p>Try another word or clear the search.</p><button id="reset-report-search" class="secondary" type="button">Clear search</button></div>
       <ul id="history-list" class="history-list"></ul>
     </section>
     <details id="server-create" class="panel" aria-labelledby="create-heading">
-      <summary id="create-heading">Analyze and save on the server</summary>
-      <p class="field-help">Alternative to a local check: this sends your text for server analysis and saves the result. Live account integration is pending.</p>
+      <summary id="create-heading"><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg>Analyze and save on the server</summary>
+      <p class="field-help">Sends your text to the PhishLens server for analysis and saves the result.</p>
       <form id="create-form">
         <label for="create-subject">Subject <span class="muted">(optional)</span></label>
         <input id="create-subject" name="subject" maxlength="320" autocomplete="off">
@@ -94,17 +123,17 @@
     </details>
     </div>
     <section id="detail-panel" class="panel hidden" aria-labelledby="detail-heading">
-      <button id="back-to-reports" class="back-button" type="button">← All reports</button>
-      <p class="eyebrow">SAVED REPORT</p><h2 id="detail-heading" tabindex="-1">Report details</h2><p id="report-mode-warning" class="mode-warning hidden"></p>
+      <button id="back-to-reports" class="back-button" type="button"><svg class="icon" aria-hidden="true"><use href="#i-arrow-left"/></svg>All reports</button>
+      <h2 id="detail-heading" tabindex="-1">Report details</h2><p id="report-mode-warning" class="mode-warning hidden"></p>
       <div id="detail-content"></div>
       <form id="edit-form" class="subpanel hidden">
         <h3>Edit notes</h3>
         <label for="edit-notes">Your notes</label>
         <textarea id="edit-notes" rows="3" maxlength="2000" placeholder="e.g. I contacted the sender and confirmed the request." aria-describedby="notes-help"></textarea>
-        <p id="notes-help" class="field-help">Keep track of what you checked. Notes are visible to anyone who can view this report.</p>
+        <p id="notes-help" class="field-help">Visible to anyone who can view this report.</p>
         <details id="edit-correction" class="correction-option">
           <summary>Think this result is wrong? <span class="muted">(optional)</span></summary>
-          <p class="field-help" id="feedback-help">Share your opinion. This won’t change the saved assessment or automatically update future checks.</p>
+          <p class="field-help" id="feedback-help">Your opinion won’t change the saved result or future checks.</p>
           <label for="edit-feedback">Your view of this email</label>
           <select id="edit-feedback" aria-describedby="feedback-help">
             <option value="none">No feedback to add</option>
@@ -128,5 +157,22 @@
     </section>
 </div>
 </section>
-<footer><p>Advisory text screening. Below threshold does not mean genuine. Sender identity, hidden links and attachments are not authenticated.</p><p>The selected-text scan runs locally. It is not sent to the API unless you choose Save report. The separate Analyze and save action sends the entered text to the configured PhishLens API; its returned analysis mode and provider are shown with the saved result.</p></footer>
-</main><script type="module" src="popup.js"></script></body></html>
+<footer><details class="about"><summary><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>About this check</summary><p>Advisory text screening only. A low score doesn’t mean the email is genuine, and the sender, hidden links and attachments aren’t verified.</p><p>Highlighted-text checks run on your device. Text is sent to the PhishLens server only when you save a report or use Analyze and save.</p></details></footer>
+</main>
+<div id="ghost" class="ghost" data-mood="calm" role="img" aria-label="PhishLens ghost: all calm">
+ <p id="ghost-bubble" class="ghost-bubble" aria-hidden="true"></p>
+ <span class="ghost-alert" aria-hidden="true">!</span>
+ <svg class="ghost-body" viewBox="0 0 80 96" aria-hidden="true" focusable="false">
+  <path class="ghost-shape" d="M40 6C21 6 10 21 10 40v40q5 9 10 0t10 0 10 0 10 0 10 0 10 0V40C70 21 59 6 40 6Z"/>
+  <ellipse class="ghost-cheek" cx="23" cy="52" rx="5" ry="3"/><ellipse class="ghost-cheek" cx="58" cy="53" rx="5" ry="3"/>
+  <path class="ghost-brow" d="M24 30q6-5 12 0"/><path class="ghost-brow ghost-brow-right" d="M44 28q6-5 12 0"/>
+  <g class="ghost-eye"><circle cx="30" cy="40" r="4.5"/><circle class="ghost-shine" cx="31.6" cy="38.4" r="1.4"/></g>
+  <g class="ghost-eye"><circle cx="50" cy="40" r="4.5"/><circle class="ghost-shine" cx="51.6" cy="38.4" r="1.4"/></g>
+  <circle class="ghost-monocle-glass" cx="50" cy="40" r="9.5"/>
+  <path class="ghost-monocle-chain" d="M58.5 45c4 6 4 13 1 21"/>
+  <path class="ghost-mouth-calm" d="M35.5 53q4.5 4 9 0"/>
+  <ellipse class="ghost-mouth-shocked" cx="40" cy="56" rx="4" ry="5"/>
+ </svg>
+ <span class="ghost-shadow" aria-hidden="true"></span>
+</div>
+<script type="module" src="popup.js"></script></body></html>
