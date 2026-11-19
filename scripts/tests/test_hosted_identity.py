@@ -229,9 +229,9 @@ class HostedIdentityTests(unittest.TestCase):
         hosted_job = workflow[hosted_start:]
         preflight_marker = "      - name: Recheck PR head immediately before deployment"
         preflight_start = hosted_job.index(preflight_marker)
-        deploy_start = hosted_job.index("      - name: Deploy PR merge commit using the trusted legacy script", preflight_start)
+        deploy_start = hosted_job.index("      - name: Deploy exact PR head using the trusted legacy script", preflight_start)
         preflight = hosted_job[preflight_start:deploy_start]
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+        marker = "      - name: Verify PR-head identity and package staging assets"
         start = hosted_job.index(marker)
         end = hosted_job.index("      - name: Preserve hosted staging evidence and extension", start)
         step = hosted_job[start:end]
@@ -267,7 +267,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("no deployment was started", result["summary"])
 
     def test_api_errors_during_hosted_verification_never_publish_success(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+        marker = "      - name: Verify PR-head identity and package staging assets"
         current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
         cases = (
             ("head lookup", APIError("GitHub HTTP 403 for pulls/68"), None),
@@ -289,7 +289,7 @@ class HostedIdentityTests(unittest.TestCase):
                 self.assertFalse(result["package_exists"])
 
     def test_hosted_finalizer_checks_mock_crud_but_not_ai_acceptance(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+        marker = "      - name: Verify PR-head identity and package staging assets"
         current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
         mock_result = {
             "result": "passed", "cleanedUp": True, "analysisMode": "mock",
@@ -320,7 +320,7 @@ class HostedIdentityTests(unittest.TestCase):
             [current_draft],
         )
         hosted = self.run_workflow_python(
-            "      - name: Verify deployed merge identity and package staging assets",
+            "      - name: Verify PR-head identity and package staging assets",
             [current_draft],
         )
 
