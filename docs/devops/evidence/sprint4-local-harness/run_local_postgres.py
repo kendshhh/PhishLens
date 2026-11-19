@@ -62,7 +62,7 @@ started = False
 try:
     run([BIN / "initdb.exe", "-D", DATA, "-U", "phishlens", "--pwprompt",
          "--auth=scram-sha-256", "--encoding=UTF8", "--no-locale"], "initdb.log",
-        input_bytes=(PASSWORD + "\n" + PASSWORD + "\n").encode("ascii"))
+        input_bytes=(PASSWORD + "\n" + PASSWORD + "\n").encode("ascii"), env={**ENV, "OSTYPE": "msys"})
     run([BIN / "pg_ctl.exe", "-D", DATA, "-l", EVIDENCE / "postgres.log", "-w", "-t", "30",
          "-o", f"-h 127.0.0.1 -p {PORT} -F", "start"], "start.log")
     started = True
