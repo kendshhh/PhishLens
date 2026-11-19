@@ -1,0 +1,285 @@
+{
+  "date": "2026-11-19",
+  "tested_source_sha": "ba67296af4023f89145fe2e509371ca6e9084462",
+  "os": "Windows-11-10.0.26300-SP0",
+  "status": "local_passed_release_pending",
+  "no_shared_service_requests": true,
+  "tests": {
+    "backend_and_scripts": {
+      "passed": 603,
+      "skipped": 2,
+      "subtests_passed": 157,
+      "warnings": 2
+    },
+    "separate_seed_and_cleanup_optins": 2,
+    "javascript": 318,
+    "packaged_extension_browser": 18,
+    "web_browser": 8,
+    "ai_contracts": 114,
+    "ai_subtests": 36
+  },
+  "postgres": {
+    "postgres_version": "PostgreSQL 17.12 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "migration_head_first": "0004_neon_auth_subject",
+    "migration_head_second": "0004_neon_auth_subject",
+    "post_test_fixture_counts": "0|0",
+    "seed_runs": [
+      {
+        "summary": "1|1|Synthetic account notice|t",
+        "fingerprint_sha256": "3651d426e4dc044d939f7830f4b09ce5407a481545e319d1ed21e39dbe2f9f92"
+      },
+      {
+        "summary": "1|1|Synthetic account notice|t",
+        "fingerprint_sha256": "3651d426e4dc044d939f7830f4b09ce5407a481545e319d1ed21e39dbe2f9f92"
+      }
+    ],
+    "after_optin_seed_counts": "1|1",
+    "dump_restore": "full migration head, counts and row fingerprints match",
+    "postgres_stopped": true
+  },
+  "web": {
+    "source_sha": "ba67296af4023f89145fe2e509371ca6e9084462",
+    "scope": "Loopback web + real FastAPI/TF-IDF/PostgreSQL; substituted Auth SDK/provider/key retrieval. No hosted Auth, cookie, OTP or Vercel acceptance.",
+    "tests": [
+      {
+        "name": "real browser local scan stays local and survives tab reload as Uncertain",
+        "result": "passed"
+      },
+      {
+        "name": "Synthetic A: server TF-IDF save and provenance",
+        "result": "passed"
+      },
+      {
+        "name": "Synthetic B: server TF-IDF save and provenance",
+        "result": "passed"
+      },
+      {
+        "name": "two-account list/detail/PATCH/DELETE isolation against PostgreSQL",
+        "result": "passed"
+      },
+      {
+        "name": "notes persist after a fresh page and same-account read",
+        "result": "passed"
+      },
+      {
+        "name": "provider failure cannot restore a signed-out account after reload",
+        "result": "passed"
+      },
+      {
+        "name": "record cleanup and final 404s",
+        "result": "passed"
+      },
+      {
+        "name": "phone layout and visible keyboard focus",
+        "result": "passed"
+      }
+    ],
+    "network": [
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/analyses",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/analyses",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-2",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-2",
+        "status": 404
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/analyses/synthetic-report-2",
+        "status": 404
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/analyses/synthetic-report-2",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 404
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 404
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 200
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-1",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/analyses/synthetic-report-2",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses/synthetic-report-2",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/analyses",
+        "status": 200
+      }
+    ],
+    "blocked_external_requests": [],
+    "result": "passed",
+    "browser": "157.0.4341.60"
+  },
+  "web_cleanup": {
+    "final_counts": "0|0",
+    "postgres_stopped": true,
+    "temporary_token_key_password_files_removed": true
+  },
+  "historical_replay": {
+    "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "cohort_sha256": "005a67455b0f31f7f7e59be6b8949bcfd5dadb1a539ba1af8fae8eee5f9e27de",
+    "archived_counts": {
+      "tp": 190,
+      "fp": 1,
+      "tn": 999,
+      "fn": 10
+    },
+    "classifier_inferences": 1200,
+    "roles_verified": 6,
+    "saved_prediction_rows_reconciled": 3600,
+    "max_replay_margin_delta": 9.769962616701378e-15,
+    "max_replay_score_delta": 1.1102230246251565e-15
+  },
+  "development": {
+    "caseset": "synthetic-v1",
+    "cases_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+    "requested_cases": 40,
+    "successful": 40,
+    "errors": 0,
+    "phishing_tp": 3,
+    "phishing_cases": 16,
+    "legitimate_false_positives": 1,
+    "legitimate_cases": 16,
+    "spam_phishing_alerts": 0,
+    "spam_cases": 8,
+    "cold_seconds": 0.10180770000442863,
+    "p50_seconds": 0.000296,
+    "p95_seconds": 0.000706,
+    "spend_guard": {
+      "provider_calls": 0,
+      "status": "not_applicable"
+    },
+    "peak_process_rss_mb": null
+  },
+  "quality": {
+    "primary_synthetic_phishing_detected": 1,
+    "primary_synthetic_phishing_cases": 12,
+    "diagnostic_source_date": "2026-11-18",
+    "rescored_today": false,
+    "actual_mail_screening": "unassessed",
+    "broad_acceptance": "not_passed"
+  },
+  "required_lint": "backend/secretary Ruff and JavaScript ESLint passed",
+  "exploratory_lint": "19 pre-existing failures in scripts outside required lint scope",
+  "hosted_acceptance": "not_run",
+  "vercel_cli": "66.2.0 logged out",
+  "github_actor": "EnviousCoal",
+  "github_projects_access": "INSUFFICIENT_SCOPES: read:project required",
+  "private_log_hashes": {
+    "final-javascript-tests.log": "a360738cc5ec0bacfbc65494a72bac2cec562c4849410fafdccfec4b2c9c7af3",
+    "current-contracts.xml": "152abf6e0325def29d655efce2f925c129976a3c82476ce9f43ed51e964c168b",
+    "development-benchmark.jsonl": "5a7f5597144b50a0a0daa53b59c6cc57509d40ed313cc4f7c6e259753e876ff1",
+    "client-errors.log": "7eaf474783e63b944c53920b542ddf03940241ce1daff87eeba8cd89e1ab0857",
+    "web-browser-result.json": "72f81acf79a1d094341fdf9fd5ccf2e6b78b3ba8c51cade127455d630d5c4a50"
+  }
+}
