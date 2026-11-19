@@ -238,7 +238,7 @@ class HostedIdentityTests(unittest.TestCase):
 
         self.assertIn("current['head']['sha'] == expected", preflight)
         self.assertIn("steps.staging-final-preflight.outputs.current == 'true'", hosted_job[deploy_start:start])
-        self.assertIn("STAGING_COMMIT: ${{ github.sha }}", step)
+        self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
         self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
