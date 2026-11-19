@@ -10,6 +10,16 @@ function failure(status, code) {
   return Object.assign(new Error(message), { status });
 }
 
+function providerFailure(error) {
+  // The pinned SDK can throw a normalized AuthError with the raw HTTP details
+  // under .error, as well as return a Better Auth error result.
+  const details = error?.error && typeof error.error === 'object' ? error.error : error;
+  const status = Number(details?.status) || Number(error?.status) || 503;
+  const code = details?.code;
+  const duplicate = status === 422 && code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL';
+  return failure(duplicate ? 409 : status === 422 ? 400 : status, code);
+}
+
 export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, signOutStorage } = {}) {
   let epoch = 0, signedOut = false;
   async function call(action) {
@@ -18,14 +28,11 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
       result = await Promise.race([action(), new Promise((_, reject) => {
         timer = setTimeout(() => reject(failure(503)), timeoutMs);
       })]);
-    } catch {
-      throw failure(503);
+    } catch (error) {
+      throw providerFailure(error);
     } finally { clearTimeout(timer); }
     if (result?.error) {
-      const { code } = result.error;
-      const status = Number(result.error.status);
-      const duplicate = status === 422 && code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL';
-      throw failure(duplicate ? 409 : status === 422 ? 400 : status || 503, code);
+      throw providerFailure(result.error);
     }
     return result?.data;
   }

@@ -1,3 +1,3 @@
-// Remains disabled until database pairing, exact host permission and provider
-// trusted extension origin have been verified during a coordinated test window.
+// Enable in a paired build after verifying the backend HTTPS bridge, its Neon
+// trusted domain, database pairing and exact host permissions.
 export const AUTH_CONFIG = null;

@@ -83,6 +83,25 @@ test('rejects opaque, expired, or mismatched tokens without returning them', asy
   }
 });
 
+test('actual SDK HTTP failures preserve safe invalid-credentials, duplicate and expired-code errors', async () => {
+  const original = globalThis.fetch;
+  const errors = [
+    [401, 'INVALID_EMAIL_OR_PASSWORD', 401, /Email or password/],
+    [422, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 409, /Try signing in/],
+    [400, 'OTP_EXPIRED', 400, /This code expired/],
+    [429, 'TOO_MANY_REQUESTS', 429, /Too many attempts/]
+  ];
+  try {
+    for (const [status, code, expectedStatus, message] of errors) {
+      globalThis.fetch = async () => Response.json({ code, message: 'private-provider-value' }, { status });
+      const { adapter } = createNeonIntegration({ apiOrigin,
+        config: { enabled: true, authUrl, database: 'test', apiOrigin }, hostPermissions: [origin + '/*'] });
+      await assert.rejects(adapter.resend({ email: user.email }), error =>
+        error.status === expectedStatus && message.test(error.message) && !error.message.includes('private-provider-value'));
+    }
+  } finally { globalThis.fetch = original; }
+});
+
 test('service errors are sanitized and bounded; rate limits retain useful status', async () => {
   const adapter = createNeonAccounts({ getSession: async () => ({ error: { status: 429, message: 'secret token' } }) });
   await assert.rejects(adapter.restore(), error => error.status === 429 && !error.message.includes('secret'));

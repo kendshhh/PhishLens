@@ -326,6 +326,29 @@ class StagingPackageVerificationTests(unittest.TestCase):
             source_manifest,
         )
 
+    def test_https_bridge_overlay_records_and_verifies_the_required_https_domain(self):
+        root = Path(__file__).resolve().parents[2]
+        manifest_key = json.loads((root / "extension/manifest.json").read_text())["key"]
+        auth_url = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "PhishLens-Staging-Auth.zip"
+            evidence = Path(directory) / "evidence.json"
+            sha = checkout_revision(root)
+            built = build_package(root, archive, evidence, sha, auth_url=auth_url,
+                                  auth_database="neondb", manifest_key=manifest_key, auth_transport="https-bridge")
+            verify(archive, evidence, sha)
+            self.assertEqual(built["required_neon_trusted_origin"], STAGING_ORIGIN)
+            self.assertIsNone(built["trusted_chrome_origin"])
+            with ZipFile(archive) as package:
+                self.assertIn("js/neon-bridge-client.js", package.namelist())
+                config = package.read("js/auth-config.js").decode()
+                self.assertIn('"transport":"https-bridge"', config)
+                self.assertIn('"bridgeUrl":"' + STAGING_ORIGIN + '/auth/bridge"', config)
+            built["auth_bridge_url"] = "https://attacker.example.test/auth/bridge"
+            evidence.write_text(json.dumps(built))
+            with self.assertRaisesRegex(ValueError, "bridge does not match"):
+                verify(archive, evidence, sha)
+
     def test_auth_overlay_rejects_a_key_that_differs_from_the_source_manifest(self):
         root = Path(__file__).resolve().parents[2]
         source_manifest = json.loads((root / "extension/manifest.json").read_text())

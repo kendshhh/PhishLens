@@ -21,11 +21,13 @@ from backend.ai.schemas import (
 )
 from backend.ai.service import AIService
 from backend.ai.spend_limit import GeminiSpendPolicy, SpendLimitExceeded
+from backend.app.routers.auth_bridge import router as auth_bridge_router
 from backend.app.routers.history import router as history_router
 from backend.core.config import PROJECT_ROOT, get_ai_config
 
 app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
+app.include_router(auth_bridge_router)
 
 
 def analysis_error(
