@@ -10,7 +10,7 @@
   "scripts": {
     "test": "node --test extension/tests/*.test.mjs web/tests/*.test.mjs",
     "test:browser": "node scripts/browser_acceptance.mjs",
-    "lint": "eslint extension/ web/ scripts/build_web.mjs scripts/serve_web.mjs",
+    "lint": "eslint extension/ web/ scripts/build_web.mjs scripts/serve_web.mjs scripts/web_build_config.mjs",
     "validate": "python scripts/validate_extension.py",
     "package": "python scripts/package_extension.py",
     "web:build": "node scripts/build_web.mjs",

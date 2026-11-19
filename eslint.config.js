@@ -37,11 +37,11 @@ export default [
     rules: { "no-undef": "error", "no-unused-vars": "error", "eqeqeq": ["error", "always", { null: "ignore" }] }
   },
   {
-    files: ["web/tests/*.mjs", "scripts/build_web.mjs", "scripts/serve_web.mjs"],
+    files: ["web/tests/*.mjs", "scripts/build_web.mjs", "scripts/serve_web.mjs", "scripts/web_build_config.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
-      globals: { console: "readonly", process: "readonly", setTimeout: "readonly", URL: "readonly" }
+      globals: { console: "readonly", process: "readonly", setTimeout: "readonly", URL: "readonly", Buffer: "readonly", AbortSignal: "readonly", fetch: "readonly" }
     },
     rules: { "no-undef": "error", "no-unused-vars": "error" }
   },

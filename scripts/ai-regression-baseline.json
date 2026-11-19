@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "approved_by": "EnviousCoal",
-  "approved_date": "2026-11-18",
+  "approved_date": "2026-11-19",
   "policy_reference": "https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424",
   "policy": "Every reviewed contract must pass exactly once with zero missing/failed/errored/skipped tests. Every development case must finish with valid output and zero external provider calls. This is not a model-quality threshold.",
   "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
@@ -22,11 +22,11 @@
     "scripts/tests/test_ai_provider_smoke.py"
   ],
   "required_tests": [
-    "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[None]",
     "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[]",
-    "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[not json]",
     "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[{\"classification\":\"phishing\",\"confidence\":0.99}]",
     "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[{\"classification\":\"safe\"}]",
+    "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[None]",
+    "backend.tests.test_ai_providers::test_bad_google_output_is_not_a_safe_verdict[not json]",
     "backend.tests.test_ai_providers::test_daily_quota_is_distinct_from_a_temporary_rate_limit",
     "backend.tests.test_ai_providers::test_evaluation_budget_requires_exact_request_limit",
     "backend.tests.test_ai_providers::test_evaluation_budget_requires_rates_for_exact_selected_model",
@@ -57,6 +57,7 @@
     "backend.tests.test_ai_providers::test_phishing_in_later_window_is_detected[2000]",
     "backend.tests.test_ai_providers::test_phishing_in_later_window_is_detected[2001]",
     "backend.tests.test_ai_providers::test_phishing_in_later_window_is_detected[25000]",
+    "backend.tests.test_ai_providers::test_saved_create_gemini_timeout_keeps_single_sdk_attempt",
     "backend.tests.test_ai_service::test_benchmark_metrics_count_errors_as_failed_opportunities",
     "backend.tests.test_ai_service::test_benchmark_rejects_duplicate_paid_models_before_starting_workers",
     "backend.tests.test_ai_service::test_benchmark_stops_at_daily_quota_without_inventing_missing_scores",

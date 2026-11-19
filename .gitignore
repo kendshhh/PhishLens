@@ -40,3 +40,6 @@ datasets/private/
 /extension/key.pem
 # Generated static web app build (npm run web:build)
 /web/dist/
+/web/.build-routing.json
+/.vercel/
+/.review-env/

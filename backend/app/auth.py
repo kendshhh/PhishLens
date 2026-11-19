@@ -1,6 +1,7 @@
 """Neon JWT verification and server-owned report identity."""
 import os
 from functools import lru_cache
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 import jwt
@@ -78,8 +79,13 @@ def resolve_user(subject, email):
         raise HTTPException(503, "Account storage temporarily unavailable") from None
 
 
-def report_owner(authorization: str | None = Header(default=None)):
-    if auth_mode() == "demo":
+def report_owner(authorization: Annotated[str | None, Header()] = None,
+                 required_auth_mode: Annotated[Literal["neon"] | None,
+                                               Header(alias="X-Require-Auth-Mode")] = None):
+    mode = auth_mode()
+    if required_auth_mode is not None and mode != required_auth_mode:
+        raise HTTPException(503, "Required account service is unavailable")
+    if mode == "demo":
         return None
     parts = (authorization or "").split()
     if len(parts) != 2 or parts[0].lower() != "bearer" or len(parts[1]) > 16384:

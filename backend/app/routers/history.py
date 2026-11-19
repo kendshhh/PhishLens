@@ -21,7 +21,7 @@ from backend.app.auth import report_owner
 from backend.app.routers.saved_create import router as saved_create_router
 from backend.models import AnalyzedEmail, User
 
-router = APIRouter(prefix="/api", tags=["History"])
+router = APIRouter(prefix="/api", tags=["History"], dependencies=[Depends(report_owner)])
 router.include_router(saved_create_router)
 
 DEMO_USER_EMAIL = "demo@phishlens.test"

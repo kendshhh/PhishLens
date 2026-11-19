@@ -27,6 +27,6 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
   };
   const adapter = createNeonAccounts(sdk, { signOutStorage });
   return { adapter, createClient: session => createAnalysisClient(apiOrigin, fetchImpl, {
-    requiredModel: MODEL_SHA256, getAccessToken: () => adapter.getAccessToken(session.user.id)
+    requiredModel: MODEL_SHA256, requiredAuthMode: 'neon', getAccessToken: () => adapter.getAccessToken(session.user.id)
   }) };
 }

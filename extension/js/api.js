@@ -126,12 +126,15 @@ export async function getAnalyses(baseUrl) {
     return data.items;
 }
 
-export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel, getAccessToken } = {}) {
+export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel, getAccessToken, requiredAuthMode } = {}) {
     if (!Number.isSafeInteger(createTimeoutMs) || createTimeoutMs < 1 || createTimeoutMs > 2147483647) {
         throw new Error('Create timeout must be a positive integer in milliseconds');
     }
     if (getAccessToken !== undefined && typeof getAccessToken !== 'function') {
         throw new TypeError('getAccessToken must be a function');
+    }
+    if (requiredAuthMode !== undefined && (requiredAuthMode !== 'neon' || getAccessToken === undefined)) {
+        throw new TypeError('Required account mode needs a Neon token provider');
     }
     const url = baseUrl.replace(/\/+$/, '') + '/api/analyses';
     const pendingCreateKeys = new Map();
@@ -155,10 +158,11 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
             }
             authorization = { Authorization: 'Bearer ' + token };
         }
-        const options = { method, signal: AbortSignal.timeout(timeoutMs), redirect: 'error' };
-        if (authorization) options.headers = authorization;
+        const options = { method, signal: AbortSignal.timeout(timeoutMs), redirect: 'error', credentials: 'omit' };
+        const accountHeaders = requiredAuthMode ? { 'X-Require-Auth-Mode': requiredAuthMode } : {};
+        if (authorization || requiredAuthMode) options.headers = { ...authorization, ...accountHeaders };
         if (body !== undefined) {
-            options.headers = { 'Content-Type': 'application/json', ...headers, ...authorization };
+            options.headers = { 'Content-Type': 'application/json', ...headers, ...authorization, ...accountHeaders };
             options.body = JSON.stringify(body);
         }
         const response = await fetchImpl(path, options);

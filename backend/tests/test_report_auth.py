@@ -25,6 +25,29 @@ from backend.models import AnalyzedEmail, Base, User
 BASE = "https://auth.example.test/test/auth"
 ORIGIN = "https://auth.example.test"
 
+
+@pytest.mark.parametrize("method,path,body", [
+    ("GET", "/api/analyses", None),
+    ("GET", "/api/analyses/00000000-0000-0000-0000-000000000001", None),
+    ("POST", "/api/analyses", {"body": "Synthetic email"}),
+    ("PATCH", "/api/analyses/00000000-0000-0000-0000-000000000001", {"notes": "test"}),
+    ("DELETE", "/api/analyses/00000000-0000-0000-0000-000000000001", None),
+])
+def test_neon_client_rejects_demo_service_before_database(monkeypatch, method, path, body):
+    monkeypatch.setenv("REPORT_AUTH_MODE", "demo")
+    def forbidden_database():
+        raise AssertionError("Wrong-mode account request touched the database")
+    old = app.dependency_overrides.copy()
+    app.dependency_overrides[get_db] = forbidden_database
+    try:
+        with TestClient(app) as client:
+            response = client.request(method, path, json=body,
+                headers={"X-Require-Auth-Mode": "neon", "Authorization": "Bearer synthetic"})
+        assert response.status_code == 503
+        assert response.json() == {"detail": "Required account service is unavailable"}
+    finally:
+        app.dependency_overrides = old
+
 @pytest.fixture
 def signed(monkeypatch):
     monkeypatch.setenv("REPORT_AUTH_MODE", "neon")
