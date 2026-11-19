@@ -1,8 +1,10 @@
 # Local evidence harness (Windows)
 
-These are the exact one-off November 19 harnesses with one portability change:
-the PostgreSQL binary directory now comes from `PHISHLENS_TEST_PG_BIN` instead of
-the author's existing local archive path. They never use a shared database.
+These are the one-off November 19 harnesses with the PostgreSQL binary directory
+set by `PHISHLENS_TEST_PG_BIN` instead of the author's archive path. Following
+CodeQL review, `initdb --pwprompt` now receives its random password through a
+private stdin pipe, without writing a plaintext password file. They never use a
+shared database.
 
 Prerequisites: Python 3.12, Node 24, Git, uv (or install the identical pinned dev
 requirements with pip), PostgreSQL 17 binaries and installed Microsoft Edge.
@@ -27,7 +29,7 @@ Use a new output directory when reproducing. `run_local_postgres.py` verifies
 migration, seed, full regressions and dump/restore. `run_web_postgres.py` runs the
 browser journey. Each creates its own SCRAM-authenticated loopback-only cluster
 with a random port and password, stops its API/database processes in `finally`,
-and removes temporary password/key/token fixture files. Retained clusters contain
+  and removes temporary key/token fixture files. Retained clusters contain
 only synthetic data. Do not publish raw logs or cluster directories. Share only
 reviewed redacted aggregates and synthetic screenshots.
 

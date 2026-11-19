@@ -24,8 +24,6 @@ EVIDENCE = ROOT / ("postgres-" + uuid.uuid4().hex)
 EVIDENCE.mkdir()
 DATA = EVIDENCE / "data"
 PASSWORD = secrets.token_hex(24)
-PASSWORD_FILE = EVIDENCE / "password.tmp"
-PASSWORD_FILE.write_text(PASSWORD, encoding="ascii")
 with socket.socket() as listener:
     listener.bind(("127.0.0.1", 0))
     PORT = listener.getsockname()[1]
@@ -42,12 +40,12 @@ RESULT = {"source_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], cw
           "os": platform.platform(), "host": "127.0.0.1", "port": PORT, "commands": []}
 
 
-def run(args, log, env=ENV, timeout=120):
+def run(args, log, env=ENV, timeout=120, input_bytes=None):
     start = time.perf_counter()
     raw_log = EVIDENCE / (log + ".raw")
     with raw_log.open("wb") as stream:
         process = subprocess.run([str(a) for a in args], cwd=SOURCE, env=env,
-                                 stdin=subprocess.DEVNULL, stdout=stream,
+                                 stdin=subprocess.DEVNULL if input_bytes is None else None, input=input_bytes, stdout=stream,
                                  stderr=subprocess.STDOUT, timeout=timeout,
                                  creationflags=subprocess.CREATE_NO_WINDOW)
     output = raw_log.read_bytes().decode("utf-8", errors="replace").replace(PASSWORD, "[redacted]")
@@ -71,12 +69,12 @@ backend_process = None
 fixture = ROOT / "web-fixture.private.json"
 public_file = ROOT / "web-test-public.pem"
 try:
-    run([BIN / "initdb.exe", "-D", DATA, "-U", "phishlens", "--pwfile", PASSWORD_FILE,
-         "--auth=scram-sha-256", "--encoding=UTF8", "--no-locale"], "initdb.log")
+    run([BIN / "initdb.exe", "-D", DATA, "-U", "phishlens", "--pwprompt",
+         "--auth=scram-sha-256", "--encoding=UTF8", "--no-locale"], "initdb.log",
+        input_bytes=(PASSWORD + "\n" + PASSWORD + "\n").encode("ascii"))
     run([BIN / "pg_ctl.exe", "-D", DATA, "-l", EVIDENCE / "postgres.log", "-w", "-t", "30",
          "-o", f"-h 127.0.0.1 -p {PORT} -F", "start"], "start.log")
     started = True
-    PASSWORD_FILE.unlink()
     sql("postgres", "CREATE DATABASE phishlens_s2_t1_test;", "create-test-db.log")
     test_env = {**ENV, "DATABASE_URL": f"postgresql+psycopg://phishlens:{PASSWORD}@127.0.0.1:{PORT}/phishlens_s2_t1_test"}
     test_env["MIGRATIONS_DATABASE_URL"] = test_env["DATABASE_URL"]
@@ -131,7 +129,6 @@ finally:
         RESULT["postgres_stopped"] = True
     fixture.unlink(missing_ok=True)
     public_file.unlink(missing_ok=True)
-    PASSWORD_FILE.unlink(missing_ok=True)
     (ROOT / "web-postgres-result.json").write_text(json.dumps(RESULT, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"evidence": str(EVIDENCE), "status": RESULT.get("status", "failed"), "cleanup": RESULT.get("cleanup_counts")}, indent=2))
 

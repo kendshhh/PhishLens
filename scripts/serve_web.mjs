@@ -1,6 +1,7 @@
 // Local preview of the generated static files and fixed-destination API routes.
 // This server is loopback-only; it is not the production server.
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,9 +23,11 @@ export function createPreviewServer(config, { directory = dist } = {}) {
     if (!rule.src || !new RegExp(rule.src).test(urlPath) || (rule.methods && !rule.methods.includes(request.method))) continue;
     Object.assign(headers, rule.headers);
     if (!rule.dest) continue;
-    // Never resolve a user-supplied URL. The build validated the fixed origin.
-    const destination = new URL(urlPath.replace(new RegExp(rule.src), rule.dest));
-    destination.search = incoming.search;
+    // The upstream hostname is configuration only. User input supplies a path,
+    // never a full request URL, even after regex substitution/normalization.
+    const upstream = new URL(rule.dest.replace(/\$\d+/g, ''));
+    const upstreamPath = urlPath.replace(new RegExp(rule.src), rule.dest.slice(upstream.origin.length)) + incoming.search;
+    if (!upstreamPath.startsWith('/') || upstreamPath.startsWith('//')) { response.writeHead(400, headers).end(); return; }
     try {
       const forwarded = { ...request.headers };
       for (const name of ['host', 'cookie', 'connection', 'transfer-encoding', 'content-length', 'accept-encoding']) delete forwarded[name];
@@ -34,14 +37,24 @@ export function createPreviewServer(config, { directory = dist } = {}) {
         if (size > 131072) { response.writeHead(413, headers).end(); return; }
         chunks.push(chunk);
       }
-      const body = chunks.length ? Buffer.concat(chunks) : undefined;
-      const upstream = await fetch(destination, { method: request.method, headers: forwarded, body,
-        redirect: 'manual', signal: AbortSignal.timeout(30000) });
-      const result = await upstream.arrayBuffer();
-      // Never relay provider cookies or internal diagnostics to the web origin.
-      response.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'application/json', ...headers });
-      response.end(Buffer.from(result));
-    } catch { response.writeHead(502, { 'Content-Type': 'application/json', ...headers }).end('{"detail":"API temporarily unavailable"}'); }
+      await new Promise((resolve, reject) => {
+        const send = upstream.protocol === 'https:' ? httpsRequest : httpRequest;
+        const proxied = send({ protocol: upstream.protocol, hostname: upstream.hostname,
+          port: upstream.port, path: upstreamPath, method: request.method, headers: forwarded,
+          signal: AbortSignal.timeout(30000) }, result => {
+          // Node's native request never follows redirects. Never relay cookies.
+          response.writeHead(result.statusCode, { 'Content-Type': result.headers['content-type'] || 'application/json', ...headers });
+          result.on('error', reject);
+          result.on('end', resolve);
+          result.pipe(response);
+        });
+        proxied.on('error', reject);
+        proxied.end(chunks.length ? Buffer.concat(chunks) : undefined);
+      });
+    } catch {
+      if (response.headersSent) response.destroy();
+      else response.writeHead(502, { 'Content-Type': 'application/json', ...headers }).end('{"detail":"API temporarily unavailable"}');
+    }
     return;
   }
   if (!['GET', 'HEAD'].includes(request.method)) { response.writeHead(405, headers).end(); return; }
