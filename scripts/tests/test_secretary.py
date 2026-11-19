@@ -325,6 +325,58 @@ class GitHubPaginationTests(unittest.TestCase):
 
 
 class PreviewTests(unittest.TestCase):
+    def test_neon_preflight_keeps_saved_report_verification_pending(self):
+        from scripts.secretary.preview import main
+
+        data = fixture()
+        api = Mock(repo="kendshhh/PhishLens")
+        api.pages.return_value = []
+        api.pull_request_files.return_value = data["files"]
+        responses = {"pulls/123": data["pr"], "check-runs": {"id": 1}, "deployments": {"id": 2}}
+        api.request.side_effect = lambda path, *args: responses.get(path, [])
+        event = {"workflow_run": {"id": 7, "event": "pull_request", "head_sha": SHA,
+                                  "conclusion": "success", "pull_requests": [{"number": 123}]}}
+        service = CONFIG["staging_service"]
+        render = {
+            f"services/{service}": {},
+            f"services/{service}/env-vars?limit=100": render_staging_environment_rows(REPORT_AUTH_MODE="neon"),
+            f"services/{service}/deploys": {"id": "fixture"},
+            f"services/{service}/deploys/fixture": {"status": "live", "commit": {"id": SHA}},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            (root / ".github/secretary.json").write_text(json.dumps(CONFIG))
+            event_path = root / "event.json"
+            event_path.write_text(json.dumps(event))
+            settings = {"GITHUB_EVENT_PATH": str(event_path), "GITHUB_RUN_ID": "7",
+                        "SECRETARY_PREVIEW_ENABLED": "true", "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
+                        "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST}
+            with (patch.dict(os.environ, settings, clear=True),
+                  patch("scripts.secretary.preview.ROOT", root),
+                  patch("scripts.secretary.preview.GitHub", return_value=api),
+                  patch("scripts.secretary.preview.latest_jobs", return_value=(data["jobs"], {"id": 7})),
+                  patch("scripts.secretary.preview.verify_service"),
+                  patch("scripts.secretary.preview.render_request", side_effect=lambda path, *args: render[path]),
+                  patch("scripts.secretary.preview.smoke", return_value={"history": "authentication_required"}) as smoke,
+                  patch("scripts.secretary.preview.verify_saved_report") as crud,
+                  patch("scripts.secretary.preview.package") as build):
+                main()
+            evidence = json.loads((root / "output/secretary/preview-evidence.json").read_text())
+        smoke.assert_called_once_with(CONFIG["staging_origin"], SHA, report_auth_mode="neon")
+        crud.assert_not_called()
+        build.assert_not_called()
+        self.assertEqual(evidence["result"], "action_required")
+        self.assertEqual(evidence["report_auth_mode"], "neon")
+        self.assertEqual(evidence["smoke"]["history"], "authentication_required")
+        self.assertEqual(evidence["authenticated_saved_report"], "pending")
+        status_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
+                        if entry.args[0] == "statuses/" + SHA]
+        deployment_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
+                            if entry.args[0] == "deployments/2/statuses"]
+        self.assertEqual(status_calls, ["pending", "failure"])
+        self.assertEqual(deployment_calls, ["in_progress", "pending"])
+
     def test_duplicate_verified_deployment_republishes_required_context(self):
         from scripts.secretary.preview import main
 

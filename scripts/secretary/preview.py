@@ -132,15 +132,23 @@ def verify_environment(rows):
         raise RuntimeError("Staging migration and runtime credentials must use separate roles")
     if values.get("APP_ENV") != "staging" or values.get("AI_MODE", "mock") not in {"mock", "tfidf"}:
         raise RuntimeError("Pilot requires APP_ENV=staging and AI_MODE=mock or tfidf; external providers are blocked")
+    report_auth_mode = values.get("REPORT_AUTH_MODE", "demo")
+    if report_auth_mode not in {"demo", "neon"}:
+        raise RuntimeError("Staging report authentication must use demo or neon mode")
+    return report_auth_mode
 
 
-def smoke(origin, sha):
+def smoke(origin, sha, *, report_auth_mode="demo"):
     # No production writes and no live-provider inference. Retry startup only.
+    uses_neon = report_auth_mode == "neon"
+    paths = ("/health", "/ready", "/version")
+    if not uses_neon:
+        paths += ("/api/analyses",)
     deadline = time.monotonic() + 180
     while True:
         try:
             values = {}
-            for path in ("/health", "/ready", "/version", "/api/analyses"):
+            for path in paths:
                 req = urllib.request.Request(origin + path, headers={"Cache-Control": "no-cache"})
                 with urllib.request.urlopen(req, timeout=20) as response:
                     values[path] = json.load(response)
@@ -148,12 +156,29 @@ def smoke(origin, sha):
             assert values["/ready"] == {"status": "ready", "database": "connected"}
             assert values["/version"]["commit"] == sha
             assert values["/version"]["environment"] == "staging"
-            assert any(x["subject"] == "Synthetic account notice" for x in values["/api/analyses"]["items"])
-            return {"health": "passed", "ready": "passed", "version": sha, "history": "passed"}
+            if not uses_neon:
+                assert any(x["subject"] == "Synthetic account notice" for x in values["/api/analyses"]["items"])
+            break
         except Exception:  # noqa: BLE001 -- bounded retry of startup/contract evidence
             if time.monotonic() >= deadline:
-                raise RuntimeError("Staging smoke failed: health/readiness/version/seeded history not established") from None
+                required = "health/readiness/version" if uses_neon else "health/readiness/version/seeded history"
+                raise RuntimeError(f"Staging smoke failed: {required} not established") from None
             time.sleep(5)
+
+    evidence = {"health": "passed", "ready": "passed", "version": sha, "history": "passed"}
+    if uses_neon:
+        url = origin + "/api/analyses"
+        request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
+        try:
+            with urllib.request.urlopen(request, timeout=20):
+                raise RuntimeError("Neon staging did not reject an anonymous saved-report request")
+        except urllib.error.HTTPError as exc:
+            with exc:
+                challenge = exc.headers.get("WWW-Authenticate", "").lower()
+                if exc.code != 401 or exc.geturl() != url or challenge != "bearer":
+                    raise RuntimeError("Neon staging did not return the expected saved-report authentication challenge") from None
+        evidence["history"] = "authentication_required"
+    return evidence
 
 
 def verify_saved_report(origin, sha):
@@ -484,7 +509,10 @@ def main():
                 # No PR scripts execute with this token/key. Render runs the PR with approved staging-only runtime data.
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
-                verify_environment(render_request("services/" + config["staging_service"] + "/env-vars?limit=100"))
+                report_auth_mode = verify_environment(
+                    render_request("services/" + config["staging_service"] + "/env-vars?limit=100")
+                )
+                evidence["report_auth_mode"] = report_auth_mode
                 deployment = api.request("deployments", {"ref": run["head_sha"], "environment": config["preview_environment"],
                     "auto_merge": False, "required_contexts": [], "production_environment": False, "transient_environment": True,
                     "description": f"PR #{pr['number']} exact-head staging", "payload": {"secretary": 1, "pr": pr["number"], "run_id": run["id"], "run_attempt": run.get("run_attempt", 1)}})
@@ -503,14 +531,25 @@ def main():
                     if time.monotonic() >= deadline:
                         raise RuntimeError("Render staging deployment timed out")
                     time.sleep(10)
-                evidence["smoke"] = smoke(config["staging_origin"], run["head_sha"])
+                evidence["smoke"] = smoke(config["staging_origin"], run["head_sha"], report_auth_mode=report_auth_mode)
                 current = api.request(f"pulls/{pr['number']}")
                 if not current_pr_head_matches(current, run["head_sha"]):
                     # The deployment worked, but it is no longer evidence for the current PR head.
                     action = "action_required"
                     message = "PR head advanced during staging; this run was superseded. The latest CI run must own staging."
-                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "success",
+                    state = "pending" if report_auth_mode == "neon" else "success"
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": state,
                         "description": "Deployment passed; PR head advanced, so this preview is superseded",
+                        "log_url": log, "auto_inactive": False})
+                elif report_auth_mode == "neon":
+                    action = "action_required"
+                    evidence["authenticated_saved_report"] = "pending"
+                    message = (
+                        "- [x] Exact PR SHA live; health, readiness, version, and anonymous saved-report rejection passed.\n"
+                        "- [ ] Authenticated saved-report verification is pending. Follow the approved Auth acceptance runbook."
+                    )
+                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "pending",
+                        "description": "Staging infrastructure verified; authenticated acceptance pending",
                         "log_url": log, "auto_inactive": False})
                 else:
                     crud = verify_saved_report(config["staging_origin"], run["head_sha"])
@@ -572,6 +611,8 @@ def main():
                 if status_state == "success"
                 else "Staging verification did not pass"
             )
+            if evidence.get("authenticated_saved_report") == "pending":
+                status_description = "Authenticated saved-report verification pending"
             publish_preview_status(
                 api, run["head_sha"], config, status_state,
                 status_description, log,

@@ -138,6 +138,12 @@ jobs; production follows the existing after-checks auto-deploy. The shared stagi
 queue is serialized and deployment approval still applies. Package identity does
 not establish installed Chrome acceptance.
 
+With `REPORT_AUTH_MODE=neon`, Secretary records live identity, readiness and the
+anonymous saved-report `401` challenge as staging preflight evidence. The
+required staging check stays open for the approved authenticated saved-report
+verification. Demo mode continues to require seeded history and synthetic CRUD.
+[Auth acceptance runbook](docs/auth-backend-acceptance-runbook.md)
+
 ## PostgreSQL evidence gate (#38, closed)
 
 Before migrations, `python scripts/ci_backend.py --check-environment` requires the
