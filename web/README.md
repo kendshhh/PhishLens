@@ -27,8 +27,9 @@ background service worker and `chrome.storage.session`:
 | `favicon.svg` | Browser tab icon. |
 | `tests/runtime.test.mjs` | Unit tests for the runtime (part of `npm test`). |
 | `../scripts/build_web.mjs` | Copies the web files and shared modules into `web/dist`, and fails if an import or model file is missing. |
-| `../scripts/serve_web.mjs` | Local preview server that applies the same headers as `vercel.json`. |
-| `../vercel.json` | Vercel build, output and security-header settings. |
+| `../scripts/serve_web.mjs` | Loopback preview of generated security headers and fixed API proxy routes. |
+| `../scripts/web_build_config.mjs` | Strict public environment, API, Auth and backend-SHA pairing; generated CSP/routes. |
+| `../vercel.json` | Build command; Vercel consumes generated `.vercel/output` (Build Output API v3). |
 
 ## Run locally
 
@@ -41,30 +42,32 @@ Then open http://127.0.0.1:4173/. Rebuild after changing files in `web/` or `ext
 
 ## Deploy on Vercel
 
-1. In Vercel, choose **Add New → Project** and import the PhishLens repository.
-2. Keep **Root Directory** as the repository root. `vercel.json` sets everything
-   else:
+Use the agreed project/account/domain and release gates in
+[the web release guide](../docs/web-release.md). Keep **Root Directory** as the
+repository root. `vercel.json` and the build output define:
    - **Build:** `node scripts/build_web.mjs`.
-   - **Output:** `web/dist`.
+   - **Output:** `.vercel/output/static` with generated `.vercel/output/config.json`.
    - **No npm install:** the build uses only Node built-ins.
-   - **Headers:** a Content-Security-Policy and other security headers.
-3. Deploy. Pull requests get preview deployments; the production branch is set in
-   **Project Settings → Git**.
+   - **Headers/routing:** CSP, other security headers and fixed API proxy routes.
+   - **Identity:** public `build-info.json` with source SHA, dirty flag and file hashes.
 
-No environment variables or secrets are needed.
+The default local-scan-only build needs no variables or secrets. Accounts require
+the verified public build settings listed in the release guide. Never supply
+database credentials, passwords or tokens to this static build. A development
+build supports loopback tests and emits no deployable Vercel output.
 
 ## Current limits
 
 - **Highlight and right-click are on hold.** They remain extension-only while
-  the team decides on them, and the extension in `extension/` is unchanged.
+  the team decides on them. The shared client changes retain extension compatibility;
+  Chrome regression evidence remains separate from web acceptance.
 - **The full local review needs model files a static site doesn't ship.** The LLM
   review needs about 1 GB of weights and WebGPU. The hosted app reports the
   reviewer as unavailable, so results read **Uncertain — check before acting**,
   never a safe verdict. That's the same outcome as the current extension release
   without weights.
-- **Sign-in and saved reports stay disabled** until `AUTH_CONFIG` is set. Enabling
-  them needs:
-  - the backend to allow the deployed web origin through CORS (it currently sends
-    no CORS headers);
-  - the Neon Auth origin added to `connect-src` in `vercel.json`;
-  - the web origin added as a trusted origin in Neon Auth.
+- **Sign-in and saved reports are disabled by default.** The public build settings
+  generate account configuration and CSP. The same-origin API proxy avoids a
+  Render CORS change; Neon Auth still requires the exact trusted web origin and
+  real browser-cookie acceptance. The compatible backend must enforce Neon report
+  mode. Local substitute-provider evidence does not establish hosted acceptance.
