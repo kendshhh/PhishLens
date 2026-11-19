@@ -1,0 +1,8 @@
+/* Web page layout on top of the shared extension stylesheet (css/popup.css),
+   which sizes the body for a narrow side panel. */
+body { width: 100%; min-width: 0; }
+.container { max-width: 640px; padding: 32px 20px 28px; }
+#paste-panel[open] > summary { margin-bottom: 8px; }
+@media (max-width: 480px) {
+  .container { padding: 16px 16px 20px; }
+}

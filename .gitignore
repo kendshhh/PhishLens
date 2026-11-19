@@ -38,3 +38,5 @@ datasets/private/
 /key.pem
 /extension.pem
 /extension/key.pem
+# Generated static web app build (npm run web:build)
+/web/dist/

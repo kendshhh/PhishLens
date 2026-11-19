@@ -54,6 +54,9 @@ jobs:
       - name: Test history client with mocked responses
         run: npm test
 
+      - name: Build the static web app
+        run: npm run web:build
+
       - name: Validate extension manifest and required files
         run: npm run validate
 

@@ -8,11 +8,13 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node --test extension/tests/*.test.mjs",
+    "test": "node --test extension/tests/*.test.mjs web/tests/*.test.mjs",
     "test:browser": "node scripts/browser_acceptance.mjs",
-    "lint": "eslint extension/",
+    "lint": "eslint extension/ web/ scripts/build_web.mjs scripts/serve_web.mjs",
     "validate": "python scripts/validate_extension.py",
     "package": "python scripts/package_extension.py",
+    "web:build": "node scripts/build_web.mjs",
+    "web:serve": "node scripts/serve_web.mjs",
     "phishlens": "node scripts/phishlens.mjs",
     "doctor": "node scripts/phishlens.mjs doctor",
     "model:check": "node scripts/phishlens.mjs model-check",
