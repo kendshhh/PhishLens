@@ -47,7 +47,11 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         raise TypeError("Package evidence must be a JSON object")
     if evidence.get("environment") != "staging" or evidence.get("api_origin") != STAGING_ORIGIN:
         raise ValueError("Package evidence does not identify the staging API origin")
-    if (evidence.get("observed_staging_commit") != expected_staging
+    candidate_only = evidence.get("candidate_only") is True
+    observed_commit = None if candidate_only else expected_staging
+    if candidate_only and (evidence.get("hosted_acceptance_verified") is not False or staging_evidence_path is not None):
+        raise ValueError("Offline candidate cannot claim hosted acceptance")
+    if (evidence.get("observed_staging_commit") != observed_commit
             or evidence.get("package_checkout_commit") != expected_staging
             or evidence.get("source_commit") != expected_staging):
         raise ValueError("Package checkout does not match the observed staging revision")
@@ -191,7 +195,7 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         "format": "phishlens-staging-package-v1",
         "environment": "staging",
         "source_commit": evidence["source_commit"],
-        "observed_staging_commit": expected_staging,
+        "observed_staging_commit": observed_commit,
         "packager_commit": evidence["packager_checkout_commit"],
         "api_origin": STAGING_ORIGIN,
         "host_permissions": expected_hosts,
@@ -204,6 +208,8 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         "expected_chrome_origin": expected_chrome_origin,
     }
     embedded_expected.update(bridge_evidence)
+    if candidate_only:
+        embedded_expected.update(candidate_only=True, hosted_acceptance_verified=False)
     if embedded_evidence != embedded_expected:
         raise ValueError("Embedded provenance does not match the package evidence")
 
@@ -237,11 +243,12 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         "chrome_extension_id": extension_id,
         "expected_chrome_origin": expected_chrome_origin,
         "trusted_chrome_origin": trusted_origin,
-        "observed_staging_commit": expected_staging,
+        "observed_staging_commit": observed_commit,
         "package_checkout_commit": evidence["package_checkout_commit"],
         "workflow_event_sha": event_sha,
         "archive_sha256": archive_hash,
         "files_verified": len(names),
+        "candidate_only": candidate_only,
     }
 
 

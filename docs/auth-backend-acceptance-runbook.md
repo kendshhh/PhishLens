@@ -86,6 +86,11 @@ python scripts/package_staging_extension.py \
   --evidence /private/path/PhishLens-Staging-Auth-evidence.json
 ```
 
+For preparation before deployment, add `--candidate-only` and supply the reviewed
+source SHA to `--expected-staging`. Candidate evidence leaves the observed staging
+SHA empty and records hosted acceptance as unverified. After deployment, compare
+the actual `/version` SHA against the candidate's source SHA before any live trial.
+
 The key file contains only the extension owner's canonical base64 RSA
 SubjectPublicKeyInfo DER public manifest key. The builder rejects malformed or
 unsupported key encodings. It embeds `phishlens-build-evidence.json` in the ZIP with

@@ -335,8 +335,11 @@ class StagingPackageVerificationTests(unittest.TestCase):
             evidence = Path(directory) / "evidence.json"
             sha = checkout_revision(root)
             built = build_package(root, archive, evidence, sha, auth_url=auth_url,
-                                  auth_database="neondb", manifest_key=manifest_key, auth_transport="https-bridge")
+                                  auth_database="neondb", manifest_key=manifest_key, auth_transport="https-bridge",
+                                  candidate_only=True)
             verify(archive, evidence, sha)
+            self.assertIsNone(built["observed_staging_commit"])
+            self.assertFalse(built["hosted_acceptance_verified"])
             self.assertEqual(built["required_neon_trusted_origin"], STAGING_ORIGIN)
             self.assertIsNone(built["trusted_chrome_origin"])
             with ZipFile(archive) as package:

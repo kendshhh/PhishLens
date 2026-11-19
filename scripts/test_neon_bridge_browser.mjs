@@ -1,8 +1,8 @@
 // Installed Chrome -> HTTPS bridge -> bundled Neon SDK -> synthetic Auth,
 // then signed JWT -> real FastAPI -> disposable local PostgreSQL.
 import assert from 'node:assert/strict';
-import { generateKeyPairSync, randomUUID, sign } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
+import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { request as httpRequest } from 'node:http';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -17,9 +17,11 @@ assert.ok(['postgresql:', 'postgres:'].includes(databaseUrl.protocol) &&
   /^\/phishlens_auth_test_[a-z0-9_]+$/.test(databaseUrl.pathname),
 'Set PHISHLENS_AUTH_TEST_DATABASE_URL to a disposable local phishlens_auth_test_* database');
 const python = process.env.PHISHLENS_PYTHON || 'python3';
-const apiOrigin = 'https://bridge-api.example.test';
-const authOrigin = 'https://bridge-auth.example.test';
-const authUrl = authOrigin + '/neondb/auth';
+let apiOrigin = 'https://bridge-api.example.test';
+let authOrigin = 'https://bridge-auth.example.test';
+let authUrl = authOrigin + '/neondb/auth';
+const archive = process.env.PHISHLENS_AUTH_TEST_ARCHIVE;
+let archiveHash, sourceCommit;
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
 const publicJwk = publicKey.export({ format: 'jwk' });
 const temporary = await mkdtemp(path.join(os.tmpdir(), 'phishlens-auth-bridge-'));
@@ -28,7 +30,29 @@ const runId = randomUUID();
 let context, server, page;
 try {
   const extension = path.join(temporary, 'extension');
-  await cp('extension', extension, { recursive: true, filter: source =>
+  if (archive) {
+    execFileSync(python, ['-c', `
+from pathlib import Path
+from zipfile import ZipFile
+import sys
+target = Path(sys.argv[2]).resolve()
+with ZipFile(sys.argv[1]) as package:
+    for name in package.namelist():
+        if not (target / name).resolve().is_relative_to(target):
+            raise ValueError("Archive path escapes test profile")
+    package.extractall(target)
+`, archive, extension]);
+    const configSource = await readFile(path.join(extension, 'js/auth-config.js'), 'utf8');
+    const config = JSON.parse(configSource.replace(/^export const AUTH_CONFIG = /, '').replace(/;\s*$/, ''));
+    assert.equal(config.transport, 'https-bridge');
+    apiOrigin = config.apiOrigin;
+    assert.equal(apiOrigin, 'https://phishlens-staging.onrender.com');
+    authUrl = config.authUrl;
+    authOrigin = new URL(authUrl).origin;
+    archiveHash = createHash('sha256').update(await readFile(archive)).digest('hex');
+    sourceCommit = JSON.parse(await readFile(path.join(extension, 'phishlens-build-evidence.json'), 'utf8')).source_commit;
+  } else {
+    await cp('extension', extension, { recursive: true, filter: source =>
     !source.includes('/model-assets') && !source.includes('/tests') });
   const manifest = JSON.parse(await readFile(path.join(extension, 'manifest.json'), 'utf8'));
   manifest.host_permissions = [apiOrigin + '/*', authOrigin + '/*'];
@@ -38,6 +62,7 @@ try {
     enabled: true, authUrl, database: 'neondb', apiOrigin, transport: 'https-bridge',
     bridgeUrl: apiOrigin + '/auth/bridge'
   }) + ';\n');
+  }
   // Supply only a generated test public key. Real JWT parsing, claims, owner
   // mapping, inference and SQL persistence all use the product implementation.
   const serverSource = `
@@ -330,6 +355,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   assert.deepEqual(pageErrors, []);
   assert.ok(apiStatuses.some(entry => entry.method === 'POST' && entry.status === 201));
   console.log(JSON.stringify({ result: 'passed', browser: context.browser().version(),
+    source_commit: sourceCommit, archive_sha256: archiveHash,
     scope: 'installed extension, bundled SDK and synthetic Auth; real FastAPI/TF-IDF and disposable local PostgreSQL',
     checks, authRequests, apiRequests, unknownOrigins: 0, pageErrors: 0, noPersistentBrowserTokens: true }, null, 2));
 } catch (error) {
