@@ -1,43 +1,41 @@
 # Pipeline Metrics
 
-## Current delivery sample — 2026-11-20 12:18 UTC
+## Current delivery sample — 2026-11-20 13:45 UTC
 
-Read-only refresh from GitHub Actions and Render. The latest four completed,
-successful `CI` push runs to `main` all succeeded. Their wall-time median was
-**1.23 minutes**, p90 **1.42 minutes**, range **1.07–1.42 minutes**, measured
-from `run_started_at` to `updated_at`. The latest run is
-[44733739927](https://github.com/kendshhh/PhishLens/actions/runs/44733739927)
-on main SHA `16f955321caf5dc368181be7ce5c00643750545d`; associated
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44733739987),
-[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44733740031)
-and [deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44733739878)
-also succeeded. Hosted staging and staging integration were skipped on this
-main push.
+The latest four completed `CI` push runs to `main`, through PR #256, all
+succeeded. Their workflow wall-time median was **66 seconds**, p90 **82
+seconds**, and range **64–82 seconds**, measured from `startedAt` to
+`updatedAt` (n=4). The latest run is
+[44745905952](https://github.com/kendshhh/PhishLens/actions/runs/44745905952)
+on main SHA `0c382dda175db3570e6bb7122841122254ba131d`; its backend and extension
+jobs passed. Associated [workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44745905840),
+[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44745905799),
+[deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44745905844)
+and [CodeQL](https://github.com/kendshhh/PhishLens/actions/runs/44745905883)
+also succeeded. Staging integration and hosted staging were skipped.
 
-Render's latest 20 production deploy records were completed: one `live`, 19
-`deactivated`, and no failed statuses. Deployment duration median was **74.2
-seconds**, p90 **84.7 seconds**, range **60.3–408.0 seconds**, from `startedAt`
-to `finishedAt`; their deploy-start window was November 15 08:49 through
-November 20 12:14 UTC. The current live deploy is
-[`dep-dc03j4sipgvc738ueieg`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dc03j4sipgvc738ueieg)
-on `16f955321caf5dc368181be7ce5c00643750545d`; its deployment duration was
-93.142 seconds. Read-only `/version`, `/health`, `/ready` and `/model-info`
-checks confirmed the same SHA, healthy process, connected database and
-`provider_mode=unavailable` at 12:18 UTC.
+Render now has 23 completed deploy records in the November 15–20 window: one
+`live`, 22 `deactivated`, and no failed statuses. Their duration median was
+**74.379 seconds**, p90 **93.142 seconds**, and range **60.299–408.027 seconds**;
+the first deploy started at 08:21:34 UTC on November 15 and the latest finished
+at 13:44:56 UTC on November 20. The two newest deploys for `0c382dd` took
+**97.316 seconds** (`dep-dc04rb0473hc738839ug`) and **66.954 seconds**
+(`dep-dc04t5dg1s2s73e5pc00`, the environment update that set
+`AI_ANALYSIS_ENABLED=false`). The latest deploy is Live on the same SHA as
+main. Direct post-deploy endpoint GETs from this audit client returned HTTP
+403, so health/readiness and the effective disabled model state were not
+verified by this refresh.
 
 Sources: [GitHub main workflow runs](https://api.github.com/repos/kendshhh/PhishLens/actions/runs?branch=main&per_page=100)
 and the [Render production deploy inventory](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys).
-This is a small latest-sample refresh, not a comparable optimization
-experiment. Its CI sample is only four main-push runs; it does not include PR
-pipeline time, queueing before workflow start, merge-to-live, user-flow
-latency, cost, or recovery. It cannot establish improvement against the
-October 17–November 14 baseline below. The optimization criterion remains
+This small latest-sample refresh is not a comparable optimization experiment.
+It excludes PR pipeline time, queueing before workflow start, merge-to-live,
+user-flow latency, cost and recovery. It cannot establish improvement against
+the October 17–November 14 baseline below. The optimization criterion remains
 **not met** until a like-for-like before/after experiment measures the same
 workflow and check set over a sufficiently broad sample. No production
-inference was sent for this refresh: `/model-info` reports the provider as
-unavailable. Health/readiness timing must not be presented as extension
-journey latency, and no AI cost figure is measured until an approved safe
-synthetic inference path exists.
+inference was sent. Do not present health/readiness timing as extension journey
+latency or report AI cost without a verified inference path.
 
 ## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
 

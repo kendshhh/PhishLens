@@ -1,28 +1,36 @@
 # Production deployment smoke
 
-> Current state — November 20, 2026: production is live on
-> `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`; `/health` and `/ready` pass, but
-> `/model-info` reports `provider_mode=unavailable`. The smoke below remains
-> manual-only. See [PIPELINE.md](../../PIPELINE.md) for the current release
-> decision and exact service identities. The November 14 result below is
-> historical evidence, not current acceptance.
+> Current state — November 20, 2026: production runs source SHA
+> `0c382dda175db3570e6bb7122841122254ba131d` on Render deploy
+> `dep-dc04t5dg1s2s73e5pc00`. `AI_ANALYSIS_ENABLED=false` is set in Render and
+> the matching-SHA deployment is live. Direct endpoint GETs from this audit
+> client returned HTTP 403, so the effective disabled response remains
+> unverified. The smoke is manual-only. See [PIPELINE.md](../../PIPELINE.md)
+> for the current release decision. The November 14 result below is historical.
 
 ## What the check verifies
 
 [`production-deploy-smoke.yml`](../../.github/workflows/production-deploy-smoke.yml)
 and `scripts/production_deploy_smoke.py` take a full deployment SHA, wait for
 production `/version` to report that exact SHA, then check `/health`, `/ready`,
-the configured provider/model identity, and two fixed synthetic analysis cases.
-The preflight also requires `/model-info` to advertise
+and `/model-info`. On the current `main` implementation, the smoke also
+requires a non-paid TF-IDF provider and checks two fixed synthetic analysis
+cases. The preflight requires `/model-info` to advertise
 `supports_required_provider=true`. Each analysis request sends
 `X-Require-Provider: tfidf` to `/analyses/revision/{expected_sha}`. The API
 checks its own source revision and active provider before inference, then echoes
 the serving revision in `X-PhishLens-Revision`. An older instance without the
 revision-scoped route returns before inference; a mismatched revision is
 rejected before provider lookup. The smoke verifies the response revision for
-every analysis request. The behavior checks run only when the live provider is
-TF-IDF. They make no saved-report/database write and no paid provider request.
-A failed identity or provider preflight stops before analysis.
+every analysis request. The TF-IDF behavior checks make no saved-report/database
+write and no paid provider request. A failed identity or provider preflight
+stops before analysis.
+
+The review-branch change adds a disabled-mode path: when `/model-info` returns
+`analysis_enabled=false` and `provider_mode=disabled`, it rechecks exact
+deployment identity and reports health/readiness/model state without sending
+any inference request. This verifies the kill switch only; it is not product or
+model acceptance. The change is not yet in `main`.
 
 ## Workflow trust boundary
 
@@ -33,17 +41,20 @@ credentials disabled. Its `GITHUB_TOKEN` permission is limited to
 repository contents, or modify branch protection or required checks. Artifact
 upload is the only retained output.
 
-The workflow is currently manual. Run it from Actions after a production
-deployment and supply the full SHA reported by Render. It uploads a redacted
-summary artifact. Do not treat a successful `/ready` response alone as feature
-acceptance. The current SHA has not passed this smoke: provider preflight would
-fail before analysis because production reports `provider_mode=unavailable`.
+The workflow is currently manual. After the disabled-mode path is merged, run it
+from Actions after a production deployment and supply the full SHA reported by
+Render. It uploads a redacted summary artifact. Do not treat a successful
+`/ready` response alone as feature acceptance. The current SHA has not passed
+this smoke; the current main version would stop before inference because AI is
+disabled. Do not run the current main smoke to attempt AI behavior while the
+owner has asked to keep AI disabled.
 
 ## Why it is not automatically deploy-triggered yet
 
 The production Render service is configured with `autoDeploy=checksPass` on
 `main`. Render currently reports production deploy
-`dep-dbvt8r0u01pc73b4siig` live on `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`.
+`dep-dc04t5dg1s2s73e5pc00` live on
+`0c382dda175db3570e6bb7122841122254ba131d`.
 No deploy-ended webhook or automatic smoke trigger is configured or verified.
 Render documents workspace webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
 ([Render Webhooks](https://render.com/docs/webhooks)). The connected read-only

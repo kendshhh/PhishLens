@@ -1,3 +1,5 @@
+import unittest
+
 from scripts.production_deploy_smoke import verify_deployment
 
 SHA = "8c02a7c86e8b2052d127b5a6a0422a5a80ffa9ea"
@@ -200,3 +202,80 @@ def test_production_smoke_stops_before_analysis_when_provider_is_unavailable():
     else:
         raise AssertionError("unavailable production provider must fail closed")
     assert posts == []
+
+
+class DisabledAnalysisSmokeTests(unittest.TestCase):
+    def test_disabled_mode_checks_identity_without_sending_inference(self):
+        urls = []
+        posts = []
+
+        def get_json(url):
+            urls.append(url)
+            if url.endswith("/version"):
+                return {"environment": "production", "commit": SHA}
+            if url.endswith("/health"):
+                return {"status": "ok", "service": "phishlens-api"}
+            if url.endswith("/ready"):
+                return {"status": "ready", "database": "connected"}
+            if url.endswith("/model-info"):
+                return {
+                    "provider_mode": "disabled",
+                    "analysis_enabled": False,
+                    "supports_required_provider": False,
+                }
+            raise AssertionError(url)
+
+        def post_json(*args, **kwargs):
+            posts.append((args, kwargs))
+            raise AssertionError("disabled mode must not send inference")
+
+        report = verify_deployment(
+            "https://production.example",
+            SHA,
+            get_json=get_json,
+            post_json=post_json,
+            timeout_seconds=0,
+        )
+
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(report["deployment_sha"], SHA)
+        self.assertFalse(report["analysis_enabled"])
+        self.assertEqual(report["provider_mode"], "disabled")
+        self.assertEqual(report["inference_requests"], 0)
+        self.assertEqual(report["paid_provider_calls"], 0)
+        self.assertEqual(report["database_writes"], 0)
+        self.assertEqual(posts, [])
+        self.assertEqual(
+            urls,
+            [
+                "https://production.example/version",
+                "https://production.example/health",
+                "https://production.example/ready",
+                "https://production.example/model-info",
+                "https://production.example/version",
+            ],
+        )
+
+    def test_disabled_mode_rejects_inconsistent_provider_identity(self):
+        def get_json(url):
+            if url.endswith("/version"):
+                return {"environment": "production", "commit": SHA}
+            if url.endswith("/health"):
+                return {"status": "ok", "service": "phishlens-api"}
+            if url.endswith("/ready"):
+                return {"status": "ready", "database": "connected"}
+            if url.endswith("/model-info"):
+                return {
+                    "provider_mode": "tfidf",
+                    "analysis_enabled": False,
+                    "supports_required_provider": False,
+                }
+            raise AssertionError(url)
+
+        with self.assertRaisesRegex(RuntimeError, "expected disabled provider state"):
+            verify_deployment(
+                "https://production.example",
+                SHA,
+                get_json=get_json,
+                timeout_seconds=0,
+            )
