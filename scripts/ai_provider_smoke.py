@@ -14,6 +14,8 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 ROOT = Path(__file__).resolve().parents[1]
 SHA = re.compile(r"^[0-9a-f]{40}$")
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+TFIDF_MODEL = "word_plus_char_wb_C1p0"
+TFIDF_REVISION = "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
 SYNTHETIC_REQUEST = {
     "subject": "Synthetic PhishLens provider smoke",
     "sender": "smoke@example.invalid",
@@ -75,16 +77,21 @@ def _validate_configuration() -> dict:
         raise SmokeGateError("owner_enable_flag_not_set")
     if os.getenv("AI_PROVIDER_SMOKE_ENV", "") != "staging":
         raise SmokeGateError("protected_staging_environment_required")
-    if os.getenv("AI_PROVIDER_SMOKE_PROVIDER", "").lower() != "gemini":
+    provider = os.getenv("AI_PROVIDER_SMOKE_PROVIDER", "").lower()
+    if provider not in {"gemini", "tfidf"}:
         raise SmokeGateError("owner_provider_not_configured")
     model = os.getenv("AI_PROVIDER_SMOKE_MODEL", "").strip()
     if not SAFE_ID.fullmatch(model):
         raise SmokeGateError("owner_model_not_configured")
+    if provider == "tfidf" and model != TFIDF_MODEL:
+        raise SmokeGateError("owner_tfidf_model_mismatch")
     if os.getenv("AI_PROVIDER_SMOKE_MAX_REQUESTS", "") != "1":
         raise SmokeGateError("owner_request_limit_must_be_one")
     cost_cap = os.getenv("AI_PROVIDER_SMOKE_COST_CAP_USD", "").strip()
     try:
-        if not Decimal(cost_cap).is_finite() or Decimal(cost_cap) <= 0:
+        cap = Decimal(cost_cap)
+        if (not cap.is_finite() or (provider == "gemini" and cap <= 0)
+                or (provider == "tfidf" and cap != 0)):
             raise InvalidOperation
     except InvalidOperation:
         raise SmokeGateError("owner_cost_cap_not_configured") from None
@@ -99,7 +106,7 @@ def _validate_configuration() -> dict:
     return {
         "expected_source_sha": expected_sha,
         "origin": origin,
-        "provider": "gemini",
+        "provider": provider,
         "model": model,
         "approved_cost_cap_usd": str(Decimal(cost_cap).normalize()),
     }
@@ -122,26 +129,38 @@ def run() -> dict:
         raise SmokeGateError("target_is_not_staging")
 
     _, model_info = _get_json(values["origin"], "/model-info")
-    if model_info.get("provider_mode") != "gemini" or model_info.get("model") != values["model"]:
+    if model_info.get("provider_mode") != values["provider"]:
         raise SmokeGateError("staging_provider_or_model_mismatch")
-    if model_info.get("spend_guard_enabled") is not True:
-        raise SmokeGateError("staging_runtime_spend_guard_not_enabled")
-    try:
-        runtime_cap = Decimal(str(model_info.get("per_request_cost_cap_usd", "")))
-    except InvalidOperation:
-        raise SmokeGateError("staging_runtime_spend_cap_unavailable") from None
-    if not runtime_cap.is_finite() or runtime_cap != Decimal(values["approved_cost_cap_usd"]):
-        raise SmokeGateError("staging_runtime_spend_cap_mismatch")
+    if values["provider"] == "tfidf":
+        if model_info.get("model_sha256") != TFIDF_REVISION:
+            raise SmokeGateError("staging_tfidf_revision_mismatch")
+        runtime_cap = Decimal(0)
+    else:
+        if model_info.get("model") != values["model"]:
+            raise SmokeGateError("staging_provider_or_model_mismatch")
+        if model_info.get("spend_guard_enabled") is not True:
+            raise SmokeGateError("staging_runtime_spend_guard_not_enabled")
+        try:
+            runtime_cap = Decimal(str(model_info.get("per_request_cost_cap_usd", "")))
+        except InvalidOperation:
+            raise SmokeGateError("staging_runtime_spend_cap_unavailable") from None
+        if not runtime_cap.is_finite() or runtime_cap != Decimal(values["approved_cost_cap_usd"]):
+            raise SmokeGateError("staging_runtime_spend_cap_mismatch")
 
     _, ready = _get_json(values["origin"], "/ready")
     if ready.get("status") != "ready" or ready.get("database") != "connected":
         raise SmokeGateError("staging_readiness_not_confirmed")
 
     global PROVIDER_REQUEST_ATTEMPTED
+    path = "/analyses"
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if values["provider"] == "tfidf":
+        path += "/revision/" + values["expected_source_sha"]
+        headers["X-Require-Provider"] = "tfidf"
     request = Request(
-        values["origin"] + "/analyses",
+        values["origin"] + path,
         data=json.dumps(SYNTHETIC_REQUEST).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        headers=headers,
         method="POST",
     )
     PROVIDER_REQUEST_ATTEMPTED = True
@@ -149,6 +168,7 @@ def run() -> dict:
         with build_opener(NoRedirect()).open(request, timeout=35) as response:
             status = response.status
             content = response.read(64 * 1024)
+            serving_sha = response.headers.get("X-PhishLens-Revision")
     except HTTPError as exc:
         raise SmokeGateError(f"provider_request_http_{exc.code}") from None
     except (URLError, TimeoutError, OSError):
@@ -156,6 +176,8 @@ def run() -> dict:
 
     if status != 200:
         raise SmokeGateError("provider_request_non_200_no_retry")
+    if values["provider"] == "tfidf" and serving_sha != values["expected_source_sha"]:
+        raise SmokeGateError("inference_revision_mismatch_no_retry")
     try:
         result = json.loads(content)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -173,8 +195,10 @@ def run() -> dict:
         raise SmokeGateError("provider_response_invalid_classification_no_retry")
     if risk_level not in {"high", "low", "medium"}:
         raise SmokeGateError("provider_response_invalid_risk_no_retry")
-    if mode != "gemini" or actual_model != values["model"]:
+    if mode != values["provider"] or actual_model != values["model"]:
         raise SmokeGateError("provider_or_model_identity_mismatch_no_retry")
+    if values["provider"] == "tfidf" and result.get("model_revision") != TFIDF_REVISION:
+        raise SmokeGateError("inference_tfidf_revision_mismatch_no_retry")
 
     return {
         "status": "passed",
@@ -189,13 +213,16 @@ def run() -> dict:
         "analysis_requests": 1,
         "provider_request_attempts": 1,
         "provider_calls_observed": PROVIDER_CALLS_OBSERVED,
+        "local_model_inferences": 1 if values["provider"] == "tfidf" else 0,
         "approved_cost_cap_usd": values["approved_cost_cap_usd"],
         "classification": classification,
         "risk_level": risk_level,
         "database_writes": 0,
         "limitations": [
-            "One fixed synthetic request was sent to the non-persisting /analyses endpoint.",
-            "The deployed Gemini provider reserves a conservative per-request token-cost upper bound before inference; this is a cap, not an invoice measurement.",
+            "One fixed synthetic request was sent to a non-persisting analysis endpoint.",
+            ("TF-IDF used the revision-bound endpoint and required-provider header; external provider charge is zero, excluding hosting costs."
+             if values["provider"] == "tfidf" else
+             "The deployed Gemini provider reserves a conservative per-request token-cost upper bound before inference; this is a cap, not an invoice measurement."),
             "This smoke is not a quality evaluation or held-out accuracy result.",
         ],
     }
