@@ -1,6 +1,86 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 14, 2026
+## Current delivery and acceptance snapshot — November 15, 2026
+
+This is the current snapshot. Older dated observations below are historical;
+use the [current Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
+and [November 15 staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
+for detailed evidence.
+
+At the November 15 staging acceptance, GitHub `main` was
+[`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f) (PR #215). It later advanced through [`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224), [`bfa0d61040ea671a81317102f2de536cf86a9844`](https://github.com/kendshhh/PhishLens/commit/bfa0d61040ea671a81317102f2de536cf86a9844) (PR #221), and [`56fba3952b588d289cf539623f9b4149b03258fc`](https://github.com/kendshhh/PhishLens/commit/56fba3952b588d289cf539623f9b4149b03258fc) (PR #226), to current snapshot SHA [`6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c`](https://github.com/kendshhh/PhishLens/commit/6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c) (PR #231, removal of the unused Vercel landing page). PR #224 changed the browser-acceptance harness and added evidence; PR #221 added a documentation audit; PR #226 hardened hosted-staging PostgreSQL URL validation and added offline regressions. The staging run below verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as deployed at that time, before PR #226's fix, not a deployment of current `main`.
+
+The repository is public, as intended by the owner. The API-visible active main
+ruleset #26782191 currently requires one approval and six status checks: Backend
+checks, Extension checks, Staging integration, Workflow lint, CodeQL, and
+Dependency security. It does not list an AI evaluation context. The deterministic
+AI workflow path-filters its workload. The always-reported exact-name
+`Deterministic AI Evaluation` job is a change proposed on the open PR #220 branch;
+it has not yet merged into `main`. On that branch it runs the workload for
+AI-related changes and emits an explicit not-applicable result for unrelated
+changes. The connected GitHub API cannot read classic branch-protection settings;
+an earlier PR checks view showed this context as Expected, and the exact context
+is now reported successfully on PR #220. The AI owner approved a zero-tolerance
+rule in [#93](https://github.com/kendshhh/PhishLens/issues/93): every selected
+contract/failure case must run and pass, and applicable AI-change runs must
+complete all 40 `synthetic-v1` cases with valid results, expected identity, zero
+paid/external inference, and no model-weight downloads. The 40-case suite has no
+numeric model-quality cutoff. Unrelated changes skip only the workload, not the
+status job. A failed change detector fails closed. An absent or failing required
+status is not a pass.
+
+#### Observed required-check state on PR #220 — 2026-11-15
+
+On earlier reviewed PR #220 heads, the path-filtered AI workload skipped for documentation-only changes while the separate exact-name context was still waiting to be reported. The open PR #220 workflow revision now reports that context; on head `b0a7591b4a04a7c553d18f9cbde5e3c8ba83353f`, [AI run 43717709615](https://github.com/kendshhh/PhishLens/actions/runs/43717709615) passed the detector, contract tests, and full 40-case TF-IDF development workload. Its explicit N/A step was skipped because the PR includes the AI workflow change. This demonstrates the proposed PR branch behavior, not behavior merged to `main`, and does not establish AI quality. Use the [live PR checks](https://github.com/kendshhh/PhishLens/pull/220/checks) for the latest revision; verify the N/A path on a future unrelated-change PR.
+
+### Live service targets
+
+- **Production:** Render's last live deployment is
+  `205ec26f8b5d04104a6e8fdfa0c9efa490ecdf02`, behind `main`. `/health` and
+  `/ready` return HTTP 200, but `/model-info` reports
+  `provider_mode=unavailable`. The [exact-SHA production smoke
+  #43610307606](https://github.com/kendshhh/PhishLens/actions/runs/43610307606)
+  targeted this deployed SHA and failed at provider preflight, not SHA
+  validation; it made zero analysis requests, paid provider calls, or database
+  writes. Separately, the [production-drift check
+  #43639445224](https://github.com/kendshhh/PhishLens/actions/runs/43639445224)
+  failed because production's SHA did not match then-current `main` SHA `8c4795f`. Production
+  behavior is not accepted.
+- **Staging:** Render was live on exact application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` during
+  the November 15 acceptance (then-current `main`, PR #215). After PR #224,
+  `main` advanced from `8c4795f` through PR #224, PR #221, and PR #226 (`56fba39`), then to current snapshot SHA `6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c` through PR #231. PR #226 fixed the hosted-staging URL identity guard; the November 15 run predates that fix and did not test it. The recorded CRUD run remains evidence for SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`; no deploy of current `main` is claimed. This is one backend staging run, not browser or
+  production acceptance.
+- **Restore and objectives:** The November 14 production snapshot restore
+  changed Neon branch identity/default topology and is not accepted as a safe
+  restore rehearsal. Recovery time was not measured. Team-approved SLI/SLO and
+  RPO/RTO targets are absent.
+
+### Remaining delivery gates
+
+The provider-mode failure currently blocks production feature acceptance. A
+current-main production deploy, known-good provider configuration, and
+successful exact-SHA changed-behavior smoke remain outstanding. The production
+smoke workflow is manual-only: no deploy-ended webhook trigger is configured or
+verified. Render documents workspace webhooks as a Pro-or-higher feature, but
+the current workspace plan is not exposed by the connected read-only metadata.
+The AI owner has approved the [#93 deterministic rule](https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424). The always-reported exact `Deterministic AI Evaluation` context is implemented on the open PR #220 branch and has not yet merged to `main`; AI-related changes run the full workload and unrelated changes report explicit N/A. On PR branch head `b0a7591b4a04a7c553d18f9cbde5e3c8ba83353f`, [run 43717709615](https://github.com/kendshhh/PhishLens/actions/runs/43717709615) passed the exact-name check and full deterministic workload. The N/A step was skipped because this PR changes the AI workflow; verify that path on a future unrelated-change PR. The 40-case development suite has no numeric model-quality cutoff. Separately, [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891137984) accepts TF-IDF v12a for advisory screening only on the frozen English source-pair cohort, with approved thresholds of at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. Broader contemporary-source evaluation remains open. The per-run cost estimate is not a provider-side quota or shared spend budget. Participant-sourced team records, approved reliability targets, and safe restore evidence are also outstanding.
+GitHub still reports 15 open Dependabot alerts (12 high `pyasn1`, 3 medium
+`opentelemetry-api`) despite the patched versions pinned in the requirements;
+reconcile the alert state before treating those findings as resolved.
+
+The latest delivery metrics end at `2026-11-14 03:12 UTC`: PR workflow
+median 4.58 minutes (`n=682` attempts across 110 branches), main pipeline
+median 1.18 minutes (`n=86` successful pushes), 69 production deploy records,
+and 64 matched merge-to-live samples. Recovery time is unknown (`n=0`). The
+optimization comparison is only `n=2` before and `n=2` after for Backend jobs;
+it does not establish an end-to-end improvement. See
+[metrics](docs/devops/metrics.md) and [optimization evidence](docs/devops/optimizations.md).
+
+## Historical delivery and acceptance snapshot — November 14, 2026
+
+> The following section preserves the previous November 14 point-in-time
+> snapshot. Its SHA and service observations are superseded by the current
+> section above.
 
 This dated snapshot supersedes the October 28 observations below. GitHub
 `main` is `36cb0d4c1c197b5a4a2bead38dcf9fa966719f53` (PR #199, refresh delivery
@@ -176,10 +256,16 @@ artifact includes `ai-regression.json`: the source SHA, frozen synthetic
 development-case version/hash and label inventory, selected deterministic AI
 contract-test counts, failures, and simulated failure IDs. It deliberately does
 not report model predictions or accuracy. Required AI and failure-path test cases,
-including expected parameter counts, are explicit in `scripts/ai_ci_report.py`;
-missing or skipped cases fail Backend checks. AI-owner-approved regression thresholds
-and held-out evaluation remain pending; no live provider or model weights are used
-in ordinary pull request CI.
+including expected parameter counts, are explicit in `scripts/ai_ci_report.py`.
+The #93 owner decision approves zero missing, failed, or skipped selected
+contract/failure cases and requires the applicable 40-case run to return valid
+results with expected identity and no paid/external inference or model download.
+The backend artifact alone does not verify enforcement of the full approved rule
+or the required ruleset context on unrelated changes; those checks remain open.
+The 40-case suite has no numeric model-quality cutoff. The separate #92
+acceptance is limited to TF-IDF v12a advisory screening on its frozen
+English source-pair cohort; broader contemporary evaluation remains open. No
+live provider or model weights are used in ordinary pull request CI.
 
 `docs/devops/ai-provider-smoke.md` documents the separate manual
 `.github/workflows/ai-provider-smoke.yml`. It requires the protected `staging`

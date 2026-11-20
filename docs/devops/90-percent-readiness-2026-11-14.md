@@ -1,4 +1,7 @@
-# Release readiness blockers — 2026-11-14
+# Release readiness blockers — 2026-11-14 (historical snapshot)
+
+> This report records the November 14 snapshot and is superseded for current
+> source/deployment state by the [November 15 Kendra DevOps status](kendra-devops-status-2026-11-15.md).
 
 This is a revision-linked DevOps handoff for the work that can move release
 readiness forward. It is not a course grade or a claim that the project is 90%
