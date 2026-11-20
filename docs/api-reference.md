@@ -1,7 +1,7 @@
 # Saved-analysis API reference
 
 Supports API documentation and client resilience tasks #140 and #135.
-Source rechecked: fa9a23fbb5d1d60c45d0fc06333c50415d04d57e, November 10, 2026.
+Source rechecked against main: 53e68fbc01b5492457b2883743e5be6625f9bc43, November 16, 2026. This records source behavior, not current hosted configuration or live Auth acceptance.
 This is a source contract reference, not a live release sign-off.
 
 ## Client setup
@@ -23,7 +23,7 @@ await client.deleteAnalysis(saved.id);
 Andrei injects this five-method object into the UI. Inject fetch as the second factory argument for tests;
 the third argument accepts createTimeoutMs (default 25000), requiredModel and getAccessToken.
 Reads/PATCH/DELETE use 10000 milliseconds. requiredModel sends X-PhishLens-Model on create;
-getAccessToken supplies the current Bearer token per CRUD request. See [session contract](client-sessions.md).
+getAccessToken is called for each CRUD request when a caller supplies it; the client then sends that token as Bearer. This hook does not establish that Auth is enabled in a hosted service or packaged extension. See [session contract](client-sessions.md).
 The legacy getAnalyses(baseUrl) export still returns the history array. HTTP belongs in api.js.
 
 ## Saved CRUD
@@ -36,7 +36,7 @@ The legacy getAnalyses(baseUrl) export still returns the history array. HTTP bel
 | updateAnalysis(id, patch) | PATCH /api/analyses/{id} | 200, detail object; does not rerun inference |
 | deleteAnalysis(id) | DELETE /api/analyses/{id} | 204, no body; client does not parse JSON |
 
-IDs are UUID strings. History is limited to 100 demo-user records, ordered newest first with ID tie-breaker.
+IDs are UUID strings. History returns at most 100 records for the server-selected owner, ordered newest first with ID tie-breaker. In demo mode that owner is the shared synthetic demo user; in Neon mode it is the verified token's mapped application user.
 A failed or malformed response rejects; it is never converted to successful empty history.
 All client requests reject redirects, including 307/308 POST redirects; use the final configured API origin.
 
@@ -139,12 +139,31 @@ remain subject to the agreed UI contract. This reference does not implement or a
 
 ## Synthetic identity and authentication
 
-The reviewed saved routes choose demo@phishlens.test on the server. This is a shared synthetic
-demo identity, not authenticated per-user isolation. Neon credentials remain backend-only.
-Optional Bearer token injection is merged through PR #125. It does not implement token verification
-or change the demo owner's scope by itself. Neon Auth SDK wiring, token acquisition/storage,
-sign-out and cross-user access remain separate integration work.
-Do not claim authenticated ownership or put database credentials into the extension.
+The backend selects report ownership; the client never sends an owner ID.
+
+- With `REPORT_AUTH_MODE=demo` (the compatibility default), all CRUD uses the shared synthetic
+  `demo@phishlens.test` user. This is not personal storage or authenticated isolation.
+- With `REPORT_AUTH_MODE=neon`, all five saved CRUD operations require
+  `Authorization: Bearer <JWT>`. The backend validates an EdDSA token's signature, issuer,
+  audience, expiry, issued-at time, subject and email; `emailVerified` must be `true` and
+  `banned` must be `false`. It maps the verified subject to an internal user ID and scopes
+  list/detail/create/update/delete and idempotency lookup to that owner. Legacy demo records
+  are not linked by email.
+- Missing, malformed, invalid or expired Bearer tokens return 401; missing, malformed or
+  negative verified/active account claims return 403; invalid Auth configuration or JWKS
+  availability failures return 503. An unknown auth mode also fails closed with 503.
+- Another user's report is returned as 404. Idempotency keys are scoped per owner: replaying
+  the same key and payload returns the original save; reusing that owner's key with changed
+  content conflicts, while a different owner may use the same key independently.
+- Authentication configuration and JWKS are backend settings. The extension sends the current
+  token through `getAccessToken`; it never connects to Postgres or receives database credentials.
+
+These are implementation contracts from the cited source, not proof that any hosted service has
+Auth enabled. `REPORT_AUTH_MODE=demo` remains the current compatibility default in code.
+The [Neon Auth integration contract](neon-auth-integration.md) records the bounded account-status
+freshness limitation: a JWT reflects claims at issuance, and backend token verification does not
+provide immediate account/session revocation.
+
 
 ## Verification limits
 
@@ -156,9 +175,10 @@ retained input/idempotency keys, explicit retry-key reuse and absence of automat
 or detail/history refresh after failure. See [acceptance status](client-acceptance-status.md).
 
 The local client/HTTP tests and documented examples are preparation.
-On November 10 the six-status FastAPI/client replay passed against the source
-above, along with 81 focused client/HTTP tests and schema validation of all four
-JSON examples. Inference and database faults were controlled substitutes; no
+On November 10 the six-status FastAPI/client replay passed against source snapshot
+fa9a23fbb5d1d60c45d0fc06333c50415d04d57e, along with 81 focused client/HTTP tests
+and schema validation of all four JSON examples. That dated run is not verification of
+the November 16 source snapshot cited above. Inference and database faults were controlled substitutes; no
 external record was written. See the acceptance status for remaining live checks.
 October 31 API evidence on #103 is dated mock-mode evidence for its exact earlier SHA, not the
 current release. PR #103 is merged. The November 7 evidence audit records later TF-IDF staging

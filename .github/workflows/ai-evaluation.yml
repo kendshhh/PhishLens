@@ -44,28 +44,56 @@ jobs:
             exit 1
           fi
           changed_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
-          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|analysis_worker|tfidf_provider|saved_provider_pipeline|provider_error_contract)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|train_live_reevaluators)\.py$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
+          if printf '%s\n' "$changed_files" | grep -E '^(backend/ai/|backend/app/|backend/core/config\.py$|backend/tests/test_(ai_[^/]*|analysis_worker|tfidf_provider|saved_provider_pipeline|provider_error_contract)\.py$|extension/ai/|scripts/(benchmark_ai|ai_evaluation_summary|ai_smoke|ai_provider_smoke|ai_ci_report|evaluate_tfidf_cohort|verify_ai_regression|train_live_reevaluators)\.py$|scripts/ai-regression-baseline\.json$|scripts/tests/test_ai_[^/]*\.py$|backend/requirements[^/]*\.(txt|in)$|\.env\.example$|docs/ai\.md$|docs/devops/ai-evaluation\.md$|\.github/workflows/ai-[^/]*\.yml$)' >/dev/null; then
             echo "ai_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "ai_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
   evaluate:
-    if: needs.changes.outputs.ai_changed == 'true'
     needs: changes
-    name: Deterministic AI evaluation
+    name: Deterministic AI Evaluation
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       AI_MODE: mock
       SOURCE_COMMIT: ${{ github.sha }}
     steps:
+      - name: Fail closed when change detection is unavailable
+        if: always()
+        env:
+          CHANGE_RESULT: ${{ needs.changes.result }}
+          AI_CHANGED: ${{ needs.changes.outputs.ai_changed }}
+        run: |
+          set -euo pipefail
+          if [[ "$CHANGE_RESULT" != "success" ]]; then
+            echo "AI change detection failed; cannot safely mark this evaluation as not applicable." >&2
+            exit 1
+          fi
+          case "$AI_CHANGED" in
+            true|false) ;;
+            *) echo "AI change detection returned an invalid result." >&2; exit 1 ;;
+          esac
+
+      - name: Report an explicit not-applicable result
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'false' }}
+        run: |
+          {
+            echo "## Deterministic AI Evaluation — not applicable"
+            echo
+            echo "No AI-related paths changed in this revision range."
+            echo "The deterministic evaluation workload was not run. This result is not an evaluation pass or model-quality approval."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Check out evaluated source
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Python
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
@@ -73,12 +101,15 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install pinned backend dependencies
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         run: python -m pip install -r backend/requirements-dev.txt
 
       - name: Prepare evidence directory
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         run: mkdir -p output/ai-evaluation
 
       - name: Test AI contracts and spend caps with mocked provider
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         run: >-
           python -m pytest
           backend/tests/test_ai_providers.py
@@ -88,9 +119,12 @@ jobs:
           backend/tests/test_tfidf_provider.py
           backend/tests/test_saved_provider_pipeline.py
           scripts/tests/test_ai_evaluation_summary.py
+          scripts/tests/test_ai_regression_gate.py
+          scripts/tests/test_ai_provider_smoke.py
           --junitxml=output/ai-evaluation/contract-tests.xml
 
       - name: Run the deterministic TF-IDF development cohort
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         env:
           AI_MODE: tfidf
         run: |
@@ -100,8 +134,15 @@ jobs:
             | tee output/ai-evaluation/development-benchmark.jsonl
           python -m scripts.ai_evaluation_summary output/ai-evaluation/development-benchmark.jsonl
 
+      - name: Enforce the AI-owner-approved regression baseline
+        if: ${{ needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
+        run: >-
+          python -m scripts.verify_ai_regression
+          --contracts output/ai-evaluation/contract-tests.xml
+          --benchmark output/ai-evaluation/development-benchmark.jsonl
+
       - name: Preserve redacted evaluation evidence
-        if: always()
+        if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.ai_changed == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Deterministic-AI-Evaluation
