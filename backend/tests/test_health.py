@@ -12,3 +12,5 @@ def test_health():
         "status": "ok",
         "service": "phishlens-api",
     }
+
+    assert response.headers["content-type"].startswith("application/json")
