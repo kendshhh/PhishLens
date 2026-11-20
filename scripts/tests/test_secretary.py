@@ -349,7 +349,9 @@ class PreviewTests(unittest.TestCase):
             (root / ".github/secretary.json").write_text(json.dumps(CONFIG))
             event_path = root / "event.json"
             event_path.write_text(json.dumps(event))
+            summary_path = root / "summary.md"
             settings = {"GITHUB_EVENT_PATH": str(event_path), "GITHUB_RUN_ID": "7",
+                        "GITHUB_STEP_SUMMARY": str(summary_path),
                         "SECRETARY_PREVIEW_ENABLED": "true", "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
                         "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST}
             with (patch.dict(os.environ, settings, clear=True),
@@ -360,6 +362,7 @@ class PreviewTests(unittest.TestCase):
                   patch("scripts.secretary.preview.render_request", side_effect=lambda path, *args: render[path]),
                   patch("scripts.secretary.preview.smoke", return_value={
                       "history": "authentication_required",
+                      "seeded_history": "not_checked",
                       "anonymous_saved_report": {
                           "path": "/api/analyses", "status_code": 401,
                           "challenge": "Bearer", "redirected": False,
@@ -369,6 +372,7 @@ class PreviewTests(unittest.TestCase):
                   patch("scripts.secretary.preview.package") as build):
                 main()
             evidence = json.loads((root / "output/secretary/preview-evidence.json").read_text())
+            step_summary = summary_path.read_text(encoding="utf-8")
         smoke.assert_called_once_with(CONFIG["staging_origin"], SHA, report_auth_mode="neon")
         crud.assert_not_called()
         build.assert_not_called()
@@ -377,8 +381,10 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(evidence["required_status"], "success")
         self.assertEqual(evidence["report_auth_mode"], "neon")
         self.assertEqual(evidence["smoke"]["history"], "authentication_required")
+        self.assertEqual(evidence["smoke"]["seeded_history"], "not_checked")
         self.assertEqual(evidence["smoke"]["anonymous_saved_report"]["status_code"], 401)
         self.assertEqual(evidence["authenticated_saved_report"], "pending")
+        self.assertEqual(evidence["live_auth_acceptance"], "pending")
         status_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
                         if entry.args[0] == "statuses/" + SHA]
         deployment_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
@@ -392,7 +398,12 @@ class PreviewTests(unittest.TestCase):
         )
         self.assertEqual(auth_gate["conclusion"], "action_required")
         self.assertEqual(auth_gate["output"]["title"], "Preflight passed; Auth acceptance pending")
-        self.assertIn("No CRUD or staging package", auth_gate["output"]["summary"])
+        self.assertEqual(auth_gate["output"]["summary"], evidence["message"])
+        self.assertIn(evidence["message"], step_summary)
+        self.assertIn("Seeded history was not checked in Neon mode.", evidence["message"])
+        self.assertIn("Authenticated saved-report history and CRUD remain pending.", evidence["message"])
+        self.assertIn("No CRUD or staging package", evidence["message"])
+        self.assertIn("Live Auth acceptance remains pending", evidence["message"])
 
     def test_duplicate_verified_deployment_republishes_required_context(self):
         from scripts.secretary.preview import main

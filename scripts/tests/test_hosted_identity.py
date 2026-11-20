@@ -130,6 +130,7 @@ class HostedIdentityTests(unittest.TestCase):
         evidence = self.verify(values, report_auth_mode="neon")
         self.assertEqual(evidence["version"], SHA)
         self.assertEqual(evidence["history"], "authentication_required")
+        self.assertEqual(evidence["seeded_history"], "not_checked")
         self.assertEqual(
             evidence["anonymous_saved_report"],
             {"path": "/api/analyses", "status_code": 401, "challenge": "Bearer", "redirected": False},

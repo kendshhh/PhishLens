@@ -178,6 +178,7 @@ def smoke(origin, sha, *, report_auth_mode="demo"):
                 if exc.code != 401 or exc.geturl() != url or challenge != "bearer":
                     raise RuntimeError("Neon staging did not return the expected saved-report authentication challenge") from None
         evidence["history"] = "authentication_required"
+        evidence["seeded_history"] = "not_checked"
         evidence["anonymous_saved_report"] = {
             "path": "/api/analyses",
             "status_code": 401,
@@ -551,9 +552,12 @@ def main():
                     action = "action_required"
                     evidence["preflight_passed"] = True
                     evidence["authenticated_saved_report"] = "pending"
+                    evidence["live_auth_acceptance"] = "pending"
                     message = (
-                        "- [x] Exact-head staging preflight passed: health, readiness, version, and anonymous saved-report `401` Bearer challenge.\n"
-                        "- [ ] Authenticated saved-report acceptance remains pending. No CRUD or staging package was produced; use the separately approved Auth acceptance runbook."
+                        "- [x] Exact-head staging preflight verified health, readiness, version, and the anonymous saved-report `401` Bearer challenge.\n"
+                        "- Seeded history was not checked in Neon mode.\n"
+                        "- [ ] Authenticated saved-report history and CRUD remain pending. No CRUD or staging package was produced.\n"
+                        "- [ ] Live Auth acceptance remains pending and requires a separately approved run."
                     )
                     api.request(f"deployments/{deployment['id']}/statuses", {"state": "pending",
                         "description": "Staging infrastructure verified; authenticated acceptance pending",
