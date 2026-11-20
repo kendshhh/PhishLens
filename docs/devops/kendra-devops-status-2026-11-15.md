@@ -1,9 +1,13 @@
 # Kendra DevOps status — Sprints 1–3 — 2026-11-15
 
-This is the current evidence snapshot for Kendra's DevOps work. It separates
-merged repository controls, staging evidence, production state, and items that
-need decisions or records from other people. It is not a course grade or a
-weighted project-completion percentage.
+> Historical snapshot. Current delivery and release status is recorded in
+> [PIPELINE.md](../../PIPELINE.md), refreshed November 20, 2026. This file
+> preserves the November 15 evidence and must not be used as current service or
+> branch-protection state.
+
+This snapshot separates merged repository controls, staging evidence,
+production state, and items that needed decisions or records from other people.
+It is not a course grade or a weighted project-completion percentage.
 
 ## Current repository and controls
 

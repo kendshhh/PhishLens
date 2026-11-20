@@ -1,5 +1,30 @@
 # Pipeline Metrics
 
+## Current delivery sample — 2026-11-20
+
+Read-only refresh from GitHub Actions and Render on November 20. GitHub's first
+100 `main` workflow runs contained four completed `CI` push runs created
+November 20 from 03:52 through 04:59 UTC; all four succeeded. Their workflow
+wall-time median was **1.07 minutes** and p90 was
+**1.42 minutes**, from `run_started_at` to `updated_at`. Render's latest 20
+production deploy records were all completed: one `live`, 19 `deactivated`,
+and no failed statuses. Deployment duration median was **73.2 seconds**,
+p90 **81.5 seconds**, range **60.3–408.0 seconds**, from `startedAt` to
+`finishedAt`; their deploy-start window was November 15 08:11 through November
+20 05:02 UTC. The current live deploy is
+[`dep-dbvt8r0u01pc73b4siig`](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dbvt8r0u01pc73b4siig)
+on `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`.
+
+Sources: [GitHub main workflow runs](https://api.github.com/repos/kendshhh/PhishLens/actions/runs?branch=main&per_page=100)
+and the [Render production deploy inventory](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys).
+This is a small latest-sample refresh, not a comparable optimization
+experiment. Its CI sample is only four main-push runs; it does not include PR
+pipeline time, queueing before workflow start, merge-to-live, user-flow
+latency, cost, or recovery. It cannot establish improvement against the
+October 17–November 14 baseline below. The optimization criterion remains
+**not met** until a like-for-like before/after experiment measures the same
+workflow and check set over a sufficiently broad sample.
+
 ## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
