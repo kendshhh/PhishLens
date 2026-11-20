@@ -1,0 +1,24 @@
+{
+  "api_origin": "https://phishlens-staging.onrender.com",
+  "auth_bridge_url": "https://phishlens-staging.onrender.com/auth/bridge",
+  "auth_database": "neondb",
+  "auth_enabled": true,
+  "auth_origin": "https://offline-bridge-fixture.neonauth.c-4.ap-southeast-1.aws.neon.tech",
+  "auth_transport": "https-bridge",
+  "auth_url": "https://offline-bridge-fixture.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth",
+  "candidate_only": true,
+  "chrome_extension_id": "ceneonaedddlkdocdapimkfggbjcchlb",
+  "environment": "staging",
+  "expected_chrome_origin": "chrome-extension://ceneonaedddlkdocdapimkfggbjcchlb",
+  "format": "phishlens-staging-package-v1",
+  "host_permissions": [
+    "https://phishlens-staging.onrender.com/*",
+    "https://offline-bridge-fixture.neonauth.c-4.ap-southeast-1.aws.neon.tech/*"
+  ],
+  "hosted_acceptance_verified": false,
+  "manifest_key_sha256": "24d4ed04333ba3e230f8ca56619227b16103d62e362668cc8522bbbb9374c48e",
+  "observed_staging_commit": null,
+  "packager_commit": "d70b1e5758068222d323244e7a620be31ec576f9",
+  "required_neon_trusted_origin": "https://phishlens-staging.onrender.com",
+  "source_commit": "d70b1e5758068222d323244e7a620be31ec576f9"
+}
