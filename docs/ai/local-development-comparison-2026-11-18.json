@@ -1,0 +1,71 @@
+{
+  "event": "summary",
+  "model": "local",
+  "run_status": "finished",
+  "requested_cases": 40,
+  "unattempted_cases": 0,
+  "model_metadata": {
+    "model": "dima806/phishing-email-detection",
+    "model_revision": "310a5602280486e01dd60e37230980cfcc327b41",
+    "explanation_source": "rules"
+  },
+  "caseset": "synthetic-v1",
+  "cases_sha256": "a755533aa841bc695574196b3147f2c3b408129872a62204c1f4c5f149ab226f",
+  "prompt_version": null,
+  "repeats": 1,
+  "hosted_pause_seconds": 0,
+  "supported_labels": [
+    "legitimate",
+    "phishing"
+  ],
+  "cold_seconds": 38.715689700009534,
+  "peak_process_rss_mb": 684.7578125,
+  "spend_guard": {
+    "provider_calls": 0,
+    "status": "not_applicable"
+  },
+  "machine": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "logical_cpus": 16,
+    "ram_gb": 31.71
+  },
+  "limitations": "Synthetic development suite. TF-IDF and local DistilBERT use binary labels. Hosted timings include network, and hosted memory measures the client process only.",
+  "attempts": 40,
+  "successful": 40,
+  "errors": 0,
+  "binary_correct": 24,
+  "binary_accuracy": 0.6,
+  "phishing_tp": 12,
+  "phishing_fp": 12,
+  "phishing_cases": 16,
+  "phishing_precision": 0.5,
+  "phishing_recall": 0.75,
+  "phishing_f1": 0.6,
+  "non_phishing_scored_cases": 24,
+  "non_phishing_errors": 0,
+  "legitimate_cases": 16,
+  "legitimate_scored_cases": 16,
+  "legitimate_errors": 0,
+  "legitimate_false_positives": 4,
+  "legitimate_false_positive_rate": 0.25,
+  "spam_cases": 8,
+  "spam_scored_cases": 8,
+  "spam_errors": 0,
+  "spam_phishing_alerts": 8,
+  "spam_phishing_alert_rate": 1.0,
+  "non_phishing_false_positive_rate": 0.5,
+  "false_positive_rate": 0.5,
+  "p50_seconds": 0.01694,
+  "p95_seconds": 0.02713,
+  "mean_seconds": 0.043665425,
+  "confusion": {
+    "phishing->phishing": 12,
+    "phishing->legitimate": 4,
+    "legitimate->legitimate": 12,
+    "legitimate->phishing": 4,
+    "spam->phishing": 8
+  },
+  "scope": "Consumed synthetic-v1 development data only; not the frozen 45-case diagnostic or held-out quality acceptance.",
+  "runtime_note": "Windows CPU PyTorch 2.9.1+cpu and Transformers 5.23.0 using the already-cached pinned checkpoint. The full optional Linux lock was not executed. No weights were downloaded and no provider was switched."
+}
