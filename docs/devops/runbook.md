@@ -1,8 +1,104 @@
 # Deployment and Recovery Runbook
 
-> The deployment and recovery entries below are dated observations. Current
-> production and staging state is summarized in the
-> [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+## Current recovery position — 2026-11-20
+
+Production is live on backend SHA
+`60641f32353c61a5b1f0dcfca1e0f5912afb76b3` (Render deploy
+`dep-dbvt8r0u01pc73b4siig`). `/health` and `/ready` pass, while `/model-info`
+reports `provider_mode=unavailable`. Staging is on a different SHA,
+`d6612c258f289b3a45d8229e4a4803cac75a91ee`, with TF-IDF mode. The current
+production known-good app/config/schema combination is **not identified**.
+Do not choose a rollback target from recency alone.
+
+The November 8 Render staging rollback rehearsal below proves only the two
+recorded staging revisions and configuration. It does not prove rollback of
+current production. Neon metadata on November 20 showed six-hour history
+retention, no scheduled snapshots and no manual snapshots in the connected
+account. No accepted restore rehearsal or measured RTO/RPO is recorded. A
+staging rehearsal is not production recovery evidence.
+
+### Operational ownership and escalation
+
+The last named CI/deploy/runbook owner in repository evidence is Kendra
+(`kendshhh`); reconfirm this assignment before launch. The AI/model decision
+owner recorded in the November 14 handover is Wilberr (`EnviousCoal`). A
+production backup responder, database restore operator, and incident contact
+channel are **not named in current handover evidence**. Assign them before GO.
+The release lead records the incident and stops promotion; the database owner
+approves isolated restore/cutover; the AI owner approves model, evaluation and
+provider decisions. If the primary cannot respond, escalate using the
+pre-agreed backup/contact path; that path remains to be recorded.
+
+### Proposed rollback triggers
+
+These are starting recommendations, not configured alert thresholds. Agree
+them with the service owner and test alert delivery before relying on them.
+
+- **Immediate containment:** wrong deployed SHA, wrong provider/model identity,
+  authentication or cross-user data isolation defect, critical extension action
+  broken, or confirmed privacy/security incident.
+- **Persistent service regression:** `/ready` fails on two consecutive probes
+  60 seconds apart, or two independent exact-release synthetic acceptance
+  checks fail one minute apart.
+- **Sustained degradation:** 5xx rate exceeds 5% for five minutes where request
+  volume is sufficient, or p95 user-flow latency exceeds twice the agreed
+  baseline for ten minutes.
+- **Single transient:** one timeout or failed probe causes a retry and close
+  observation. It does not by itself trigger automatic rollback.
+
+### Application rollback sequence
+
+1. Kendra, as the last documented release operator, or the assigned backup
+   responder declares the incident. Record time, deploy ID, commit SHA,
+   observed failure and affected user flow. The backup responder must be named
+   in the handover before launch.
+2. Stop promotion. Disable the preconfigured AI/release feature flag if that
+   flag has been verified for the current app. The current flag name and
+   production effect are **not verified**; do not guess an environment key.
+3. In Render, select the last explicitly verified compatible deployment, then
+   use **Rollback to this deploy** (or **Manual Deploy > Deploy a specific
+   commit** when that is the documented recovery path). Confirm the target
+   commit and its expected schema/config compatibility before starting. If no
+   compatible known-good SHA is recorded, keep the affected feature disabled
+   and escalate rather than deploying an assumed predecessor.
+4. Restore the target's matching non-secret configuration and feature-flag
+   state from the controlled environment record. Never copy secret values into
+   an issue, log, artifact or repository.
+5. Confirm the deployment ID and `/version` SHA. Check `/health`, `/ready` and
+   `/model-info`, then run exact-SHA smoke and the relevant synthetic extension
+   journey. Verify authentication, saved-report behavior, ownership/isolation
+   and cleanup in the approved test environment. Watch the agreed error and
+   latency signals for at least 15 minutes.
+6. Keep the feature disabled and escalate if any identity, readiness, model or
+   critical user-flow check fails. Do not automatically roll forward or back
+   again on a single transient.
+7. Record the result and incident follow-up before resuming normal promotion.
+
+### Database and data recovery — separate from application rollback
+
+1. Stop writers for an affected data path and preserve the current app/schema
+   identities. Do not run a reverse migration or reset the shared production
+   branch during a rehearsal.
+2. For an irreversible or destructive change, restore the selected point into
+   an isolated Neon recovery branch using the provider's supported recovery
+   method. Confirm the source point is within retention and record its ID/time.
+3. Validate migration state, schema constraints, representative record counts,
+   ownership/isolation and application compatibility against the recovery
+   candidate. Record the data-loss window relative to the incident.
+4. Cut over only through the approved recovery procedure after the database
+   owner and release lead review the evidence. Recheck `/ready`, exact `/version`,
+   affected behavior and data integrity after cutover.
+5. Record recovery duration and data point achieved. Application rollback does
+   not restore deleted or corrupted database state.
+
+RTO and RPO targets are **not currently approved or measured**. Provisional
+discussion targets are RTO ≤30 minutes and RPO ≤1 hour; confirm Neon capability
+and owner tolerance before adopting them. Rehearse application rollback and
+isolated data restore separately, recording start/end times, release/data
+identities, steps, outcome, data-loss implication and follow-up actions.
+
+> The entries below are dated observations. The [current pipeline status](../../PIPELINE.md)
+> supersedes older statements where service SHAs or release state differ.
 
 ## October 21 playbook handoff
 

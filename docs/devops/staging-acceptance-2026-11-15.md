@@ -1,5 +1,10 @@
 # Staging acceptance — 2026-11-15 (application SHA `8c4795f`)
 
+> Historical acceptance for the exact application SHA below. Current service
+> identity and release status are in [PIPELINE.md](../../PIPELINE.md); this
+> record does not establish acceptance of current `main`, current staging or
+> production.
+
 ## Source and target
 
 - GitHub repository: `kendshhh/PhishLens` (public; public visibility is intended).

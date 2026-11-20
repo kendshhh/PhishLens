@@ -1,8 +1,11 @@
 # Production deployment smoke
 
-> This runbook describes the workflow; its November 14 production result is a
-> historical snapshot. See the [November 15 DevOps status](kendra-devops-status-2026-11-15.md)
-> for the current live production SHA and provider-mode result.
+> Current state — November 20, 2026: production is live on
+> `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`; `/health` and `/ready` pass, but
+> `/model-info` reports `provider_mode=unavailable`. The smoke below remains
+> manual-only. See [PIPELINE.md](../../PIPELINE.md) for the current release
+> decision and exact service identities. The November 14 result below is
+> historical evidence, not current acceptance.
 
 ## What the check verifies
 
@@ -33,17 +36,18 @@ upload is the only retained output.
 The workflow is currently manual. Run it from Actions after a production
 deployment and supply the full SHA reported by Render. It uploads a redacted
 summary artifact. Do not treat a successful `/ready` response alone as feature
-acceptance.
+acceptance. The current SHA has not passed this smoke: provider preflight would
+fail before analysis because production reports `provider_mode=unavailable`.
 
 ## Why it is not automatically deploy-triggered yet
 
-The production Render service is configured with `autoDeploy=checksPass`.
-The connected GitHub deployment inventory for the current production SHA has
-staging records but no production deployment event. Render documents workspace
-webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
+The production Render service is configured with `autoDeploy=checksPass` on
+`main`. Render currently reports production deploy
+`dep-dbvt8r0u01pc73b4siig` live on `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`.
+No deploy-ended webhook or automatic smoke trigger is configured or verified.
+Render documents workspace webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
 ([Render Webhooks](https://render.com/docs/webhooks)). The connected read-only
-workspace metadata does not expose the current workspace plan, and no
-deploy-ended webhook is configured or verified. A
+workspace metadata does not expose the current workspace plan. A
 `workflow_run` check on the same default-branch commit could also become a
 pending check while Render is waiting for checks to deploy that commit, so this
 workflow does not register that trigger and risk a check/deploy cycle.

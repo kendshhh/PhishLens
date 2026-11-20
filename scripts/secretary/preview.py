@@ -324,9 +324,10 @@ def eligibility(pr, files, run, repo, opt_in_label=None):
         return "failure", "Hosted staging request label is not configured"
     labels = {label.get("name") for label in pr.get("labels", []) if isinstance(label, dict)}
     if opt_in_label not in labels:
-        return "success", (
-            "Hosted staging not requested. Add the `" + opt_in_label
-            + "` label and rerun CI on the current head to request a deployment."
+        return "failure", (
+            "Application/runtime changes require the `" + opt_in_label
+            + "` label and an exact-head hosted staging verification. Add the label "
+            "and rerun CI for this PR head."
         )
     if run["conclusion"] != "success":
         return "failure", "CI did not succeed; staging not deployed"
