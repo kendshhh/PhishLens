@@ -1,11 +1,113 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 15, 2026
+## Current delivery and acceptance snapshot — November 20, 2026
 
-This is the current snapshot. Older dated observations below are historical;
-use the [current Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
+This section supersedes the dated snapshots below. The current release decision
+is **NO-GO**; a live backend is not equivalent to an accepted product release.
+
+GitHub `main` is [`60641f32353c61a5b1f0dcfca1e0f5912afb76b3`](https://github.com/kendshhh/PhishLens/commit/60641f32353c61a5b1f0dcfca1e0f5912afb76b3),
+merged through PR #254 on November 20. Production Render deploy
+`dep-dbvt8r0u01pc73b4siig` is live on that SHA. Read-only `/health` and `/ready`
+return HTTP 200 and report the database connected, but `/model-info` reports
+`provider_mode=unavailable` and `accepts_tfidf_reports=false`. Production
+feature acceptance therefore fails. Current [`release issue #153`](https://github.com/kendshhh/PhishLens/issues/153)
+records an explicit [NO-GO sign-off](https://github.com/kendshhh/PhishLens/issues/153#issuecomment-7031345485).
+It identifies the release target as a Chrome
+extension with a Render API and Neon database; an older web-app scope note in the
+same issue remains to be reconciled. The Vercel URL is the CSP221A course guide,
+not the PhishLens application. The [current release record](docs/devops/release-record-2026-11-20.md)
+sets that scope and records the exact identities and remaining acceptance proof.
+The [environment and secret map](docs/devops/environment-map-2026-11-20.md)
+records non-secret configuration scope and explicitly marks live mappings and
+secret access controls that remain unverified.
+
+Staging is live on backend SHA
+`d6612c258f289b3a45d8229e4a4803cac75a91ee`; its read-only endpoints report
+staging, a connected database and TF-IDF mode. This is a different SHA and does
+not establish a matching accepted extension package or production behavior.
+Authenticated saved-report history/CRUD and live Auth acceptance remain open.
+
+### Current checks and enforcement
+
+The November 20 [main CI run](https://github.com/kendshhh/PhishLens/actions/runs/44678059062)
+passed backend and extension checks; separate [dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44678059035),
+[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44678059114)
+and [deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44678059130)
+runs also passed, as did CodeQL. `Staging integration` and hosted staging were
+skipped on the main push. On PR #254, `Staging integration` passed but hosted staging and
+hosted-staging preflight were skipped. A successful status alone is not evidence
+that those skipped deployment checks ran.
+
+The `main` branch is reported as protected. The earlier branch-check query
+listed five contexts (`Backend checks`, `Extension checks`, `Staging
+integration`, `CodeQL`, and `Secretary staging`), but the November 20
+branch-protection read returned GitHub 403 `Resource not accessible by
+integration`. The active ruleset #26782191 currently exposes one approval plus
+deletion/non-fast-forward protection and no required-status rules. The
+November 15 description below said six contexts. Because this connection cannot
+read classic branch-protection settings, the effective required-check list is
+**NOT VERIFIED**; reconcile it in GitHub settings and prove it with a test PR.
+The current controller publishes `Secretary staging` on the exact PR head and
+keeps detailed results in the separate `Secretary staging verification`
+check-run. For an unrequested hosted preview it reports an explicit
+not-applicable success; that is not hosted staging acceptance. Thus the current
+required status does not require a hosted preview on every application PR.
+Treat the effective required-check contract as incomplete until the intended
+release policy is confirmed in GitHub settings and a test PR. AI evaluation,
+workflow lint and dependency checks are not present in the branch endpoint's
+five contexts. PR #254's approval is by the PR author's own account and does not
+demonstrate independent review.
+
+This task branch changes the controller so an application/runtime PR without
+`needs-hosted-staging` fails the required status; documentation-only PRs remain
+explicitly not applicable. The change is not effective on `main` until reviewed
+and merged, and the hosted check still cannot prove authenticated Auth until
+that path is accepted in staging.
+
+### Current quality, deployment and recovery limits
+
+The deterministic AI workflow runs on PRs, main pushes and manual dispatch. Its
+40-case synthetic development cohort is not held out and has no numeric quality
+cutoff. The recorded result is 65% binary accuracy, 18.75% phishing recall
+(3/16), and 6.25% legitimate false positives (1/16); all eight spam cases were
+classified as legitimate. The result is not a release-quality pass. The
+separate frozen English source-pair result is advisory-only for that cohort.
+
+Render production is configured for `main` auto-deploy when checks pass; staging
+auto-deploy is off. The production deployment smoke remains
+`workflow_dispatch`-only and requires a full SHA. Do not declare a release from
+health/readiness alone. The [current smoke runbook](docs/devops/production-deploy-smoke.md)
+documents its exact behavior and current limitation. No GitHub Release or remote
+tag was found during this audit.
+
+The [November 20 metric refresh](docs/devops/metrics.md#current-delivery-sample--2026-11-20)
+adds four main-push CI runs and 20 production deploy records; it still cannot
+establish a like-for-like end-to-end speed improvement. The 28-day comparative
+snapshot below it ends November 14. The earlier staging
+rollback rehearsal covers a different app SHA and environment; it does not
+prove current production rollback. Neon metadata showed no scheduled or manual
+snapshots in the connected account; history retention is six hours, but no
+restore rehearsal or measured RTO/RPO is established. Current known-good
+production app/config/schema compatibility is not recorded.
+
+### Release stop conditions
+
+Keep the release at NO-GO until one exact extension/backend/model candidate
+passes authenticated staging acceptance, the approved model-quality threshold,
+and post-deployment exact-SHA verification; GitHub required checks are
+unambiguous; and compatible application rollback plus separate isolated data
+restore rehearsals have recorded outcomes. Update this section only when those
+proofs exist. Do not replace missing evidence with a planned action or a green
+check whose relevant job was skipped.
+
+## Historical delivery and acceptance snapshot — November 15, 2026
+
+> The following November 15 snapshot is preserved for history and is superseded
+> by the November 20 status above.
+
+The [November 15 Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
 and [November 15 staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
-for detailed evidence.
+remain useful historical evidence; neither describes the current production SHA.
 
 At the November 15 staging acceptance, GitHub `main` was
 [`8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f`](https://github.com/kendshhh/PhishLens/commit/8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f) (PR #215). It later advanced through [`c568b7a39a7abf3a99ed7aa318d490397d21bd30`](https://github.com/kendshhh/PhishLens/commit/c568b7a39a7abf3a99ed7aa318d490397d21bd30) (PR #224), [`bfa0d61040ea671a81317102f2de536cf86a9844`](https://github.com/kendshhh/PhishLens/commit/bfa0d61040ea671a81317102f2de536cf86a9844) (PR #221), and [`56fba3952b588d289cf539623f9b4149b03258fc`](https://github.com/kendshhh/PhishLens/commit/56fba3952b588d289cf539623f9b4149b03258fc) (PR #226), to current snapshot SHA [`6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c`](https://github.com/kendshhh/PhishLens/commit/6544364b07c0fcc9fcbc9ee8d405d96d5d1f414c) (PR #231, removal of the unused Vercel landing page). PR #224 changed the browser-acceptance harness and added evidence; PR #221 added a documentation audit; PR #226 hardened hosted-staging PostgreSQL URL validation and added offline regressions. The staging run below verifies application SHA `8c4795f5a4ef4e55c44ff44e98ffd6413cb21c6f` as deployed at that time, before PR #226's fix, not a deployment of current `main`.

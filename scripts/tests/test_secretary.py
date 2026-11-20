@@ -643,6 +643,13 @@ class PreviewTests(unittest.TestCase):
             )[0],
             "success",
         )
+        s = fixture()
+        s["pr"]["labels"] = []
+        action, message = eligibility(
+            s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label,
+        )
+        self.assertEqual(action, "failure")
+        self.assertIn("require the `needs-hosted-staging` label", message)
         self.assertEqual(
             eligibility(
                 s["pr"], s["files"], {**run, "head_sha": "c" * 40},
