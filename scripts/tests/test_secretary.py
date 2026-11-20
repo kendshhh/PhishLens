@@ -370,7 +370,9 @@ class PreviewTests(unittest.TestCase):
                   }) as smoke,
                   patch("scripts.secretary.preview.verify_saved_report") as crud,
                   patch("scripts.secretary.preview.package") as build):
-                main()
+                with self.assertRaises(SystemExit) as error:
+                    main()
+                self.assertEqual(error.exception.code, 1)
             evidence = json.loads((root / "output/secretary/preview-evidence.json").read_text())
             step_summary = summary_path.read_text(encoding="utf-8")
         smoke.assert_called_once_with(CONFIG["staging_origin"], SHA, report_auth_mode="neon")
@@ -378,7 +380,7 @@ class PreviewTests(unittest.TestCase):
         build.assert_not_called()
         self.assertEqual(evidence["result"], "action_required")
         self.assertTrue(evidence["preflight_passed"])
-        self.assertEqual(evidence["required_status"], "success")
+        self.assertEqual(evidence["required_status"], "failure")
         self.assertEqual(evidence["report_auth_mode"], "neon")
         self.assertEqual(evidence["smoke"]["history"], "authentication_required")
         self.assertEqual(evidence["smoke"]["seeded_history"], "not_checked")
@@ -389,7 +391,7 @@ class PreviewTests(unittest.TestCase):
                         if entry.args[0] == "statuses/" + SHA]
         deployment_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
                             if entry.args[0] == "deployments/2/statuses"]
-        self.assertEqual(status_calls, ["pending", "success"])
+        self.assertEqual(status_calls, ["pending", "failure"])
         self.assertEqual(deployment_calls, ["in_progress", "pending"])
         auth_gate = next(
             entry.args[1]
@@ -669,25 +671,25 @@ class PreviewTests(unittest.TestCase):
         self.assertFalse(current_pr_head_matches(current, SHA))
 
     def test_database_isolation_guards(self):
-        rows = render_staging_environment_rows()
+        rows = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
         with patch.dict(os.environ, {
             "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
             "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
         }):
-            verify_environment(rows)
+            verify_environment(rows, require_authenticated=True)
             set_render_environment_value(
                 rows, "DATABASE_URL",
                 f"postgresql://phishlens_staging_app:synthetic@{PRODUCTION_HOST}/phishlens_dev",
             )
             with self.assertRaises(RuntimeError):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
 
             set_render_environment_value(
                 rows, "DATABASE_URL",
                 f"postgresql://neondb_owner:synthetic@{STAGING_HOST}/phishlens_dev",
             )
             with self.assertRaisesRegex(RuntimeError, "phishlens_staging_app role"):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
 
             set_render_environment_value(
                 rows, "DATABASE_URL",
@@ -698,7 +700,7 @@ class PreviewTests(unittest.TestCase):
                 f"postgresql://neondb_owner:synthetic@{PRODUCTION_HOST}/phishlens_dev",
             )
             with self.assertRaisesRegex(RuntimeError, "isolated branch"):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
 
             rows = render_staging_environment_rows()
             rows = [
@@ -706,7 +708,18 @@ class PreviewTests(unittest.TestCase):
                 if row["envVar"]["key"] != "STAGING_MIGRATION_DATABASE_URL"
             ]
             with self.assertRaisesRegex(RuntimeError, "migration credential"):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
+
+    def test_hosted_staging_rejects_implicit_or_demo_auth_mode(self):
+        for rows in (
+            render_staging_environment_rows(REPORT_AUTH_MODE="demo"),
+            render_staging_environment_rows(),
+        ):
+            with patch.dict(os.environ, {
+                "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
+                "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+            }), self.assertRaisesRegex(RuntimeError, "requires explicit REPORT_AUTH_MODE=neon"):
+                verify_environment(rows, require_authenticated=True)
 
     def test_production_service_rejected(self):
         with self.assertRaises(RuntimeError):

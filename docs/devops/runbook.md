@@ -2,20 +2,34 @@
 
 ## Current recovery position — 2026-11-20
 
-Production is live on backend SHA
-`16f955321caf5dc368181be7ce5c00643750545d` (Render deploy
-`dep-dc03j4sipgvc738ueieg`). `/health` and `/ready` pass, while `/model-info`
-reports `provider_mode=unavailable`. Staging is on a different SHA,
+Render has deployed application SHA
+`0c382dda175db3570e6bb7122841122254ba131d` as deploy
+`dep-dc04rb0473hc738839ug`. The owner-approved `AI_ANALYSIS_ENABLED=false`
+setting triggered follow-up deploy `dep-dc04t5dg1s2s73e5pc00`, which reached
+Live at 13:44:56 UTC on the same SHA. Direct post-deploy endpoint GETs returned
+HTTP 403 from this audit client; `/model-info` has not confirmed the effective
+disabled state. The last successful production endpoint checks at 12:18 UTC
+belonged to SHA
+`16f955321caf5dc368181be7ce5c00643750545d`. Staging remains on
 `d6612c258f289b3a45d8229e4a4803cac75a91ee`, with TF-IDF mode. The current
-production known-good app/config/schema combination is **not identified**.
-Do not choose a rollback target from recency alone.
+production known-good app/config/schema combination and rollback rehearsal are
+not established; do not choose a rollback target from recency alone.
 
-The November 8 Render staging rollback rehearsal below proves only the two
-recorded staging revisions and configuration. It does not prove rollback of
-current production. Neon metadata on November 20 showed six-hour history
-retention, no scheduled snapshots and no manual snapshots in the connected
-account. No accepted restore rehearsal or measured RTO/RPO is recorded. A
-staging rehearsal is not production recovery evidence.
+On November 20, a manual snapshot was restored into a new isolated Neon branch
+without finalizing or changing production. Schema revision and aggregate
+user/report counts matched the source; no orphaned report owners were found.
+The provider reported the restored branch ready about one second after
+creation. This small-data snapshot-to-ready sample is not a full-service RTO
+measurement or proof of the approved RTO ≤30 minutes / RPO ≤1 hour targets.
+See the [dated recovery drill](recovery-drill-2026-11-20.md).
+
+Neon reports six-hour history retention. The manual snapshot and recovery
+branch expire November 27, 2026. Automatic schedules require a paid plan, and
+the current free plan rejected production branch protection because its
+protected-branch limit is zero. The production branch remains unprotected and
+there is no recurring snapshot schedule; no plan upgrade was made. The earlier
+November 8 staging rollback rehearsal below does not prove current production
+rollback.
 
 ### Operational ownership and escalation
 
@@ -66,12 +80,14 @@ them with the service owner and test alert delivery before relying on them.
    responder declares the incident. Record time, deploy ID, commit SHA,
    observed failure and affected user flow. The backup responder must be named
    in the handover before launch.
-2. Stop promotion. After the observability/kill-switch PR is merged and
-   deployed, `AI_ANALYSIS_ENABLED=false` disables both API inference paths and
-   `/model-info` reports the provider as disabled. The default when the
-   variable is unset preserves existing behavior. The current production SHA
-   predates this switch; verify the exact deployed version and test its effect
-   before relying on the flag.
+2. Stop promotion. PR #256 deployed `AI_ANALYSIS_ENABLED` support; the owner
+   set `AI_ANALYSIS_ENABLED=false` on Render and the matching-SHA configuration
+   deploy is Live. Endpoint verification remains pending because this audit
+   client received HTTP 403. Confirm the exact deployed SHA and that
+   `/model-info` reports analysis disabled. If verification fails, keep the
+   provider unconfigured and do not send inference traffic. When unset, the
+   variable defaults to enabled, so preserve the explicit false setting until
+   a shared budget and approved model are configured.
 3. In Render, select the last explicitly verified compatible deployment, then
    use **Rollback to this deploy** (or **Manual Deploy > Deploy a specific
    commit** when that is the documented recovery path). Confirm the target

@@ -5,24 +5,27 @@
 This section supersedes the dated snapshots below. The current release decision
 is **NO-GO**; a live backend is not equivalent to an accepted product release.
 
-GitHub `main` is [`16f955321caf5dc368181be7ce5c00643750545d`](https://github.com/kendshhh/PhishLens/commit/16f955321caf5dc368181be7ce5c00643750545d),
-merged through PR #255 on November 20. Production Render deploy
-`dep-dc03j4sipgvc738ueieg` is live on that SHA. Read-only `/version`, `/health`
-and `/ready` returned the matching SHA, HTTP 200 and a connected database at
-12:18 UTC, but `/model-info` reports
-`provider_mode=unavailable` and `accepts_tfidf_reports=false`. Production
-feature acceptance therefore fails. Current [`release issue #153`](https://github.com/kendshhh/PhishLens/issues/153)
+GitHub `main` is [`0c382dda175db3570e6bb7122841122254ba131d`](https://github.com/kendshhh/PhishLens/commit/0c382dda175db3570e6bb7122841122254ba131d),
+merged through PR #256 on November 20. Its CI run and the separate CodeQL,
+dependency, AI-evaluation and workflow-lint runs passed. Render deploy
+`dep-dc04rb0473hc738839ug` for this SHA reached Live. The owner-approved
+`AI_ANALYSIS_ENABLED=false` setting triggered follow-up deploy
+`dep-dc04t5dg1s2s73e5pc00`, which reached Live at 13:44:56 UTC on the same SHA.
+The Render control plane confirms the value was set. Direct `/version`,
+`/health`, `/ready` and `/model-info` GETs from this audit client returned HTTP
+403, so the effective disabled response is not independently verified. A
+disabled-aware, zero-inference smoke fix is prepared on this review branch; run
+it after merge before relying on the switch. PR #256 adds request observability
+and the inference switch, but it does not establish product acceptance.
+Current [`release issue #153`](https://github.com/kendshhh/PhishLens/issues/153)
 records an explicit [NO-GO sign-off](https://github.com/kendshhh/PhishLens/issues/153#issuecomment-7031345485).
-It identifies the release target as a Chrome
-extension with a Render API and Neon database; an older web-app scope note in the
-same issue remains to be reconciled. The Vercel URL is the CSP221A course guide,
-not the PhishLens application. The [current release record](docs/devops/release-record-2026-11-20.md)
-sets that scope and records the exact identities and remaining acceptance proof.
-The [environment and secret map](docs/devops/environment-map-2026-11-20.md)
-records non-secret configuration scope and explicitly marks live mappings and
-secret access controls that remain unverified. The [p. 140 demo-day readiness
-matrix](docs/devops/demo-day-readiness-2026-11-20.md) answers each of the PDF's
-ten readiness questions with dated evidence and current gaps.
+It identifies the release target as a Chrome extension with a Render API and
+Neon database; an older web-app scope note in that issue remains to be
+reconciled. The Vercel URL is the CSP221A course guide, not the PhishLens
+application. The [release record](docs/devops/release-record-2026-11-20.md),
+[environment map](docs/devops/environment-map-2026-11-20.md), and [p. 140
+demo-day readiness matrix](docs/devops/demo-day-readiness-2026-11-20.md) record
+current identities and remaining acceptance evidence.
 
 Staging is live on backend SHA
 `d6612c258f289b3a45d8229e4a4803cac75a91ee`; its read-only endpoints report
@@ -32,40 +35,35 @@ Authenticated saved-report history/CRUD and live Auth acceptance remain open.
 
 ### Current checks and enforcement
 
-The November 20 [main CI run](https://github.com/kendshhh/PhishLens/actions/runs/44733739927)
-passed backend and extension checks; separate [dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44733740031),
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44733739987)
-and [deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44733739878)
-runs also passed. `Staging integration` and hosted staging were skipped on the
-main push. On PR #255, staging integration and hosted staging were skipped. A
-successful status alone is not evidence that those skipped deployment checks
+The November 20 [main CI run](https://github.com/kendshhh/PhishLens/actions/runs/44745905952)
+for `0c382dd` passed backend and extension checks; separate [dependency
+security](https://github.com/kendshhh/PhishLens/actions/runs/44745905799),
+[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44745905840),
+[deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44745905844)
+and [CodeQL](https://github.com/kendshhh/PhishLens/actions/runs/44745905883)
+also passed. Staging integration, hosted-staging preflight and hosted staging
+were skipped. A green workflow does not mean those skipped deployment checks
 ran.
 
-The `main` branch is reported as protected. The earlier branch-check query
-listed five contexts (`Backend checks`, `Extension checks`, `Staging
-integration`, `CodeQL`, and `Secretary staging`), but the November 20
-branch-protection read returned GitHub 403 `Resource not accessible by
-integration`. The active ruleset #26782191 currently exposes one approval plus
-deletion/non-fast-forward protection and no required-status rules. The
-November 15 description below said six contexts. Because this connection cannot
-read classic branch-protection settings, the effective required-check list is
-**NOT VERIFIED**; reconcile it in GitHub settings and prove it with a test PR.
-The current controller publishes `Secretary staging` on the exact PR head and
-keeps detailed results in the separate `Secretary staging verification`
-check-run. For an unrequested hosted preview it reports an explicit
-not-applicable success; that is not hosted staging acceptance. Thus the current
-required status does not require a hosted preview on every application PR.
-Treat the effective required-check contract as incomplete until the intended
-release policy is confirmed in GitHub settings and a test PR. AI evaluation,
-workflow lint and dependency checks are not present in the branch endpoint's
-five contexts. PR #254's approval is by the PR author's own account and does not
-demonstrate independent review.
+Authenticated settings read on November 20 show strict classic branch
+protection requires eight contexts: Backend checks, Extension checks, Staging
+integration, CodeQL, Secretary staging, Deterministic AI Evaluation, Dependency
+security, and Workflow lint. One approval, latest-push approval, stale-review
+dismissal and admin enforcement are enabled; force-push and deletion are
+disabled. Active ruleset #26782191 separately contains an approval rule but no
+status rules. The effective status requirements come from classic branch
+protection. A current runtime PR still must prove the expected label/skip
+behavior, independent approval, and that a failing required check blocks merge.
 
 PR #255 merged the controller change: an application/runtime PR without
-`needs-hosted-staging` now fails the required status, while documentation-only
-PRs remain explicitly not applicable. The change is on `main`; the current
-required-check settings are still not independently verified, and hosted
-acceptance requires an explicitly requested staging preview.
+`needs-hosted-staging` fails the required status, while documentation-only PRs
+are explicitly not applicable. Its Neon Auth preflight can still leave the
+required status green while authenticated CRUD is pending. A local follow-up on
+this review branch requires explicit `REPORT_AUTH_MODE=neon`, makes Auth-pending
+a failed status, and exits the workflow unsuccessfully. The follow-up is not
+yet in `main`; all 223 script tests and Ruff checks pass locally. The
+repository preview flag remains false and no current runtime PR proves the
+corrected behavior. Keep this gate open.
 
 ### Current quality, deployment and recovery limits
 
@@ -78,30 +76,38 @@ separate frozen English source-pair result is advisory-only for that cohort.
 
 Render production is configured for `main` auto-deploy when checks pass; staging
 auto-deploy is off. The production deployment smoke remains
-`workflow_dispatch`-only and requires a full SHA. Do not declare a release from
-health/readiness alone. The [current smoke runbook](docs/devops/production-deploy-smoke.md)
-documents its exact behavior and current limitation. No GitHub Release or remote
-tag was found during this audit.
+`workflow_dispatch`-only and requires a full SHA. Its current main version stops
+before inference when the provider guard is disabled; the review branch adds a
+read-only disabled-mode check so AI can remain off. Do not declare a release
+from health/readiness alone. The [smoke runbook](docs/devops/production-deploy-smoke.md)
+records the limitation. No GitHub Release or remote tag was found during this
+audit.
 
-The [November 20 metric refresh](docs/devops/metrics.md#current-delivery-sample--2026-11-20-1218-utc)
-adds the latest four main-push CI runs and 20 production deploy records; it still cannot
-establish a like-for-like end-to-end speed improvement. The 28-day comparative
+The [November 20 metric refresh](docs/devops/metrics.md#current-delivery-sample--2026-11-20-1345-utc)
+records the latest four main-push CI runs and the latest Render deploy; it
+still cannot establish a like-for-like end-to-end speed improvement. The 28-day comparative
 snapshot below it ends November 14. The earlier staging
 rollback rehearsal covers a different app SHA and environment; it does not
-prove current production rollback. Neon metadata showed no scheduled or manual
-snapshots in the connected account; history retention is six hours, but no
-restore rehearsal or measured RTO/RPO is established. Current known-good
-production app/config/schema compatibility is not recorded.
+prove current production rollback. A November 20 manual Neon snapshot was
+restored into an isolated branch and its schema plus aggregate counts matched;
+this is not an end-to-end RTO/RPO result. The approved ≤30-minute RTO and
+≤1-hour RPO remain unproven. The current free plan rejected production branch
+protection and does not support scheduled snapshots. See the
+[recovery drill](docs/devops/recovery-drill-2026-11-20.md). The app rollback
+rehearsal, exact service/database mapping and current Auth configuration remain
+open.
 
 ### Release stop conditions
 
 Keep the release at NO-GO until one exact extension/backend/model candidate
-passes authenticated staging acceptance, the approved model-quality threshold,
-and post-deployment exact-SHA verification; GitHub required checks are
-unambiguous; and compatible application rollback plus separate isolated data
-restore rehearsals have recorded outcomes. Update this section only when those
-proofs exist. Do not replace missing evidence with a planned action or a green
-check whose relevant job was skipped.
+passes authenticated staging acceptance and an approved model-quality
+threshold; exact-SHA post-deploy checks pass; required GitHub settings and
+runtime-PR behavior are proven; and application rollback plus isolated data
+recovery have recorded outcomes against the approved RTO/RPO. The isolated
+restore drill is recorded, but branch protection and scheduled snapshots are
+blocked by the current Neon plan and app rollback remains untested. Do not
+replace missing evidence with a plan or a green check whose relevant job was
+skipped.
 
 ## Historical delivery and acceptance snapshot — November 15, 2026
 
