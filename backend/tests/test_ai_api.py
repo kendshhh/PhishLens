@@ -1,3 +1,6 @@
+import json
+import logging
+
 from fastapi.testclient import TestClient
 
 from backend.ai.schemas import AIAnalysisResult
@@ -38,6 +41,70 @@ def test_analysis_endpoint_uses_ai_service(monkeypatch):
         "mode": "gemini",
     }
     assert calls == [(None, None, "Your account will be closed today.")]
+
+
+def test_analysis_adds_server_request_id_and_redacted_ai_log(monkeypatch, caplog):
+    private_text = "synthetic-private-email-content"
+
+    class FakeService:
+        def analyze_email(self, **_kwargs):
+            return AIAnalysisResult(
+                classification="phishing",
+                model="synthetic-model-v1",
+                model_revision="synthetic-revision",
+                prompt_version="synthetic-prompt-v1",
+            )
+
+    monkeypatch.setattr(main, "get_ai_service", lambda: (FakeService(), "gemini"))
+    monkeypatch.setenv("AI_ANALYSIS_ENABLED", "true")
+    caplog.set_level(logging.INFO, logger="phishlens.api")
+
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/analyses",
+            json={"text": private_text},
+            headers={"X-Request-ID": "caller-controlled"},
+        )
+
+    request_id = response.headers["X-Request-ID"]
+    assert request_id != "caller-controlled"
+    event = next(
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "phishlens.api" and '"event":"http_request"' in record.message
+    )
+    assert event["request_id"] == request_id
+    assert event["route"] == "/analyses"
+    assert event["operation"] == "analyze_email"
+    assert event["ai"]["provider_mode"] == "gemini"
+    assert event["ai"]["model_id"] == "synthetic-model-v1"
+    assert event["ai"]["model_revision"] == "synthetic-revision"
+    assert event["ai"]["prompt_version"] == "synthetic-prompt-v1"
+    assert event["ai"]["outcome"] == "success"
+    assert private_text not in json.dumps(event)
+
+
+def test_analysis_kill_switch_disables_inference_and_reports_state(monkeypatch):
+    def unexpected_provider_lookup():
+        raise AssertionError("The kill switch must stop before provider lookup")
+
+    monkeypatch.setattr(main, "get_ai_service", unexpected_provider_lookup)
+    monkeypatch.setenv("AI_ANALYSIS_ENABLED", "false")
+
+    with TestClient(main.app) as client:
+        response = client.post("/analyses", json={"text": "Synthetic mail"})
+        model_info = client.get("/model-info")
+
+    assert response.status_code == 503
+    assert response.headers.get("X-Request-ID")
+    assert model_info.status_code == 200
+    assert model_info.json() == {
+        "provider_mode": "disabled",
+        "analysis_enabled": False,
+        "supports_required_provider": False,
+        "accepts_tfidf_reports": False,
+        "accepts_local_reviews": False,
+    }
 
 
 def test_analysis_endpoint_rejects_required_provider_mismatch_before_inference(monkeypatch):

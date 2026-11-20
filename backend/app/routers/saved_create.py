@@ -1,6 +1,7 @@
 """Persistent analysis creation with safe client-facing errors."""
 
 import re
+import time
 from collections.abc import Callable, Coroutine
 from typing import Annotated, Any, Literal, cast
 from uuid import UUID
@@ -25,7 +26,8 @@ from backend.app.analysis_persistence import (
 from backend.app.analysis_schemas import CreateSavedAnalysis, SavedAnalysisDetail
 from backend.app.analysis_service import create_saved_analysis
 from backend.app.auth import report_owner
-from backend.core.config import get_ai_config, get_database_url
+from backend.app.observability import set_ai_observation
+from backend.core.config import ai_analysis_enabled, get_ai_config, get_database_url
 
 SavedCreateErrorCode = Literal[
     "invalid_input",
@@ -95,6 +97,7 @@ router = APIRouter(
 )
 async def create_analysis(
     request: CreateSavedAnalysis,
+    http_request: Request,
     idempotency_key: str | None = Header(
         default=None,
         alias="Idempotency-Key",
@@ -104,8 +107,19 @@ async def create_analysis(
     required_model: str | None = Header(default=None, alias="X-PhishLens-Model", max_length=64),
     owner_id: Annotated[UUID | None, Depends(report_owner)] = None,
 ) -> SavedAnalysisDetail | JSONResponse:
+    inference_started = time.perf_counter()
     deadline = AnalysisDeadline.start()
     owner_args = {"owner_id": owner_id} if owner_id is not None else {}
+
+    if not ai_analysis_enabled():
+        set_ai_observation(
+            http_request,
+            provider_mode="disabled",
+            outcome="unavailable",
+            failure_code="analysis_disabled",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
+        return _error(503, "analysis_unavailable", "Email analysis is temporarily unavailable")
 
     # An extension save must never silently invoke a cloud/mock provider. Keep
     # the existing body contract server-owned, including when deployment changes.
@@ -118,6 +132,13 @@ async def create_analysis(
                 raise RuntimeError("Model mismatch")
             load_artifact()
         except (RuntimeError, OSError, ValueError, KeyError):
+            set_ai_observation(
+                http_request,
+                provider_mode="unavailable",
+                outcome="unavailable",
+                failure_code="required_model_unavailable",
+                duration_ms=(time.perf_counter() - inference_started) * 1000,
+            )
             return _error(503, "analysis_unavailable", "The matching TF-IDF save service is unavailable")
 
     if idempotency_key is not None and not _IDEMPOTENCY_KEY_PATTERN.fullmatch(
@@ -128,6 +149,13 @@ async def create_analysis(
     try:
         get_database_url()
     except (RuntimeError, ValueError):
+        set_ai_observation(
+            http_request,
+            provider_mode="unavailable",
+            outcome="not_run",
+            failure_code="storage_configuration",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             503,
             "storage_unavailable",
@@ -143,31 +171,73 @@ async def create_analysis(
                 **owner_args,
             )
         except AnalysisIdempotencyConflictError:
+            set_ai_observation(
+                http_request,
+                provider_mode="unknown",
+                outcome="failure",
+                failure_code="idempotency_conflict",
+                duration_ms=(time.perf_counter() - inference_started) * 1000,
+            )
             return _error(
                 409,
                 "idempotency_conflict",
                 "Idempotency-Key was already used for a different request",
             )
         except AnalysisTimeoutError:
+            set_ai_observation(
+                http_request,
+                provider_mode="unknown",
+                outcome="failure",
+                failure_code="idempotency_lookup_timeout",
+                duration_ms=(time.perf_counter() - inference_started) * 1000,
+            )
             return _error(504, "analysis_timeout", "Email analysis timed out")
         except DatabaseError:
+            set_ai_observation(
+                http_request,
+                provider_mode="unknown",
+                outcome="not_run",
+                failure_code="storage_unavailable",
+                duration_ms=(time.perf_counter() - inference_started) * 1000,
+            )
             return _error(
                 503,
                 "storage_unavailable",
                 "Saved analysis storage is temporarily unavailable",
             )
         except Exception:  # noqa: BLE001
+            set_ai_observation(
+                http_request,
+                provider_mode="unknown",
+                outcome="failure",
+                failure_code="idempotency_lookup_failed",
+                duration_ms=(time.perf_counter() - inference_started) * 1000,
+            )
             return _error(
                 500,
                 "internal_error",
                 "Unable to create saved analysis",
             )
         if existing is not None:
+            set_ai_observation(
+                http_request,
+                provider_mode="unknown",
+                outcome="idempotent_replay",
+                provenance=existing.analysis_provenance,
+                duration_ms=(time.perf_counter() - inference_started) * 1000,
+            )
             return existing
 
     try:
         mode, api_key, model = get_ai_config()
     except (RuntimeError, ValueError):
+        set_ai_observation(
+            http_request,
+            provider_mode="unavailable",
+            outcome="unavailable",
+            failure_code="provider_configuration",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             503,
             "analysis_unavailable",
@@ -175,6 +245,13 @@ async def create_analysis(
         )
 
     if mode not in {"mock", "gemini", "tfidf"}:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="unavailable",
+            failure_code="provider_not_supported",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             503,
             "analysis_unavailable",
@@ -182,7 +259,7 @@ async def create_analysis(
         )
 
     try:
-        return await create_saved_analysis(
+        saved = await create_saved_analysis(
             request,
             mode=cast(ProviderMode, mode),
             api_key=api_key,
@@ -191,23 +268,66 @@ async def create_analysis(
             idempotency_key=idempotency_key,
             **owner_args,
         )
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="success",
+            provenance=saved.analysis_provenance,
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
+        return saved
     except AnalysisIdempotencyConflictError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="idempotency_conflict",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             409,
             "idempotency_conflict",
             "Idempotency-Key was already used for a different request",
         )
     except AnalysisTimeoutError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="analysis_timeout",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(504, "analysis_timeout", "Email analysis timed out")
     except AnalysisUnavailableError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="unavailable",
+            failure_code="provider_unavailable",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             503,
             "analysis_unavailable",
             "Email analysis is temporarily unavailable",
         )
     except AnalysisInferenceError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="inference_failed",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(502, "analysis_failed", "Email analysis failed")
     except DatabaseError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="storage_unavailable",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             503,
             "storage_unavailable",
@@ -215,6 +335,13 @@ async def create_analysis(
         )
     except Exception:  # noqa: BLE001
         # The HTTP boundary must not expose unexpected exception details.
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="internal_error",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return _error(
             500,
             "internal_error",

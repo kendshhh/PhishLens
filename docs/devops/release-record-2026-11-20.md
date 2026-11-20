@@ -2,9 +2,9 @@
 
 ## Decision
 
-**NO-GO.** This record fixes the product scope and captures the identities
-observed during the November 20 audit. It is not approval to deploy or a claim
-that application acceptance is complete.
+**NO-GO.** This record fixes the product scope and refreshes current main and
+production identities observed on November 20. It is not approval to deploy or
+a claim that application acceptance is complete.
 
 ## Release scope
 
@@ -22,8 +22,8 @@ still needs an owner update so the project issue and this record agree.
 
 | Component | Observed identity | Acceptance state |
 |---|---|---|
-| GitHub source | `main` at [`60641f32353c61a5b1f0dcfca1e0f5912afb76b3`](https://github.com/kendshhh/PhishLens/commit/60641f32353c61a5b1f0dcfca1e0f5912afb76b3) | Source identity verified; no release tag exists. |
-| Production API | Render deploy `dep-dbvt8r0u01pc73b4siig`, source SHA `60641f32353c61a5b1f0dcfca1e0f5912afb76b3` | Health and DB readiness pass; `/model-info` reports `provider_mode=unavailable`; feature acceptance fails. |
+| GitHub source | `main` at [`16f955321caf5dc368181be7ce5c00643750545d`](https://github.com/kendshhh/PhishLens/commit/16f955321caf5dc368181be7ce5c00643750545d) | Source identity verified; no release tag exists. |
+| Production API | Render deploy `dep-dc03j4sipgvc738ueieg`, source SHA `16f955321caf5dc368181be7ce5c00643750545d` | Read-only `/version`, `/health` and `/ready` passed at 12:18 UTC; `/model-info` reports `provider_mode=unavailable`; feature acceptance fails. |
 | Staging API | Source SHA `d6612c258f289b3a45d8229e4a4803cac75a91ee` | Health and DB readiness pass; TF-IDF mode; not the production SHA. |
 | Extension package | Artifact SHA-256 and installable package identity not recorded here | **NOT VERIFIED** as paired with either API SHA. |
 | AI model | Staging reports TF-IDF model SHA `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c` | Production reports no active provider; the model is not accepted for broad release. |

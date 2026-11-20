@@ -21,6 +21,28 @@ from backend.ai.spend_limit import (
 from backend.core import config
 
 
+@pytest.mark.parametrize(
+    "configured, expected",
+    [("true", True), (" TRUE ", True), ("false", False), ("yes", False)],
+)
+def test_ai_analysis_switch_is_explicit_and_fails_closed(
+    monkeypatch,
+    configured,
+    expected,
+):
+    monkeypatch.setattr(config, "load_dotenv", lambda *_args, **_kwargs: None)
+    monkeypatch.setenv("AI_ANALYSIS_ENABLED", configured)
+
+    assert config.ai_analysis_enabled() is expected
+
+
+def test_ai_analysis_switch_defaults_to_existing_behavior(monkeypatch):
+    monkeypatch.setattr(config, "load_dotenv", lambda *_args, **_kwargs: None)
+    monkeypatch.delenv("AI_ANALYSIS_ENABLED", raising=False)
+
+    assert config.ai_analysis_enabled() is True
+
+
 def _test_spend_policy(model: str) -> GeminiSpendPolicy:
     return GeminiSpendPolicy(
         cap_usd=Decimal(1),
