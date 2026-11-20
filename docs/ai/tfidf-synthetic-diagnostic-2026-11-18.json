@@ -1,0 +1,386 @@
+{
+  "schema": 1,
+  "source_commit": "8322fb802f59dd1db0b00563211e188b1cf858d4",
+  "run_status": "finished",
+  "actual_mail_screening": "unassessed",
+  "model": {
+    "alert_mode": "raw_margin",
+    "alert_threshold": 0.0,
+    "mapping": {
+      "intercept": 2.0617153419475205,
+      "kind": "margin_sigmoid",
+      "slope": 1.6158795082744162
+    },
+    "model_id": "word_plus_char_wb_C1p0",
+    "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+    "system": "tfidf_v12a"
+  },
+  "manifest_sha256": "dd9e312065eee718d1b5c6fac19b3582cd30079fdd60c98f610d3055407f366e",
+  "lock_sha256": "7a5d7280efca7849a8e9b34f498b4e073d7ce5773f6c613ea0d15487286a9b51",
+  "private_report_sha256": "42bbc9acbae2acdfc1beea4441072a3bd99ace171058a77203b34839cb1123b5",
+  "owner_exception_reference": "https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6983613256",
+  "independent_final_lock_approval": "pending",
+  "environment": {
+    "python": "3.12.10",
+    "pydantic": "2.13.4",
+    "machine": {
+      "logical_cpus": 16,
+      "os": "Windows-11-10.0.26300-SP0",
+      "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel"
+    }
+  },
+  "timing": {
+    "first_call_seconds": 0.022420799999963492,
+    "max_sampled_rss_bytes": null,
+    "warm_p50_seconds": 0.0002578999992692843,
+    "warm_p95_seconds": 0.00040109999827109277
+  },
+  "groups": {
+    "synthetic/primary": {
+      "alert_precision_at_cohort_mix": {
+        "denominator": 1,
+        "numerator": 1,
+        "value": 1.0,
+        "wilson95": [
+          0.20654931437723745,
+          1.0
+        ]
+      },
+      "attempted": 36,
+      "combined_non_phishing_alert_rate": {
+        "denominator": 24,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          1.3877787807814457e-17,
+          0.13797620467498017
+        ]
+      },
+      "confusion": {
+        "legitimate": {
+          "alert": 0,
+          "below_threshold": 12,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        },
+        "phishing": {
+          "alert": 1,
+          "below_threshold": 11,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        },
+        "spam": {
+          "alert": 0,
+          "below_threshold": 12,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        }
+      },
+      "counts": {
+        "alert": 1,
+        "below_threshold": 35,
+        "inference_error": 0,
+        "invalid_output": 0,
+        "timeout": 0,
+        "unattempted": 0
+      },
+      "legitimate_false_positive_rate": {
+        "denominator": 12,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          2.7755575615628914e-17,
+          0.24249400665524085
+        ]
+      },
+      "legitimate_security_notice_false_positive_rate": {
+        "denominator": 6,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          2.7755575615628914e-17,
+          0.3903342879021653
+        ]
+      },
+      "phishing_recall": {
+        "denominator": 12,
+        "numerator": 1,
+        "value": 0.08333333333333333,
+        "wilson95": [
+          0.014865094404917095,
+          0.35387991114111694
+        ]
+      },
+      "planned": 36,
+      "spam_phishing_alert_rate": {
+        "denominator": 12,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          2.7755575615628914e-17,
+          0.24249400665524085
+        ]
+      },
+      "valid_result_rate": {
+        "denominator": 36,
+        "numerator": 36,
+        "value": 1.0,
+        "wilson95": [
+          0.9035813714055363,
+          1.0
+        ]
+      }
+    },
+    "synthetic/context": {
+      "alert_precision_at_cohort_mix": {
+        "denominator": 0,
+        "numerator": 0,
+        "value": null,
+        "wilson95": null
+      },
+      "attempted": 6,
+      "combined_non_phishing_alert_rate": {
+        "denominator": 4,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          0.0,
+          0.4898908364545973
+        ]
+      },
+      "confusion": {
+        "legitimate": {
+          "alert": 0,
+          "below_threshold": 2,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        },
+        "phishing": {
+          "alert": 0,
+          "below_threshold": 2,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        },
+        "spam": {
+          "alert": 0,
+          "below_threshold": 2,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        }
+      },
+      "counts": {
+        "alert": 0,
+        "below_threshold": 6,
+        "inference_error": 0,
+        "invalid_output": 0,
+        "timeout": 0,
+        "unattempted": 0
+      },
+      "legitimate_false_positive_rate": {
+        "denominator": 2,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          0.0,
+          0.6576197724933469
+        ]
+      },
+      "legitimate_security_notice_false_positive_rate": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          0.0,
+          0.7934506856227626
+        ]
+      },
+      "phishing_recall": {
+        "denominator": 2,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          0.0,
+          0.6576197724933469
+        ]
+      },
+      "planned": 6,
+      "spam_phishing_alert_rate": {
+        "denominator": 2,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": [
+          0.0,
+          0.6576197724933469
+        ]
+      },
+      "valid_result_rate": {
+        "denominator": 6,
+        "numerator": 6,
+        "value": 1.0,
+        "wilson95": [
+          0.6096657120978346,
+          1.0
+        ]
+      }
+    },
+    "synthetic/stress": {
+      "alert_precision_at_cohort_mix": {
+        "denominator": 0,
+        "numerator": 0,
+        "value": null,
+        "wilson95": null
+      },
+      "attempted": 3,
+      "combined_non_phishing_alert_rate": {
+        "denominator": 2,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": null
+      },
+      "confusion": {
+        "legitimate": {
+          "alert": 0,
+          "below_threshold": 1,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        },
+        "phishing": {
+          "alert": 0,
+          "below_threshold": 1,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        },
+        "spam": {
+          "alert": 0,
+          "below_threshold": 1,
+          "inference_error": 0,
+          "invalid_output": 0,
+          "timeout": 0,
+          "unattempted": 0
+        }
+      },
+      "counts": {
+        "alert": 0,
+        "below_threshold": 3,
+        "inference_error": 0,
+        "invalid_output": 0,
+        "timeout": 0,
+        "unattempted": 0
+      },
+      "legitimate_false_positive_rate": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": null
+      },
+      "legitimate_security_notice_false_positive_rate": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": null
+      },
+      "phishing_recall": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": null
+      },
+      "planned": 3,
+      "spam_phishing_alert_rate": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0,
+        "wilson95": null
+      },
+      "valid_result_rate": {
+        "denominator": 3,
+        "numerator": 3,
+        "value": 1.0,
+        "wilson95": null
+      }
+    }
+  },
+  "attempted": 45,
+  "outcomes": {
+    "below_threshold": 44,
+    "alert": 1
+  },
+  "primary_phishing_errors": [
+    {
+      "id": "p01",
+      "scenario": "credential_theft",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p02",
+      "scenario": "mfa_theft",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p03",
+      "scenario": "payment_redirection",
+      "outcome": "alert"
+    },
+    {
+      "id": "p04",
+      "scenario": "delivery_impersonation",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p05",
+      "scenario": "qr_lure",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p06",
+      "scenario": "credential_theft",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p07",
+      "scenario": "payment_redirection",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p08",
+      "scenario": "account_access",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p09",
+      "scenario": "credential_theft",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p10",
+      "scenario": "wallet_secret_theft",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p11",
+      "scenario": "mfa_theft",
+      "outcome": "below_threshold"
+    },
+    {
+      "id": "p12",
+      "scenario": "credential_theft",
+      "outcome": "below_threshold"
+    }
+  ]
+}

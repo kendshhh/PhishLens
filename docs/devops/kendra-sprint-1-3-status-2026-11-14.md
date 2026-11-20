@@ -2,6 +2,9 @@
 
 **Snapshot date:** 2026-11-14
 
+> Historical snapshot. The current repository and hosted-service evidence is in
+> [Kendra's November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+
 **GitHub `main` at this refresh:** `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`
 
 **Late-day refresh:** PRs [#196](https://github.com/kendshhh/PhishLens/pull/196)

@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from scripts.secretary.github_api import APIError, GitHub
 from scripts.secretary.preview import smoke, verify_saved_report
@@ -109,17 +110,42 @@ class HostedIdentityTests(unittest.TestCase):
             {"items": [{"subject": "Synthetic account notice"}]},
         ]
 
-    def verify(self, payloads):
-        responses = [io.BytesIO(json.dumps(value).encode()) for value in payloads]
+    def verify(self, payloads, *, report_auth_mode="demo"):
+        responses = [value if isinstance(value, HTTPError) else io.BytesIO(json.dumps(value).encode())
+                     for value in payloads]
         with patch("urllib.request.urlopen", side_effect=responses), patch(
             "scripts.secretary.preview.time.monotonic", side_effect=[0, 181]
         ):
-            return smoke("https://staging.invalid", SHA)
+            return smoke("https://staging.invalid", SHA, report_auth_mode=report_auth_mode)
 
     def test_exact_staging_commit_and_seed_pass(self):
         evidence = self.verify(self.responses())
         self.assertEqual(evidence["version"], SHA)
         self.assertEqual(evidence["history"], "passed")
+
+    def test_neon_smoke_records_the_anonymous_auth_challenge(self):
+        values = self.responses()[:3]
+        values.append(HTTPError("https://staging.invalid/api/analyses", 401, "Unauthorized",
+                                {"WWW-Authenticate": "Bearer"}, io.BytesIO()))
+        evidence = self.verify(values, report_auth_mode="neon")
+        self.assertEqual(evidence["version"], SHA)
+        self.assertEqual(evidence["history"], "authentication_required")
+        self.assertEqual(evidence["seeded_history"], "not_checked")
+        self.assertEqual(
+            evidence["anonymous_saved_report"],
+            {"path": "/api/analyses", "status_code": 401, "challenge": "Bearer", "redirected": False},
+        )
+
+    def test_neon_smoke_fails_if_anonymous_history_is_accessible(self):
+        with self.assertRaisesRegex(RuntimeError, "did not reject an anonymous saved-report request"):
+            self.verify(self.responses(), report_auth_mode="neon")
+
+    def test_neon_smoke_rejects_an_unrelated_unauthorized_response(self):
+        values = self.responses()[:3]
+        values.append(HTTPError("https://other.invalid/api/analyses", 401, "Unauthorized",
+                                {"WWW-Authenticate": "Bearer"}, io.BytesIO()))
+        with self.assertRaisesRegex(RuntimeError, "expected saved-report authentication challenge"):
+            self.verify(values, report_auth_mode="neon")
 
     def test_saved_report_runner_accepts_only_complete_machine_evidence(self):
         result = {
