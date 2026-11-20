@@ -42,6 +42,18 @@ still needs an owner update so the project issue and this record agree.
 - [ ] Rehearse application rollback to a schema/config-compatible target and separately restore Neon data into an isolated branch; record measured RTO/RPO and data-loss window.
 - [ ] Publish a versioned release and changelog only after all preceding evidence passes.
 
+## Migration compatibility evidence
+
+The [November 15 disposable-PostgreSQL report](../migration-compatibility-recovery-2026-11-15.md)
+records repeatable upgrades through `0004_neon_auth_subject`, preservation of a
+synthetic legacy row across `0003` to `0004`, and **11 passing saved-report CRUD
+tests** from pre-Neon-Auth backend revision `270b7db` against schema `0004`.
+This is useful local compatibility evidence for the covered migration and CRUD
+paths. It does not establish compatibility of the current production
+predecessor, hosted schema/configuration, application rollback, or Neon restore.
+Keep the rollback and isolated hosted-restore acceptance items above open until
+those exact-environment checks are completed and recorded.
+
 The current release issue remains the source for team sign-off. Update this
 record only with evidence tied to exact component identities; a planned action,
 green unrelated check or skipped deployment job does not satisfy an item.
