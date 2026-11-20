@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initializeGhost, inspectText, moodFor } from '../js/ghost.js';
+import { clampPosition, initializeGhost, inspectText, moodFor } from '../js/ghost.js';
 
 const PHISH = 'Dear customer, your account will be suspended. Kindly verify your password immediately.';
 
@@ -11,7 +11,8 @@ function panel({ analysis = null } = {}) {
       toggle(n, on) { if (on) this.names.add(n); else this.names.delete(n); } },
     setAttribute(k, v) { this.attributes[k] = v; },
     addEventListener(type, fn) { this.listeners[type] = fn; } });
-  const elements = { ghost: el(), 'ghost-bubble': el(), 'scan-body': Object.assign(el(), { value: '' }) };
+  const elements = { ghost: el(), 'ghost-bubble': el(), 'scan-body': Object.assign(el(), { value: '' }),
+    'paste-panel': Object.assign(el(), { open: true }) };
   let onChanged;
   const chromeImpl = { storage: {
     onChanged: { addListener(fn) { onChanged = fn; } },
@@ -20,7 +21,8 @@ function panel({ analysis = null } = {}) {
   return {
     get mood() { return elements.ghost.dataset.mood; },
     type(value) { elements['scan-body'].value = value; elements['scan-body'].listeners.input(); },
-    setAnalysis(value) { onChanged({ veriqoAnalysis: { newValue: value } }, 'session'); }
+    setAnalysis(value) { onChanged({ veriqoAnalysis: { newValue: value } }, 'session'); },
+    setPanelOpen(open) { elements['paste-panel'].open = open; elements['paste-panel'].listeners.toggle(); }
   };
 }
 const settle = async mock => { await Promise.resolve(); await Promise.resolve(); mock.timers.tick(250); };
@@ -88,4 +90,28 @@ test('a pending keystroke cannot re-shock the ghost after the scan is cleared', 
   ui.setAnalysis(undefined);
   t.mock.timers.tick(250);
   assert.equal(ui.mood, 'calm');
+});
+
+test('reopening the paste box after a clear reacts to the email still in it', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const ui = panel();
+  await settle(t.mock);
+  ui.type(PHISH); t.mock.timers.tick(250);
+  // Starting a check collapses the paste box and keeps the draft.
+  ui.setPanelOpen(false);
+  ui.setAnalysis({ status: 'success', selectedText: PHISH, result: {} });
+  ui.setAnalysis(undefined);
+  assert.equal(ui.mood, 'calm');
+  ui.setPanelOpen(true);
+  assert.equal(ui.mood, 'shocked');
+  ui.setPanelOpen(false);
+  assert.equal(ui.mood, 'calm');
+});
+
+test('a dragged ghost stays inside the panel', () => {
+  const size = { width: 64, height: 84 };
+  const view = { innerWidth: 360, innerHeight: 600 };
+  assert.deepEqual(clampPosition({ left: -50, top: -20 }, size, view), { left: 4, top: 4 });
+  assert.deepEqual(clampPosition({ left: 999, top: 999 }, size, view), { left: 292, top: 512 });
+  assert.deepEqual(clampPosition({ left: 100.4, top: 200.6 }, size, view), { left: 100, top: 201 });
 });

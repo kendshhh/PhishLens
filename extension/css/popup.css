@@ -273,6 +273,11 @@ footer .about p { text-align: left; }
 .ghost-alert { position: absolute; top: -6px; right: -2px; z-index: 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d94a3d; color: white; font: 800 15px/1 -apple-system, "Segoe UI", sans-serif; box-shadow: 0 3px 8px #d94a3d55; transform: scale(0); transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
 .ghost-bubble { position: absolute; right: 54px; bottom: 58px; z-index: 2; width: max-content; max-width: 190px; margin: 0; padding: 7px 10px; border: 1px solid #d5e1ef; border-radius: 12px 12px 3px 12px; background: white; color: #26364e; font-size: 11px; font-weight: 600; line-height: 1.35; box-shadow: 0 4px 14px #1935521f; opacity: 0; transform: translateY(6px) scale(.95); transform-origin: bottom right; transition: opacity .2s, transform .2s; }
 .ghost.has-bubble .ghost-bubble { opacity: 1; transform: none; }
+/* Only the ghost's body can be grabbed; the rest of the box still lets clicks through. */
+.ghost-body { pointer-events: auto; cursor: grab; touch-action: none; user-select: none; }
+.ghost.is-dragging .ghost-body { cursor: grabbing; animation-play-state: paused; }
+.ghost.bubble-right .ghost-bubble { right: auto; left: 54px; border-radius: 12px 12px 12px 3px; }
+.ghost.bubble-below .ghost-bubble { bottom: auto; top: 70px; }
 .ghost[data-mood=curious] .ghost-body { animation-duration: 2.6s; }
 .ghost[data-mood=curious] .ghost-monocle-glass { fill: #bfe3ff99; }
 .ghost[data-mood=curious] .ghost-brow-right { opacity: 1; transform: translateY(-2px); }
