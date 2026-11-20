@@ -256,6 +256,9 @@ jobs:
       - name: Lint trusted secretary code
         run: python -m ruff check scripts/secretary
 
+      - name: Test trusted secretary controllers
+        run: python -m pytest scripts/tests/test_secretary.py -q -p no:cacheprovider
+
       - name: Verify exact merge commit migration lineage
         id: migration-lineage
         run: python scripts/verify_migration_lineage.py --repo-root .
