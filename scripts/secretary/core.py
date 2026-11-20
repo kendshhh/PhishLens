@@ -30,9 +30,8 @@ def application_change(files):
             filename.startswith("backend/")
             and not filename.startswith("backend/tests/")
         )
-        or filename.startswith("extension/")
+        or filename.startswith(("extension/", "scripts/start_staging"))
         or filename in {"requirements.txt", "package.json", "package-lock.json"}
-        or filename.startswith("scripts/start_staging")
         for filename in (f["filename"] for f in files)
     )
 
