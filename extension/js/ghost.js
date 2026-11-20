@@ -60,16 +60,22 @@ export function initializeGhost({ documentImpl = document, chromeImpl = globalTh
   let analysis = null;
   let mood = 'calm';
   let bubbleTimer;
+  // The ghost reacts to the user's most recent action, so clearing what it reacted
+  // to calms it: 'pasted' = typing in the text box, 'viewed' = the current check,
+  // 'none' = the check was just cleared (calm until the user types again).
+  let focus = 'pasted';
 
   function update() {
-    const pasted = inspectText(textarea?.value ?? '');
-    const viewed = inspectText(typeof analysis?.selectedText === 'string' ? analysis.selectedText : '');
-    const result = analysis?.status === 'success' ? analysis.result : null;
-    const alert = Boolean(result?.workflow?.released && result.alert);
-    const strongest = [pasted, viewed].sort((a, b) =>
-      (b.flags.length * 3 + b.cues.length) - (a.flags.length * 3 + a.cues.length))[0];
-    const next = moodFor(strongest, { alert });
-    const label = bubbleFor(next, strongest, alert);
+    let found = { cues: [], flags: [] };
+    let alert = false;
+    if (focus === 'pasted') found = inspectText(textarea?.value ?? '');
+    else if (focus === 'viewed') {
+      found = inspectText(typeof analysis?.selectedText === 'string' ? analysis.selectedText : '');
+      const result = analysis?.status === 'success' ? analysis.result : null;
+      alert = Boolean(result?.workflow?.released && result.alert);
+    }
+    const next = moodFor(found, { alert });
+    const label = bubbleFor(next, found, alert);
     if (next !== mood) {
       // Restart the reaction animation each time the ghost becomes shocked.
       ghost.classList.remove('is-reacting');
@@ -90,14 +96,21 @@ export function initializeGhost({ documentImpl = document, chromeImpl = globalTh
   }
 
   let pending;
-  textarea?.addEventListener('input', () => { clearTimeout(pending); pending = setTimeout(update, 200); });
+  let typed = false;
+  textarea?.addEventListener('input', () => {
+    focus = 'pasted'; typed = true;
+    clearTimeout(pending); pending = setTimeout(update, 200);
+  });
   chromeImpl?.storage?.onChanged?.addListener((changes, area) => {
     if (area !== 'session' || !('veriqoAnalysis' in changes)) return;
     analysis = changes.veriqoAnalysis.newValue ?? null;
+    focus = analysis ? 'viewed' : 'none';
+    clearTimeout(pending);
     update();
   });
   chromeImpl?.storage?.session?.get(['veriqoAnalysis', 'phishlensScanDraft']).then(data => {
     analysis = data?.veriqoAnalysis ?? null;
+    if (analysis && !typed) focus = 'viewed';
     // popup.js restores the draft into the textarea; read it after that settles.
     setTimeout(() => {
       update();
