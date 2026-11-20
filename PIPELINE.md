@@ -138,10 +138,14 @@ jobs; production follows the existing after-checks auto-deploy. The shared stagi
 queue is serialized and deployment approval still applies. Package identity does
 not establish installed Chrome acceptance.
 
-With `REPORT_AUTH_MODE=neon`, Secretary records live identity, readiness and the
-anonymous saved-report `401` challenge as staging preflight evidence. The
-required staging check stays open for the approved authenticated saved-report
-verification. Demo mode continues to require seeded history and synthetic CRUD.
+With `REPORT_AUTH_MODE=neon`, the protected `Secretary staging` status passes
+only after exact-head identity, health/readiness and the anonymous saved-report
+`401` Bearer challenge are verified. The detailed `Secretary staging
+verification` Check Run remains `action_required` while authenticated saved-report
+acceptance is pending; it produces no CRUD evidence or staging package. Treat
+that Auth acceptance as a separate approved gate, and do not treat the preflight
+pass as Auth or release acceptance. Demo mode continues to require seeded
+history and synthetic CRUD.
 [Auth acceptance runbook](docs/auth-backend-acceptance-runbook.md)
 
 ## PostgreSQL evidence gate (#38, closed)

@@ -20,12 +20,15 @@ flowchart TD
   C --> D{Application change, same repo, ready, CI passed?}
   D -->|Yes| E[Staging environment trust approval]
   E --> S[Serialized exact-SHA Render staging deploy]
-  S --> V[Health, DB readiness, SHA, seeded history]
-  V --> Z[Saved-report synthetic AI/CRUD, staging ZIP, and deployment evidence]
+  S --> V[Exact SHA, health/readiness, and demo history or Neon auth boundary]
+  V --> MODE{Staging auth mode}
+  MODE -->|Demo| DEMO[Saved-report synthetic CRUD, staging ZIP, and deployment evidence]
+  MODE -->|Neon| NEON[Preflight status passes; authenticated acceptance remains pending]
   D -->|Docs only| N[Secretary staging check: success, not applicable]
   D -->|Fork, draft or failure| B[Explicit blocked or failed result]
   C --> R
-  V --> R
+  DEMO --> R
+  NEON --> R
   N --> R
   B --> R
   R --> A[One bot report; optional bounded AI explanation]
@@ -55,7 +58,7 @@ status reconciliation, not continuous monitoring.
 | Deterministic CI | Install, lint, mock AI tests, migrations/seed in disposable PostgreSQL, package | Fix failures; inspect coverage |
 | Secretary | Read patches/evidence, flag bounded heuristics, update its own report | Assess concerns and uncovered code |
 | Optional Gemini | Explain sanitized metadata, validate JSON, fall back on failure | Enable a separate capped key and approve external data policy |
-| Preview | Deploy exact eligible SHA, run saved-report synthetic AI/CRUD, test packaged browser scenarios, build staging ZIP | Approve deployment trust; check production-specific behavior and submit formal review |
+| Preview | Deploy exact eligible SHA; in demo mode run synthetic CRUD and package browser scenarios; in Neon mode verify identity/readiness/auth boundary and leave authenticated acceptance pending | Approve deployment trust and Auth acceptance separately; check production-specific behavior and submit formal review |
 | Review | Provide checklist and evidence links | Record manual test and submit formal review |
 | Merge | Nothing | Authorized human merges after required checks/reviews |
 | Production | Existing Render deployment plus read-only observer | Decide and execute rollback if needed |
@@ -212,9 +215,14 @@ being tested.
 The required `Secretary staging` context is published as a commit status on the
 exact PR head SHA by the trusted `workflow_run` controller. A separate
 `Secretary staging verification` Check Run carries the detailed staging result.
-The controller uses only trusted default-branch code and posts success only after
-the required staging checks finish; failures and superseded shared previews stay
-non-green.
+The controller uses only trusted default-branch code. In demo mode, the required
+status turns green only after its full hosted checks finish. In Neon mode, that
+protected status means exact-head identity, health/readiness and the expected
+anonymous `401` Bearer challenge passed. The detailed Check Run stays
+`action_required` for authenticated saved-report acceptance, and no CRUD evidence
+or staging package is produced. The preflight status is not Auth or release
+acceptance; keep authenticated acceptance behind its separate approval. Failures
+and superseded shared previews stay non-green.
 The temporary legacy job skips drafts/forks before requesting environment
 access. That skip is not preview acceptance; the new controller records drafts
 and relevant forks as `action_required` on its separate check after installation.

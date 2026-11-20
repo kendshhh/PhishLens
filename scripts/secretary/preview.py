@@ -178,6 +178,12 @@ def smoke(origin, sha, *, report_auth_mode="demo"):
                 if exc.code != 401 or exc.geturl() != url or challenge != "bearer":
                     raise RuntimeError("Neon staging did not return the expected saved-report authentication challenge") from None
         evidence["history"] = "authentication_required"
+        evidence["anonymous_saved_report"] = {
+            "path": "/api/analyses",
+            "status_code": 401,
+            "challenge": "Bearer",
+            "redirected": False,
+        }
     return evidence
 
 
@@ -543,10 +549,11 @@ def main():
                         "log_url": log, "auto_inactive": False})
                 elif report_auth_mode == "neon":
                     action = "action_required"
+                    evidence["preflight_passed"] = True
                     evidence["authenticated_saved_report"] = "pending"
                     message = (
-                        "- [x] Exact PR SHA live; health, readiness, version, and anonymous saved-report rejection passed.\n"
-                        "- [ ] Authenticated saved-report verification is pending. Follow the approved Auth acceptance runbook."
+                        "- [x] Exact-head staging preflight passed: health, readiness, version, and anonymous saved-report `401` Bearer challenge.\n"
+                        "- [ ] Authenticated saved-report acceptance remains pending. No CRUD or staging package was produced; use the separately approved Auth acceptance runbook."
                     )
                     api.request(f"deployments/{deployment['id']}/statuses", {"state": "pending",
                         "description": "Staging infrastructure verified; authenticated acceptance pending",
@@ -592,27 +599,37 @@ def main():
             if deployment:
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "failure", "description": "Deployment or verification failed", "auto_inactive": False})
         finally:
-            evidence.update({"result": action, "message": message, "recorded_at": dt.datetime.now(dt.UTC).isoformat()})
+            preflight_only_passed = action == "action_required" and evidence.get("preflight_passed") is True
+            status_state = "success" if action == "success" or preflight_only_passed else "failure"
+            if preflight_only_passed:
+                status_description = "Staging preflight passed; Auth acceptance pending"
+            else:
+                status_description = (
+                    "Staging verification passed"
+                    if status_state == "success"
+                    else "Staging verification did not pass"
+                )
+            evidence.update({
+                "result": action,
+                "required_status": status_state,
+                "message": message,
+                "recorded_at": dt.datetime.now(dt.UTC).isoformat(),
+            })
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
-            title = (
-                "Hosted staging not requested"
-                if action == "success" and message.startswith("Hosted staging not requested.")
-                else "Staging: " + action
-            )
+            if preflight_only_passed:
+                title = "Preflight passed; Auth acceptance pending"
+            else:
+                title = (
+                    "Hosted staging not requested"
+                    if action == "success" and message.startswith("Hosted staging not requested.")
+                    else "Staging: " + action
+                )
             api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": action,
                 "output": {"title": title, "summary": message}}, "PATCH")
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
                 out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
-            status_state = "success" if action == "success" else "failure"
-            status_description = (
-                "Staging verification passed"
-                if status_state == "success"
-                else "Staging verification did not pass"
-            )
-            if evidence.get("authenticated_saved_report") == "pending":
-                status_description = "Authenticated saved-report verification pending"
             publish_preview_status(
                 api, run["head_sha"], config, status_state,
                 status_description, log,

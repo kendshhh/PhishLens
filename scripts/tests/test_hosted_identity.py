@@ -130,6 +130,10 @@ class HostedIdentityTests(unittest.TestCase):
         evidence = self.verify(values, report_auth_mode="neon")
         self.assertEqual(evidence["version"], SHA)
         self.assertEqual(evidence["history"], "authentication_required")
+        self.assertEqual(
+            evidence["anonymous_saved_report"],
+            {"path": "/api/analyses", "status_code": 401, "challenge": "Bearer", "redirected": False},
+        )
 
     def test_neon_smoke_fails_if_anonymous_history_is_accessible(self):
         with self.assertRaisesRegex(RuntimeError, "did not reject an anonymous saved-report request"):
