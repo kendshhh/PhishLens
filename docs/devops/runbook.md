@@ -1,19 +1,22 @@
 # Deployment and Recovery Runbook
 
-## Current recovery position — 2026-11-20
+## Current recovery position — 2026-11-21
 
-Render has deployed application SHA
-`0c382dda175db3570e6bb7122841122254ba131d` as deploy
-`dep-dc04rb0473hc738839ug`. The owner-approved `AI_ANALYSIS_ENABLED=false`
-setting triggered follow-up deploy `dep-dc04t5dg1s2s73e5pc00`, which reached
-Live at 13:44:56 UTC on the same SHA. Direct post-deploy endpoint GETs returned
-HTTP 403 from this audit client; `/model-info` has not confirmed the effective
-disabled state. The last successful production endpoint checks at 12:18 UTC
-belonged to SHA
-`16f955321caf5dc368181be7ce5c00643750545d`. Staging remains on
-`d6612c258f289b3a45d8229e4a4803cac75a91ee`, with TF-IDF mode. The current
-production known-good app/config/schema combination and rollback rehearsal are
-not established; do not choose a rollback target from recency alone.
+Render production is Live on application SHA
+811980c2cbf70d9957146bf329627f0826a018f1, deploy
+dep-dc07rs67bikc73fjgjq0. The scheduled Production drift run 44812619162
+passed exact-SHA, health and readiness checks; it does not query model-info or
+exercise Auth, CRUD or the extension. Staging is also deployed on SHA
+811980c2cbf70d9957146bf329627f0826a018f1 in manual deploy
+dep-dc07s1cipgvc73dh0150. This is deployment identity, not staging acceptance.
+No current production-compatible rollback target has been rehearsed.
+
+Production analysis was verified disabled in Render on November 20. The current
+environment value was not reread on November 21, and no current model-info
+response is available. The main-branch production smoke now supports a
+disabled-aware, zero-inference verification path after PR #257, but remains
+manual-only. Do not send paid inference while model, budget and effective
+provider state are unaccepted.
 
 On November 20, a manual snapshot was restored into a new isolated Neon branch
 without finalizing or changing production. Schema revision and aggregate
@@ -80,14 +83,13 @@ them with the service owner and test alert delivery before relying on them.
    responder declares the incident. Record time, deploy ID, commit SHA,
    observed failure and affected user flow. The backup responder must be named
    in the handover before launch.
-2. Stop promotion. PR #256 deployed `AI_ANALYSIS_ENABLED` support; the owner
-   set `AI_ANALYSIS_ENABLED=false` on Render and the matching-SHA configuration
-   deploy is Live. Endpoint verification remains pending because this audit
-   client received HTTP 403. Confirm the exact deployed SHA and that
-   `/model-info` reports analysis disabled. If verification fails, keep the
-   provider unconfigured and do not send inference traffic. When unset, the
-   variable defaults to enabled, so preserve the explicit false setting until
-   a shared budget and approved model are configured.
+2. Stop promotion. AI_ANALYSIS_ENABLED=false was verified in Render on
+   November 20, but the environment value was not reread on November 21 and no
+   current model-info response is available. Run the disabled-aware manual
+   smoke on the exact deployed SHA and confirm it reports analysis disabled
+   without sending inference. If verification fails, keep the provider
+   unconfigured and do not send inference traffic. Preserve the explicit false
+   setting until a shared budget and approved model are configured.
 3. In Render, select the last explicitly verified compatible deployment, then
    use **Rollback to this deploy** (or **Manual Deploy > Deploy a specific
    commit** when that is the documented recovery path). Confirm the target

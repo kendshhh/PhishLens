@@ -1,5 +1,7 @@
 # Environment and Secret Map — 2026-11-20
 
+> Historical snapshot — superseded by [the November 21 environment map](environment-map-2026-11-21.md).
+
 This map names configuration and its intended scope without storing secret
 values. It distinguishes checked-in configuration from live values: the
 connected evidence does not expose Render environment-variable values or

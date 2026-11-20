@@ -1,12 +1,14 @@
 # Production deployment smoke
 
-> Current state — November 20, 2026: production runs source SHA
-> `0c382dda175db3570e6bb7122841122254ba131d` on Render deploy
-> `dep-dc04t5dg1s2s73e5pc00`. `AI_ANALYSIS_ENABLED=false` is set in Render and
-> the matching-SHA deployment is live. Direct endpoint GETs from this audit
-> client returned HTTP 403, so the effective disabled response remains
-> unverified. The smoke is manual-only. See [PIPELINE.md](../../PIPELINE.md)
-> for the current release decision. The November 14 result below is historical.
+> Current state — November 21, 2026: production is Live on SHA
+> 811980c2cbf70d9957146bf329627f0826a018f1 in deploy
+> dep-dc07rs67bikc73fjgjq0. The scheduled Production drift run passed source
+> SHA, health and readiness checks only. Staging was manually deployed to the
+> same SHA in dep-dc07s1cipgvc73dh0150; no authenticated product acceptance is
+> inferred. The current model-info state was not checked in this refresh. The
+> smoke supports a disabled-aware zero-inference check, but remains manual-only.
+> See the [current release record](release-record-2026-11-21.md). The November
+> 14 production result below is historical.
 
 ## What the check verifies
 
@@ -26,11 +28,11 @@ every analysis request. The TF-IDF behavior checks make no saved-report/database
 write and no paid provider request. A failed identity or provider preflight
 stops before analysis.
 
-The review-branch change adds a disabled-mode path: when `/model-info` returns
-`analysis_enabled=false` and `provider_mode=disabled`, it rechecks exact
+PR #257 merged the disabled-mode path into main. When model-info returns
+analysis_enabled=false and provider_mode=disabled, the smoke rechecks exact
 deployment identity and reports health/readiness/model state without sending
-any inference request. This verifies the kill switch only; it is not product or
-model acceptance. The change is not yet in `main`.
+an inference request. This verifies the disabled state only; it is not product
+or model acceptance. No current successful manual run of this path is recorded.
 
 ## Workflow trust boundary
 
@@ -41,37 +43,32 @@ credentials disabled. Its `GITHUB_TOKEN` permission is limited to
 repository contents, or modify branch protection or required checks. Artifact
 upload is the only retained output.
 
-The workflow is currently manual. After the disabled-mode path is merged, run it
-from Actions after a production deployment and supply the full SHA reported by
-Render. It uploads a redacted summary artifact. Do not treat a successful
-`/ready` response alone as feature acceptance. The current SHA has not passed
-this smoke; the current main version would stop before inference because AI is
-disabled. Do not run the current main smoke to attempt AI behavior while the
-owner has asked to keep AI disabled.
+The workflow remains manual. Run it from Actions after a production
+deployment and supply the full SHA reported by Render. It uploads a redacted
+summary artifact. Do not treat a successful readiness response alone as feature
+acceptance. The current SHA has not passed this smoke. When analysis is
+disabled, the smoke must confirm the disabled response and send zero inference
+requests; do not attempt AI behavior while the owner has asked to keep AI off.
 
 ## Why it is not automatically deploy-triggered yet
 
-The production Render service is configured with `autoDeploy=checksPass` on
-`main`. Render currently reports production deploy
-`dep-dc04t5dg1s2s73e5pc00` live on
-`0c382dda175db3570e6bb7122841122254ba131d`.
-No deploy-ended webhook or automatic smoke trigger is configured or verified.
-Render documents workspace webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
-([Render Webhooks](https://render.com/docs/webhooks)). The connected read-only
-workspace metadata does not expose the current workspace plan. A
-`workflow_run` check on the same default-branch commit could also become a
-pending check while Render is waiting for checks to deploy that commit, so this
-workflow does not register that trigger and risk a check/deploy cycle.
+The production Render service auto-deploys from main when checks pass. The
+latest production deploy dep-dc07rs67bikc73fjgjq0 is Live on
+811980c2cbf70d9957146bf329627f0826a018f1. The production smoke workflow is
+still workflow_dispatch-only; no deploy-ended webhook or automatic smoke
+trigger is configured or verified. The read-only workspace metadata does not
+expose the current plan. A workflow_run check on the same default-branch commit
+could remain pending while Render waits for checks to deploy that commit, so
+that trigger could create a deploy/check cycle.
 
-Therefore the repository has the verification code, but **it does not yet run
-automatically after every production deployment**. To close the gap, either:
+To automate post-deploy acceptance, either:
 
-1. use a Render `deploy_ended` webhook on a plan that supports it, validate the
+1. use a Render deploy_ended webhook on a plan that supports it, validate the
    signed event, and dispatch this workflow with the exact deployed SHA; or
 2. move production deployment into a GitHub-controlled release workflow that
    deploys after CI, waits for the exact SHA to become live, then runs the
-   smoke. That changes the current `checksPass` auto-deploy path and needs an
-   owner-approved Render API credential and deployment configuration.
+   smoke. That changes the current auto-deploy path and needs an approved
+   Render API credential and deployment configuration.
 
 Until one of those paths is configured and verified, the manual run is a
 runbook action, not automatic deployment evidence.

@@ -1,6 +1,33 @@
 # Pipeline Metrics
 
-## Current delivery sample — 2026-11-20 13:45 UTC
+## Current delivery sample — 2026-11-21
+
+The latest four successful CI push runs to main for successive commits through
+SHA 811980c all passed. Workflow duration from run start to completion was
+median **1.30 minutes**, nearest-rank p90 **1.90 minutes**, range **1.10–1.90
+minutes** (n=4). The latest [CI run 44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624)
+passed backend and extension checks. Associated [AI evaluation 44779598647](https://github.com/kendshhh/PhishLens/actions/runs/44779598647),
+[workflow lint 44779598943](https://github.com/kendshhh/PhishLens/actions/runs/44779598943),
+[dependency security 44779598600](https://github.com/kendshhh/PhishLens/actions/runs/44779598600)
+and [CodeQL 44779598763](https://github.com/kendshhh/PhishLens/actions/runs/44779598763)
+also passed on that SHA. The scheduled [Production drift run 44812619162](https://github.com/kendshhh/PhishLens/actions/runs/44812619162)
+passed the source SHA, health and readiness checks.
+
+For the latest 20 production deploy records through November 20 17:05 UTC,
+Render reported one live deploy, 19 later deactivated deploys and no failed
+statuses. Deployment duration median was **74.1525 seconds**, nearest-rank p90
+**93.142 seconds**, range **60.299–408.027 seconds** (n=20). Current production
+deploy dep-dc07rs67bikc73fjgjq0 is live on SHA 811980c; current staging deploy
+dep-dc07s1cipgvc73dh0150 is manually deployed on the same SHA.
+
+The timing sample is descriptive, not a before/after experiment. It excludes
+queue time before workflow start, PR protected-environment waits, merge-to-live,
+user-flow latency, inference cost and recovery. No speed improvement is
+established. Do not present these workflow or deploy durations as extension
+journey performance. No production inference or product data reads were part of
+this metric refresh.
+
+## Historical delivery sample — 2026-11-20 13:45 UTC
 
 The latest four completed `CI` push runs to `main`, through PR #256, all
 succeeded. Their workflow wall-time median was **66 seconds**, p90 **82
@@ -37,7 +64,7 @@ workflow and check set over a sufficiently broad sample. No production
 inference was sent. Do not present health/readiness timing as extension journey
 latency or report AI cost without a verified inference path.
 
-## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
+## Historical 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
 Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and

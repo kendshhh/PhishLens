@@ -1,5 +1,7 @@
 # Release record — 2026-11-20
 
+> Historical snapshot — superseded by [the November 21 release record](release-record-2026-11-21.md).
+
 ## Decision
 
 **NO-GO.** This record fixes the product scope and refreshes current main and
