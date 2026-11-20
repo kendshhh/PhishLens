@@ -113,7 +113,7 @@ def verify_service(service, config):
         raise RuntimeError("Unexpected staging startup command")
 
 
-def verify_environment(rows):
+def verify_environment(rows, *, require_authenticated=False):
     values = {row["envVar"]["key"]: row["envVar"]["value"] for row in rows}
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
@@ -135,6 +135,11 @@ def verify_environment(rows):
     report_auth_mode = values.get("REPORT_AUTH_MODE", "demo")
     if report_auth_mode not in {"demo", "neon"}:
         raise RuntimeError("Staging report authentication must use demo or neon mode")
+    if require_authenticated and report_auth_mode != "neon":
+        raise RuntimeError(
+            "Hosted staging requires explicit REPORT_AUTH_MODE=neon; demo mode "
+            "cannot satisfy authenticated acceptance"
+        )
     return report_auth_mode
 
 
@@ -521,7 +526,8 @@ def main():
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
                 report_auth_mode = verify_environment(
-                    render_request("services/" + config["staging_service"] + "/env-vars?limit=100")
+                    render_request("services/" + config["staging_service"] + "/env-vars?limit=100"),
+                    require_authenticated=True,
                 )
                 evidence["report_auth_mode"] = report_auth_mode
                 deployment = api.request("deployments", {"ref": run["head_sha"], "environment": config["preview_environment"],
@@ -607,10 +613,10 @@ def main():
             if deployment:
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "failure", "description": "Deployment or verification failed", "auto_inactive": False})
         finally:
-            preflight_only_passed = action == "action_required" and evidence.get("preflight_passed") is True
-            status_state = "success" if action == "success" or preflight_only_passed else "failure"
-            if preflight_only_passed:
-                status_description = "Staging preflight passed; Auth acceptance pending"
+            auth_acceptance_pending = action == "action_required" and evidence.get("preflight_passed") is True
+            status_state = "success" if action == "success" else "failure"
+            if auth_acceptance_pending:
+                status_description = "Authenticated staging acceptance pending"
             else:
                 status_description = (
                     "Staging verification passed"
@@ -626,7 +632,7 @@ def main():
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
-            if preflight_only_passed:
+            if auth_acceptance_pending:
                 title = "Preflight passed; Auth acceptance pending"
             else:
                 title = (
@@ -642,8 +648,8 @@ def main():
                 api, run["head_sha"], config, status_state,
                 status_description, log,
             )
-            if action == "failure":
-                print("Preview failed: " + message, file=sys.stderr)
+            if action in {"failure", "action_required"}:
+                print("Preview did not pass: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
 
