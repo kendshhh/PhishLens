@@ -202,6 +202,12 @@ body { background: linear-gradient(180deg, #eaf1fb 0, #f4f7fb 220px) no-repeat, 
 .app-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .brand-mark { width: 42px; height: 42px; color: white; background: linear-gradient(140deg, #3d7be0, #1d4b93); box-shadow: 0 4px 12px #1d4b9333; }
 .brand-mark .icon { width: 25px; height: 25px; stroke-width: 1.7; }
+/* Logo: "Phish" + shield-and-lens mark + "Lens", one accessible name ("PhishLens"). */
+/* Inline (not flex) layout, so screen readers read "PhishLens" as one word. */
+.wordmark { font-size: 25px; font-weight: 800; letter-spacing: -.8px; line-height: 1.1; white-space: nowrap; }
+.wordmark-phish { color: #173b70; }
+.wordmark-lens { color: #2b67c9; }
+.wordmark-shield { display: inline-block; width: .9em; height: 1.02em; margin: 0 .05em 0 .07em; vertical-align: -.2em; filter: drop-shadow(0 2px 3px #1d4b9340); }
 .privacy-badge { margin: 0; flex: 0 0 auto; }
 .privacy-badge::before { display: none; }
 .privacy-badge .icon { width: 12px; height: 12px; vertical-align: 0; }

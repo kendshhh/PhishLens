@@ -1,5 +1,7 @@
 # PhishLens
 
+<img src="docs/brand/phishlens-logo.svg" alt="PhishLens logo" width="320">
+
 PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
