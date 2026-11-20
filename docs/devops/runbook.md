@@ -3,8 +3,8 @@
 ## Current recovery position — 2026-11-20
 
 Production is live on backend SHA
-`60641f32353c61a5b1f0dcfca1e0f5912afb76b3` (Render deploy
-`dep-dbvt8r0u01pc73b4siig`). `/health` and `/ready` pass, while `/model-info`
+`16f955321caf5dc368181be7ce5c00643750545d` (Render deploy
+`dep-dc03j4sipgvc738ueieg`). `/health` and `/ready` pass, while `/model-info`
 reports `provider_mode=unavailable`. Staging is on a different SHA,
 `d6612c258f289b3a45d8229e4a4803cac75a91ee`, with TF-IDF mode. The current
 production known-good app/config/schema combination is **not identified**.
@@ -29,6 +29,20 @@ approves isolated restore/cutover; the AI owner approves model, evaluation and
 provider decisions. If the primary cannot respond, escalate using the
 pre-agreed backup/contact path; that path remains to be recorded.
 
+### Alert delivery and incident evidence
+
+No alert delivery path, backup recipient, or acknowledgement record was
+verified on November 20. The thresholds below remain candidates until the
+service owner approves them, configures a monitor and tests delivery. A failed
+scheduled workflow is not evidence that an alert reached an on-call responder.
+
+For the alert drill, preserve the signal and threshold, injected test event,
+event/delivery/acknowledgement timestamps, recipient and channel, first
+response, containment, recovery timestamp, post-recovery health and affected
+journey checks, data-integrity check, measured recovery time, and follow-up
+owner. Link the redacted record from the incident log. The production release
+cannot claim tested alert response until this record exists.
+
 ### Proposed rollback triggers
 
 These are starting recommendations, not configured alert thresholds. Agree
@@ -52,9 +66,12 @@ them with the service owner and test alert delivery before relying on them.
    responder declares the incident. Record time, deploy ID, commit SHA,
    observed failure and affected user flow. The backup responder must be named
    in the handover before launch.
-2. Stop promotion. Disable the preconfigured AI/release feature flag if that
-   flag has been verified for the current app. The current flag name and
-   production effect are **not verified**; do not guess an environment key.
+2. Stop promotion. After the observability/kill-switch PR is merged and
+   deployed, `AI_ANALYSIS_ENABLED=false` disables both API inference paths and
+   `/model-info` reports the provider as disabled. The default when the
+   variable is unset preserves existing behavior. The current production SHA
+   predates this switch; verify the exact deployed version and test its effect
+   before relying on the flag.
 3. In Render, select the last explicitly verified compatible deployment, then
    use **Rollback to this deploy** (or **Manual Deploy > Deploy a specific
    commit** when that is the documented recovery path). Confirm the target

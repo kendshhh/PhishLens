@@ -5,10 +5,11 @@
 This section supersedes the dated snapshots below. The current release decision
 is **NO-GO**; a live backend is not equivalent to an accepted product release.
 
-GitHub `main` is [`60641f32353c61a5b1f0dcfca1e0f5912afb76b3`](https://github.com/kendshhh/PhishLens/commit/60641f32353c61a5b1f0dcfca1e0f5912afb76b3),
-merged through PR #254 on November 20. Production Render deploy
-`dep-dbvt8r0u01pc73b4siig` is live on that SHA. Read-only `/health` and `/ready`
-return HTTP 200 and report the database connected, but `/model-info` reports
+GitHub `main` is [`16f955321caf5dc368181be7ce5c00643750545d`](https://github.com/kendshhh/PhishLens/commit/16f955321caf5dc368181be7ce5c00643750545d),
+merged through PR #255 on November 20. Production Render deploy
+`dep-dc03j4sipgvc738ueieg` is live on that SHA. Read-only `/version`, `/health`
+and `/ready` returned the matching SHA, HTTP 200 and a connected database at
+12:18 UTC, but `/model-info` reports
 `provider_mode=unavailable` and `accepts_tfidf_reports=false`. Production
 feature acceptance therefore fails. Current [`release issue #153`](https://github.com/kendshhh/PhishLens/issues/153)
 records an explicit [NO-GO sign-off](https://github.com/kendshhh/PhishLens/issues/153#issuecomment-7031345485).
@@ -19,7 +20,9 @@ not the PhishLens application. The [current release record](docs/devops/release-
 sets that scope and records the exact identities and remaining acceptance proof.
 The [environment and secret map](docs/devops/environment-map-2026-11-20.md)
 records non-secret configuration scope and explicitly marks live mappings and
-secret access controls that remain unverified.
+secret access controls that remain unverified. The [p. 140 demo-day readiness
+matrix](docs/devops/demo-day-readiness-2026-11-20.md) answers each of the PDF's
+ten readiness questions with dated evidence and current gaps.
 
 Staging is live on backend SHA
 `d6612c258f289b3a45d8229e4a4803cac75a91ee`; its read-only endpoints report
@@ -29,14 +32,14 @@ Authenticated saved-report history/CRUD and live Auth acceptance remain open.
 
 ### Current checks and enforcement
 
-The November 20 [main CI run](https://github.com/kendshhh/PhishLens/actions/runs/44678059062)
-passed backend and extension checks; separate [dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44678059035),
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44678059114)
-and [deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44678059130)
-runs also passed, as did CodeQL. `Staging integration` and hosted staging were
-skipped on the main push. On PR #254, `Staging integration` passed but hosted staging and
-hosted-staging preflight were skipped. A successful status alone is not evidence
-that those skipped deployment checks ran.
+The November 20 [main CI run](https://github.com/kendshhh/PhishLens/actions/runs/44733739927)
+passed backend and extension checks; separate [dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44733740031),
+[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44733739987)
+and [deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44733739878)
+runs also passed. `Staging integration` and hosted staging were skipped on the
+main push. On PR #255, staging integration and hosted staging were skipped. A
+successful status alone is not evidence that those skipped deployment checks
+ran.
 
 The `main` branch is reported as protected. The earlier branch-check query
 listed five contexts (`Backend checks`, `Extension checks`, `Staging
@@ -58,11 +61,11 @@ workflow lint and dependency checks are not present in the branch endpoint's
 five contexts. PR #254's approval is by the PR author's own account and does not
 demonstrate independent review.
 
-This task branch changes the controller so an application/runtime PR without
-`needs-hosted-staging` fails the required status; documentation-only PRs remain
-explicitly not applicable. The change is not effective on `main` until reviewed
-and merged, and the hosted check still cannot prove authenticated Auth until
-that path is accepted in staging.
+PR #255 merged the controller change: an application/runtime PR without
+`needs-hosted-staging` now fails the required status, while documentation-only
+PRs remain explicitly not applicable. The change is on `main`; the current
+required-check settings are still not independently verified, and hosted
+acceptance requires an explicitly requested staging preview.
 
 ### Current quality, deployment and recovery limits
 
@@ -80,8 +83,8 @@ health/readiness alone. The [current smoke runbook](docs/devops/production-deplo
 documents its exact behavior and current limitation. No GitHub Release or remote
 tag was found during this audit.
 
-The [November 20 metric refresh](docs/devops/metrics.md#current-delivery-sample--2026-11-20)
-adds four main-push CI runs and 20 production deploy records; it still cannot
+The [November 20 metric refresh](docs/devops/metrics.md#current-delivery-sample--2026-11-20-1218-utc)
+adds the latest four main-push CI runs and 20 production deploy records; it still cannot
 establish a like-for-like end-to-end speed improvement. The 28-day comparative
 snapshot below it ends November 14. The earlier staging
 rollback rehearsal covers a different app SHA and environment; it does not
