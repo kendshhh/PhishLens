@@ -1,7 +1,7 @@
 # Saved-analysis API reference
 
 Supports API documentation and client resilience tasks #140 and #135.
-Source rechecked against main: 53e68fbc01b5492457b2883743e5be6625f9bc43, November 16, 2026. This records source behavior, not current hosted configuration or live Auth acceptance.
+Source rechecked against main: 31e86c78523cbdcfb6da83f99d331c86409bf0fa, November 21, 2026. The saved-create router, saved-analysis deadline/worker, auth owner resolution, and extension API client were rechecked at this revision. This records source behavior, not current hosted configuration or live Auth acceptance.
 This is a source contract reference, not a live release sign-off.
 
 ## Client setup
@@ -25,6 +25,10 @@ the third argument accepts createTimeoutMs (default 25000), requiredModel and ge
 Reads/PATCH/DELETE use 10000 milliseconds. requiredModel sends X-PhishLens-Model on create;
 getAccessToken is called for each CRUD request when a caller supplies it; the client then sends that token as Bearer. This hook does not establish that Auth is enabled in a hosted service or packaged extension. See [session contract](client-sessions.md).
 The legacy getAnalyses(baseUrl) export still returns the history array. HTTP belongs in api.js.
+
+## Saved-create availability guard
+
+Before persistent creation, the backend checks `AI_ANALYSIS_ENABLED`. If analysis is disabled, it returns `503 analysis_unavailable` without creating a report. When `X-PhishLens-Model` or `local_review` is supplied, the backend requires the configured provider to be TF-IDF, the requested model hash (when supplied) to match, and the model artifact to load; otherwise it returns `503 analysis_unavailable`. This is a runtime availability guard, not evidence of model quality or hosted acceptance.
 
 ## Saved CRUD
 
