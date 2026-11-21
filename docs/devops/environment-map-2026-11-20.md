@@ -1,6 +1,9 @@
 # Environment and Secret Map — 2026-11-20
 
-> Historical snapshot — superseded by [the November 21 environment map](environment-map-2026-11-21.md).
+> Historical snapshot. The
+> [November 21 environment map](environment-map-2026-11-21.md) refreshes live
+> service/Neon observations and records the auto-deploy discrepancy. Preserve
+> this November 20 settings and branch-protection evidence as dated history.
 
 This map names configuration and its intended scope without storing secret
 values. It distinguishes checked-in configuration from live values: the
