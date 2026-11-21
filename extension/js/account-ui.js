@@ -75,12 +75,14 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     screen('verify'); message(preview ? 'Demo only: enter 123456. No email was sent.' : 'Check your email for the verification code.');
   });
   submit('account-verify', async () => {
-    if (await accounts.verifyEmail({ email: $('verify-email').value.trim(), code: $('verify-code').value.trim() })) {
-      screen(null); message('Email verified. You are signed in.');
-    } else {
-      $('account-email').value = $('verify-email').value.trim();
-      screen('sign-in'); message('Email verified. Sign in with your email and password.');
-    }
+    const email = $('verify-email').value.trim();
+    // Agreed flow: Sign up → Verify → "verified" → Sign in → signed in. Verification and
+    // sign-in stay separate steps, so if the provider starts a session on verification,
+    // end it and still ask for the password.
+    if (await accounts.verifyEmail({ email, code: $('verify-code').value.trim() })) await accounts.signOut();
+    $('account-email').value = email;
+    screen('sign-in');
+    message('Email verified successfully. Sign in with your email and password.');
   });
   $('resend-code').addEventListener('click', () => {
     if (!$('verify-email').reportValidity()) return;

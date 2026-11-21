@@ -26,6 +26,10 @@ http://127.0.0.1:8766/account-preview. Use fictional data only.
   yet. That sign-in opens Verify your email with the email filled in; it cannot
   grant report access until the code is entered. Verification and recovery also
   provide Back to sign in.
+- After a successful verification the panel confirms it and returns to Sign in with
+  the email filled in; the user then signs in with their password. Verification
+  never signs in by itself: if the provider starts a session on verification, the
+  extension ends it (agreed flow: Sign up → Verify → Verified → Sign in).
 - Account headings scroll below the sticky navigation when changing screens.
   Browser checks assert the heading is unobscured at 380px and 320px popup widths.
 - Closing or leaving a form clears password/OTP fields. Resend checks that the email

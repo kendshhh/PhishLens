@@ -18,17 +18,21 @@ class Element {
   reportValidity() { return true; }
 }
 
-async function render(signIn) {
+async function render(signIn, extra = {}) {
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
   const elements = new Map([...html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)].map(([tag, id]) =>
     [id, new Element(/\bclass="([^"]*)"/.exec(tag)?.[1] ?? '')]));
   const state = { status: 'signed-out' };
-  const accounts = { state, signIn, subscribe(fn) { fn(state); return () => {}; } };
+  const accounts = { state, signIn, ...extra, subscribe(fn) { fn(state); return () => {}; } };
   initializeAccountUI(accounts, { getElementById: id => elements.get(id) });
   const $ = id => elements.get(id);
   return {
     $,
     shown: () => ['sign-in', 'sign-up', 'verify', 'recover', 'reset'].filter(name => !$('account-' + name).classList.contains('hidden')),
+    async submitVerify(email, code) {
+      $('verify-email').value = email; $('verify-code').value = code;
+      await $('account-verify').listeners.submit({ preventDefault() {} });
+    },
     async submitSignIn(email, password) {
       $('account-email').value = email; $('account-password').value = password;
       await $('account-sign-in').listeners.submit({ preventDefault() {} });
@@ -60,3 +64,18 @@ test('other sign-in failures stay on sign-in and never ask for verification', as
   assert.deepEqual(ui.shown(), ['sign-in']);
   assert.equal(ui.$('account-status').textContent, 'Email or password was not accepted. Sign in again.');
 });
+
+for (const [label, providerSignsIn] of [['without a session', false], ['even when the provider starts a session', true]]) {
+  test(`successful verification confirms and returns to sign-in ${label}`, async () => {
+    let signedOut = 0;
+    const ui = await render(async () => true, {
+      verifyEmail: async () => providerSignsIn,
+      signOut: async () => { signedOut += 1; }
+    });
+    await ui.submitVerify(' casey@example.test ', '123456');
+    assert.deepEqual(ui.shown(), ['sign-in']);
+    assert.equal(ui.$('account-email').value, 'casey@example.test');
+    assert.equal(ui.$('account-status').textContent, 'Email verified successfully. Sign in with your email and password.');
+    assert.equal(signedOut, providerSignsIn ? 1 : 0);
+  });
+}
