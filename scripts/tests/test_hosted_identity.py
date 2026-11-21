@@ -344,6 +344,40 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertNotIn("RELEASE_SOURCE_SHA: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
 
+    def test_stale_pr_head_withholds_authenticated_acceptance_evidence(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        hosted = workflow[workflow.index("  hosted-staging:\n"):]
+        marker = "      - name: Recheck PR head before publishing staging evidence"
+        verifier = "      - name: Require authenticated CRUD/UX product evidence; keep model quality separate"
+        artifact = "      - name: Preserve hosted staging acceptance evidence and extension"
+
+        self.assertIn("steps.staging-acceptance-finalize.outputs.current == 'true'", hosted)
+        self.assertIn("steps.staging-acceptance-finalize.outputs.current != 'false'", hosted)
+        self.assertIn("live_pr_matches(", self.workflow_python_script(marker))
+        self.assertLess(hosted.index(marker), hosted.index(verifier))
+        self.assertLess(hosted.index(verifier), hosted.index(artifact))
+
+        stale_pr = {
+            "number": 68,
+            "state": "open",
+            "head": {"sha": "b" * 40, "repo": {"full_name": "kendshhh/PhishLens"}},
+            "draft": False,
+            "labels": [{"name": "needs-hosted-staging"}],
+        }
+        result = self.run_workflow_python(marker, stale_pr)
+
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("current=false", result["output"])
+        self.assertIn("was withheld because", result["summary"])
+
+    def test_github_error_blocks_acceptance_evidence_publication(self):
+        marker = "      - name: Recheck PR head before publishing staging evidence"
+        result = self.run_workflow_python(marker, APIError("GitHub HTTP 403 for pulls/68"))
+
+        self.assertIn("Staging evidence publication blocked", str(result["exit_code"]))
+        self.assertIn("current=false", result["output"])
+        self.assertIn("publication blocked", result["summary"])
+
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {
             "number": 68,
