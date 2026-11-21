@@ -10,8 +10,11 @@
 > HTTP responses whose body contains transient-looking text. Local CI
 > monitors server exit and preserves logs, and hosted deployment requires
 > successful staging, hosted preflight and backend results. The synchronized
-> branch passed `npm test` (321 tests) and a GET-only live smoke at about 08:35
-> UTC. GitHub CI for this candidate is pending. Hosted staging has not run; the
+> At that snapshot, `npm test` passed (321 tests) and a GET-only live smoke
+> passed at about 08:35 UTC. GitHub CI for code/test commit
+> `83a0df1af1d64048b3b5fa3158f6509e83d71555` was pending at the last recorded
+> status; subsequent PR updates require fresh current-head checks. Hosted
+> staging has not run; the
 > last Secretary check [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
 > required the `needs-hosted-staging` label and exact-head verification. No
 > Render deployment occurred. These checks do not implement or

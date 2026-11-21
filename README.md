@@ -9,8 +9,9 @@ risk indicators, and manage saved analysis reports.
 The current release decision is **NO-GO**. The latest observed GitHub `main` is
 `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which includes the Bearer-aware
 staging history correction. This closeout is on
-`codex/devops-staging-closeout-20261121`, synchronized with that main through
-merge commit `14874d339bbb4042172df954f97596080aa303ee`. It adds bounded retry
+`codex/devops-staging-closeout-20261121`; its initial main synchronization was
+merge commit `14874d339bbb4042172df954f97596080aa303ee`. Later commits add
+bounded retry
 diagnostics, local server crash detection/log retention, and fail-closed hosted
 deployment gates. The earlier
 implementation and regression commits remain in the branch history.
@@ -20,13 +21,15 @@ served the earlier SHA `811980c2cbf70d9957146bf329627f0826a018f1` with analysis
 intentionally disabled; no later deploy was verified after main advanced.
 Staging serves a different SHA and requires Bearer authentication for
 saved-report history. Latest code/test commit is
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. `npm test` passed all 321 Node tests on the synchronized
-branch, and a fresh GET-only smoke passed against live staging at about 08:35
-UTC, including the
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. At that code/test snapshot,
+`npm test` passed all 321 Node tests and a fresh GET-only smoke passed against
+live staging at about 08:35 UTC, including the
 expected anonymous `401 Bearer` boundary. These local checks do not establish
 the deployed PR revision or authenticated CRUD. The latest GitHub checks before
 the mainline sync passed; CI for code/test commit
-`83a0df1af1d64048b3b5fa3158f6509e83d71555` must complete before review. Hosted
+`83a0df1af1d64048b3b5fa3158f6509e83d71555` was pending at the last recorded
+status. Later documentation synchronization and PR branch reconciliation require
+fresh checks on the resulting head. Hosted
 staging is protected and remains untriggered pending the required
 `needs-hosted-staging` label and exact-head verification.
 

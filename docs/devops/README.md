@@ -8,13 +8,13 @@ service IDs, workflow settings or deployment observations as current.
 The staging smoke and CI guard implementation is on review branch
 `codex/devops-staging-closeout-20261121`. Latest observed `main` is
 `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which already includes the basic
-Bearer-aware history fix. The review branch synchronizes it with the bounded
-retry, diagnostics, server-liveness and fail-closed deployment changes in merge
-commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
+Bearer-aware history fix. The review branch's initial main synchronization was
+merge commit `14874d339bbb4042172df954f97596080aa303ee`; later code/test commit
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. GitHub CI for the
-synchronized candidate is
-pending. Earlier CI runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+and a GET-only live staging smoke passed at about 08:35 UTC. These results are
+bound to that code/test snapshot. GitHub CI for it was pending at the last
+recorded status; subsequent PR synchronization requires fresh current-head
+checks. Earlier CI runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
 and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
 passed on pre-sync source/docs commits. Hosted staging was not triggered; its
 prior Secretary staging check required `needs-hosted-staging` and exact-head
@@ -27,8 +27,8 @@ verified.
   decision, exact blockers and next acceptance evidence.
 - [Environment and secret map](environment-map-2026-11-21.md): service and
   database targets, non-secret settings, and unverified secret/mapping controls.
-- [Readiness scorecard](release-readiness-scorecard-2026-11-21.md): seven
-  release areas, evidence needed for a full pass, and scoring status.
+- [Readiness scorecard](release-readiness-scorecard-2026-11-21.md): 16 criteria
+  and a 41/100 evidence-progress estimate; not an official course score.
 - [Staging Neon Auth smoke evidence](evidence/2026-11-21-staging-neon-auth-smoke.md):
   supplied failure, current live observations, code/workflow mismatch and fix
   acceptance plan.
