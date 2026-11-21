@@ -2,6 +2,16 @@
 
 **Current release: NO-GO. Estimated DevOps evidence progress: 41/100.**
 
+PR #268's latest recorded status at 12:38 UTC is head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab` on base `main`
+(`31e86c78523cbdcfb6da83f99d331c86409bf0fa`); #265 has merged. Backend,
+Extension, Staging integration, migration source preflight, workflow lint,
+dependency review/security, deterministic evaluation, CodeQL and the Secretary
+report passed on that head. Hosted staging jobs were skipped and the required
+`Secretary staging` context failed because the opt-in label and exact-head
+hosted verification were absent. No deployment or authenticated hosted CRUD
+occurred. Older PR heads and CI results in this scorecard are historical.
+
 This estimate uses the 16 criteria below as equally weighted checklist items:
 PASS = 1, PARTIAL = 0.5, FAIL or NOT VERIFIED = 0. The current evidence has
 13 PARTIAL, 3 FAIL, 0 PASS: 13 × 0.5 ÷ 16 = 40.625%, rounded to 41%.
@@ -13,8 +23,9 @@ meet their full pass definition, and no weighted seven-area score or overall
 project-completion percentage is calculated because those weights and rules are
 not approved.
 
-Evidence includes the latest checks retrieved on November 21, 2026. GitHub main
-is `95975cd47dceeac74ea36054610956f0a1db1fa9` after PR #265 merged. Production
+Evidence includes service and release checks retrieved on November 21, 2026.
+At the latest PR snapshot, GitHub `main` is
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 has merged. Production
 remains on deploy `dep-dc07rs67bikc73fjgjq0` / SHA
 `811980c2cbf70d9957146bf329627f0826a018f1`; staging remains on deploy
 `dep-dc0im3h7lnhs738pncng` / SHA

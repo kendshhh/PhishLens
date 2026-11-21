@@ -4,7 +4,26 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
-## Current Status — November 21, 2026
+## PR #268 verification snapshot — November 21, 2026, 12:38 UTC
+
+At this snapshot, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 had merged to `main`;
+there is no remaining stack or merge-order dependency.
+
+On head `d269071`, Backend, Extension, Staging integration, migration source
+preflight, workflow lint, dependency security/graph review, deterministic
+evaluation, CodeQL, and the Secretary report passed. Hosted staging preflight
+and Hosted staging were skipped. The required `Secretary staging` status failed
+because this application/runtime PR had no `needs-hosted-staging` label or
+exact-head hosted verification. No Render deployment or authenticated hosted
+CRUD occurred. A hosted deployment remains subject to approval by the protected
+`staging` environment. Release #153 remains **NO-GO**.
+
+The dated material below records earlier PR heads and check runs; treat those
+entries as historical evidence for their named revisions.
+
+## Historical release and CI snapshots — November 21, 2026
 
 The current release decision is **NO-GO**. GitHub `main` is
 `95975cd47dceeac74ea36054610956f0a1db1fa9`, which merged PR #265's readiness

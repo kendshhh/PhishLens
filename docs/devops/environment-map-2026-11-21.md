@@ -11,7 +11,20 @@ branch script. A follow-up smoke at about 08:35 UTC passed the same GET-only
 checks after synchronizing the smoke helper with main. Neither run verified
 `/version`, deployed PR identity, migration state, or authenticated CRUD.
 
-## Environment map
+## PR #268 verification snapshot — 2026-11-21 12:38 UTC
+
+At this snapshot, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`; PR #265 had merged. The
+current-head Backend, Extension, Staging integration, migration source
+preflight, workflow lint, dependency security/graph, deterministic evaluation,
+CodeQL and Secretary report passed. Hosted staging jobs were skipped and
+required `Secretary staging` failed because the opt-in label and exact-head
+hosted verification were absent. No Render deployment or authenticated hosted
+CRUD occurred. The service observations and older PR/CI rows below are dated
+snapshots, not current-head evidence.
+
+## Environment map — dated service and CI snapshots
 
 | Environment | Service and data target | Runtime/configuration evidence | Status and open controls |
 |---|---|---|---|

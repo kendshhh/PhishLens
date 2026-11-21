@@ -2,6 +2,16 @@
 
 ## Current hosted-controller status — 2026-11-21
 
+At the 12:38 UTC snapshot, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`; PR #265 had merged. The
+current-head backend, extension, staging integration, migration source
+preflight, workflow lint, dependency review/security, deterministic evaluation,
+CodeQL and Secretary report passed. Hosted preflight and Hosted staging were
+skipped, and required `Secretary staging` failed because no opt-in label or
+exact-head hosted verification was present. No Render deployment or hosted
+CRUD occurred. The dated PR checks below are historical snapshots.
+
 The latest observed staging route is the legacy hosted-staging workflow in
 `origin/main`'s `.github/workflows/ci.yml`: it deploys via the trusted default
 branch controller, runs `scripts/staging_smoke.mjs`, then invokes the exact-PR

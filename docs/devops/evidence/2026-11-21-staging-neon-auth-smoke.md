@@ -618,3 +618,25 @@ score is descriptive and release #153 remains **NO-GO**.
 This is a documentation-only evidence refresh on top of the tested merge head;
 its own exact-head CI must pass before review/merge. The source and workflow
 changes from main were tested in run 44902645800 and associated checks above.
+
+## Exact-head CI and review snapshot — 2026-11-21 12:38 UTC
+
+PR #268 targets `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa` and is at
+head `d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 has merged; the old
+stack instructions are superseded. Exact-head run
+[44903095637](https://github.com/kendshhh/PhishLens/actions/runs/44903095637)
+passed Backend, Extension, Staging integration and migration source preflight.
+Workflow lint [44903095653](https://github.com/kendshhh/PhishLens/actions/runs/44903095653),
+dependency security/graph review
+[44903095655](https://github.com/kendshhh/PhishLens/actions/runs/44903095655),
+deterministic evaluation
+[44903095697](https://github.com/kendshhh/PhishLens/actions/runs/44903095697),
+CodeQL [44903092323](https://github.com/kendshhh/PhishLens/actions/runs/44903092323),
+and the Secretary report
+[44903093745](https://github.com/kendshhh/PhishLens/actions/runs/44903093745)
+passed. Hosted staging preflight and Hosted staging were skipped. Required
+`Secretary staging` failed because the PR had no `needs-hosted-staging` label
+and exact-head hosted verification
+([assessment 44903321363](https://github.com/kendshhh/PhishLens/actions/runs/44903321363)).
+No Render deployment or authenticated hosted CRUD occurred. This check snapshot
+is tied to `d269071`; later branch changes need their own exact-head results.

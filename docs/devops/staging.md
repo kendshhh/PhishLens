@@ -1,5 +1,15 @@
 # Pre-merge staging
 
+> **Latest PR #268 snapshot — 2026-11-21 12:38 UTC:** the PR targets `main` at
+> `31e86c78523cbdcfb6da83f99d331c86409bf0fa`, with head
+> `d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 has merged. Backend,
+> Extension, Staging integration, migration source preflight, workflow lint,
+> dependency review/security, deterministic evaluation, CodeQL and the
+> Secretary report passed. Hosted staging jobs were skipped; `Secretary
+> staging` failed because the opt-in label and exact-head hosted verification
+> were absent. No Render deployment or authenticated hosted CRUD occurred.
+> Earlier PR heads and check references below are historical snapshots.
+
 > Current status — November 21, 2026: a separate read-only staging observation
 > returned `401 Bearer` for anonymous saved-report history. The supplied hosted
 > failure omitted HTTP status/body, so that observation remains a plausible,

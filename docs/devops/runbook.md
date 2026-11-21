@@ -2,6 +2,16 @@
 
 ## Current recovery position — 2026-11-21
 
+PR #268's latest recorded CI snapshot is head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`, based on `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 has merged. Backend,
+Extension, Staging integration, migration source preflight, workflow lint,
+dependency review/security, deterministic evaluation, CodeQL and the Secretary
+report passed. Hosted staging jobs were skipped and `Secretary staging` failed
+because the opt-in label and exact-head hosted verification were absent. No
+deployment or authenticated hosted CRUD occurred. PR-specific checks later in
+this section that name earlier heads are historical.
+
 Release remains **NO-GO**. The current service identities and evidence limits
 are maintained in the [release record](release-record-2026-11-21.md) and
 [environment map](environment-map-2026-11-21.md). The recorded production

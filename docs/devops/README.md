@@ -5,6 +5,22 @@ the current evidence set and its limits. Historical records stay dated and
 retain their original findings; successor links may be added, but do not treat old
 service IDs, workflow settings or deployment observations as current.
 
+## PR #268 verification snapshot — 2026-11-21 12:38 UTC
+
+At this snapshot, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 had merged to `main`;
+the former stack dependency is resolved. On this exact head, Backend,
+Extension, Staging integration, migration source preflight, workflow lint,
+dependency security/graph review, deterministic evaluation, CodeQL and the
+Secretary report passed. Hosted staging preflight and Hosted staging were
+skipped; required `Secretary staging` failed because the `needs-hosted-staging`
+label and exact-head hosted verification were absent. No Render deployment or
+authenticated hosted CRUD occurred. The dated PR summaries below are historical
+snapshots for their named heads. Release #153 remains **NO-GO**.
+
+## Historical PR snapshots
+
 The staging smoke and CI guard implementation is on review branch
 `codex/devops-staging-closeout-20261121`. Latest observed `main` is
 `95975cd47dceeac74ea36054610956f0a1db1fa9`, after PR #265 merged the shared

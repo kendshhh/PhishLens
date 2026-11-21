@@ -12,6 +12,19 @@ this is not a course grade or project-completion percentage. None of the seven
 release areas meets its full pass definition, and no weighted seven-area score
 is calculated because the weights are not approved.
 
+## PR #268 verification snapshot — 2026-11-21 12:38 UTC
+
+At this snapshot, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
+`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 had merged; this PR was
+not stacked on its former branch. Backend, Extension, Staging integration,
+migration source preflight, workflow lint, dependency security/graph review,
+deterministic evaluation, CodeQL and the Secretary report passed on this head.
+Hosted staging preflight and Hosted staging were skipped; `Secretary staging`
+failed because the `needs-hosted-staging` label and exact-head hosted
+verification were absent. No Render deployment or authenticated hosted CRUD
+occurred. The dated check snapshots below apply only to their named revisions.
+
 ## Candidate and deployment identities
 
 ### Earlier PR #268 check snapshot — 2026-11-21 11:08 UTC
