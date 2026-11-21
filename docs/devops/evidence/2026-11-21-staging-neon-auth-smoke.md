@@ -240,3 +240,51 @@ passed on pre-sync commits. The prior hosted-staging check
 required `needs-hosted-staging` and exact-head verification; no Render deploy
 was started. Keep release **NO-GO** until synchronized-candidate CI, protected
 hosted verification, and authenticated persistence/isolation/cleanup all pass.
+
+## Exact-head CI refresh — 2026-11-21
+
+At this recorded point, PR #268 head
+`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` completed its GitHub checks. The
+code/test content is commit `83a0df1af1d64048b3b5fa3158f6509e83d71555`; the
+tested PR head adds the synchronized documentation. [CI run
+44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192)
+passed migration source preflight, backend checks, extension checks, and
+Staging integration. Staging integration passed the hosted-history auth smoke,
+local server/API integration, server-log preservation, and deployment guard
+tests. [Workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44886742281),
+[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44886742188),
+[deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44886742189),
+and [CodeQL](https://github.com/kendshhh/PhishLens/actions/runs/44886738976)
+also passed for this PR head. The automatic `label` workflow and Secretary
+report workflow passed; the generic `label` status did not apply the required
+`needs-hosted-staging` label.
+
+The hosted staging preflight and hosted deployment jobs were **skipped** in
+CI run 44886742192. Separately, GitHub reports the required `Secretary staging`
+PR check as **failed**, with the reason that `needs-hosted-staging` and an
+exact-head hosted staging verification are required ([check run
+44886970872](https://github.com/kendshhh/PhishLens/actions/runs/44886970872)).
+The controller's assessment job succeeded, but its preview job was skipped; the
+status check therefore does not represent a hosted deployment or CRUD run. No
+Render deployment, staging write, or authenticated hosted CRUD acceptance was
+performed. PR #268 remains blocked and needs a fresh reviewer decision.
+
+This result supersedes the pending-CI statement in the immediately preceding
+snapshot. It does not establish that the original user-supplied failing run had
+the same cause, that Render is running the PR revision, or that authenticated
+history/CRUD, persistence, isolation, cleanup, effective branch protection, or
+production acceptance has passed. Keep the release **NO-GO**.
+
+## Latest recorded PR checks before documentation reconciliation — 2026-11-21
+
+PR #268 advanced to head
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`. The Secretary report for that exact
+head records successful backend, extension, and staging-integration jobs in
+[run 44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166)
+and a passing packaged browser checklist artifact. The required
+`Secretary staging` check is **failed** ([run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370))
+because the hosted-staging label and exact-head verification were not requested;
+no hosted deployment or authenticated CRUD ran. This evidence predates the
+PR #265 documentation reconciliation. The resulting PR head needs fresh checks;
+these earlier results do not certify it.

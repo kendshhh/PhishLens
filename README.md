@@ -25,13 +25,13 @@ saved-report history. Latest code/test commit is
 `npm test` passed all 321 Node tests and a fresh GET-only smoke passed against
 live staging at about 08:35 UTC, including the
 expected anonymous `401 Bearer` boundary. These local checks do not establish
-the deployed PR revision or authenticated CRUD. The latest GitHub checks before
-the mainline sync passed; CI for code/test commit
-`83a0df1af1d64048b3b5fa3158f6509e83d71555` was pending at the last recorded
-status. Later documentation synchronization and PR branch reconciliation require
-fresh checks on the resulting head. Hosted
-staging is protected and remains untriggered pending the required
-`needs-hosted-staging` label and exact-head verification.
+the deployed PR revision or authenticated CRUD. At the last recorded PR head,
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension, staging
+integration and the packaged browser checklist passed. The required
+`Secretary staging` check failed because the hosted-staging label and exact-head
+verification were absent; hosted staging was not requested. The later PR #265
+documentation reconciliation requires fresh checks on the resulting head. No
+Render deployment or authenticated hosted CRUD is verified.
 
 Render currently reports auto-deploy off for both services, while production's
 latest deploy record says `new_commit`; resolve that configuration/evidence

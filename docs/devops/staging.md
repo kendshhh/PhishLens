@@ -9,15 +9,16 @@
 > `83a0df1af1d64048b3b5fa3158f6509e83d71555` also prevents retries for permanent
 > HTTP responses whose body contains transient-looking text. Local CI
 > monitors server exit and preserves logs, and hosted deployment requires
-> successful staging, hosted preflight and backend results. The synchronized
-> At that snapshot, `npm test` passed (321 tests) and a GET-only live smoke
-> passed at about 08:35 UTC. GitHub CI for code/test commit
-> `83a0df1af1d64048b3b5fa3158f6509e83d71555` was pending at the last recorded
-> status; subsequent PR updates require fresh current-head checks. Hosted
-> staging has not run; the
-> last Secretary check [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-> required the `needs-hosted-staging` label and exact-head verification. No
-> Render deployment occurred. These checks do not implement or
+> successful staging, hosted preflight and backend results. At code/test commit
+> `83a0df1af1d64048b3b5fa3158f6509e83d71555`, `npm test` passed 321 tests and a
+> GET-only live smoke passed at about 08:35 UTC. At the last recorded PR head,
+> `bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension, staging
+> integration and the packaged browser checklist passed. The required
+> `Secretary staging` check failed because hosted staging and exact-head
+> verification were not requested ([run
+> 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+> PR #265 documentation reconciliation requires fresh checks on the resulting
+> head. No Render deployment occurred. These checks do not implement or
 > prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
 > on the observed `main` lacks a Neon Auth session, so the full staging job
 > remains open. Track details in the

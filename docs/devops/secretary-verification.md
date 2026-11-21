@@ -14,15 +14,17 @@ bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
 conditions. At the code/test snapshot
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`, 321 Node tests and a fresh
-GET-only staging smoke passed at about 08:35 UTC. GitHub CI for that snapshot
-was pending at the last recorded status; subsequent PR documentation and branch
-reconciliation require fresh current-head checks. Pre-sync code and docs runs
-passed at [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992).
-Hosted staging is not triggered; the last Secretary staging check
-[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-required `needs-hosted-staging` and exact-head verification. No Render deploy
-occurred. The CRUD step has no authenticated session and remains a blocker. The last recorded Secretary preview
+GET-only staging smoke passed at about 08:35 UTC. At the last recorded PR head,
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension and staging
+integration passed in [CI run
+44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+and the packaged browser checklist passed. The required `Secretary staging`
+check failed because hosted staging and exact-head verification were not
+requested ([check run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+The subsequent PR #265 documentation reconciliation requires fresh checks on
+the resulting head. No Render deploy or authenticated hosted CRUD occurred. The
+CRUD step has no authenticated session and remains a blocker. The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
 audit. No current Secretary exact-head authenticated CRUD acceptance is
