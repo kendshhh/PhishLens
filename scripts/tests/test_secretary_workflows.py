@@ -130,7 +130,7 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("Verify saved report synthetic AI and CRUD checklist", workflow)
         self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", workflow)
         self.assertIn("scripts/verify_crud.mjs", workflow)
-        self.assertIn("node pr-source/scripts/verify_crud.mjs", workflow)
+        self.assertIn("node pr-source/scripts/staging_auth_smoke.mjs", workflow)
         self.assertIn("analysisProvenance:", (ROOT / "scripts/verify_crud.mjs").read_text(encoding="utf-8"))
         self.assertIn("Real AI acceptance is not checked", workflow)
         self.assertIn("verify_saved_report(config[\"staging_origin\"], staging_sha)", controller)
