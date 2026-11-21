@@ -1,6 +1,28 @@
 # Pipeline Metrics
 
-## Current delivery sample — 2026-11-20 13:45 UTC
+## Current service identity refresh — 2026-11-21
+
+This read-only refresh records service identity and endpoint behavior, not a
+performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
+from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
+and `/model-info` returned HTTP 200; analysis is disabled
+(`analysis_enabled=false`, `provider_mode=disabled`). Staging serves
+`ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
+`dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
+TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
+No inference, database write, or production smoke workflow run was made.
+The later workstation smoke attempt timed out on staging `/health`; this did
+not refresh the service state or establish a Render outage. Treat the HTTP
+observations in this section as the earlier November 21 read-only sample.
+
+Render metadata reports auto-deploy disabled for both services. Production's
+latest deployment record nevertheless has trigger `new_commit`; this discrepancy
+is unresolved. See the [staging Auth evidence](evidence/2026-11-21-staging-neon-auth-smoke.md)
+and [current environment map](environment-map-2026-11-21.md). The November 20
+delivery sample below remains the latest performance measurement; its service
+identity is historical.
+
+## Latest measured delivery sample — 2026-11-20 13:45 UTC
 
 The latest four completed `CI` push runs to `main`, through PR #256, all
 succeeded. Their workflow wall-time median was **66 seconds**, p90 **82
@@ -37,7 +59,7 @@ workflow and check set over a sufficiently broad sample. No production
 inference was sent. Do not present health/readiness timing as extension journey
 latency or report AI cost without a verified inference path.
 
-## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
+## 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
 Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and

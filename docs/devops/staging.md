@@ -1,5 +1,22 @@
 # Pre-merge staging
 
+> Current status — November 21, 2026: a separate read-only staging observation
+> returned `401 Bearer` for anonymous saved-report history. The supplied hosted
+> failure omitted HTTP status/body, so that observation is a plausible cause,
+> not a confirmed cause. Review branch
+> `codex/devops-staging-closeout-20261121` adds strict anonymous-auth handling,
+> bounded transient retries and failure summaries; the local CI job monitors
+> server exit and preserves logs, and hosted deployment is gated on successful
+> staging, hosted preflight and backend results. These changes have not run in
+> GitHub Actions or merged to `main`. They do not implement or prove
+> authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path on
+> the observed `main` lacks a Neon Auth session, so the full staging job remains
+> open. The latest workstation read-only smoke timed out. Track details in the
+> [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md), and
+> do not label the staging gate passed until authenticated create/list/read/
+> update/delete, ownership/isolation, persistence, and cleanup pass on one exact
+> package/backend pair.
+
 > The November 15 point-in-time staging deployment and CRUD acceptance are recorded in
 > [the staging acceptance record](staging-acceptance-2026-11-15.md). That run predates
 > PR #226's URL identity fix and does not establish that current `main` is deployed
@@ -13,17 +30,29 @@ Delivery order: task branch → PR component checks → isolated staging integra
 
 `Staging integration` waits for `Backend checks` and `Extension checks`. It starts
 an isolated PostgreSQL 17 database and the real FastAPI process, applies migrations,
-seeds synthetic records, then requests health, readiness, and seeded history using
-the extension's actual `getAnalyses` client over HTTP. No Neon or Render secrets
-are used in this job. Its database is discarded after the job.
+seeds synthetic records, then requests health, readiness, and saved-report history.
+The smoke accepts a strict anonymous `401 Bearer` challenge or, in the legacy
+public-history `200` mode, validates seeded history through the extension's actual
+`getAnalyses` client. Startup polling monitors the server process; failure prints
+the server log, and an always-run artifact step retains it. No Neon or Render
+secrets are used in this job. Its database is discarded after the job.
 
-`Hosted staging` runs on PRs after isolated staging succeeds. It deploys the
+`Hosted staging` is label/configuration gated and runs only after isolated staging,
+hosted-head preflight, and backend migration lineage all report `success` and the
+preflight confirms the current PR head. Its job and Render deployment step both
+state these success requirements explicitly; the review branch has removed the
+job-level `always()` status override. Hosted staging deploys the
 GitHub pull-request merge-ref SHA (`github.sha`) through the Render API, records
 the PR head SHA separately, verifies the deployed SHA through `/version`, and
 repeats the HTTP/client smoke checks. Missing configuration fails the job. A
 shared concurrency group prevents two workflow jobs from deploying or testing
 the staging service at once. GitHub can replace older pending jobs when several
 PRs queue; rerun the intended PR if necessary.
+
+The review-branch condition is defense in depth: the linked workflow snapshot
+also had explicit dependency-success predicates with `always()`. The override
+was removed to keep future condition changes fail-closed. Local and hosted
+staging checks remain separate; a local pass does not establish hosted health.
 
 Backend checks verify the Alembic graph on the exact merge commit and export its
 head as deployment evidence. Before deployment, the trusted controller checks
@@ -41,13 +70,14 @@ testing.
 
 ### Required gate and deployment evidence
 
-Every eligible same-repository, non-draft PR runs the real `Hosted staging` job
-after isolated integration. Tooling-only changes are not an exemption. A green
-check requires Render to report the requested merge-ref SHA live, the real
-extension client smoke to pass, and `/version` to report that same SHA in
-`staging`.
-Missing synthetic history, unhealthy/unready responses, changed PR heads, and
-failed deployments fail acceptance.
+Only eligible same-repository, non-draft PRs with the hosted-staging label and
+required repository/environment variables can enter this path. The current
+values of those variables and the effective required-check settings were not
+re-read in this audit. A green hosted check requires Render to report the
+requested merge-ref SHA live, the smoke contract to pass, and `/version` to
+report that same SHA in `staging`; a separate authenticated CRUD check must also
+complete before the staging/release gate can pass. Unhealthy/unready responses,
+stale PR heads, failed deployments and missing cleanup evidence fail acceptance.
 
 The trusted default-branch controller packages extension assets from that exact
 deployed merge-ref SHA. The `PhishLens-Staging-Extension` artifact contains a
@@ -201,15 +231,21 @@ or replace deployment with a successful not-applicable check to work around it.
 GitHub documents the PR merge-ref pattern in
 [deployment branch restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 
-Required checks on `main`: `Backend checks`, `Extension checks`,
-`Staging integration`, `Hosted staging`. Preserve teammate approval, stale-review
-dismissal, conversation resolution, up-to-date branches, and no administrator
-bypass. Existing PR branches need this workflow from current main after rollout.
+The latest recorded November 20 branch-protection snapshot lists eight classic
+required contexts: `Backend checks`, `Extension checks`, `Staging integration`,
+`CodeQL`, `Secretary staging`, `Deterministic AI Evaluation`,
+`Dependency security`, and `Workflow lint`. This audit did not re-read current
+effective settings or test a deliberate failing-check merge block; do not
+present the snapshot as fresh control-plane verification. In particular, a
+skipped or not-applicable hosted-staging run is not product acceptance.
+Preserve teammate approval, stale-review dismissal, conversation resolution,
+up-to-date branches, and no administrator bypass.
 
 ## Chrome verification before approval
 
-1. Confirm all four checks passed for the latest PR commit and verify its live
-   SHA in the staging Render dashboard.
+1. Confirm all currently required checks passed for the latest PR commit, verify
+   the live SHA in Render, and confirm the required-check configuration was
+   actually enforced for that candidate.
 2. Download `PhishLens-Staging-Extension` from that PR's workflow artifacts.
 3. Extract and load the folder as an unpacked extension in Chrome. The PR #86
    artifact produced by run 40736903885 has manifest name `Veriqo STAGING PR 86`,

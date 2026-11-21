@@ -1,5 +1,13 @@
 # Backend Auth acceptance and cleanup procedure
 
+> Preparation only. The review branch accepts the anonymous
+> `401 Bearer` boundary, but this change has not run in GitHub Actions or
+> merged to `main`, and hosted authenticated CRUD is still open. The latest
+> workstation live probe timed out. Check the
+> [November 21 staging evidence](devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
+> and [environment map](devops/environment-map-2026-11-21.md) before proposing
+> any live run. This procedure is not authorization to write to shared staging.
+
 Preparation only. This document and its examples are not authorization to run
 anything against staging. They do not select a deployment or change Auth config.
 The two-account Auth run is separate from #48's one-report TF-IDF lifecycle.

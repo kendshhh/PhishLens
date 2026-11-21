@@ -1,9 +1,11 @@
 # PhishLens architecture and environment map
 
-This describes the repository's current implementation as of 2026-11-14. It is
-not proof that every hosted service is running this revision. See the
-[deployment and acceptance status](devops/kendra-sprint-1-3-status-2026-11-14.md)
-for the latest verified limits.
+This is an architecture snapshot from 2026-11-14, not a claim that every hosted
+service uses the described workflow or runs this revision. For the November 21
+service identities, staging Auth finding and current release limits, use the
+[DevOps evidence index](devops/README.md),
+[environment map](devops/environment-map-2026-11-21.md), and
+[release record](devops/release-record-2026-11-21.md).
 
 ## System boundary
 

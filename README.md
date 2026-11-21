@@ -4,35 +4,38 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
-## Current Status — November 14, 2026
+## Current Status — November 21, 2026
 
-Current `main` is `ddc0ab1`. Backend, extension, PostgreSQL integration,
-dependency-security, CodeQL, and workflow checks are configured; main is protected
-and successful main changes auto-deploy through Render. The refreshed 28-day
-delivery snapshot is in [pipeline metrics](docs/devops/metrics.md).
+The current release decision is **NO-GO**. The latest observed GitHub `main` is
+`811980c2cbf70d9957146bf329627f0826a018f1`. This closeout is prepared on
+`codex/devops-staging-closeout-20261121`, based on the staging-history repair
+commit `3c858f7df51666e0545dea1a6dd5997574c16d43` (a descendant of that main).
+The implementation is recorded in commit
+`a80b95e146cd03a96ffca156ccfe5721ac871b68`; its workflow has not run in hosted
+GitHub Actions.
+The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d`
+remains dirty and was preserved. Production serves main with analysis intentionally disabled.
+Staging serves a different SHA and requires Bearer authentication for
+saved-report history. The review branch now includes strict anonymous-auth
+smoke handling, bounded retries and failure summaries, early local-server crash
+detection/log retention, and fail-closed hosted deployment gates. Focused Node
+tests pass; no hosted workflow rerun or authenticated CRUD acceptance is
+recorded. The live endpoint probe from this workstation timed out, so it did
+not refresh the prior read-only staging observation.
 
-Sprint acceptance is not complete. Merged [PR #192](https://github.com/kendshhh/PhishLens/pull/192)
-adds synthetic browser acceptance evidence, and merged [PR #193](https://github.com/kendshhh/PhishLens/pull/193)
-adds a guarded Auth acceptance procedure; neither is evidence of a connected
-staging run or live Auth acceptance. [PR #196](https://github.com/kendshhh/PhishLens/pull/196)
-adds deterministic AI evaluation on AI changes and fail-closed Gemini spend checks,
-but remains open. Its 40-case result is development regression evidence, not a
-held-out quality result or an approved model threshold. [PR #198](https://github.com/kendshhh/PhishLens/pull/198)
-records an exact-SHA production smoke that stopped before analysis because the
-production model mode was unavailable; it made no analysis request, database
-write, or paid call. Its staging CRUD evidence used a test-branch SHA, not current
-main. Merged [PR #189](https://github.com/kendshhh/PhishLens/pull/189) reconciles
-historical Sprint 2 CRUD evidence but leaves hosted acceptance on hold pending
-confirmation of the selected backend, database and authentication target.
-On November 14, read-only `/version` probes reported production at
-`ddc0ab16d5cdee97d88de2cd2b899e6ee6ba2213` (`main`) with
-`provider_mode=unavailable`, and staging at `dcd234e0e012e1a869e182e64d34728343d17637`
-with `provider_mode=tfidf`. Both `/health` and `/ready` returned HTTP 200;
-readiness reported a connected database but does not identify its Neon branch.
-Current DevOps acceptance gaps and named handoffs are tracked in the
-[Sprint 1–3 closeout](docs/devops/kendra-sprint-1-3-status-2026-11-14.md).
-The isolated Chrome software audit and synthetic browser evidence for Issue #131
-are recorded in [the installed-browser audit](docs/frontend/issue-131/audit.md).
+Render currently reports auto-deploy off for both services, while production's
+latest deploy record says `new_commit`; resolve that configuration/evidence
+discrepancy before relying on deployment behavior. The effective GitHub required
+checks and private Render-to-Neon role mapping are also not verified. There is
+no approved release score; no percentage should be reported.
+
+Use the [DevOps evidence index](docs/devops/README.md) for the current release
+record, environment map, scorecard, staging failure evidence, runbooks and
+closeout prompt. See [PIPELINE.md](PIPELINE.md) for the current delivery view
+and [pipeline metrics](docs/devops/metrics.md) for dated, bounded measurements.
+Historical status reports remain dated snapshots. The isolated Chrome software
+audit and synthetic browser evidence for Issue #131 are recorded in
+[the installed-browser audit](docs/frontend/issue-131/audit.md).
 
 ## Planned Features
 
@@ -52,7 +55,7 @@ are recorded in [the installed-browser audit](docs/frontend/issue-131/audit.md).
 | Database | PostgreSQL hosted on Neon |
 | AI | Local TF-IDF v12a, Llama judge, then TF-IDF + linear-kernel KRR + LightGBM review |
 | Version control | Git and GitHub |
-| CI/CD | GitHub Actions and Render deployment after CI passes |
+| CI/CD | GitHub Actions with gated staging deployment; production deploy trigger is unresolved |
 | Backend hosting | Render Free; https://phishlens-api-ocvt.onrender.com |
 
 Scans run locally in Chrome. The extension contacts the backend only for explicit
@@ -115,19 +118,24 @@ Our target workflow is:
 4. Open a pull request and request teammate review.
 5. Pass the automated checks before merging.
 6. Merge approved work into main.
-7. Automatically deploy the successfully checked version.
-8. Verify the deployed behavior and record evidence.
+7. Deploy the successfully checked version using the owner-approved Render
+   policy, then verify the observed trigger and exact deployed SHA.
+8. Verify deployed behavior and record evidence. The current automatic-deploy
+   setting is unresolved; see the [DevOps evidence index](docs/devops/README.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for commands and team ownership.
 
 ### Automation Status
 
-Backend CI/CD is configured and verified. Extension tests, validation, packaging,
-isolated API integration, and hosted staging checks are configured. Full application
-acceptance remains pending for installed Chrome, production persistence, and real AI.
-See [PIPELINE.md](PIPELINE.md) for implemented checks,
-[metrics](docs/devops/metrics.md) for the measured snapshot, and the
-[runbook](docs/devops/runbook.md) for deployment and recovery.
+CI, extension validation, packaging and staging workflows are configured, but
+their effective required-check contract and current hosted staging acceptance
+are not verified. The latest staging smoke patch passes locally; the hosted
+workflow still needs an authenticated CRUD session and exact-candidate
+acceptance. Production analysis is disabled, and no browser/release candidate is
+accepted. See [PIPELINE.md](PIPELINE.md), the
+[DevOps evidence index](docs/devops/README.md),
+[metrics](docs/devops/metrics.md), and the
+[deployment and recovery runbook](docs/devops/runbook.md).
 
 Sprint 1 acceptance targets:
 
@@ -136,6 +144,10 @@ Sprint 1 acceptance targets:
 - Automatic deployment after successful checks on every merge to main.
 - A public walking skeleton connected to the database.
 - Pipeline documentation and baseline metrics.
+
+The automatic-deployment target is not currently verified: Render metadata says
+auto-deploy is off, while the latest production deployment record says
+`new_commit`.
 
 Pull request checkboxes document verification.
 They do not replace automated checks or reviewer approval.
