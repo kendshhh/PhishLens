@@ -373,7 +373,7 @@ def require_live_pr_eligibility(api, number, sha, files, run, repo, opt_in_label
     current = api.request(f"pulls/{number}")
     if current.get("number") != number or not current_pr_head_matches(current, sha):
         raise RuntimeError("Live PR state or head changed; staging deployment was not started")
-    action, message = eligibility(current, files, run, repo, opt_in_label)
+    action, _message = eligibility(current, files, run, repo, opt_in_label)
     if action != "deploy":
         raise RuntimeError("Live PR is no longer eligible for staging; deployment was not started")
     return current
