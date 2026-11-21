@@ -581,3 +581,40 @@ is **NO-GO** and the descriptive DevOps evidence-progress value remains 41/100.
 This is the latest completed workflow snapshot at the time of this record. The
 following documentation-only commit must pass its own exact-head checks before
 merge; no runtime or workflow code changed in this snapshot update.
+
+## Current head after main sync — 2026-11-21 12:14 UTC
+
+The base advanced to `31e86c78523cbdcfb6da83f99d331c86409bf0fa`, which merged
+PR #271's Secretary status behavior for a completed staging preflight while
+authenticated Auth acceptance remains pending. The PR branch was updated from
+`ee4d531` to merge current main at `aee49fe5a11da37ed441464c80ad9a09e0b9dda8`.
+GitHub reports PR #268 open, based on `main`, and mergeable; review remains
+`CHANGES_REQUESTED` pending collaborator re-review.
+
+On exact merge head `aee49fe`, CI run
+[44902645800](https://github.com/kendshhh/PhishLens/actions/runs/44902645800)
+completed successfully at 12:14 UTC. Backend, Extension, local Staging
+integration and migration source preflight passed. Workflow lint
+[44902645811](https://github.com/kendshhh/PhishLens/actions/runs/44902645811),
+dependency security/graph review
+[44902645851](https://github.com/kendshhh/PhishLens/actions/runs/44902645851),
+deterministic evaluation
+[44902645832](https://github.com/kendshhh/PhishLens/actions/runs/44902645832),
+and CodeQL [44902643383](https://github.com/kendshhh/PhishLens/actions/runs/44902643383)
+passed. Hosted staging preflight and Hosted staging were skipped. The exact-head
+DevOps Secretary report workflow was cancelled during branch synchronization
+([44902644757](https://github.com/kendshhh/PhishLens/actions/runs/44902644757));
+no current Secretary report pass is claimed.
+
+The required `Secretary staging` status failed because the
+`needs-hosted-staging` request label and exact-head hosted verification are
+absent ([Secretary preview assessment
+44902874550](https://github.com/kendshhh/PhishLens/actions/runs/44902874550)).
+The new mainline status behavior therefore does not authorize or substitute for
+the skipped hosted deployment. No Render deployment or authenticated hosted
+CRUD occurred. Preserve the read-only boundary; the 41/100 evidence-progress
+score is descriptive and release #153 remains **NO-GO**.
+
+This is a documentation-only evidence refresh on top of the tested merge head;
+its own exact-head CI must pass before review/merge. The source and workflow
+changes from main were tested in run 44902645800 and associated checks above.
