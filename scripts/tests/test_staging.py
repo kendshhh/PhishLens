@@ -196,9 +196,14 @@ class DeploymentTests(unittest.TestCase):
         hosted = workflow.split("  hosted-staging:\n", 1)[1]
 
         self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertIn("STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
+        self.assertTrue(
+            "STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}" in hosted
+            or "STAGING_EXPECTED_BACKEND_SHA: ${{ github.event.pull_request.head.sha }}" in hosted,
+            "Hosted staging must bind its expected backend SHA to the current PR head.",
+        )
         self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_SHA: ${{ github.sha }}", hosted)
+        self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", hosted)
         self.assertIn("from scripts.secretary.github_api import APIError, ReadOnlyGitHub", hosted)
         self.assertIn("hosted-migration-lineage.outputs.head", workflow)
