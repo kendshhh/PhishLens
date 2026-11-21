@@ -11,17 +11,21 @@ The current release decision is **NO-GO**. The latest observed GitHub `main` is
 `codex/devops-staging-closeout-20261121`, based on the staging-history repair
 commit `3c858f7df51666e0545dea1a6dd5997574c16d43` (a descendant of that main).
 The implementation is recorded in commit
-`a80b95e146cd03a96ffca156ccfe5721ac871b68`; its workflow has not run in hosted
-GitHub Actions.
+`a80b95e146cd03a96ffca156ccfe5721ac871b68`; the latest application/test
+commit is `d27eaa07a28173c485d19f44524a88e71515fc10` in open PR #268.
 The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d`
 remains dirty and was preserved. Production serves main with analysis intentionally disabled.
 Staging serves a different SHA and requires Bearer authentication for
 saved-report history. The review branch now includes strict anonymous-auth
 smoke handling, bounded retries and failure summaries, early local-server crash
 detection/log retention, and fail-closed hosted deployment gates. Focused Node
-tests pass; no hosted workflow rerun or authenticated CRUD acceptance is
-recorded. The live endpoint probe from this workstation timed out, so it did
-not refresh the prior read-only staging observation.
+tests pass. GitHub CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+passed the local staging integration and deployment guards at the current PR
+head. The protected Hosted staging job was skipped, and the separate Secretary
+staging check requires the `needs-hosted-staging` label. A direct GET-only
+smoke at 08:15 UTC passed health, readiness, and the anonymous `401 Bearer`
+boundary; it did not verify the deployed PR revision or authenticated CRUD.
+An earlier workstation probe timed out.
 
 Render currently reports auto-deploy off for both services, while production's
 latest deploy record says `new_commit`; resolve that configuration/evidence

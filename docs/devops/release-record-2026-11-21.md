@@ -12,11 +12,11 @@ of the frontend requirement remains outstanding.
 
 | Component | Observed identity | Evidence and acceptance state |
 |---|---|---|
-| Review source | Branch `codex/devops-staging-closeout-20261121`; implementation commit `a80b95e146cd03a96ffca156ccfe5721ac871b68`, based on `3c858f7df51666e0545dea1a6dd5997574c16d43`, a descendant of observed `main` `811980c2cbf70d9957146bf329627f0826a018f1`. | Prepared in a clean isolated worktree. The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d` and its existing edits remain untouched. This review branch is published for review but not merged into `main`. |
+| Review source | PR #268, branch `codex/devops-staging-closeout-20261121`, current head `d27eaa07a28173c485d19f44524a88e71515fc10`; implementation commit `a80b95e146cd03a96ffca156ccfe5721ac871b68`, based on `3c858f7df51666e0545dea1a6dd5997574c16d43`, a descendant of observed `main` `811980c2cbf70d9957146bf329627f0826a018f1`. | Prepared in a clean isolated worktree. The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d` and its existing edits remain untouched. PR #268 is open and not merged into `main`. |
 | Production API | Render deploy `dep-dc07rs67bikc73fjgjq0`, source SHA `811980c2cbf70d9957146bf329627f0826a018f1`. | Render reports live. Read-only `/version`, `/health`, `/ready` and `/model-info` returned HTTP 200. Model info says `analysis_enabled=false`, `provider_mode=disabled`, `supports_required_provider=false`, and `accepts_tfidf_reports=false`. No production inference or saved-report write was made; the production smoke workflow was not run. This is service-state evidence, not product acceptance. |
 | Staging API | Render deploy `dep-dc0im3h7lnhs738pncng`, source SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`. | Render reports live. Read-only `/version`, `/health`, `/ready` and `/model-info` returned HTTP 200; model info reports TF-IDF and model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. Anonymous `/api/analyses` returns `401` with `WWW-Authenticate: Bearer`. No authenticated CRUD acceptance is established. |
 | Staging Auth/database | Neon project `patient-bird-25428852`; staging branch `pr-58-staging` / `br-delicate-paper-b381z98i`; database `phishlens_dev`; Auth DB `neondb`; observed migration head `0004_neon_auth_subject`. | Read-only Neon Auth config and SQL/grant inspection are recorded in the evidence record. Runtime role can read/insert users and perform saved-report CRUD; public schema CREATE is false; users UPDATE/DELETE are false. This does not prove Render's private `DATABASE_URL` resolves to this exact branch/role. No SQL write was made. GitHub reports 15 open Dependabot alerts despite observed `main` pinning first-patched versions; reconciliation is pending. |
-| Staging smoke and hosted deploy guard | Implementation commit `a80b95e146cd03a96ffca156ccfe5721ac871b68` on the review branch. | Smoke accepts anonymous history only for `401 Bearer`, retains the `200` seeded-history contract, and adds transient-only retries bounded by a 120-second deadline and 30 attempts. Errors identify stage/endpoint/status and are added to the job summary. CI monitors local server exit/readiness and uploads its log; hosted deployment requires success from staging, hosted preflight and backend at both job and deployment-step level. These changes have not run in GitHub Actions. |
+| Staging smoke and hosted deploy guard | Implementation commit `a80b95e146cd03a96ffca156ccfe5721ac871b68`; latest tested PR head `d27eaa07a28173c485d19f44524a88e71515fc10`. | GitHub CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782) passed the local staging smoke and all deployment-guard tests. A separate direct GET-only staging smoke passed at 08:15 UTC. Hosted staging and its preflight were skipped because the PR lacks `needs-hosted-staging`; Secretary staging reports that this label and exact-head hosted verification are required. No Render deployment was made. |
 | Hosted CRUD runner | `origin/main` `.github/workflows/ci.yml` invokes `scripts/verify_crud.mjs --allow-writes` after the legacy smoke. | The current observed code path has no authenticated session for Neon Auth. It is a separate blocker that the anonymous smoke adjustment does not resolve. Fix the runner to obtain an approved synthetic test session and authenticate all operations; retain cleanup and least privilege. Do not disable auth or use a database bypass. |
 | Production smoke | `origin/main` contains the disabled-provider observer path. | Source inspection shows it can report a bounded observer pass for disabled mode with zero inference, paid provider calls and database writes. No workflow execution was run, and this result cannot pass product/AI acceptance. |
 | Recovery evidence | Isolated Neon restore drill, November 20, on upstream `main`. | The drill checked revision, schema shape and aggregate counts on an isolated restored branch. RTO/RPO remain unmeasured; service-to-branch mapping and compatible application rollback remain open. [Read the source record](https://github.com/kendshhh/PhishLens/blob/811980c2cbf70d9957146bf329627f0826a018f1/docs/devops/recovery-drill-2026-11-20.md). |
@@ -36,8 +36,10 @@ the expected authentication challenge (`401 Bearer`) because saved reports
 require sign-in. No run ID or tested SHA establishes that it was the same
 deployment/run as the supplied failure, so this is a plausible cause, not a
 confirmed diagnosis. The legacy smoke assumed anonymous history was readable
-and treated that boundary as a failure. A later probe from this workstation
-timed out and did not refresh the observation. See the
+and treated that boundary as a failure. An earlier workstation probe timed
+out; a later GET-only run at 08:15 UTC passed health, readiness and the expected
+`401 Bearer` boundary, but did not confirm the original run's response or
+deployed source SHA. See the
 [dated failure analysis](evidence/2026-11-21-staging-neon-auth-smoke.md).
 
 The fix has two separate parts:
@@ -61,6 +63,8 @@ The fix has two separate parts:
   package and source hashes.
 - [ ] Run the protected hosted workflow on a current PR head and make the
   authenticated CRUD job work with a least-privilege synthetic test user.
+- [ ] Complete the protected exact-head Hosted staging run; the current PR's
+  Hosted staging jobs are skipped until `needs-hosted-staging` is present.
 - [ ] Pass hosted staging smoke plus authenticated CRUD, persistence,
   ownership/isolation, failure and cleanup checks; install and accept the exact
   extension package in Chrome.

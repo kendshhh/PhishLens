@@ -12,9 +12,14 @@ status/body, so the cause cannot be confirmed. A separate dated probe returned
 `codex/devops-staging-closeout-20261121` adds strict Bearer handling, bounded
 transient-only retries, endpoint/status/error summaries, local server-exit
 monitoring and log retention, plus fail-closed hosted deployment conditions.
-Its Node regression suite passes, but the branch has not run in GitHub Actions
-or merged to `main`; the latest workstation live probe timed out. The separate
-CRUD step has no authenticated session and remains a blocker. The last recorded Secretary preview
+Its Node regression suite passes. PR #268 head
+`d27eaa07a28173c485d19f44524a88e71515fc10` passed CI run
+[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782),
+including local staging integration and guard tests. A direct GET-only staging
+smoke passed at 08:15 UTC. Hosted staging was skipped, and the separate
+[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44883823713)
+requires `needs-hosted-staging`; no Render deploy occurred. The CRUD step has no
+authenticated session and remains a blocker. The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
 audit. No current Secretary exact-head authenticated CRUD acceptance is

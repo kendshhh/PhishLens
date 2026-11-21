@@ -53,9 +53,11 @@ Live on deploy `dep-dc0im3h7lnhs738pncng` / SHA
 `dep-dc07rs67bikc73fjgjq0` / SHA
 `811980c2cbf70d9957146bf329627f0826a018f1`. Both services report branch
 `main`, auto-deploy disabled, and trigger `off`. The production deploy record
-still says `new_commit`, so the mismatch persists. A direct workstation HTTP
-probe timed out; control-plane Live status does not substitute for endpoint
-health verification.
+still says `new_commit`, so the mismatch persists. An earlier direct workstation
+probe timed out. At 08:15 UTC, the review-branch smoke script later completed
+read-only GETs to `/health`, `/ready` and `/api/analyses`, passing health,
+readiness and the expected anonymous `401 Bearer` boundary. It does not query
+`/version`, confirm the deployed PR SHA or test authenticated CRUD.
 
 ## GitHub dependency-alert reconciliation
 
@@ -140,12 +142,12 @@ or the PR's exact deployed revision.
 ## Evidence limits and disposition
 
 No hosted rerun, Auth signup/login, app-level write, inference, production call,
-deployment, database mutation, or secret inspection was performed for this
-record. The service's staging state and Neon metadata were inspected read-only.
-The earlier result was **supplied hosted smoke FAIL; patched local anonymous
-preflight PASS; hosted authenticated acceptance OPEN**. Keep the staging/release
-gate open until the full authenticated acceptance above passes on one exact
-candidate.
+deployment, database mutation, or secret inspection was performed for the
+original failure analysis. The service's staging state and Neon metadata were
+inspected read-only. The original result was **supplied hosted smoke FAIL;
+patched local anonymous preflight PASS; hosted authenticated acceptance OPEN**.
+Keep the staging/release gate open until the full authenticated acceptance
+above passes on one exact candidate.
 
 ## Review-branch correction and verification — 2026-11-21
 
@@ -169,8 +171,15 @@ left untouched. The branch:
   to the Render deployment step.
 
 The linked workflow already had explicit dependency-success predicates alongside
-`always()`; removing the status override is defense in depth. No hosted
-deployment or GitHub workflow run was started by this closeout.
+`always()`; removing the status override is defense in depth. After publication,
+PR #268 head `d27eaa07a28173c485d19f44524a88e71515fc10` passed GitHub CI run
+[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782),
+including local staging integration and deployment guard tests. Workflow lint,
+dependency security, CodeQL and deterministic AI evaluation also passed on
+that SHA. Hosted staging and its preflight were skipped; the separate
+[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44883823713)
+failed because `needs-hosted-staging` was absent. No Render deployment was
+started.
 
 Local code checks on Node.js v24.20.0:
 
@@ -179,11 +188,12 @@ Local code checks on Node.js v24.20.0:
 | `npm test` | Exit 0; 315 tests passed, including six new smoke-runner cases. | Does not execute GitHub Actions or Render deployment. |
 | Targeted workflow guard regression | `python -m unittest discover -s scripts/tests -p test_hosted_staging_gate.py -v`; exit 0, three checks passed. | Static regression for dependency and deploy-step gates, bounded local health probes, process monitoring and log upload; hosted execution remains outstanding. |
 | `node --check` on smoke runner, smoke tests and API client | Exit 0. | Syntax only. |
-| `npm run lint` | Exit 1; the `eslint` executable is not installed in this workstation environment. | No lint pass is claimed; run in the normal CI dependency environment. |
+| `npm run lint` | The local command could not find ESLint. GitHub Extension checks on PR head `d27eaa0` passed their configured JavaScript lint. | Local tool absence is not a CI lint failure; hosted staging remains skipped. |
 | Markdown link and whitespace review | All 31 changed Markdown files checked; no missing local links. A broader scan of 141 repository Markdown files found 14 older local references to companion artifacts absent from three benchmark summaries (`english_real_v4_checkpoint_clean`, `real_email_v3`, and `real_readiness_v10`). `git diff --check` passed with CRLF-aware whitespace handling. | The 14 benchmark-artifact references are outside this DevOps change and remain an evidence-packaging gap; external URLs and GitHub-rendered layout were not validated. |
 | Live read-only smoke request to staging | Exit 1; repeated `/health` requests timed out after 10 seconds. | Workstation connectivity failure; does not establish that Render is unhealthy. |
-| `python -m unittest discover -s scripts/tests -v` | Earlier attempt, before adding the three static gate regressions: exit 1; 201 discovered, 11 failures and 28 errors. | Not a valid CI reproduction: workstation Python is 3.10 rather than workflow Python 3.12; SQLAlchemy is absent; Git config environment values are incomplete; package-identity cases inspect this intentionally dirty review worktree. |
-| GitHub Actions workflow lint / hosted workflow | Pinned actionlint v1.7.9 exited 0 on `.github/workflows/ci.yml`. | Static lint only; no GitHub Actions run or hosted staging deployment was started. |
+| `python -m unittest discover -s scripts/tests -v` | The earlier workstation attempt was incomplete under Python 3.10. On PR head `d27eaa0`, GitHub Staging integration ran all 226 deployment-guard tests successfully under Python 3.12. | The workstation failure is not a current CI failure; Hosted staging was skipped, so no hosted deployment is claimed. |
+| GitHub Actions workflow lint / hosted workflow | Pinned actionlint v1.7.9 passed locally; GitHub Workflow lint run [44883590568](https://github.com/kendshhh/PhishLens/actions/runs/44883590568) also passed on `d27eaa0`. | CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782) passed local staging. Hosted staging and its preflight were skipped; Secretary staging requires the `needs-hosted-staging` label. |
+| Direct live staging smoke | At 08:15 UTC, `node scripts/staging_smoke.mjs` passed health, database readiness and anonymous history authentication (`HTTP 401 Bearer`) against the configured staging URL. | GET-only workstation run; it does not verify the deployed PR SHA, migration table, Auth session, CRUD, or cleanup. |
 
 The review-branch result is **focused Node regression tests PASS; live
 workstation probe UNVERIFIED; hosted authenticated acceptance OPEN**. The

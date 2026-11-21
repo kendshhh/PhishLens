@@ -11,9 +11,12 @@ and `/model-info` returned HTTP 200; analysis is disabled
 `dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
 TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
 No inference, database write, or production smoke workflow run was made.
-The later workstation smoke attempt timed out on staging `/health`; this did
-not refresh the service state or establish a Render outage. Treat the HTTP
-observations in this section as the earlier November 21 read-only sample.
+An earlier workstation smoke attempt timed out on staging `/health`. A later
+GET-only smoke at 08:15 UTC passed `/health`, `/ready`, and anonymous history
+authentication (`401 Bearer`) using review-branch code. It did not check
+`/version`, deployed PR identity, or authenticated CRUD, and it is not a
+performance sample. Treat the deployment identity above as the 07:31 UTC
+control-plane observation.
 
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy

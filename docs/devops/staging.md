@@ -7,11 +7,13 @@
 > `codex/devops-staging-closeout-20261121` adds strict anonymous-auth handling,
 > bounded transient retries and failure summaries; the local CI job monitors
 > server exit and preserves logs, and hosted deployment is gated on successful
-> staging, hosted preflight and backend results. These changes have not run in
-> GitHub Actions or merged to `main`. They do not implement or prove
-> authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path on
-> the observed `main` lacks a Neon Auth session, so the full staging job remains
-> open. The latest workstation read-only smoke timed out. Track details in the
+> staging, hosted preflight and backend results. PR head
+> `d27eaa07a28173c485d19f44524a88e71515fc10` passed local staging integration
+> in GitHub CI; Hosted staging was skipped and no Render deployment occurred.
+> A direct GET-only smoke passed at 08:15 UTC. These checks do not implement or
+> prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
+> on the observed `main` lacks a Neon Auth session, so the full staging job
+> remains open. Track details in the
 > [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md), and
 > do not label the staging gate passed until authenticated create/list/read/
 > update/delete, ownership/isolation, persistence, and cleanup pass on one exact

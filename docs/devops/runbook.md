@@ -9,15 +9,20 @@ deployment is `dep-dc07rs67bikc73fjgjq0` on
 `811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. The
 recorded staging deployment is `dep-dc0im3h7lnhs738pncng` on
 `ba0b6c5475eb6a8f99c509c40384020d292e17e6`; its anonymous saved-report
-endpoint requires a Bearer session. A later workstation probe timed out, so
-these remain dated observations rather than a fresh live verification.
+endpoint requires a Bearer session. A direct GET-only smoke from the review
+branch passed at 08:15 UTC for health, readiness and the anonymous `401 Bearer`
+boundary; it does not verify deployed PR identity, authenticated CRUD, or
+deployment state.
 
 The review branch adds bounded staging smoke retries, failure summaries,
 local server-exit monitoring and log retention. Hosted deployment requires
 successful staging, hosted preflight and backend results at both job and deploy
-step level. No GitHub workflow run has exercised these changes. The hosted
-CRUD runner remains unauthenticated, required-check settings are not reverified,
-and the effective production deploy trigger remains unresolved. Do not merge,
+step level. PR #268 CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+passed the local staging integration and guard tests. Its hosted preflight and
+deployment jobs were skipped pending the `needs-hosted-staging` label; the
+separate Secretary staging check requires that protected run. The hosted CRUD
+runner remains unauthenticated, required-check settings are not reverified, and
+the effective production deploy trigger remains unresolved. Do not merge,
 promote, or claim release readiness from these changes alone.
 
 The owner-approved recovery objectives are RTO no greater than 30 minutes and

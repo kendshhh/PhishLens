@@ -7,8 +7,11 @@ service IDs, workflow settings or deployment observations as current.
 
 The staging smoke and CI guard implementation is on review branch
 `codex/devops-staging-closeout-20261121`, implementation commit
-`a80b95e146cd03a96ffca156ccfe5721ac871b68`. It is published for review only;
-it is not merged or verified by a hosted workflow run.
+`a80b95e146cd03a96ffca156ccfe5721ac871b68`. PR #268's latest application/test
+commit is `d27eaa07a28173c485d19f44524a88e71515fc10`. Its CI and local staging passed,
+and the direct GET-only smoke passed, but Hosted staging was skipped and no
+Render deployment occurred. It is not merged or verified by a hosted workflow
+run.
 
 ## Current source of truth
 

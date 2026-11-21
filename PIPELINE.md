@@ -41,11 +41,15 @@ explicit `401 Bearer` anonymous challenge, preserves seeded-history checks for
 writes endpoint/status/error details to the job summary. The branch also
 removes the hosted job's `always()` override, requires all three dependency
 results to be `success`, monitors local server startup, and retains its log
-artifact. These changes are not yet on `main`; hosted CI checks out the trusted
-default-branch controller. Its CRUD runner is unauthenticated, so authenticated
-history/CRUD, persistence, isolation and cleanup remain open. Focused Node tests
-pass; the workstation's read-only live staging request timed out and no hosted
-workflow run was started.
+artifact. At PR head `d27eaa07a28173c485d19f44524a88e71515fc10`, CI run
+[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+passed the local staging integration and guard tests. A direct GET-only smoke
+at 08:15 UTC also passed health, readiness and anonymous `401 Bearer` on the
+current staging endpoint. Hosted staging and its preflight were skipped because
+the PR lacks `needs-hosted-staging`; the separate Secretary staging check
+requires that label. No Render deployment occurred. Until the fix reaches the
+trusted default branch, its hosted controller still uses the old smoke script.
+Authenticated history/CRUD, persistence, isolation and cleanup remain open.
 
 ### Controls and release gates
 

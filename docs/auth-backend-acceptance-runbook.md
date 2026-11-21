@@ -1,9 +1,10 @@
 # Backend Auth acceptance and cleanup procedure
 
 > Preparation only. The review branch accepts the anonymous
-> `401 Bearer` boundary, but this change has not run in GitHub Actions or
-> merged to `main`, and hosted authenticated CRUD is still open. The latest
-> workstation live probe timed out. Check the
+> `401 Bearer` boundary and passed the local staging integration in GitHub CI
+> run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782).
+> Hosted staging was skipped, and authenticated CRUD is still open. A direct
+> GET-only workstation smoke passed at 08:15 UTC. Check the
 > [November 21 staging evidence](devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
 > and [environment map](devops/environment-map-2026-11-21.md) before proposing
 > any live run. This procedure is not authorization to write to shared staging.
