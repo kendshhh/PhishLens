@@ -656,7 +656,7 @@ jobs:
         if: steps.staging-final-preflight.outputs.current == 'true' && steps.hosted-history-smoke.outputs.history_access_mode == 'auth_required'
         run: |
           {
-            echo 'Exact-head deployment, health, readiness, and the anonymous `/api/analyses` Bearer challenge passed.'
+            echo 'Exact-head deployment, health, readiness, and anonymous /api/analyses Bearer challenge passed.'
             echo 'Authenticated saved-report history and CRUD were not run; they remain a separate Neon Auth acceptance.'
             echo 'No synthetic report was created and no staging extension artifact was published.'
           } >> "$GITHUB_STEP_SUMMARY"
