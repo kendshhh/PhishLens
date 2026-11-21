@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
-import { readStagingHistory } from '../staging_history.mjs';
+import { classifyHistoryAccess, readStagingHistory, writeHistoryAccessOutput } from '../staging_history.mjs';
 
 const validAnalysis = {
     id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c',
@@ -35,6 +38,7 @@ test('accepts anonymous history rejection when the API requires Bearer auth', as
     });
 
     assert.equal(items, null);
+    assert.equal(classifyHistoryAccess(items), 'auth_required');
 });
 
 test('rejects an unauthorized response without a Bearer challenge with diagnostics', async () => {
@@ -67,6 +71,21 @@ test('returns schema-valid seeded history items in demo mode', async () => {
     );
 
     assert.deepEqual(items, expected);
+    assert.equal(classifyHistoryAccess(items), 'anonymous');
+});
+
+test('rejects an unexpected history result before selecting a hosted verification path', () => {
+    assert.throws(() => classifyHistoryAccess(undefined), /array or null/);
+});
+
+test('writes the checked history access mode to a GitHub Actions output file', async t => {
+    const directory = await mkdtemp(join(tmpdir(), 'phishlens-history-output-'));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    const outputPath = join(directory, 'output');
+
+    await writeHistoryAccessOutput(null, outputPath);
+
+    assert.equal(await readFile(outputPath, 'utf8'), 'history_access_mode=auth_required\n');
 });
 
 test('rejects an invalid history response wrapper as a contract mismatch', async () => {

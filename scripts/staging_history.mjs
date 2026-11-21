@@ -1,6 +1,20 @@
+import { appendFile } from 'node:fs/promises';
 import { getAnalyses } from '../extension/js/api.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+export function classifyHistoryAccess(items) {
+    if (items === null) return 'auth_required';
+    if (Array.isArray(items)) return 'anonymous';
+    throw new TypeError('Staging history result must be an array or null');
+}
+
+export async function writeHistoryAccessOutput(items, outputPath) {
+    if (typeof outputPath !== 'string' || !outputPath) {
+        throw new TypeError('A GitHub Actions output path is required');
+    }
+    await appendFile(outputPath, `history_access_mode=${classifyHistoryAccess(items)}\n`, 'utf8');
+}
 
 function isTransientHistoryFailure(error) {
     return error?.origin === 'network' || error?.origin === 'timeout' ||

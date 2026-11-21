@@ -649,10 +649,19 @@ jobs:
           STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
+        id: hosted-history-smoke
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
-        run: node scripts/staging_smoke.mjs
+        run: node scripts/staging_smoke.mjs --github-output
+      - name: Record authenticated staging acceptance as pending
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.hosted-history-smoke.outputs.history_access_mode == 'auth_required'
+        run: |
+          {
+            echo 'Exact-head deployment, health, readiness, and the anonymous `/api/analyses` Bearer challenge passed.'
+            echo 'Authenticated saved-report history and CRUD were not run; they remain a separate Neon Auth acceptance.'
+            echo 'No synthetic report was created and no staging extension artifact was published.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Check out the exact-head synthetic acceptance runner and blob client
-        if: steps.staging-final-preflight.outputs.current == 'true'
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.hosted-history-smoke.outputs.history_access_mode == 'anonymous'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -665,7 +674,7 @@ jobs:
             scripts/secretary/github_api.py
           sparse-checkout-cone-mode: false
       - name: Verify saved report synthetic AI and CRUD checklist
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true' && steps.hosted-history-smoke.outputs.history_access_mode == 'anonymous'
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
           STAGING_EXPECTED_SHA: ${{ github.sha }}
@@ -678,7 +687,7 @@ jobs:
             | tee output/hosted-staging/saved-report-crud.json
       - name: Verify deployed merge identity and package staging assets
         id: staging-finalize
-        if: steps.staging-final-preflight.outputs.current == 'true'
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.hosted-history-smoke.outputs.history_access_mode == 'anonymous'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STAGING_COMMIT: ${{ github.sha }}

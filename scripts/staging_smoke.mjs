@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readStagingHistory } from './staging_history.mjs';
+import { readStagingHistory, writeHistoryAccessOutput } from './staging_history.mjs';
 
 const baseUrl = process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000';
 const attempts = Number(process.env.STAGING_ATTEMPTS || 60);
@@ -7,6 +7,12 @@ const historyAttempts = Number(process.env.STAGING_HISTORY_ATTEMPTS || 6);
 const historyDelayMs = Number(process.env.STAGING_HISTORY_DELAY_MS || 1000);
 const historyTimeoutMs = Number(process.env.STAGING_HISTORY_TIMEOUT_MS || 5000);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const emitGithubOutput = process.argv.includes('--github-output');
+
+async function reportHistoryAccess(items) {
+    if (!emitGithubOutput) return;
+    await writeHistoryAccessOutput(items, process.env.GITHUB_OUTPUT);
+}
 
 async function read(path) {
   const response = await fetch(baseUrl + path, { signal: AbortSignal.timeout(10000) });
@@ -44,6 +50,7 @@ try {
         delayMs: historyDelayMs,
         timeoutMs: historyTimeoutMs,
     });
+    await reportHistoryAccess(items);
 
     if (items === null) {
         console.log('Staging passed: health and database readiness; anonymous history correctly requires Bearer authentication.');
