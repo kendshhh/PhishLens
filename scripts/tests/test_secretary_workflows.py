@@ -109,7 +109,7 @@ class SecretaryWorkflowTests(unittest.TestCase):
 
     def test_ci_runs_packaged_browser_and_read_only_auth_staging_checks(self):
         workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-        hosted_start = workflow.index("  hosted-staging:\\n")
+        hosted_start = workflow.index("  hosted-staging:\n")
         hosted = workflow[hosted_start:]
 
         self.assertIn("npm run test:browser", workflow)
