@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
+import { requireHttpsOrigin } from './https_origin.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -77,8 +78,10 @@ async function verifyPreflight() {
   assert.equal(packageEvidence.api_origins?.staging, STAGING_ORIGIN);
   assert.equal(packageEvidence.api_origins?.production, PRODUCTION_ORIGIN);
   assert.equal(packageEvidence.staging_selection, 'popup.html?environment=staging');
-  productionAuthOrigin = new URL(packageEvidence.auth_configs?.production?.authUrl || '').origin;
-  assert.ok(productionAuthOrigin.startsWith('https://'), 'Production Auth origin is missing from the release sidecar');
+  productionAuthOrigin = requireHttpsOrigin(
+    packageEvidence.auth_configs?.production?.authUrl || '',
+    'Production Auth URL',
+  );
   assert.equal(required('STAGING_AUTH_URL'), packageEvidence.auth_configs?.staging?.authUrl);
   assert.equal(required('STAGING_AUTH_DATABASE'), packageEvidence.auth_configs?.staging?.database);
 
