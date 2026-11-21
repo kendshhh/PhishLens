@@ -21,7 +21,7 @@ from scripts.secretary.core import (
     render,
     safe,
 )
-from scripts.secretary.github_api import APIError, GitHub
+from scripts.secretary.github_api import APIError, GitHub, ReadOnlyGitHub
 from scripts.secretary.preview import (
     completed_event,
     confirm_live_deployment,
@@ -341,6 +341,27 @@ class GitHubPaginationTests(unittest.TestCase):
         network.assert_called_once()
         sleep.assert_not_called()
 
+    def test_read_only_client_rejects_writes_before_network_access(self):
+        api = ReadOnlyGitHub(repo="kendshhh/PhishLens", token="synthetic")
+        with patch("urllib.request.urlopen") as network, self.assertRaisesRegex(APIError, "GET requests only"):
+            api.request("pulls/123", {"state": "closed"})
+        network.assert_not_called()
+
+    def test_read_only_client_only_reads_pr_endpoints_and_never_drops_its_token(self):
+        api = ReadOnlyGitHub(repo="kendshhh/PhishLens", token="synthetic")
+        with patch("urllib.request.urlopen") as network, self.assertRaisesRegex(APIError, "pull-request reads only"):
+            api.request("contents/README.md")
+        network.assert_not_called()
+        denied = urllib.error.HTTPError("https://api.github.com/test", 403, "denied", {}, io.BytesIO())
+        with patch("urllib.request.urlopen", side_effect=denied) as network, \
+                self.assertRaisesRegex(APIError, "GitHub HTTP 403"):
+            api.request("pulls/123")
+        network.assert_called_once()
+
+    def test_read_only_client_requires_its_dedicated_token(self):
+        with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(APIError, "read-only PR token"):
+            ReadOnlyGitHub(repo="kendshhh/PhishLens")
+
 
 class PreviewTests(unittest.TestCase):
     def test_neon_preflight_passes_required_status_and_keeps_auth_acceptance_pending(self):
@@ -353,7 +374,7 @@ class PreviewTests(unittest.TestCase):
         responses = {"pulls/123": data["pr"], "check-runs": {"id": 1}, "deployments": {"id": 2}}
         api.request.side_effect = lambda path, *args: responses.get(path, [])
         event = {"workflow_run": {"id": 7, "event": "pull_request", "head_sha": SHA,
-                                  "conclusion": "success", "pull_requests": [{"number": 123}]}}
+                                  "conclusion": "success", "pull_requests": [{"number": 123, "head": {"sha": SHA}}]}}
         service = CONFIG["staging_service"]
         render = {
             f"services/{service}": {},
@@ -369,12 +390,15 @@ class PreviewTests(unittest.TestCase):
             event_path.write_text(json.dumps(event))
             summary_path = root / "summary.md"
             settings = {"GITHUB_EVENT_PATH": str(event_path), "GITHUB_RUN_ID": "7",
+                        "SECRETARY_PR_NUMBER": "123", "SECRETARY_PR_HEAD_SHA": SHA,
+                        "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                         "GITHUB_STEP_SUMMARY": str(summary_path),
                         "SECRETARY_PREVIEW_ENABLED": "true", "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
                         "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST}
             with (patch.dict(os.environ, settings, clear=True),
                   patch("scripts.secretary.preview.ROOT", root),
                   patch("scripts.secretary.preview.GitHub", return_value=api),
+                  patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api),
                   patch("scripts.secretary.preview.latest_jobs", return_value=(data["jobs"], {"id": 7})),
                   patch("scripts.secretary.preview.verify_service"),
                   patch("scripts.secretary.preview.render_request", side_effect=lambda path, *args: render[path]),
@@ -409,6 +433,11 @@ class PreviewTests(unittest.TestCase):
                             if entry.args[0] == "deployments/2/statuses"]
         self.assertEqual(status_calls, ["pending", "success"])
         self.assertEqual(deployment_calls, ["in_progress", "pending"])
+        self.assertEqual(
+            sum(call.args[0] == "pulls/123" for call in api.request.call_args_list),
+            4,
+            "PR state is checked initially, before deployment, before Render, and after smoke",
+        )
         auth_gate = next(
             entry.args[1]
             for entry in api.request.call_args_list
@@ -438,7 +467,7 @@ class PreviewTests(unittest.TestCase):
                 "event": "pull_request",
                 "head_sha": SHA,
                 "conclusion": "success",
-                "pull_requests": [{"number": 123}],
+                "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
             }
         }
         jobs = {name: {"conclusion": "success"} for name in CONFIG["required_ci_jobs"]}
@@ -452,10 +481,14 @@ class PreviewTests(unittest.TestCase):
             with patch.dict(os.environ, {
                 "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_RUN_ID": "7",
+                "SECRETARY_PR_NUMBER": "123",
+                "SECRETARY_PR_HEAD_SHA": SHA,
+                "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                 "SECRETARY_PREVIEW_ENABLED": "true",
             }, clear=True), \
                     patch("scripts.secretary.preview.ROOT", root), \
                     patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api), \
                     patch("scripts.secretary.preview.latest_jobs", return_value=(jobs, {"id": 7, "run_attempt": 1})), \
                     patch("scripts.secretary.preview.completed_event", return_value=True):
                 main()
@@ -479,7 +512,7 @@ class PreviewTests(unittest.TestCase):
                 "event": "pull_request",
                 "head_sha": SHA,
                 "conclusion": "failure",
-                "pull_requests": [{"number": 123}],
+                "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
             }
         }
         latest_jobs = {
@@ -496,10 +529,14 @@ class PreviewTests(unittest.TestCase):
             with patch.dict(os.environ, {
                 "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_RUN_ID": "8",
+                "SECRETARY_PR_NUMBER": "123",
+                "SECRETARY_PR_HEAD_SHA": SHA,
+                "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                 "SECRETARY_PREVIEW_ENABLED": "true",
             }, clear=True), \
                     patch("scripts.secretary.preview.ROOT", root), \
                     patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api), \
                     patch(
                         "scripts.secretary.preview.latest_jobs",
                         return_value=(latest_jobs, {"id": 7, "run_attempt": 2}),
@@ -528,7 +565,7 @@ class PreviewTests(unittest.TestCase):
                 "event": "pull_request",
                 "head_sha": SHA,
                 "conclusion": "failure",
-                "pull_requests": [{"number": 123}],
+                "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
             }
         }
 
@@ -543,10 +580,14 @@ class PreviewTests(unittest.TestCase):
                 "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_OUTPUT": str(output_path),
                 "GITHUB_RUN_ID": "8",
+                "SECRETARY_PR_NUMBER": "123",
+                "SECRETARY_PR_HEAD_SHA": SHA,
+                "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                 "SECRETARY_PREVIEW_ENABLED": "true",
             }, clear=True), \
                     patch("scripts.secretary.preview.ROOT", root), \
                     patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api), \
                     patch("scripts.secretary.preview.sys.argv", ["preview.py", "--assess"]), \
                     patch(
                         "scripts.secretary.preview.latest_jobs",
@@ -685,6 +726,36 @@ class PreviewTests(unittest.TestCase):
         self.assertFalse(current_pr_head_matches(current, SHA))
         current["state"] = "closed"
         self.assertFalse(current_pr_head_matches(current, SHA))
+
+    def test_workflow_pr_identity_requires_exact_payload_number_and_head(self):
+        from scripts.secretary.preview import workflow_pr_identity
+
+        run = {
+            "head_sha": SHA,
+            "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
+        }
+        self.assertEqual(workflow_pr_identity(run, "123", SHA), (123, SHA))
+        with self.assertRaisesRegex(RuntimeError, "associated with this workflow run"):
+            workflow_pr_identity(run, "124", SHA)
+        with self.assertRaisesRegex(RuntimeError, "differs from the completed PR CI head"):
+            workflow_pr_identity(run, "123", "c" * 40)
+        with self.assertRaisesRegex(RuntimeError, "valid PR head SHA"):
+            workflow_pr_identity(run, "123", "not-a-sha")
+
+    def test_predeploy_live_guard_rejects_an_advanced_pr_head(self):
+        from scripts.secretary.preview import require_live_pr_eligibility
+
+        pr = copy.deepcopy(fixture()["pr"])
+        pr["head"]["sha"] = "c" * 40
+        api = Mock()
+        api.request.return_value = pr
+        with self.assertRaisesRegex(RuntimeError, "head changed; staging deployment was not started"):
+            require_live_pr_eligibility(
+                api, 123, SHA, fixture()["files"],
+                {"head_sha": SHA, "conclusion": "success"},
+                "kendshhh/PhishLens", CONFIG["preview_opt_in_label"],
+            )
+        api.request.assert_called_once_with("pulls/123")
 
     def test_database_isolation_guards(self):
         rows = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
