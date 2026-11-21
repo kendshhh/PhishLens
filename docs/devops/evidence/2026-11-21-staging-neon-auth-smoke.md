@@ -492,3 +492,31 @@ No current PR CodeQL result, Render deployment or authenticated CRUD was
 observed. The docs-only sync following this snapshot needs its own checks. PR
 #268 remains based on the merged PR #265 branch and must be retargeted before
 merge.
+
+## Follow-up exact-head PR CI — 2026-11-21 11:42 UTC
+
+PR #268 head `e9451cc20928fefa7c0a6ded4803cebbad24ef42` completed its CI run
+[44900115517](https://github.com/kendshhh/PhishLens/actions/runs/44900115517)
+at 11:42 UTC. Backend, Extension, migration source preflight and Staging
+integration passed. Workflow lint [44900115510](https://github.com/kendshhh/PhishLens/actions/runs/44900115510),
+dependency security and graph review [44900115593](https://github.com/kendshhh/PhishLens/actions/runs/44900115593),
+deterministic evaluation [44900115440](https://github.com/kendshhh/PhishLens/actions/runs/44900115440),
+and the Secretary report [44900115513](https://github.com/kendshhh/PhishLens/actions/runs/44900115513)
+also passed. The Issue 90 read-only package job, Hosted staging preflight and
+Hosted staging were skipped. This is not hosted-service acceptance.
+
+GitHub's commit-status API returned `failure` for the required `Secretary
+staging` context attached to this PR head. Its status description says
+application/runtime changes require the `needs-hosted-staging` label and an
+exact-head hosted staging verification; the linked [Secretary preview workflow
+run 44900357378](https://github.com/kendshhh/PhishLens/actions/runs/44900357378)
+records that assessment. The request label remains absent. No Render deployment,
+authenticated hosted CRUD, or current PR CodeQL result was observed. The check
+run and status were inspected read-only; no staging write was requested or
+performed.
+
+PR #268 remains open and still targets `codex/readiness-update-20261121`, which
+is already merged into `main` at `95975cd`. Retarget to `main` and obtain fresh
+checks before merge. The 41/100 DevOps evidence-progress estimate is descriptive,
+not a completion percentage; the release remains **NO-GO**. Do not claim 100% or
+hosted acceptance from these results.
