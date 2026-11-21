@@ -21,9 +21,11 @@ http://127.0.0.1:8766/account-preview. Use fictional data only.
   characters. The mock verification and recovery code is `123456`.
 - Try an invalid verification code, resend, then verify. Password/code fields are
   cleared after requests; errors keep the current form available for retry.
-- If you close verification before finishing, reopen Account and choose Verify email.
-  Verification and recovery also provide Back to sign in; signing in with an
-  unverified demo account cannot grant report access.
+- Verification is only asked for after credentials are submitted: right after
+  creating an account, or when signing in to an account whose email is not verified
+  yet. That sign-in opens Verify your email with the email filled in; it cannot
+  grant report access until the code is entered. Verification and recovery also
+  provide Back to sign in.
 - Account headings scroll below the sticky navigation when changing screens.
   Browser checks assert the heading is unobscured at 380px and 320px popup widths.
 - Closing or leaving a form clears password/OTP fields. Resend checks that the email

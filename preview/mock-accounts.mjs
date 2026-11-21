@@ -23,7 +23,7 @@ export function createMockAccounts(storage) {
     async signIn(input) {
       const user = users.get(emailOf(input));
       if (!user || user.password !== input.password) throw new Error('Email or password is incorrect.');
-      if (!user.emailVerified) throw new Error('Verify your email before signing in.');
+      if (!user.emailVerified) throw Object.assign(new Error('Verify your email before signing in.'), { status: 403 });
       return establish(user);
     },
     async signUp(input) {

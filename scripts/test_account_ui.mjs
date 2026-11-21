@@ -67,15 +67,22 @@ try {
   await page.getByRole('button', { name: 'Close account', exact: true }).click();
   await page.locator('#show-account').click();
   await assertAccountHeadingVisible('account-sign-in-heading');
-  await page.locator('#account-email').fill('casey@example.test');
-  await page.locator('#account-password').fill('Demo-only-123!');
-  await page.locator('#account-sign-in').getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('alert').getByText('Verify your email before signing in.').waitFor();
-  await page.locator('#open-verify').click();
-  await assertAccountHeadingVisible('account-verify-heading');
-  assert.equal(await page.locator('#verify-email').inputValue(), 'casey@example.test');
+  // Verification is never offered before credentials are submitted.
+  assert.equal(await page.locator('#open-verify').count(), 0);
+  assert.equal(await page.locator('#account-verify').isVisible(), false);
+  async function signInUnverified() {
+    await page.locator('#account-email').fill('casey@example.test');
+    await page.locator('#account-password').fill('Demo-only-123!');
+    await page.locator('#account-sign-in').getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.getByText('Verify your email to finish signing in.', { exact: false }).waitFor();
+    await assertAccountHeadingVisible('account-verify-heading');
+    assert.equal(await page.locator('#verify-email').inputValue(), 'casey@example.test');
+    assert.equal(await page.locator('#account-password').inputValue(), '');
+  }
+  await signInUnverified();
   await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
-  await page.locator('#open-verify').click();
+  await assertAccountHeadingVisible('account-sign-in-heading');
+  await signInUnverified();
   const resendStatus = await page.locator('#account-status').textContent();
   for (const invalidEmail of ['', 'not-an-email']) {
     await page.locator('#verify-email').fill(invalidEmail);
@@ -88,7 +95,7 @@ try {
   await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
   await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
   assert.equal(await page.locator('#verify-code').inputValue(), '');
-  await page.locator('#open-verify').click();
+  await signInUnverified();
   await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await page.getByRole('alert').getByText('The demo verification code is incorrect.').waitFor();
@@ -96,7 +103,7 @@ try {
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await page.getByText('Email verified. You are signed in.', { exact: true }).waitFor();
   assert.equal(await page.locator('#signup-password').inputValue(), '');
-  checks.push('signup, blocked unverified login, reopened verification, OTP resend/retry and cleared password fields');
+  checks.push('no verify prompt before credentials; signup, unverified login opens verification with the email filled, OTP resend/retry and cleared password fields');
   checks.push('resend rejects missing/malformed email before calling the account adapter');
   await page.getByRole('button', { name: 'Saved reports', exact: true }).click();
   await page.locator('#history-list li').waitFor();
@@ -151,7 +158,6 @@ try {
     await page.setViewportSize({ width, height });
     for (const [button, heading] of [
       ['#open-sign-up', 'account-sign-up-heading'],
-      ['#open-verify', 'account-verify-heading'],
       ['#open-recover', 'account-recover-heading']
     ]) {
       await page.locator('#close-account').click();
