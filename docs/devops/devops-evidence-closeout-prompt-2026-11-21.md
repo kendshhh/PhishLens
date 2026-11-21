@@ -63,9 +63,9 @@ before relying on them and add the actual observation date and source:
   failures. The review branch `codex/devops-staging-closeout-20261121` extends
   that base with a 120-second overall smoke deadline, a 30-attempt cap,
   transient-only retries, a strict anonymous `401 Bearer` check and endpoint/
-  status/error summaries. Its focused Node tests pass, but no GitHub workflow
-  run exercised this branch. Verify actual remote branch state before relying
-  on these facts.
+  status/error summaries. Permanent HTTP statuses are classified before
+  transient-looking response text, with focused Node regression coverage.
+  Verify actual remote branch state before relying on these facts.
 - The then-current `.github/workflows/ci.yml` checked out trusted default-branch
   code for the legacy smoke, then ran a separate exact-PR-head
   `scripts/verify_crud.mjs --allow-writes` path without an authenticated
@@ -80,9 +80,42 @@ before relying on them and add the actual observation date and source:
   calls or saved-report writes.
 - Render metadata showed auto-deploy off even though a production deploy record
   showed `new_commit`; reconcile the settings and event source with the owner.
-- The local branch was four commits behind `origin/main` and had user changes.
+- The original developer checkout contained pre-existing user changes and was
+  preserved. The review work used an isolated worktree and synchronized latest
+  `main` through merge commit `14874d339bbb4042172df954f97596080aa303ee`.
   Inspect the actual tree, do not reset, clean, stash, rebase, merge or push over
-  that work.
+  unreviewed user work.
+
+### Verified follow-up evidence — November 21, 2026
+
+Recheck all live systems before reuse. At the latest recorded audit, PR #268
+branch `codex/devops-staging-closeout-20261121` had code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555` and tested PR head
+`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2`:
+
+- `npm test` passed 321 tests; the GET-only staging smoke passed health,
+  readiness and the anonymous `401 Bearer` boundary. It did not perform writes,
+  sign in, or verify authenticated history/CRUD.
+- CI run [44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192)
+  passed backend, extension, migration preflight and local staging integration.
+  Workflow lint, dependency security, deterministic evaluation and CodeQL
+  passed at 44886742281, 44886742188, 44886742189 and 44886738976 respectively.
+- Hosted staging and preflight were skipped. The required `Secretary staging`
+  PR check is failed because `needs-hosted-staging` and exact-head hosted
+  verification are absent ([check run
+  44886970872](https://github.com/kendshhh/PhishLens/actions/runs/44886970872));
+  its controller assessment passed but the preview job was skipped. No Render
+  deployment or hosted CRUD/write occurred.
+- PR #268 remains open, merge-blocked, and marked `CHANGES_REQUESTED`. Prior
+  review noted one retry-classification bug and PR-body placeholders. The code
+  regression for the retry bug is present; re-read the latest review/comments,
+  prepare an accurate purpose/results/issue/acceptance summary, and verify a
+  fresh human review before merge. Do not infer that a docs refresh resolves a
+  review or required-check failure.
+- The live staging service still runs the older deployment SHA recorded in the
+  environment map. The provided original smoke log lacks run ID, tested SHA,
+  status and response body; do not assert a proven root cause from the later
+  `401 Bearer` read-only observation.
 
 ## Required working method
 

@@ -12,14 +12,16 @@ Bearer-aware history fix. The review branch synchronizes it with the bounded
 retry, diagnostics, server-liveness and fail-closed deployment changes in merge
 commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. GitHub CI for the
-synchronized candidate is
-pending. Earlier CI runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
-passed on pre-sync source/docs commits. Hosted staging was not triggered; its
-prior Secretary staging check required `needs-hosted-staging` and exact-head
-hosted verification. No Render deployment occurred and no hosted Auth CRUD is
-verified.
+and a GET-only live staging smoke passed at about 08:35 UTC. PR head
+`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed [CI run
+44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192),
+including backend, extension, migration preflight and local staging integration.
+Workflow lint, dependency security, deterministic evaluation and CodeQL also
+passed. Hosted staging and preflight were skipped. The PR's required Secretary
+staging context is failed because the `needs-hosted-staging` label and exact-head
+hosted verification are absent; see [check run
+44886970872](https://github.com/kendshhh/PhishLens/actions/runs/44886970872).
+No Render deployment occurred and hosted Auth CRUD is not verified.
 
 ## Current source of truth
 

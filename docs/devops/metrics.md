@@ -21,6 +21,15 @@ used the mainline-synchronized smoke helper. Neither run checked
 performance sample. Treat the deployment identity above as the 07:31 UTC
 control-plane observation.
 
+The synchronized PR #268 head `d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2`
+passed CI run [44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192)
+and its workflow lint, dependency security, deterministic evaluation and CodeQL
+checks. Hosted staging/preflight were skipped and the required `Secretary
+staging` PR context failed because the protected hosted run was not requested
+([check run 44886970872](https://github.com/kendshhh/PhishLens/actions/runs/44886970872)).
+This is current gate-status evidence, not a performance sample; the Nov 20
+delivery measurements below remain the latest measured sample.
+
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy
 is unresolved. See the [staging Auth evidence](evidence/2026-11-21-staging-neon-auth-smoke.md)

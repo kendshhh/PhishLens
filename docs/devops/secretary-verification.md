@@ -14,13 +14,20 @@ bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
 conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
 321 Node tests and a fresh GET-only staging smoke
-passed at about 08:35 UTC. GitHub CI for this synchronized candidate is pending;
-pre-sync code and docs runs passed at [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992).
-Hosted staging is not triggered; the last Secretary staging check
-[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-required `needs-hosted-staging` and exact-head verification. No Render deploy
-occurred. The CRUD step has no authenticated session and remains a blocker. The last recorded Secretary preview
+passed at about 08:35 UTC. PR head
+`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed CI run
+[44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192),
+workflow lint [44886742281](https://github.com/kendshhh/PhishLens/actions/runs/44886742281),
+dependency security [44886742188](https://github.com/kendshhh/PhishLens/actions/runs/44886742188),
+deterministic evaluation [44886742189](https://github.com/kendshhh/PhishLens/actions/runs/44886742189),
+and CodeQL [44886738976](https://github.com/kendshhh/PhishLens/actions/runs/44886738976).
+Hosted staging and preflight were skipped. The PR's `Secretary staging`
+context is **failed** with the message that `needs-hosted-staging` and exact-head
+hosted verification are required ([check run
+44886970872](https://github.com/kendshhh/PhishLens/actions/runs/44886970872)).
+The controller assessment passed but skipped its preview job; no Render deploy
+or CRUD ran. The CRUD step has no authenticated session and remains a blocker.
+The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
 audit. No current Secretary exact-head authenticated CRUD acceptance is
