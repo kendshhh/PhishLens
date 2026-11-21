@@ -28,7 +28,7 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
     sdk = bridgeFactory({ bridgeUrl: bridge.href, authUrl: url.href });
   } else if (config.transport === 'direct') {
     if (!hostPermissions.includes(url.origin + '/*')) {
-      throw new Error('The direct Auth origin is not listed in this build's host permissions.');
+      throw new Error("The direct Auth origin is not listed in this build's host permissions.");
     }
     sdk = sdkFactory(url.href, { adapter: adapterFactory({ fetchOptions: {
       credentials: 'include', redirect: 'error', timeout: 10000, retry: 0,
