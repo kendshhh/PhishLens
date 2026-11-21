@@ -99,27 +99,55 @@ function isValidAnalysis(analysis) {
     return true;
 }
 
+async function readErrorBody(response) {
+    try {
+        const body = await response.text();
+        return body.trim().slice(0, 500);
+    } catch {
+        return "";
+    }
+}
+
 export async function getAnalyses(baseUrl) {
     const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+    const url = `${cleanBaseUrl}/api/analyses`;
 
-    const response = await fetch(
-        `${cleanBaseUrl}/api/analyses`,
-        { signal: AbortSignal.timeout(10000), redirect: 'error' }
-    );
-
-    if (!response.ok) {
-        throw new Error("Failed to load history");
+    let response;
+    try {
+        response = await fetch(url, {
+            signal: AbortSignal.timeout(10000),
+            redirect: "error"
+        });
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to load history: network request to ${url} failed (${reason})`);
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+        const detail = await readErrorBody(response);
+        const suffix = detail ? `: ${detail}` : "";
+        const error = new Error(
+            `Failed to load history: ${url} returned HTTP ${response.status}${suffix}`
+        );
+        error.status = response.status;
+        throw error;
+    }
+
+    let data;
+    try {
+        data = await response.json();
+    } catch (error) {
+        if (error instanceof Error) throw error;
+        throw new Error("Invalid history response: response was not valid JSON");
+    }
 
     if (!data || !Array.isArray(data.items)) {
-        throw new Error("Invalid history data");
+        throw new Error("Invalid history data: response must contain an items array");
     }
 
     for (const analysis of data.items) {
         if (!isValidAnalysis(analysis)) {
-            throw new Error("Invalid history data");
+            throw new Error("Invalid history data: response contains an invalid analysis record");
         }
     }
 
@@ -147,7 +175,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                 error.code = 'session_unavailable';
                 throw error;
             }
-            if (typeof token !== 'string' || !/^[A-Za-z0-9._~+/-]+=*$/.test(token)) {
+            if (typeof token !== 'string' || !/^[-A-Za-z0-9._+\/]+=*$/.test(token)) {
                 const error = new Error('Sign in to access saved analyses.');
                 error.status = 401;
                 error.code = 'authentication_required';
