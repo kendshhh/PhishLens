@@ -10,14 +10,11 @@ anyio==4.15.1
     # via
     #   fastapi
     #   google-genai
-    #   httpx
     #   httpx2
     #   starlette
 certifi==2026.10.23
     # via
     #   -r requirements.in
-    #   httpcore
-    #   httpx
     #   requests
 cffi==2.1.1
     # via cryptography
@@ -35,25 +32,21 @@ fastapi==0.163.0
     # via -r requirements.in
 google-auth==2.62.0
     # via google-genai
-google-genai==2.34.0
+google-genai==3.3.0
     # via -r requirements.in
 h11==0.16.0
     # via
-    #   httpcore
     #   httpcore2
     #   uvicorn
-httpcore==1.0.9
-    # via httpx
 httpcore2==2.16.0
     # via httpx2
-httpx==0.28.1
-    # via google-genai
 httpx2==2.16.0
-    # via -r requirements-dev.in
+    # via
+    #   -r requirements-dev.in
+    #   google-genai
 idna==3.20
     # via
     #   anyio
-    #   httpx
     #   httpx2
     #   requests
 iniconfig==2.3.1
