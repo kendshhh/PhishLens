@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/kendshhh/PhishLens#readme",
   "devDependencies": {
-    "better-auth": "1.7.18",
+    "better-auth": "1.7.23",
     "esbuild": "0.28.2",
     "eslint": "^10.14.0",
     "playwright": "^1.65.0"
