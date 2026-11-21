@@ -1,30 +1,70 @@
 import assert from 'node:assert/strict';
 import { readStagingHistory } from './staging_history.mjs';
 
-const baseUrl = process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000';
+const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const attempts = Number(process.env.STAGING_ATTEMPTS || 60);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function read(path) {
-  const response = await fetch(baseUrl + path, { signal: AbortSignal.timeout(10000) });
-  assert.equal(response.status, 200, path + ' must return HTTP 200');
-  return response.json();
+    let response;
+    try {
+        response = await fetch(baseUrl + path, {
+            signal: AbortSignal.timeout(10000)
+        });
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(path + ' request failed: ' + reason);
+    }
+
+    if (!response.ok) {
+        let detail = '';
+        try {
+            detail = (await response.text()).trim().slice(0, 500);
+        } catch {}
+        throw new Error(path + ' returned HTTP ' + response.status + (detail ? ': ' + detail : ''));
+    }
+
+    try {
+        return await response.json();
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(path + ' returned invalid JSON: ' + reason);
+    }
 }
 
-// Retry only startup readiness. Contract failures after startup fail immediately.
+// Retry only startup/readiness endpoints. Contract failures after startup fail immediately.
 let ready = false;
 for (let attempt = 0; attempt < attempts; attempt++) {
-  try {
-    assert.deepEqual(await read('/health'), { status: 'ok', service: 'phishlens-api' });
-    assert.deepEqual(await read('/ready'), { status: 'ready', database: 'connected' });
-    ready = true;
-    break;
-  } catch {
-    if (attempt + 1 < attempts) await delay(3000);
-  }
+    try {
+        assert.deepEqual(await read('/health'), { status: 'ok', service: 'phishlens-api' });
+        assert.deepEqual(await read('/ready'), { status: 'ready', database: 'connected' });
+        ready = true;
+        break;
+    } catch (error) {
+        if (attempt + 1 < attempts) {
+            console.error('Staging startup attempt ' + (attempt + 1) + '/' + attempts + ' failed: ' + error.message);
+            await delay(3000);
+        }
+    }
 }
 assert.ok(ready, 'Staging API did not become healthy and database-ready');
-const items = await readStagingHistory(baseUrl);
+
+let items;
+for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+        items = await readStagingHistory(baseUrl);
+        break;
+    } catch (error) {
+        // Readiness and history consistency may briefly diverge after deployment.
+        const transient = /HTTP (502|503|504)|network request|timed out|timeout|ECONNRESET|ECONNREFUSED|fetch failed|aborted/i.test(
+            String(error?.message || error)
+        );
+        if (!transient || attempt + 1 === attempts) throw error;
+        console.error('Staging history attempt ' + (attempt + 1) + '/' + attempts + ' failed: ' + error.message);
+        await delay(3000);
+    }
+}
+
 if (items === null) {
     console.log('Staging passed: health and database readiness; anonymous history correctly requires Bearer authentication.');
 } else {

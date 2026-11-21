@@ -28,6 +28,7 @@ test.afterEach(() => {
 function mockResponse(data) {
     globalThis.fetch = async () => ({
         ok: true,
+        status: 200,
         json: async () => data
     });
 }
@@ -48,19 +49,25 @@ test("returns empty history", async () => {
     assert.deepEqual(result, []);
 });
 
-test("rejects an HTTP 503 response", async () => {
+test("includes status and response detail on an HTTP failure", async () => {
     globalThis.fetch = async () => ({
         ok: false,
-        status: 503
+        status: 503,
+        text: async () => "database unavailable"
     });
 
     await assert.rejects(
         getAnalyses("https://example.test"),
-        /Failed to load history/
+        (error) => {
+            assert.equal(error.status, 503);
+            assert.match(error.message, /HTTP 503/);
+            assert.match(error.message, /database unavailable/);
+            return true;
+        }
     );
 });
 
-test("rejects an invalid response wrapper", async () => {
+test("reports invalid response wrappers", async () => {
     mockResponse({ wrong_field: [] });
 
     await assert.rejects(
@@ -122,9 +129,10 @@ test("accepts nullable result fields", async () => {
     assert.deepEqual(result, [pendingAnalysis]);
 });
 
-test("rejects invalid JSON", async () => {
+test("reports invalid JSON", async () => {
     globalThis.fetch = async () => ({
         ok: true,
+        status: 200,
         json: async () => {
             throw new SyntaxError("Invalid JSON");
         }
@@ -136,16 +144,17 @@ test("rejects invalid JSON", async () => {
     );
 });
 
-test("handles a network failure", async () => {
+test("reports a network failure", async () => {
     globalThis.fetch = async () => {
         throw new TypeError("Network unavailable");
     };
 
     await assert.rejects(
         getAnalyses("https://example.test"),
-        /Network unavailable/
+        /Failed to load history.*network request.*Network unavailable/
     );
 });
+
 test("rejects an ID that is not a UUID", async () => {
     mockResponse({
         items: [{ ...validAnalysis, id: "not-a-uuid" }]
