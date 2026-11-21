@@ -62,6 +62,7 @@ jobs:
         id: package_extension
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run package
 
       - name: Verify production package identity
@@ -79,6 +80,7 @@ jobs:
       - name: Test packaged extension in isolated Chromium
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run test:browser
 
       - name: Require browser acceptance report and evidence
