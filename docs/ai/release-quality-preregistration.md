@@ -23,15 +23,36 @@ At freeze, record the final reviewed source SHA, code and artifact digests, runt
 
 Propose recent, authentic English mail from two separately administered, permissioned cohorts. Use a campus security team's approved quarantine and opt-in mailbox exports for one cohort, and independently administered partner quarantine and opt-in exports for the second. Subject to written authorization, both cohorts contribute phishing, routine legitimate mail, genuine security notices, and non-phishing spam. Record the source date ranges, selection rules, permitted use, reviewers' access, and retention in a private source register.
 
+Written permission is pending from both custodians. The following targets are provisional. Record actual eligible counts after labeling and overlap review, and preserve two independent sources for every label and all policy minima.
+
+| Proposed source | Phishing families | Legitimate families | Spam families | Security-notice families within legitimate |
+| --- | ---: | ---: | ---: | ---: |
+| Campus security quarantine and opt-in mail | 50 | 100 | 50 | 25 |
+| Independent partner quarantine and opt-in mail | 50 | 100 | 50 | 25 |
+| **Total** | **100** | **200** | **100** | **50** |
+
 Freeze one primary message selection per independent family. Require at least 100 phishing, 200 legitimate, and 100 spam families, at least two independent sources for every label, and at least 50 genuine security-notice families among the legitimate cases. Primary screening uses self-contained selected text. Keep context-dependent and stress cases as separate diagnostics. Count at least 400 attempted primary results.
 
 Have two authorized reviewers label the selected text independently and without access to model scores or each other's labels. Resolve disagreements with an authorized adjudicator and keep unresolved cases outside the admitted set. Check raw and prepared duplicates and campaign-family overlap within the cohort and against training, calibration, threshold selection, development fixtures, and consumed holdouts. Record the checking method, affected family counts, and known limits. Have the manifest, rights register, adjudication and overlap report reviewed before locking the cohort.
 
 Follow the [existing cohort protocol](tfidf-sprint-3-evaluation-protocol.md) and its zero-inference preflight. Keep message text, recipient identifiers, source credentials, and individual reviewer packets in the authorized private data store.
 
+### Reviewer assignments and pre-scoring approval
+
+| Role | Reviewer |
+| --- | --- |
+| Blind label reviewer 1 | Pending confirmation with Trixia |
+| Blind label reviewer 2 | Pending confirmation with Trixia |
+| Source inventory and cohort lock approver | Trixia (`xxTrixia`) |
+| Evaluation and AI decision owner | Wilberr (`EnviousCoal`) |
+
+Trixia (`xxTrixia`) must approve the private source inventory and the final frozen cohort lock before the first scoring run. Record her source-inventory decision and approval of the exact lock SHA-256 in the review trail. Scoring requires both approvals, confirmed blind reviewer identities, and a lock that matches the reviewed candidate and policy.
+
+Share the lock SHA-256 and the redacted aggregate report. Keep raw mail, private source permissions, and reviewer packets in the authorized data store. Include the approved policy and report SHA-256 values in the model decision. The release remains NO-GO until the exact pinned run passes and its evidence is accepted.
+
 ## Proposed release thresholds
 
-Retain the pending policy's numeric floors. Apply them to the unrounded metrics on the frozen actual-mail primary set.
+**Proposed decision.** Retain the current thresholds, subject to independent policy review. Apply them to the unrounded metrics on the frozen actual-mail primary set. At the intake minima, at least 90 of 100 phishing families must alert, at most 6 of 200 legitimate families may alert, and all 400 attempts must return valid results.
 
 | Metric | Proposed threshold | Denominator |
 | --- | ---: | --- |
