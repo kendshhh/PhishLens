@@ -152,6 +152,17 @@ already known from `git remote`; the placeholder in the request did not block wo
    pause in-flight old jobs while moving the key. Complete the documented
    serialized bootstrap/cutover before retiring the old controller.
    The new workflow no longer executes a PR deployment script with a secret.
+   Also create the repository Actions secret `SECRETARY_PR_READ_TOKEN` as a
+   fine-grained read-only credential restricted to `kendshhh/PhishLens`, with
+   **Pull requests: read** permission only (GitHub's required Metadata read is
+   automatic). The trusted `workflow_run` controller uses this credential only
+   for live PR state/head GET requests; `GITHUB_TOKEN` remains responsible for
+   publishing checks, statuses and deployment records. The workflow passes the
+   associated PR number and head SHA from `workflow_run.pull_requests`; it never
+   treats `GITHUB_SHA` (the merge commit in PR workflows) as the staging head.
+   Immediately before creating a deployment, the controller confirms through the
+   read-only API that the PR is still open, eligible and at that same head. If
+   the head or eligibility changed while queued, it stops before deploying.
 3. In `staging` environment variables add:
    - `SECRETARY_PREVIEW_ENABLED` = `true`, **only after** steps 4–6 are verified.
    - `SECRETARY_STAGING_DB_HOST` = the exact Neon hostname mapped to branch
