@@ -305,6 +305,7 @@ async function launchExtension(archivePath, extensionId) {
   try {
     context = await chromium.launchPersistentContext(profile, {
       headless: true,
+      channel: 'chromium',
       viewport: { width: 440, height: 760 },
       ignoreDefaultArgs: ['--disable-extensions'],
       args: [`--disable-extensions-except=${unpacked}`, `--load-extension=${unpacked}`],
