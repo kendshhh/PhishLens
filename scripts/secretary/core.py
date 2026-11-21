@@ -25,9 +25,15 @@ def safe(value, limit=1200):
 
 
 def application_change(files):
-    return any(f["filename"].startswith(("backend/", "extension/")) or
-               f["filename"] in {"requirements.txt", "package.json", "package-lock.json"} or
-               f["filename"].startswith("scripts/start_staging") for f in files)
+    return any(
+        (
+            filename.startswith("backend/")
+            and not filename.startswith("backend/tests/")
+        )
+        or filename.startswith(("extension/", "scripts/start_staging"))
+        or filename in {"requirements.txt", "package.json", "package-lock.json"}
+        for filename in (f["filename"] for f in files)
+    )
 
 
 def inspect(pr, files, config):
