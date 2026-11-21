@@ -53,11 +53,12 @@ def _rewrite_cookie(value: str) -> str:
     has_secure = False
     for part in parts[1:]:
         key = part.split("=", 1)[0].strip().lower()
-        if key == "domain" or key == "samesite":
+        if key in {"domain", "path", "samesite"}:
             continue
         if key == "secure":
             has_secure = True
         attributes.append(part)
+    attributes.append("Path=/api/auth")
     if not has_secure:
         attributes.append("Secure")
     attributes.append("SameSite=None")

@@ -29,6 +29,8 @@ class DeploymentTests(unittest.TestCase):
             "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
             "SECRETARY_STAGING_DB_HOST": "staging.invalid",
             "SECRETARY_PRODUCTION_DB_HOST": "production.invalid",
+            "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            "STAGING_AUTH_DATABASE": "phishlens_dev",
             "GITHUB_REPOSITORY": "kendshhh/PhishLens",
         }, clear=True)
         self.environment.start()

@@ -25,8 +25,14 @@ logs, URLs or localStorage. See https://neon.com/docs/auth/guides/plugins/jwt.
 The existing createAnalysisClient getAccessToken hook obtains a current token
 for each CRUD operation and sends Authorization: Bearer <JWT>. Model identity
 and idempotency headers stay intact. No owner ID is sent. Backend requests go to
-FastAPI; the client never connects to Postgres. Authentication calls go to the
-configured Neon Auth service, not to a database connection URL.
+FastAPI; the client never connects to Postgres. Authentication calls use the
+API's HTTPS `/api/auth` proxy. It accepts only the release extension's pinned
+Chrome origin, forwards to the configured Neon Auth URL with the API's trusted
+HTTPS origin, and relays the session cookie back with `Path=/api/auth`,
+`Secure`, and `SameSite=None`. The matching API HTTPS origin must be in Neon
+Auth's trusted domains. Hosted staging checks that Render's
+`NEON_AUTH_BASE_URL` exactly matches the isolated Auth URL used to package the
+extension before it deploys.
 
 ## Backend rollout and ownership
 

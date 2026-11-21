@@ -153,7 +153,10 @@ configure `STAGING_BASE_URL`, `SECRETARY_STAGING_DB_HOST`,
 `SECRETARY_PRODUCTION_DB_HOST`, `STAGING_ACCEPTANCE_ENABLED=true`, and
 `RENDER_STAGING_SERVICE_ID`. Its protected secrets are `RENDER_STAGING_API_KEY`,
 `NEON_API_KEY`, and the two dedicated synthetic Auth account email/password
-pairs. The hosted PR workflow does not receive `STAGING_AI_APPROVAL_JSON`.
+pairs. The Render staging service must set `NEON_AUTH_BASE_URL` to exactly the
+same isolated Auth URL as `PHISHLENS_STAGING_AUTH_URL`; the hosted deploy
+preflight checks this mapping. The hosted PR workflow does not receive
+`STAGING_AI_APPROVAL_JSON`.
 
 In `production`:
 
