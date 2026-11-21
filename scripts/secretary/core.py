@@ -30,8 +30,10 @@ def application_change(files):
         parts = filename.split("/")
         if any(part.lower() in {"test", "tests"} for part in parts[:-1]):
             continue
-        if (filename.startswith(("backend/", "extension/", "scripts/start_staging")) or
-                filename in {"requirements.txt", "package.json", "package-lock.json"}):
+        if (
+            filename.startswith(("backend/", "extension/", "scripts/start_staging"))
+            or filename in {"requirements.txt", "package.json", "package-lock.json"}
+        ):
             return True
     return False
 
