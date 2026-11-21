@@ -97,7 +97,10 @@ def verify(archive, evidence_path, expected_source):
     hosts = ["https://phishlens-api-ocvt.onrender.com/*"]
     if manifest.get("host_permissions") != hosts or evidence.get("host_permissions") != hosts:
         raise ValueError("Production host permissions do not match")
-    expected_config = "export const API_BASE_URL = " + json.dumps(hosts[0][:-2]) + ";\n"
+    expected_config = (
+        "export const API_BASE_URL = " + json.dumps(hosts[0][:-2]) + ";\n"
+        "export const API_BASE_URLS = Object.freeze({ production: API_BASE_URL });\n"
+    )
     if config not in (expected_config, expected_config.rstrip("\n")):
         raise ValueError("Production API configuration does not match the allowed host")
     if manifest.get("optional_host_permissions"):

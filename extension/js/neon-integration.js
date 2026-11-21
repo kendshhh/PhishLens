@@ -13,9 +13,10 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
   const url = new URL(config.authUrl);
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
       !config.database || url.pathname !== `/${encodeURIComponent(config.database)}/auth` ||
-      config.apiOrigin !== apiOrigin || !hostPermissions.includes(url.origin + '/*')) {
+      config.apiOrigin !== apiOrigin || !hostPermissions.includes(apiOrigin + '/*')) {
     throw new Error('The account environment configuration or host permission does not match this build.');
   }
+
   let sdk;
   if (config.transport === 'https-bridge') {
     const bridge = new URL(config.bridgeUrl);
@@ -25,12 +26,24 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
       throw new Error('The account bridge configuration or host permission does not match this build.');
     }
     sdk = bridgeFactory({ bridgeUrl: bridge.href, authUrl: url.href });
-  } else {
-    if (config.transport && config.transport !== 'direct') throw new Error('Unsupported account transport.');
+  } else if (config.transport === 'direct') {
+    if (!hostPermissions.includes(url.origin + '/*')) {
+      throw new Error('The direct Auth origin is not listed in this build's host permissions.');
+    }
     sdk = sdkFactory(url.href, { adapter: adapterFactory({ fetchOptions: {
-      credentials: 'include', redirect: 'error', timeout: 10000, retry: 0
+      credentials: 'include', redirect: 'error', timeout: 10000, retry: 0,
+    } }) });
+  } else {
+    if (config.transport && config.transport !== 'https-proxy') {
+      throw new Error('Unsupported account transport.');
+    }
+    // The release build proxies Auth through the configured HTTPS API origin.
+    const authProxyUrl = new URL('/api/auth', apiOrigin).href;
+    sdk = sdkFactory(authProxyUrl, { adapter: adapterFactory({ fetchOptions: {
+      credentials: 'include', redirect: 'error', timeout: 10000, retry: 0,
     } }) });
   }
+
   const key = 'phishlensSignedOut:' + url.href;
   const signOutStorage = storage && {
     async isBlocked() { return (await storage.get(key))[key] === true; },

@@ -141,6 +141,29 @@ def verify_environment(rows, *, require_authenticated=False):
             "Hosted staging requires explicit REPORT_AUTH_MODE=neon; demo mode "
             "cannot satisfy authenticated acceptance"
         )
+    if require_authenticated:
+        expected_auth_url = os.getenv("STAGING_AUTH_URL", "").strip().rstrip("/")
+        expected_auth_database = os.getenv("STAGING_AUTH_DATABASE", "").strip()
+        configured_auth_url = values.get("NEON_AUTH_BASE_URL", "").strip().rstrip("/")
+        parsed_auth_url = urlsplit(expected_auth_url)
+        if (
+            not expected_auth_database
+            or parsed_auth_url.scheme != "https"
+            or not parsed_auth_url.hostname
+            or parsed_auth_url.username
+            or parsed_auth_url.password
+            or parsed_auth_url.port is not None
+            or parsed_auth_url.query
+            or parsed_auth_url.fragment
+            or ".neonauth." not in parsed_auth_url.hostname
+            or not parsed_auth_url.hostname.endswith(".aws.neon.tech")
+            or parsed_auth_url.path != f"/{expected_auth_database}/auth"
+        ):
+            raise RuntimeError("Hosted staging requires a valid isolated Neon Auth URL and database")
+        if configured_auth_url != expected_auth_url:
+            raise RuntimeError(
+                "Render staging Neon Auth URL does not match the isolated staging branch"
+            )
     return report_auth_mode
 
 
