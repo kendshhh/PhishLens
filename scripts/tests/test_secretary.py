@@ -84,6 +84,24 @@ class PolicyTests(unittest.TestCase):
             preview_requested,
         )[0]
 
+    def test_test_only_changes_do_not_request_hosted_staging(self):
+        self.assertFalse(application_change([
+            {"filename": "backend/tests/test_health.py"},
+            {"filename": "extension/tests/api.test.mjs"},
+            {"filename": "scripts/tests/test_secretary.py"},
+        ]))
+
+    def test_runtime_changes_still_request_hosted_staging_with_test_changes(self):
+        self.assertTrue(application_change([
+            {"filename": "backend/tests/test_health.py"},
+            {"filename": "backend/app/main.py"},
+        ]))
+
+    def test_nested_test_directories_are_not_runtime_changes(self):
+        self.assertFalse(application_change([
+            {"filename": "backend/app/tests/test_router.py"},
+        ]))
+
     def test_passing_is_review_never_approval(self):
         self.assertEqual(self.decision(fixture()), "READY FOR KENDRA’S REVIEW")
 
