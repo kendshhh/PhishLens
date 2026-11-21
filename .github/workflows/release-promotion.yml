@@ -240,9 +240,11 @@ jobs:
                          'extension_sha256': extension}, out, indent=2)
               out.write('\n')
           PY
-          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
-          echo "image_digest=$image_digest" >> "$GITHUB_OUTPUT"
-          echo "extension_sha256=$extension_sha256" >> "$GITHUB_OUTPUT"
+          {
+            echo "image_ref=$image_ref"
+            echo "image_digest=$image_digest"
+            echo "extension_sha256=$extension_sha256"
+          } >> "$GITHUB_OUTPUT"
           mkdir -p "$RUNNER_TEMP/phishlens-candidate/evidence"
           cp "$RUNNER_TEMP/required-checks.json" "$RUNNER_TEMP/phishlens-candidate/evidence/required-checks.json"
 

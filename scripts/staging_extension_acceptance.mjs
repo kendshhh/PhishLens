@@ -219,17 +219,18 @@ async function launchExtension(archivePath, extensionId) {
 
 function observePage(observedPage) {
   observedPage.on('request', async request => {
-    const url = request.url();
-    if (url.startsWith(PRODUCTION_ORIGIN)) {
+    const requestUrl = new URL(request.url());
+    const requestOrigin = requestUrl.origin;
+    if (requestOrigin === PRODUCTION_ORIGIN) {
       evidence.production_requests++;
       if (request.method() !== 'GET' && !['OPTIONS', 'HEAD'].includes(request.method())) {
         evidence.production_writes++;
       }
     }
-    if (productionAuthOrigin && url.startsWith(productionAuthOrigin)) {
+    if (productionAuthOrigin && requestOrigin === productionAuthOrigin) {
       evidence.production_auth_requests++;
     }
-    if (url.startsWith(STAGING_ORIGIN + '/api/')) {
+    if (requestOrigin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/')) {
       const auth = (await request.allHeaders()).authorization;
       if (auth?.startsWith('Bearer ') && activeAccount) accessTokens.set(activeAccount, auth.slice(7));
     }
@@ -289,7 +290,9 @@ async function createReport(subject, owner) {
 }
 
 async function getCreatedResponse(request) {
-  if (request.method() !== 'POST' || !request.url().startsWith(STAGING_ORIGIN + '/api/analyses')) return;
+  const requestUrl = new URL(request.url());
+  if (request.method() !== 'POST' || requestUrl.origin !== STAGING_ORIGIN
+      || requestUrl.pathname !== '/api/analyses') return;
   const response = await request.response().catch(() => null);
   if (!response || response.status() !== 201 || !activeAccount) return;
   try {
