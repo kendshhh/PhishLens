@@ -64,6 +64,8 @@ class HostedStagingSupersededTests(unittest.TestCase):
         start = hosted.index("      - name: Verify PR-head identity and package staging assets")
         end = hosted.index("      - name: Run authenticated extension and persistent CRUD acceptance", start)
         finalizer = hosted[start:end]
+        acceptance_preflight_start = hosted.index("      - name: Recheck live PR head before authenticated acceptance", start)
+        acceptance_preflight = hosted[acceptance_preflight_start:end]
         acceptance = hosted[end:]
         artifact = hosted[hosted.index("      - name: Preserve hosted staging acceptance evidence and extension", end):]
 
@@ -74,8 +76,9 @@ class HostedStagingSupersededTests(unittest.TestCase):
         self.assertEqual(finalizer.count("if superseded():"), 3)
         self.assertIn("result.write('current=false\\n')", finalizer)
         self.assertIn("result.write('current=true\\n')", finalizer)
-        self.assertIn("id: staging-acceptance-preflight", acceptance)
-        self.assertIn("live_pr_matches(", acceptance)
+        self.assertIn("id: staging-acceptance-preflight", acceptance_preflight)
+        self.assertIn("requested_pr_identity()", acceptance_preflight)
+        self.assertIn("live_pr_matches(", acceptance_preflight)
         self.assertIn("if: steps.staging-acceptance-preflight.outputs.current == 'true'", acceptance)
         self.assertIn("if: always() && steps.staging-acceptance-preflight.outputs.current == 'true'", artifact)
 

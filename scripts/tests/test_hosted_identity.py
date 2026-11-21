@@ -419,6 +419,8 @@ class HostedIdentityTests(unittest.TestCase):
         start = hosted.index("      - name: Verify PR-head identity and package staging assets")
         end = hosted.index("      - name: Run authenticated extension and persistent CRUD acceptance", start)
         finalizer = hosted[start:end]
+        acceptance_preflight_start = hosted.index("      - name: Recheck live PR head before authenticated acceptance", start)
+        acceptance_preflight = hosted[acceptance_preflight_start:end]
         acceptance = hosted[end:]
 
         self.assertIn("requested_pr_identity()", finalizer)
@@ -426,9 +428,9 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("ReadOnlyGitHub", finalizer)
         self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", finalizer)
         self.assertNotIn("github.sha", finalizer)
-        self.assertIn("id: staging-acceptance-preflight", acceptance)
-        self.assertIn("requested_pr_identity()", acceptance)
-        self.assertIn("live_pr_matches(", acceptance)
+        self.assertIn("id: staging-acceptance-preflight", acceptance_preflight)
+        self.assertIn("requested_pr_identity()", acceptance_preflight)
+        self.assertIn("live_pr_matches(", acceptance_preflight)
         self.assertIn("if: steps.staging-acceptance-preflight.outputs.current == 'true'", acceptance)
         self.assertIn("result.write('current=false\\n')", finalizer)
         self.assertEqual(finalizer.count("if superseded():"), 3)
