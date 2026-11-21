@@ -14,21 +14,21 @@ bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
 conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
 321 Node tests and a fresh GET-only staging smoke
-passed at about 08:35 UTC. PR head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
-[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
-workflow lint [44887660108](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
-dependency security [44887660090](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
-deterministic evaluation [44887660089](https://github.com/kendshhh/PhishLens/actions/runs/44887660089),
-and CodeQL [136796452132](https://github.com/kendshhh/PhishLens/runs/136796452132).
+passed at about 08:35 UTC. The last verified PR head before documentation
+reconciliation was `631b0ef21849e8abe877bb16b4676047f2aca86a`; CI
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+and deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+passed.
 Hosted staging and preflight were skipped. The PR's `Secretary staging`
 context is **failed** with the message that `needs-hosted-staging` and exact-head
 hosted verification are required ([check run
-44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
 The controller assessment passed but skipped its preview job; no Render deploy
 or CRUD ran. The CRUD step has no authenticated session and remains a blocker.
-These results apply to `bc9a6b0`; later documentation updates and PR #265
-reconciliation require fresh checks on the resulting PR head.
+These results apply to `631b0ef`; the PR #265 documentation reconciliation
+requires fresh checks on the resulting PR head.
 The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this

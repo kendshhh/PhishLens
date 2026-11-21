@@ -88,22 +88,22 @@ before relying on them and add the actual observation date and source:
 
 ### Verified follow-up evidence — November 21, 2026
 
-Recheck all live systems before reuse. At the `bc9a6b0` audit snapshot, PR #268
+Recheck all live systems before reuse. At the `631b0ef` audit snapshot, PR #268
 branch `codex/devops-staging-closeout-20261121` had code/test commit
 `83a0df1af1d64048b3b5fa3158f6509e83d71555` and tested PR head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`:
+`631b0ef21849e8abe877bb16b4676047f2aca86a`:
 
 - `npm test` passed 321 tests; the GET-only staging smoke passed health,
   readiness and the anonymous `401 Bearer` boundary. It did not perform writes,
   sign in, or verify authenticated history/CRUD.
-- CI run [44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166)
+- CI run [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094)
   passed backend, extension, migration preflight and local staging integration.
-  Workflow lint, dependency security, deterministic evaluation and CodeQL
-  passed at 44887660108, 44887660090, 44887660089 and 136796452132 respectively.
+  Workflow lint, dependency security and deterministic evaluation passed at
+  44888140104, 44888140135 and 44888140114 respectively.
 - Hosted staging and preflight were skipped. The required `Secretary staging`
   PR check is failed because `needs-hosted-staging` and exact-head hosted
   verification are absent ([check run
-  44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370));
+  44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
   its controller assessment passed but the preview job was skipped. No Render
   deployment or hosted CRUD/write occurred.
 - At that snapshot, PR #268 remained open and marked `CHANGES_REQUESTED`. The

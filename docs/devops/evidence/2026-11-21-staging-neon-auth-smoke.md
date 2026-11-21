@@ -301,6 +301,14 @@ commit. Keep **NO-GO** and use the passing automated checks only as evidence for
 their stated local/CI scope.
 
 The PR branch later advanced to docs commit
-`631b0ef21849e8abe877bb16b4676047f2aca86a`, then received the PR #265
-documentation reconciliation. No check result is claimed here for those later
-heads; fresh checks are required on the resulting candidate.
+`631b0ef21849e8abe877bb16b4676047f2aca86a`. On that exact head, CI
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+and deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+passed. The `Secretary staging` check failed because the protected hosted run
+and exact-head verification were not requested ([run
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
+no hosted deployment or authenticated CRUD ran. The PR #265 documentation
+reconciliation postdates those checks, so fresh checks are required on the
+resulting candidate.
