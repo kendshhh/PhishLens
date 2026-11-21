@@ -552,3 +552,32 @@ records that gate. No Render deployment or authenticated hosted CRUD occurred.
 The label remains absent to preserve the read-only staging boundary. These
 results do not authorize release acceptance. The scorecard remains 41/100
 descriptive evidence progress and **NO-GO**; no 100% claim is supported.
+
+## Exact-head CI after retarget — 2026-11-21 12:02 UTC
+
+PR #268 head `1fa2e7827cfe84de425afcc7885743bd55b2a382`, based on `main`,
+completed exact-head [CI run 44901642617](https://github.com/kendshhh/PhishLens/actions/runs/44901642617)
+at 12:02 UTC. Backend, Extension, Staging integration and migration source
+preflight passed. Workflow lint [44901642674](https://github.com/kendshhh/PhishLens/actions/runs/44901642674),
+dependency security and graph review
+[44901642615](https://github.com/kendshhh/PhishLens/actions/runs/44901642615),
+deterministic evaluation
+[44901642635](https://github.com/kendshhh/PhishLens/actions/runs/44901642635),
+DevOps Secretary report
+[44901640759](https://github.com/kendshhh/PhishLens/actions/runs/44901640759),
+and CodeQL (Actions, JavaScript/TypeScript and Python; workflow
+[44901639249](https://github.com/kendshhh/PhishLens/actions/runs/44901639249))
+passed. Hosted staging preflight, Hosted staging and the Issue 90 read-only
+package were skipped.
+
+The commit status remains failed for required `Secretary staging`, because the
+`needs-hosted-staging` label and exact-head hosted verification are absent. The
+assessment is [Secretary preview run 44901931269](https://github.com/kendshhh/PhishLens/actions/runs/44901931269).
+No Render deployment or authenticated hosted CRUD occurred. PR #268 is open,
+based on `main`, and GitHub marks it mergeable; its review decision remains
+`CHANGES_REQUESTED` while collaborator re-review is outstanding. Release status
+is **NO-GO** and the descriptive DevOps evidence-progress value remains 41/100.
+
+This is the latest completed workflow snapshot at the time of this record. The
+following documentation-only commit must pass its own exact-head checks before
+merge; no runtime or workflow code changed in this snapshot update.
