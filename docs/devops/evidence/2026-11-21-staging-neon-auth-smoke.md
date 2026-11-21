@@ -520,3 +520,35 @@ is already merged into `main` at `95975cd`. Retarget to `main` and obtain fresh
 checks before merge. The 41/100 DevOps evidence-progress estimate is descriptive,
 not a completion percentage; the release remains **NO-GO**. Do not claim 100% or
 hosted acceptance from these results.
+
+## Post-retarget exact-head snapshot — 2026-11-21 11:57 UTC
+
+After reviewer feedback, PR #268 was retargeted from the already-merged
+`codex/readiness-update-20261121` branch to `main`. The review branch merged the
+current main history; the seven documentation conflicts retained the branch's
+newer reconciled records. GitHub now reports PR #268 open, based on `main`, and
+mergeable at `77c0ed00e607c5580cedffadd031fe40ad71771b`. The review decision is
+still `CHANGES_REQUESTED`; collaborator re-review remains outstanding.
+
+The exact-head CI run [44901297774](https://github.com/kendshhh/PhishLens/actions/runs/44901297774)
+completed successfully at 11:56 UTC. Backend, Extension, migration source
+preflight and Staging integration passed. Workflow lint
+[44901297784](https://github.com/kendshhh/PhishLens/actions/runs/44901297784),
+dependency security and graph review
+[44901297782](https://github.com/kendshhh/PhishLens/actions/runs/44901297782),
+deterministic evaluation
+[44901297726](https://github.com/kendshhh/PhishLens/actions/runs/44901297726),
+DevOps Secretary report
+[44901295234](https://github.com/kendshhh/PhishLens/actions/runs/44901295234),
+and CodeQL [136837678645](https://github.com/kendshhh/PhishLens/runs/136837678645)
+passed. Hosted staging preflight, Hosted staging and the Issue 90 read-only
+package were skipped.
+
+GitHub's commit-status API reports failure for the required `Secretary staging`
+context attached to this PR head. Its description requires the
+`needs-hosted-staging` label and exact-head hosted verification; the linked
+[Secretary preview assessment 44901487623](https://github.com/kendshhh/PhishLens/actions/runs/44901487623)
+records that gate. No Render deployment or authenticated hosted CRUD occurred.
+The label remains absent to preserve the read-only staging boundary. These
+results do not authorize release acceptance. The scorecard remains 41/100
+descriptive evidence progress and **NO-GO**; no 100% claim is supported.
