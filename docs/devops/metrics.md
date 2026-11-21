@@ -1,44 +1,48 @@
 # Pipeline Metrics
 
-## Current service identity refresh — 2026-11-21
+## Current delivery sample — 2026-11-21
 
-This read-only refresh records service identity and endpoint behavior, not a
-performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
-from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
-and `/model-info` returned HTTP 200; analysis is disabled
-(`analysis_enabled=false`, `provider_mode=disabled`). GitHub `main` later
-advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; this record does not
-verify a later production deploy. Staging serves
-`ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
-`dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
-TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
-No inference, database write, or production smoke workflow run was made.
-An earlier workstation smoke attempt timed out on staging `/health`. GET-only
-smokes at 08:15 and about 08:35 UTC passed `/health`, `/ready`, and anonymous
-history authentication (`401 Bearer`) using review-branch code. The later run
-used the mainline-synchronized smoke helper. Neither run checked
-`/version`, deployed PR identity, or authenticated CRUD, and it is not a
-performance sample. Treat the deployment identity above as the 07:31 UTC
-control-plane observation.
+The latest four successful CI push runs to main for successive commits through
+SHA 811980c all passed. Workflow duration from run start to completion was
+median **1.30 minutes**, nearest-rank p90 **1.90 minutes**, range **1.10–1.90
+minutes** (n=4). The latest [CI run 44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624)
+passed backend and extension checks. Associated [AI evaluation 44779598647](https://github.com/kendshhh/PhishLens/actions/runs/44779598647),
+[workflow lint 44779598943](https://github.com/kendshhh/PhishLens/actions/runs/44779598943),
+[dependency security 44779598600](https://github.com/kendshhh/PhishLens/actions/runs/44779598600)
+and [CodeQL 44779598763](https://github.com/kendshhh/PhishLens/actions/runs/44779598763)
+also passed on that SHA. The scheduled [Production drift run 44812619162](https://github.com/kendshhh/PhishLens/actions/runs/44812619162)
+passed the source SHA, health and readiness checks.
 
-The latest fully checked PR #268 revision was docs-only commit
-`631b0ef21849e8abe877bb16b4676047f2aca86a`; it passed CI run
-[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094)
-and its workflow lint, dependency security, deterministic evaluation and CodeQL
-checks. Hosted staging/preflight were skipped and the required `Secretary
-staging` PR context failed because the protected hosted run was not requested
+For the latest 20 production deploy records through November 20 17:05 UTC,
+Render reported one live deploy, 19 later deactivated deploys and no failed
+statuses. Deployment duration median was **74.1525 seconds**, nearest-rank p90
+**93.142 seconds**, range **60.299–408.027 seconds** (n=20). Current production
+deploy dep-dc07rs67bikc73fjgjq0 is live on SHA 811980c; current staging deploy
+dep-dc07s1cipgvc73dh0150 is manually deployed on the same SHA.
+
+The timing sample is descriptive, not a before/after experiment. It excludes
+queue time before workflow start, PR protected-environment waits, merge-to-live,
+user-flow latency, inference cost and recovery. No speed improvement is
+established. Do not present these workflow or deploy durations as extension
+journey performance. No production inference or product data reads were part of
+this metric refresh.
+
+The staging-smoke remediation is a separate PR #268 candidate. Code/test
+commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed 321 Node tests and a
+GET-only staging smoke. Its latest recorded completed CI ran on docs-only
+revision `631b0ef21849e8abe877bb16b4676047f2aca86a`: [CI
+44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+[workflow lint 44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+[dependency security 44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+[deterministic evaluation 44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+and [CodeQL 136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
+passed. Hosted staging/preflight were skipped; `Secretary staging` failed due
+the missing protected-run label/exact-head verification
 ([check run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
-This is current gate-status evidence, not a performance sample; the Nov 20
-delivery measurements below remain the latest measured sample.
+This CI evidence is not a performance sample and does not change the measured
+main-push/deploy results below.
 
-Render metadata reports auto-deploy disabled for both services. Production's
-latest deployment record nevertheless has trigger `new_commit`; this discrepancy
-is unresolved. See the [staging Auth evidence](evidence/2026-11-21-staging-neon-auth-smoke.md)
-and [current environment map](environment-map-2026-11-21.md). The November 20
-delivery sample below remains the latest performance measurement; its service
-identity is historical.
-
-## Latest measured delivery sample — 2026-11-20 13:45 UTC
+## Historical delivery sample — 2026-11-20 13:45 UTC
 
 The latest four completed `CI` push runs to `main`, through PR #256, all
 succeeded. Their workflow wall-time median was **66 seconds**, p90 **82
@@ -75,7 +79,7 @@ workflow and check set over a sufficiently broad sample. No production
 inference was sent. Do not present health/readiness timing as extension journey
 latency or report AI cost without a verified inference path.
 
-## 28-day delivery snapshot — 2026-11-14 03:12 UTC
+## Historical 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
 Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and

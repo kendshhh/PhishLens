@@ -2,83 +2,102 @@
 
 ## Current delivery and acceptance snapshot — November 21, 2026
 
-This section supersedes the dated snapshots below. Release remains **NO-GO**.
-The current DevOps index, release record, environment map and scorecard are in
-[`docs/devops/README.md`](docs/devops/README.md). The staging failure and local
-smoke correction are in
-[`the dated evidence record`](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md).
+This section supersedes the historical snapshots below. The release decision
+remains **NO-GO**. A live backend and green CI do not constitute an accepted
+product release.
 
-### Source and candidate
+At the November 21 service refresh, GitHub main was
+[811980c2cbf70d9957146bf329627f0826a018f1](https://github.com/kendshhh/PhishLens/commit/811980c2cbf70d9957146bf329627f0826a018f1),
+merged by PR #264. Main later advanced through PR #263 to
+`06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no subsequent production or
+staging deployment was verified. Production is recorded Live on SHA `811980c`
+in deploy `dep-dc07rs67bikc73fjgjq0`. The scheduled [Production drift
+run](https://github.com/kendshhh/PhishLens/actions/runs/44812619162) passed
+exact-SHA, health and readiness checks. It does not check model/provider state,
+Auth, saved-report CRUD or the extension journey. Staging was manually deployed
+to SHA `811980c` as deploy `dep-dc07s1cipgvc73dh0150` on November 20. The later
+November 21 07:31 UTC Render refresh showed staging Live on SHA `ba0b6c5`
+(`dep-dc0im3h7lnhs738pncng`); read-only GET smokes checked health, readiness and
+anonymous `401 Bearer`, not authenticated acceptance. Production auto-deploy
+evidence conflicts: the November 20 record says checksPass, while the November
+21 07:31 metadata says off/trigger off and the latest deploy event says
+`new_commit`. Resolve this before relying on the setting.
 
-Latest observed GitHub `main` is
-[`06f89d7a0b5b9dec316dfa11f2846767a32086c5`](https://github.com/kendshhh/PhishLens/commit/06f89d7a0b5b9dec316dfa11f2846767a32086c5)
-(PR #263), which includes the Bearer-aware staging history correction. The
-review branch `codex/devops-staging-closeout-20261121` has synchronized with
-that main through merge commit `14874d339bbb4042172df954f97596080aa303ee`; the original developer checkout remains at `16f955321caf5dc368181be7ce5c00643750545d`
-with existing user changes and has not been overwritten. No single reviewed
-extension/backend/model/Auth release candidate is selected. The Chrome MV3
-extension plus Render API and Neon remain the intended product scope; instructor
-confirmation of the frontend requirement is pending.
+The intended release is the locally installed Chrome Manifest V3 extension
+backed by the Render FastAPI service and Neon PostgreSQL/Auth. Issue #153 now
+names this scope and records the retired Vercel experiment in issues #244/#248.
+The course guide URL is not the product URL. Product acceptance remains open:
+the production analysis setting was verified false on November 20 but was not
+reread in this refresh; no current model-info response, authenticated Auth/CRUD
+run or accepted extension/backend/model manifest is available. See the
+[current release record](docs/devops/release-record-2026-11-21.md), [scorecard](docs/devops/release-readiness-scorecard-2026-11-21.md),
+[environment map](docs/devops/environment-map-2026-11-21.md), and [demo-day
+matrix](docs/devops/demo-day-readiness-2026-11-21.md).
 
-### Live services and staging Auth
+### Current checks and enforcement
 
-At the 07:31 UTC Render refresh, production served deploy
-`dep-dc07rs67bikc73fjgjq0` on
-`811980c2cbf70d9957146bf329627f0826a018f1`. Main has since advanced to
-`06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later production deploy was
-verified. Read-only `/version`, `/health`,
-`/ready` and `/model-info` returned HTTP 200. Analysis is intentionally disabled
-(`analysis_enabled=false`, `provider_mode=disabled`). This confirms service
-identity and disabled state, not product/AI acceptance; no production observer
-workflow was run.
+The latest [CI](https://github.com/kendshhh/PhishLens/actions/runs/44779598624),
+[deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44779598647),
+[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44779598943),
+[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44779598600),
+and [CodeQL](https://github.com/kendshhh/PhishLens/actions/runs/44779598763)
+runs for main SHA 811980c passed. The production drift run also passed. CI
+produced the extension package and browser-acceptance artifacts for this exact
+source SHA; their digests are recorded in the [release record](docs/devops/release-record-2026-11-21.md) and [scorecard](docs/devops/release-readiness-scorecard-2026-11-21.md).
 
-Staging serves deploy `dep-dc0im3h7lnhs738pncng` on
-`ba0b6c5475eb6a8f99c509c40384020d292e17e6`. Read-only `/version`, `/health`,
-`/ready` and `/model-info` returned HTTP 200; TF-IDF model SHA-256 is
-`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
-Anonymous `/api/analyses` returns `401 Bearer`. The supplied hosted smoke failed
-with a generic history error; its log omitted HTTP status/body and does not
-identify the underlying request cause. The review branch accepts only an
-explicit `401 Bearer` anonymous challenge, preserves seeded-history checks for
-`200`, retries only transient failures inside a 120-second deadline, and
-writes endpoint/status/error details to the job summary. The branch also
-removes the hosted job's `always()` override, requires all three dependency
-results to be `success`, monitors local server startup, and retains its log
-artifact. The synchronized branch's latest code/test commit is
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed `npm test` (321 tests)
-and a fresh GET-only live staging smoke at about 08:35 UTC. The latest fully
-checked PR revision was `631b0ef21849e8abe877bb16b4676047f2aca86a`, a
-documentation-only update preserving code/test commit
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed [CI run
+The active CI ruleset #27733591 visibly requires Backend checks, Extension
+checks, Staging integration and Secretary staging, with strict status checking
+disabled. The active approval ruleset #26782191 requires one approval, dismisses
+stale reviews and resolves threads, but does not require approval of the latest
+push. The classic branch-protection read returned 403 in this refresh. A prior
+November 20 read listed eight required contexts, but the current combined
+effective gate cannot be confirmed from that older result. PR #257 made the
+Secretary controller fail closed for Auth-pending acceptance; PR #262 corrected
+the backend-only staging skip. A current runtime PR and deliberately failing
+required check have not demonstrated the complete effective merge contract.
+
+PR #268 carries the staging-history and hosted-deployment-guard follow-up. Code
+and tests are at `83a0df1af1d64048b3b5fa3158f6509e83d71555`; 321 Node tests and a
+GET-only live staging smoke passed. The latest recorded full CI for this source
+ran on docs-only revision `631b0ef21849e8abe877bb16b4676047f2aca86a`: [CI
 44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
-including backend, extension, migration preflight and local staging integration;
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
-[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
-[deterministic evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
-and [CodeQL](https://github.com/kendshhh/PhishLens/runs/136797921015) also passed.
-Hosted staging and preflight were skipped. The PR's required
-`Secretary staging` context is failed because `needs-hosted-staging` and
-exact-head hosted verification are missing; see
-[check run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939).
-No Render deployment occurred. Authenticated history/CRUD, persistence,
-isolation and cleanup remain open, and the PR is not merge-ready.
+[workflow lint 44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+[dependency security 44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+[deterministic evaluation 44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+and [CodeQL 136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
+passed. Hosted staging and preflight were skipped. The required `Secretary
+staging` PR context failed because `needs-hosted-staging` and exact-head hosted
+verification were absent ([run
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
+No Render deployment or authenticated hosted CRUD occurred. Later changes in
+PR #265 and this closeout are documentation-only; read their latest workflow
+results from the live PR before review.
 
-### Controls and release gates
+### Current quality, deployment and recovery limits
 
-Render metadata reports auto-deploy off for both services. Production's latest
-deployment record says trigger `new_commit`; staging's says `api`. This
-production setting/event discrepancy is unresolved. The latest repository
-record lists eight classic required checks as of November 20, but their effective
-current configuration was not rechecked in this audit. The staging Neon branch
-and migration revision `0004_neon_auth_subject` were inspected read-only; the
-private Render-to-Neon branch/role mapping remains unverified.
+The AI workflow still evaluates a 40-case synthetic development cohort, not a
+held-out representative set, and has no approved numeric release threshold. Its
+recorded result remains 65% binary accuracy, 18.75% phishing recall (3/16), and
+6.25% legitimate false positives (1/16); all eight spam cases were classified
+as legitimate. That is not a release-quality pass. The last verified production analysis
+setting was disabled on November 20; it was not reread in this refresh. No
+inference path is accepted pending reviewed model/provider evidence and shared
+budget controls.
 
-The November 20 isolated Neon restore checked schema and aggregate integrity,
-but did not measure service RTO/RPO; current-production-compatible app rollback
-is not proven. No exact-candidate installed extension acceptance, authenticated
-staging journey, approved broad AI quality result, version tag, or instructor
-decision is recorded. Do not report a completion percentage: score weights and
-rules are not approved. Keep NO-GO until all gates pass for one exact candidate.
+The production smoke now has a disabled-aware zero-inference path in main after
+PR #257, but it remains workflow_dispatch-only. The scheduled drift workflow
+checks SHA, health and readiness only. No GitHub Release or v1.0.0 tag exists.
+Current CI and deploy timing samples are summarized in [metrics](docs/devops/metrics.md);
+they do not establish a comparable optimization or end-user performance result.
+
+The November 20 manual Neon snapshot was restored into an isolated branch and
+schema plus aggregate counts matched. Neon’s free plan still blocks production
+branch protection and scheduled snapshots. The restore did not measure the
+approved RTO ≤30 minutes or RPO ≤1 hour, and application rollback against the
+current production schema/configuration is untested. Keep the release at NO-GO
+until authenticated product acceptance, reviewed model quality, effective
+merge-gate behavior, exact-SHA product smoke and both recovery rehearsals are
+supported by current evidence.
 
 ## Historical delivery and acceptance snapshot — November 15, 2026
 
@@ -409,12 +428,11 @@ the current CI status.
 Compilation is basic validation, not the
 complete application build stage.
 
-## Delivery workflow structure — deployment trigger unresolved
+## Delivery Flow
 
-Task branch → Pull request → Automated checks → Staging integration and hosted
-verification → Chrome verification and teammate approval → Merge to main →
-Automated checks → Render deployment (current trigger not verified) → Deployed
-verification
+Task branch → Pull request → Automated checks → Staging integration and hosted verification → Chrome verification and teammate approval
+→ Merge to main → Automated checks → Automatic deployment
+→ Deployed verification
 
 ## Workflow Triggers
 
@@ -424,21 +442,18 @@ flowchart LR
     CI --> Review[Required check and teammate approval]
     Review --> Main[Merge to main]
     Main --> MainCI[Main CI]
-    MainCI --> Render[Render deployment: setting off; trigger conflict]
+    MainCI --> Render[Render: After CI Checks Pass]
     Render --> Verify[Confirm Live SHA, health and readiness]
 ```
 
-The diagram describes workflow structure, not a confirmed live deployment
-policy. Render metadata reports auto-deploy off while the latest production
-deployment record says `new_commit`. CI can validate and package the extension;
-installed Chrome behavior and real-provider AI remain separate acceptance gates.
+The diagram describes current delivery. CI validates and packages the extension;
+installed Chrome behavior and real-provider AI remain separate acceptance checks.
 
 Workflow file: .github/workflows/ci.yml
 
 - Every pull request triggers backend checks.
 - Every push to main, including a merged PR, triggers backend checks.
-- Render metadata currently says auto-deploy is off; the production deployment
-  trigger conflicts with that setting and needs owner verification.
+- Render deploys changes to main after CI checks pass.
 
 The workflow uses Python 3.12 on an Ubuntu runner.
 Render is configured to use Python 3.12.10.
@@ -475,7 +490,7 @@ to produce a misleading successful run.
 Regular AI tests should use mocked inference without model downloads.
 Successful actual-model calls must be recorded separately.
 
-## Deployment settings — verify against the current Render state
+## Deployment
 
 - Backend host: Render.
 - Instance plan: Free.
@@ -483,8 +498,7 @@ Successful actual-model calls must be recorded separately.
 - Deployment branch: main.
 - Root directory: repository root; the field is blank.
 - Python version: 3.12.10.
-- Auto-Deploy: reported off in the November 21 Render metadata; the latest
-  production deployment's `new_commit` trigger remains unexplained.
+- Auto-Deploy: After CI Checks Pass.
 - Public URL: https://phishlens-api-ocvt.onrender.com
 - Health check path: /health.
 

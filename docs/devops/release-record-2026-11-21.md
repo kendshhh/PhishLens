@@ -2,93 +2,84 @@
 
 ## Decision
 
-**NO-GO.** This dated record reconciles the latest available repository,
-Render, Neon and user-supplied CI evidence. It does not authorize deployment or
-claim product acceptance. The Chrome Manifest V3 extension backed by the
-Render API and Neon remains the intended release scope. Instructor confirmation
-of the frontend requirement remains outstanding.
+**NO-GO.** This is a read-only evidence refresh as of November 21, 2026
+(Asia/Manila). It records current repository and Render identities; it is not a
+deployment authorization or a product acceptance sign-off.
 
-## Candidate and deployment identities
+## Release scope
 
-| Component | Observed identity | Evidence and acceptance state |
+The intended deliverable is the locally installed Chrome Manifest V3 PhishLens
+extension, backed by the FastAPI service on Render and PostgreSQL/Auth on Neon.
+Issue [#153](https://github.com/kendshhh/PhishLens/issues/153) now states this
+scope and points to the retired Vercel experiment in issues #244/#248. The
+CSP221A course guide is not the PhishLens product URL.
+
+## Observed identities
+
+| Component | Current identity | What the evidence proves |
 |---|---|---|
-| Review source | PR #268, branch `codex/devops-staging-closeout-20261121`; latest code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555`, synchronized with `main` `06f89d7a0b5b9dec316dfa11f2846767a32086c5` (PR #263) through merge commit `14874d339bbb4042172df954f97596080aa303ee`. Earlier implementation commit `a80b95e146cd03a96ffca156ccfe5721ac871b68` and staging-history base `3c858f7df51666e0545dea1a6dd5997574c16d43` remain in its history. Latest fully checked PR revision was docs-only commit `631b0ef21849e8abe877bb16b4676047f2aca86a`; code/test content remains unchanged. | Prepared in a clean isolated worktree. The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d` and its existing edits remain untouched. PR #268 is open, merge-blocked, and marked `CHANGES_REQUESTED`; its changes are not merged into `main`. |
-| Production API | Last observed at 07:31 UTC: Render deploy `dep-dc07rs67bikc73fjgjq0`, source SHA `811980c2cbf70d9957146bf329627f0826a018f1`. | Render reported live. Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later production deployment was verified. At the observed deploy, read-only `/version`, `/health`, `/ready` and `/model-info` returned HTTP 200. Model info said `analysis_enabled=false`, `provider_mode=disabled`, `supports_required_provider=false`, and `accepts_tfidf_reports=false`. No production inference or saved-report write was made; the production smoke workflow was not run. This is service-state evidence, not product acceptance. |
-| Staging API | Render deploy `dep-dc0im3h7lnhs738pncng`, source SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`. | Render reports live. Read-only `/version`, `/health`, `/ready` and `/model-info` returned HTTP 200; model info reports TF-IDF and model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. Anonymous `/api/analyses` returns `401` with `WWW-Authenticate: Bearer`. No authenticated CRUD acceptance is established. |
-| Staging Auth/database | Neon project `patient-bird-25428852`; staging branch `pr-58-staging` / `br-delicate-paper-b381z98i`; database `phishlens_dev`; Auth DB `neondb`; observed migration head `0004_neon_auth_subject`. | Read-only Neon Auth config and SQL/grant inspection are recorded in the evidence record. Runtime role can read/insert users and perform saved-report CRUD; public schema CREATE is false; users UPDATE/DELETE are false. This does not prove Render's private `DATABASE_URL` resolves to this exact branch/role. No SQL write was made. GitHub reports 15 open Dependabot alerts despite observed `main` pinning first-patched versions; reconciliation is pending. |
-| Staging smoke and hosted deploy guard | Latest code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555`; latest fully checked docs-only PR revision `631b0ef21849e8abe877bb16b4676047f2aca86a`; merge commit `14874d339bbb4042172df954f97596080aa303ee` integrates mainline Bearer-aware correction `06f89d7a0b5b9dec316dfa11f2846767a32086c5`. | Local `npm test` passed 321 tests and GET-only live staging smoke passed at about 08:35 UTC with health/readiness and anonymous `401 Bearer`. The exact PR revision passed [CI run 44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094): backend, extension, migration preflight and local staging integration. Workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104), dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135), deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114) and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015) also passed. Hosted staging and preflight were skipped. The `Secretary staging` PR check is failed because the hosted label/exact-head verification are absent ([run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)). No Render deployment or authenticated CRUD occurred. |
-| Hosted CRUD runner | `origin/main` `.github/workflows/ci.yml` invokes `scripts/verify_crud.mjs --allow-writes` after the legacy smoke. | The current observed code path has no authenticated session for Neon Auth. It is a separate blocker that the anonymous smoke adjustment does not resolve. Fix the runner to obtain an approved synthetic test session and authenticate all operations; retain cleanup and least privilege. Do not disable auth or use a database bypass. |
-| Production smoke | `origin/main` contains the disabled-provider observer path. | Source inspection shows it can report a bounded observer pass for disabled mode with zero inference, paid provider calls and database writes. No workflow execution was run, and this result cannot pass product/AI acceptance. |
-| Recovery evidence | Isolated Neon restore drill, November 20, on upstream `main`. | The drill checked revision, schema shape and aggregate counts on an isolated restored branch. RTO/RPO remain unmeasured; service-to-branch mapping and compatible application rollback remain open. [Read the source record](https://github.com/kendshhh/PhishLens/blob/811980c2cbf70d9957146bf329627f0826a018f1/docs/devops/recovery-drill-2026-11-20.md). |
+| Repository | GitHub main at record capture: [811980c2cbf70d9957146bf329627f0826a018f1](https://github.com/kendshhh/PhishLens/commit/811980c2cbf70d9957146bf329627f0826a018f1), PR #264. Main later advanced through PR #263 to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`. | The linked CI artifact identities apply to the recorded `811980c` snapshot. No later production or staging deployment was verified. No release tag or GitHub Release is published. |
+| Production API | Render deploy [dep-dc07rs67bikc73fjgjq0](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys/dep-dc07rs67bikc73fjgjq0), source SHA 811980c2cbf70d9957146bf329627f0826a018f1, Live | November 21 07:31 UTC metadata refresh confirmed the same identity. The scheduled [drift run 44812619162](https://github.com/kendshhh/PhishLens/actions/runs/44812619162) passed exact-SHA, health and readiness checks but does not verify model state, Auth, CRUD or extension behavior. At 07:31 Render metadata reported auto-deploy off/trigger off; the Nov 20 record reported checksPass, and the latest deploy event says `new_commit`. Resolve this discrepancy. |
+| Staging API | Render deploy [dep-dc0im3h7lnhs738pncng](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dc0im3h7lnhs738pncng), source SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`, Live at Nov 21 07:31 UTC observation. | The Nov 20 manual deploy [dep-dc07s1cipgvc73dh0150](https://dashboard.render.com/web/srv-db92irlg1s2s739404i0/deploys/dep-dc07s1cipgvc73dh0150) on SHA 811980c is historical. Read-only `/version`, `/health`, `/ready`, `/model-info` returned HTTP 200 on the Nov 21 service; anonymous `/api/analyses` returned `401 Bearer`. Later GET-only smokes passed health/readiness and the anonymous boundary. No current authenticated CRUD acceptance is attached. |
+| Extension build | PhishLens-Extension artifact ID 14651606496 from [CI run 44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624); source SHA 811980c2cbf70d9957146bf329627f0826a018f1; archive digest sha256:8f07bf6fd9e5844ee541b4c13439cd32b57d231ca8c297bbd5513346bc17244d; expires November 27 | CI artifact is tied to current main. This is the GitHub archive digest, not a separately verified ZIP SHA-256. No accepted extension/backend/model manifest is published. |
+| Browser acceptance evidence | Extension-Browser-Acceptance artifact ID 14652195937 from CI run 44779598624; digest sha256:e953b567b84d99f70182b5a7fb22eedc4f3876b467a804f27cdcfe2e745b6c1b; expires February 18, 2027 | Packaged browser checks ran for current main. This does not replace authenticated live staging acceptance. |
+| Model/provider | The 40-case synthetic evaluation remains below release quality: 18.75% phishing recall (3/16), 6.25% legitimate false positives (1/16), and all eight spam cases classified as legitimate. | Production analysis was verified disabled on November 20. The current environment value was not reread on November 21, and no current model-info response was obtained. No approved production model/provider is evidenced. |
+| Auth and database | Neon exposes production and staging branches; the exact Render-to-Neon mapping and current runtime Auth mode remain unverified. | The November 20 isolated snapshot restore checked schema and aggregate integrity, but does not establish application acceptance or measured RTO/RPO. |
+| PR #268 staging-smoke candidate | Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555`; latest recorded fully checked documentation-only revision `631b0ef21849e8abe877bb16b4676047f2aca86a`. | On that exact revision, [CI 44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094), [workflow lint 44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104), [dependency security 44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135), [deterministic evaluation 44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114) and [CodeQL 136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015) passed. Local `npm test` passed 321 tests; a GET-only live staging smoke passed the anonymous `401 Bearer` boundary. | Hosted staging and preflight were skipped. GitHub reports `Secretary staging` failed for missing `needs-hosted-staging` and exact-head hosted verification ([run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)). No Render deployment or authenticated CRUD occurred. Later PR #265/closeout documentation merges are docs-only and need fresh current-head checks. |
 
-## Failure record and cause
+## Current workflow evidence
 
-The user-supplied job output shows `STAGING_MIGRATION_REVISION` set to
-`0004_neon_auth_subject` and `node scripts/staging_smoke.mjs` failing at the
-history request with `Error: Failed to load history` from
-`extension/js/api.js:111`, called at `scripts/staging_smoke.mjs:27`. The log
-also sets `STAGING_BASE_URL` to the staging service, but it did not include a
-GitHub Actions run URL/ID, tested commit SHA, or full HTTP response. The
-migration head was independently checked on Neon; the smoke script does not
-verify it.
-In a separate dated read-only staging observation, anonymous history returned
-the expected authentication challenge (`401 Bearer`) because saved reports
-require sign-in. No run ID or tested SHA establishes that it was the same
-deployment/run as the supplied failure, so this is a plausible cause, not a
-confirmed diagnosis. The legacy smoke assumed anonymous history was readable
-and treated that boundary as a failure. An earlier workstation probe timed
-out; later GET-only runs at 08:15 and about 08:35 UTC passed health, readiness
-and the expected `401 Bearer` boundary, but did not confirm the original run's response or
-deployed source SHA. See the
-[dated failure analysis](evidence/2026-11-21-staging-neon-auth-smoke.md).
+The following runs for current main SHA 811980c succeeded:
 
-The fix has two separate parts:
+- [CI 44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624)
+- [Deterministic AI evaluation 44779598647](https://github.com/kendshhh/PhishLens/actions/runs/44779598647)
+- [Workflow lint 44779598943](https://github.com/kendshhh/PhishLens/actions/runs/44779598943)
+- [Dependency security 44779598600](https://github.com/kendshhh/PhishLens/actions/runs/44779598600)
+- [CodeQL 44779598763](https://github.com/kendshhh/PhishLens/actions/runs/44779598763)
+- [Scheduled Production drift 44812619162](https://github.com/kendshhh/PhishLens/actions/runs/44812619162)
 
-1. **Anonymous preflight and CI safety:** recognize and assert `401 Bearer` when
-   no session is supplied; retain seeded demo-history checks only for legacy
-   unauthenticated `200` mode. Bound transient retries, report failure details,
-   detect an exited local service promptly, retain its log, and make hosted
-   deploy depend explicitly on all successful gates. Mainline commit `06f89d7`
-   already contains the strict Bearer-aware history correction; the review
-   branch adds bounded retries, detailed diagnostics, local server monitoring,
-   retained logs and fail-closed deployment conditions. Those additional
-   changes remain under review and are not merged.
-2. **Authenticated acceptance:** teach `verify_crud.mjs` to use a dedicated
-   synthetic staging identity and valid Auth session, then prove sign-in,
-   create/list/read/update/delete, reload persistence, ownership isolation,
-   failure cases and cleanup. The current unauthenticated runner is still a
-   blocker. Never weaken authorization to make CI green.
+The active CI ruleset [#27733591](https://github.com/kendshhh/PhishLens/rules/27733591)
+requires Backend checks, Extension checks, Staging integration and Secretary
+staging. Its strict status policy is false and it has no bypass actors. The
+active approval ruleset [#26782191](https://github.com/kendshhh/PhishLens/rules/26782191)
+requires one approval, dismisses stale reviews and resolves review threads, but
+does not require the latest push to be approved. The classic branch-protection
+endpoint returned 403 in this refresh. A November 20 read listed eight required
+contexts; it is not current proof of the effective combined contract. No current
+runtime PR demonstrates that a deliberately failing required check blocks
+merge.
 
-## Remaining release gates
+PR #257 made Secretary fail closed when Auth acceptance remains pending and
+requires explicit Neon Auth mode for authenticated preview. PR #262 corrected
+the backend-only staging skip. These changes improve status semantics, but the
+effective current branch gate and runtime behavior still need a live PR
+demonstration.
 
-- [ ] Review and land the exact review-branch source through the trusted
-  controller path; select one extension/backend/model/Auth candidate and retain
-  package and source hashes.
-- [ ] Run the protected hosted workflow on a current PR head and make the
-  authenticated CRUD job work with a least-privilege synthetic test user.
-- [ ] Complete the protected exact-head Hosted staging run; the current PR's
-  Hosted staging jobs are skipped until `needs-hosted-staging` is present.
-- [ ] Pass hosted staging smoke plus authenticated CRUD, persistence,
-  ownership/isolation, failure and cleanup checks; install and accept the exact
-  extension package in Chrome.
-- [ ] Privately verify Render-to-Neon project/branch/database/role mapping for
-  staging and production, current Auth/provider settings, GitHub environment
-  scope and reviewer controls.
-- [ ] Reconcile the 15 open GitHub Dependabot alert records with the pinned and
-  resolved default-branch dependencies; preserve a fresh dependency-review
-  result before calling the security gate clear.
-- [ ] Reconcile Render's auto-deploy-off metadata with production's observed
-  `new_commit` deploy trigger. Verify settings in the Render dashboard.
-- [ ] Verify the effective GitHub required-check contract and independent
-  review on the final candidate.
-- [ ] Approve broad model-quality criteria and contemporary held-out evidence;
-  the existing frozen English source-pair result remains advisory-only.
-- [ ] Record a schema/config-compatible application rollback, isolated data
-  restore, measured service RTO/RPO, recovery responders and alert path.
-- [ ] Obtain actual team/instructor decisions and participant records; publish
-  the release tag and changelog only after all gates pass.
+## Release evidence still required
 
-No completion percentage is reported. The scoring weights and rule are not
-approved; do not call the project 100% ready or convert partial artifacts into
-full passes. Keep release issue #153 at **NO-GO** until the release owner and
-reviewers accept evidence tied to the same final candidate.
+- [ ] Complete authenticated staging sign-in and saved-report create/list/read/update/delete, persistence, ownership isolation, failure handling and cleanup on the current exact extension/backend pair.
+- [ ] Publish the exact extension artifact, backend SHA, approved model identity, Auth mode and Neon branch in one accepted manifest.
+- [ ] Review a representative held-out model cohort, approve numeric release thresholds and require failure below threshold. Keep production inference disabled until this passes.
+- [ ] Reconcile the active ruleset with classic branch protection and prove current runtime-PR labels/skips, independent approval and failing-check merge block.
+- [ ] Gate production on explicit release approval, stage then promote the same artifact, and run exact-SHA post-deploy acceptance.
+- [ ] Rehearse rollback to a schema/config-compatible application release.
+- [ ] Repeat an isolated database restore under representative conditions and measure service RTO and recoverable-point age against the approved ≤30-minute / ≤1-hour targets.
+- [ ] Verify alert delivery and ownership, refresh user-flow performance/cost evidence, and publish a versioned release record only after the blockers pass.
+
+## Migration and recovery limits
+
+The November 15 disposable-PostgreSQL report records migration upgrades through
+schema 0004 and 11 saved-report CRUD tests against that schema from a
+pre-Neon-Auth backend revision. It does not prove rollback compatibility with
+the current production predecessor and configuration.
+
+The [November 20 Neon restore drill](recovery-drill-2026-11-20.md) restored a
+manual snapshot into an isolated branch and matched schema and aggregate counts.
+The Neon free plan blocks production branch protection and scheduled snapshots;
+the snapshot and drill branch expire November 27. The measured one-second
+provider restore-to-ready interval is not service RTO, and the recovered point
+was not precise enough to establish RPO. Current app rollback is not rehearsed.
+
+Update this record only when evidence is tied to exact deployed and packaged
+identities. A successful health check, skipped job or planned action does not
+close a release item.

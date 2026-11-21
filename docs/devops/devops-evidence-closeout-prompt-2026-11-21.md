@@ -88,7 +88,7 @@ before relying on them and add the actual observation date and source:
 
 ### Verified follow-up evidence — November 21, 2026
 
-Recheck all live systems before reuse. At the latest recorded audit, PR #268
+Recheck all live systems before reuse. At the `631b0ef` audit snapshot, PR #268
 branch `codex/devops-staging-closeout-20261121` had code/test commit
 `83a0df1af1d64048b3b5fa3158f6509e83d71555` and tested PR head
 `631b0ef21849e8abe877bb16b4676047f2aca86a` (docs-only over the code/test
@@ -107,12 +107,13 @@ commit):
   44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
   its controller assessment passed but the preview job was skipped. No Render
   deployment or hosted CRUD/write occurred.
-- PR #268 remains open, merge-blocked, and marked `CHANGES_REQUESTED`. Prior
-  review noted one retry-classification bug and PR-body placeholders. The code
-  regression for the retry bug is present; re-read the latest review/comments,
-  prepare an accurate purpose/results/issue/acceptance summary, and verify a
-  fresh human review before merge. Do not infer that a docs refresh resolves a
-  review or required-check failure.
+- At that snapshot, PR #268 remained open and marked `CHANGES_REQUESTED`. The
+  review requested retry classification before transient-text matching and
+  identified PR-description placeholders. The retry regression is present at
+  code/test commit `83a0df1`; later branch-head checks and the documentation
+  reconciliation are recorded in the staging evidence file. A fresh human
+  review and required checks on the resulting head are still necessary; a docs
+  refresh alone does not resolve either.
 - The live staging service still runs the older deployment SHA recorded in the
   environment map. The provided original smoke log lacks run ID, tested SHA,
   status and response body; do not assert a proven root cause from the later

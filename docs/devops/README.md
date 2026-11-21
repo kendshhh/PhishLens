@@ -12,18 +12,21 @@ Bearer-aware history fix. The review branch synchronizes it with the bounded
 retry, diagnostics, server-liveness and fail-closed deployment changes in merge
 commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. The latest fully
-checked PR revision was `631b0ef21849e8abe877bb16b4676047f2aca86a`, a
-documentation-only update preserving code/test commit
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed [CI run
+and a GET-only live staging smoke passed at about 08:35 UTC. The latest recorded
+full CI for this code/test source ran on docs-only PR revision
+`631b0ef21849e8abe877bb16b4676047f2aca86a`: [CI run
 44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
-including backend, extension, migration preflight and local staging integration.
-Workflow lint, dependency security, deterministic evaluation and CodeQL also
-passed. Hosted staging and preflight were skipped. The PR's required Secretary
-staging context is failed because the `needs-hosted-staging` label and exact-head
-hosted verification are absent; see [check run
-44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939).
-No Render deployment occurred and hosted Auth CRUD is not verified.
+workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
+passed. Hosted staging and preflight were skipped. GitHub reported the required
+Secretary staging context failed because the `needs-hosted-staging` label and
+exact-head hosted verification were absent ([check run
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
+No Render deployment occurred and hosted Auth CRUD is not verified. Later
+documentation-only commits include the PR #265 reconciliation; consult live PR
+checks for their current workflow result.
 
 ## Current source of truth
 

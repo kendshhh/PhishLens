@@ -1,59 +1,52 @@
 # Environment and Secret Map — 2026-11-21
 
-This map records current non-secret service identities and evidence boundaries.
-It does not store credential values. Render environment-variable values were
-not exposed in this audit, so live URLs/roles cannot be proven from a healthy
-readiness response alone.
-Render service and deployment metadata were rechecked read-only at
-2026-11-21 07:31 UTC. A later direct GET-only staging smoke at 08:15 UTC passed
-health, readiness, and the anonymous Bearer-auth boundary using the review
-branch script. A follow-up smoke at about 08:35 UTC passed the same GET-only
-checks after synchronizing the smoke helper with main. Neither run verified
-`/version`, deployed PR identity, migration state, or authenticated CRUD.
+This map records scopes and verification status without secret values. The
+current refresh did not read hosted secret values. A live deployment or
+successful readiness check does not prove a correct database mapping, Auth
+mode, provider configuration or access policy.
+Render service/deploy metadata was refreshed read-only at 07:31 UTC on November
+21. Production was Live on SHA `811980c2cbf70d9957146bf329627f0826a018f1`;
+staging had advanced to SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`.
+GitHub main later advanced through PR #263 to
+`06f89d7a0b5b9dec316dfa11f2846767a32086c5`; neither service was verified on
+that SHA in this refresh.
 
 ## Environment map
 
-| Environment | Service and data target | Runtime/configuration evidence | Status and open controls |
+| Environment | Current service identity | Runtime purpose and non-secret state | Secret/data boundary and open verification |
 |---|---|---|---|
-| Local development | Developer machine; `.env` is git-ignored. | `.env.example` supplies development/mock/demo defaults. | Repository configuration only. No local secret values were read. |
-| CI | Disposable PostgreSQL test database; synthetic credentials and mock AI. | `main` commit `06f89d7a0b5b9dec316dfa11f2846767a32086c5` includes the Bearer-aware history correction. Review branch merge commit `14874d339bbb4042172df954f97596080aa303ee` adds bounded retries, diagnostics and fail-closed gates; latest code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` classifies permanent HTTP errors before retry-message matching. Local `npm test` passed 321 tests and a GET-only live staging smoke passed at about 08:35 UTC. Latest fully checked PR revision `631b0ef21849e8abe877bb16b4676047f2aca86a` was documentation-only and passed [CI run 44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094), including backend, extension, migration preflight and local staging integration; workflow lint, dependency security, deterministic evaluation and CodeQL also passed (see linked runs in the release record). | Hosted staging and preflight were skipped. GitHub reports the required `Secretary staging` context failed because the `needs-hosted-staging` label and exact-head hosted verification are absent ([run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)). No hosted test or Render deployment is claimed. CI credentials are not hosted credentials. |
-| Hosted staging | Render service `phishlens-staging`, ID `srv-db92irlg1s2s739404i0`, URL `https://phishlens-staging.onrender.com`; latest live deploy `dep-dc0im3h7lnhs738pncng`, SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`. Render metadata rechecked at 07:31 UTC reports branch `main`, auto-deploy `no`, trigger `off`. | Earlier `/version`, `/health`, `/ready`, `/model-info` returned 200. GET-only smokes at 08:15 and about 08:35 UTC passed `/health`, `/ready`, and anonymous `/api/analyses` with `401 Bearer`. Neither checked deployed PR identity. | Neon project `patient-bird-25428852`, branch `pr-58-staging` (`br-delicate-paper-b381z98i`), database `phishlens_dev`, Auth DB `neondb`, migration revision `0004_neon_auth_subject` were independently inspected read-only. Render's actual connection URL to branch/role mapping remains unverified. No authenticated CRUD or app write acceptance. |
-| Production | Render service `phishlens-api`, ID `srv-db7eap25b2lc73fkelpg`, URL `https://phishlens-api-ocvt.onrender.com`; latest live deploy `dep-dc07rs67bikc73fjgjq0`, SHA `811980c2cbf70d9957146bf329627f0826a018f1`. Render metadata rechecked at 07:31 UTC reports branch `main`, auto-deploy `no`, trigger `off`. | Earlier November 21 read-only `/version`, `/health`, `/ready`, `/model-info` returned 200. Model info: `provider_mode=disabled`, `analysis_enabled=false`, required-provider support false, TF-IDF reports false. | Exact Neon branch/role mapping, runtime Auth/provider values and secret access control are not verified. No inference or saved-report write was performed. The disabled state is not product acceptance. |
-| Render deployment controls | Both services are configured for branch `main`; metadata at 07:31 UTC reports auto-deploy `no` and trigger `off`. | Production latest live deploy event reports trigger `new_commit`; staging latest live deploy trigger is `api`. | Production setting/event mismatch remains unresolved. Verify Dashboard controls and deployment audit trail before relying on auto-deploy semantics. Do not infer configuration from a single deploy event. |
-| GitHub staging controller | Latest observed `main` workflow `.github/workflows/ci.yml` uses the trusted default-branch controller. Commit `06f89d7` added the `readStagingHistory` Bearer-auth contract; PR #268 adds bounded retry diagnostics, local server monitoring, retained logs and explicit fail-closed deployment gates. | The review branch is synchronized through merge commit `14874d339bbb4042172df954f97596080aa303ee`; local Node suite and GET-only staging smoke pass. Latest fully checked PR revision `631b0ef` passed local CI and guard checks. | Hosted staging and preflight were skipped. The PR's `Secretary staging` context failed because `needs-hosted-staging` and exact-head hosted verification were absent; no Render deployment occurred. The hosted CRUD runner still lacks an authenticated Neon Auth session. Last recorded Secretary variables on Nov 20 were false; live values were not re-read. The linked workflow already expressed dependency-success checks alongside `always()`; removing the override is defense in depth. |
-| GitHub production observer | `Production evidence` workflow is manual (`workflow_dispatch`) and read-only with respect to application data. | On `main`, the disabled-provider observer can report identity/health/readiness/disabled state without inference or database writes. | No current observer run was performed. Effective required checks and production-observer environment access scopes are not verified. |
+| Local development | Developer machine; .env is git-ignored | .env.example defaults to development, mock AI and demo Auth. Local DATABASE_URL must target a local or dedicated development database. | Keep hosted credentials out of local files. Repository controls were reviewed; no local secret values were read. |
+| CI | GitHub Actions disposable PostgreSQL and synthetic credentials | CI uses mock AI and runs migrations against the disposable test database. | CI credentials are not production credentials. Workflow source is checked in. |
+| Hosted staging | Render `phishlens-staging`; latest observed live deploy at 07:31 UTC `dep-dc0im3h7lnhs738pncng` on SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`; URL `https://phishlens-staging.onrender.com`. The Nov 20 deploy `dep-dc07s1cipgvc73dh0150` on `811980c` is historical. | Render metadata reports branch `main`, auto-deploy `no`, trigger `off`. `/version`, `/health`, `/ready`, `/model-info` returned HTTP 200 at the refresh. GET-only smokes at 08:15 and about 08:35 passed health/readiness plus anonymous history `401 Bearer`; neither verified PR SHA or authenticated CRUD. | Neon `pr-58-staging` migration `0004_neon_auth_subject` and grants were inspected read-only, but Render's runtime connection target/role is unverified. No authenticated CRUD/write acceptance. |
+| Production | Render `phishlens-api`; latest observed live deploy at 07:31 UTC `dep-dc07rs67bikc73fjgjq0` on SHA `811980c2cbf70d9957146bf329627f0826a018f1`; URL `https://phishlens-api-ocvt.onrender.com`. | Read-only `/version`, `/health`, `/ready`, `/model-info` returned HTTP 200. The November 20 observer run 44812619162 passed exact-SHA/health/readiness for this SHA; it did not test model, Auth, CRUD or extension behavior. | Render metadata at 07:31 reports auto-deploy `no` and trigger `off`; a November 20 record says auto-deploy `checksPass`, and the latest deploy record says `new_commit`. Preserve this unresolved setting/event discrepancy. Analysis was verified disabled Nov 20 but not reread at 07:31. Auth mode and Neon mapping are unverified. |
+| PR #268 CI candidate | Code/test source `83a0df1af1d64048b3b5fa3158f6509e83d71555`; latest recorded fully checked docs-only revision `631b0ef21849e8abe877bb16b4676047f2aca86a`. | CI run 44888140094, workflow lint 44888140104, dependency security 44888140135, deterministic evaluation 44888140114 and CodeQL 136797921015 passed for that source/head. | Hosted staging/preflight were skipped; PR check `Secretary staging` failed because the protected run label/exact-head verification were absent (44888369939). No Render deploy or hosted Auth CRUD. Later docs-only branch merges require their own live checks. |
+| Secretary staging controller | Trusted default-branch controller; PR #257 requires explicit Neon Auth mode and fails closed while Auth acceptance is pending; PR #262 corrects the backend-only staging skip. | At PR #268 check run 44888369939, the controller assessment passed and preview job was skipped; GitHub reports the `Secretary staging` context failed with the missing `needs-hosted-staging`/exact-head verification message. | Protected staging secret values remain private. This did not deploy or write to staging. CRUD still lacks an authenticated Neon Auth session. |
+| Production observer | Scheduled GitHub Production drift workflow | Current run checks source SHA, /health and /ready only; it does not deploy, roll back or test model/provider/Auth/extension behavior. | Workflow secret scopes and alert routing were not reread. No external alert delivery/acknowledgement is evidenced. |
 
-## Read-only Neon details
+## GitHub enforcement snapshot
 
-The connected Neon project is `patient-bird-25428852` (`phishlens`, AWS
-`ap-southeast-1`). The staging branch is `pr-58-staging` and the production
-branch is `production` (`br-orange-sky-b3zzzyqc`); they are separate branches
-and both were reported ready. The staging Auth configuration has trusted origin
-`https://phishlens-staging.onrender.com`; email/password sign-up is enabled and
-email verification is required. The staging database migration revision is
-`0004_neon_auth_subject`.
+The active ruleset #27733591 applies to main and codex/*-live-* and visibly
+requires four contexts: Backend checks, Extension checks, Staging integration
+and Secretary staging. Strict status checking is disabled. The active approval
+ruleset #26782191 requires one approval, stale-review dismissal and thread
+resolution; latest-push approval is disabled. The classic branch-protection API
+returned 403 on Nov 21, so the prior Nov 20 observation of eight required
+contexts and classic settings is historical, not fresh verification. The
+effective combined protection contract remains unresolved.
 
-Read-only SQL under the staging application role showed `public` schema CREATE
-false; `users` SELECT/INSERT true and UPDATE/DELETE false; and
-`analyzed_emails` SELECT/INSERT/UPDATE/DELETE true. These grants and Auth
-settings describe the inspected Neon branch and role. They do not prove that
-Render's private connection setting uses that role or branch. No row contents,
-credential values or SQL writes were used for this check.
+## Neon backup state
 
-## Secret names and safe review
+The Nov 20 read-only check found the production branch unprotected, no scheduled
+snapshot and six-hour history retention. The manual snapshot and isolated
+restore branch from the Nov 20 drill expire Nov 27. The free plan rejected
+production branch protection and does not offer scheduled snapshots. That
+restore matched schema and aggregate counts but did not measure end-to-end RTO
+or RPO.
 
-Repository/workflow configuration references names including `DATABASE_URL`,
-`REPORT_AUTH_MODE`, `NEON_AUTH_BASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`,
-`RENDER_STAGING_API_KEY`, `RENDER_STAGING_SERVICE_ID`, `STAGING_BASE_URL`,
-`SECRETARY_PREVIEW_ENABLED`, `SECRETARY_STAGING_DB_HOST`,
-`SECRETARY_PRODUCTION_DB_HOST`, and `RENDER_OBSERVER_API_KEY`. This list is not
-proof that a secret is present, correct, least-privileged or assigned to the
-intended environment.
+## Configuration verification before GO
 
-Before release, an authorized owner should inspect Render and GitHub settings
-privately and record only: variable/secret name, environment, masked target
-identity, required reviewer/scope, verifier, date, and pass/fail. Confirm the
-Render-to-Neon project, branch, database and role mapping independently for
-both services; verify least privilege and protected-environment review; do not
-paste values into the repository, issue, logs or artifacts. Until those checks
-are recorded, environment identity and secret-control acceptance remains open.
+Verify privately that production and staging map to distinct intended Neon
+branches and least-privilege roles; confirm the effective Auth and AI settings;
+review GitHub environment scopes and required reviewers; and record setting
+names, scope, reviewer/owner, verification time and pass/fail only. Never paste
+secret values into this repository. These items remain open.

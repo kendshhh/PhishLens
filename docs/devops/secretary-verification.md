@@ -27,6 +27,9 @@ hosted verification are required ([check run
 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
 The controller assessment passed but skipped its preview job; no Render deploy
 or CRUD ran. The CRUD step has no authenticated session and remains a blocker.
+These results apply to docs-only revision `631b0ef` and unchanged code/test
+commit `83a0df1`. The later PR #265 reconciliation and closeout merge also
+change documentation only; their current checks must be read from the live PR.
 The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this

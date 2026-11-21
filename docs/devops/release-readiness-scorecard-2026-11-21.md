@@ -1,40 +1,58 @@
-# Release readiness scorecard — 2026-11-21
+# DevOps release-readiness scorecard — 2026-11-21
 
-**Decision: NO-GO. Score: NOT CALCULATED.** This is a delivery/release
-scorecard, not a course grade. No completion percentage is valid until the team
-and instructor approve the area weights and scoring rule. A criterion is a
-full `Pass` only when its required evidence is complete and tied to one reviewed
-candidate; partial evidence remains `Open`.
+**Current release: NO-GO. Estimated DevOps evidence progress: 41/100.**
 
-The seven areas continue the release gates in [issue #153](https://github.com/kendshhh/PhishLens/issues/153).
-Owners listed below are proposed from prior handoffs and must be reconfirmed;
-this document does not assign work by itself.
+This estimate uses the 16 criteria below as equally weighted checklist items:
+PASS = 1, PARTIAL = 0.5, FAIL or NOT VERIFIED = 0. The current evidence has
+13 PARTIAL, 3 FAIL, 0 PASS: 13 × 0.5 ÷ 16 = 40.625%, rounded to 41%.
+This is a transparent progress estimate, not the official CSP221A score. The
+PDF does not provide a complete 100-point weighting scheme for these criteria.
+It does not mean the product is 41% operational or release-ready.
 
-| Area | Pass evidence required | Evidence as of Nov 21 | Status / gap to close |
+This evidence snapshot was captured on November 21, 2026, against GitHub main
+811980c2cbf70d9957146bf329627f0826a018f1 (PR #264), when Render production and
+staging were both deployed to that source SHA. Main later advanced through PR
+#263 to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later Render deployment
+was verified. Scope and checklist links are in
+the [release record](release-record-2026-11-21.md), [environment map](environment-map-2026-11-21.md),
+[demo-day matrix](demo-day-readiness-2026-11-21.md), [metrics](metrics.md),
+[smoke runbook](production-deploy-smoke.md), and
+[recovery drill](recovery-drill-2026-11-20.md).
+
+The score above is a bounded evidence-progress estimate for the 16 criteria
+listed below, not an approved course grade or an assertion of `100%`. PR #268
+adds code/test candidate `83a0df1af1d64048b3b5fa3158f6509e83d71555`; 321 local
+Node tests and GET-only staging smoke passed, and full CI passed on docs-only
+revision `631b0ef21849e8abe877bb16b4676047f2aca86a` (CI 44888140094). Hosted
+staging/preflight remain skipped and the `Secretary staging` PR check failed
+(44888369939). These results do not satisfy authenticated hosted acceptance or
+change the open product/release gates below.
+
+| PDF reference | Criterion | Status | Current evidence and gap |
 |---|---|---|---|
-| 1. Product scope and acceptance ownership | Written team/instructor agreement on the Chrome MV3 release target, acceptance criteria and named owners. | Issue #153 and dated release records align on the extension + Render + Neon scope. | **Open (partial).** Instructor confirmation of the frontend requirement and team approval of final acceptance criteria are not recorded. |
-| 2. Authenticated persistence and isolation | On the chosen package/backend, show sign-in, create/list/read/update/delete, reload persistence, cross-user isolation, failure behavior and cleanup with approved synthetic users. | GET-only staging smoke passed health, readiness and anonymous `401 Bearer` at about 08:35 UTC; 321 local Node tests pass for valid Bearer, wrong challenge, bounded transient history recovery, permanent-status non-retry, endpoint/status diagnostics and seeded-history validation. | **Open (partial).** No authenticated journey has run on the hosted candidate; the hosted CRUD runner still lacks an Auth session; isolation, persistence and cleanup remain unproven. The live smoke did not read or write reports. |
-| 3. AI behavior and release quality | Approved evaluation cohort/provenance/labels/splits, pinned model identity, numeric thresholds, valid output and explanation review; safe provider/spend limits. | Frozen English source-pair TF-IDF v12a evaluation recorded 190/200 phishing recall (95%), 1/999 legitimate false positives (0.1%) and 1,200 valid outputs, accepted only as advisory screening on that cohort. A synthetic diagnostic detected 1/12. Production currently has analysis disabled. | **Open (partial).** Contemporary held-out evaluation, human explanation ratings and an approved broad release threshold are absent; production AI behavior is not enabled or accepted. |
-| 4. Failure handling and recoverability | Compatible application rollback rehearsal and isolated Neon recovery; exact identities, measured end-to-end RTO and recoverable-point age/RPO, alert path and named primary/backup responders. | November 20 isolated restore verified schema and aggregate integrity for a small dataset; the temporary restored branch is distinct from production. | **Open (partial).** One-second provider branch-ready time is not service RTO; RPO is unmeasured; current app/config rollback compatibility, recovery responders and durable backup schedule remain unresolved. |
-| 5. Environment identity and security | Privately verify staging and production Render-to-Neon project/branch/database/role mapping, distinct targets, Auth/provider settings, least privilege, dependency alerts and GitHub secret protections without exposing values. | Read-only Neon inspection confirms separate named staging/production branches, staging Auth origin, migration revision and grants. GitHub reports 15 open Dependabot alerts although observed `main` pins the first patched versions. | **Open (partial).** Reconcile the alert records against the default-branch dependency graph; private Render connection-to-branch mapping and secret scopes/permissions remain unverified. Render deploy trigger/config discrepancy is unresolved. |
-| 6. CI, exact candidate deployment and live behavior | Effective required checks, independent review, one exact source/package/backend/model/Auth tuple, exact-SHA health/provider/feature smoke, browser acceptance, version tag and changelog. | Mainline Bearer-auth fix `06f89d7a0b5b9dec316dfa11f2846767a32086c5` is synchronized into code/test candidate `83a0df1af1d64048b3b5fa3158f6509e83d71555`. Local Node suite (321) and GET-only smoke passed. Latest fully checked PR revision `631b0ef21849e8abe877bb16b4676047f2aca86a` passed CI run 44888140094 plus workflow lint 44888140104, dependency security 44888140135, deterministic evaluation 44888140114 and CodeQL 136797921015. | **Open (partial).** Hosted staging and preflight were skipped. The required `Secretary staging` PR context is failed because `needs-hosted-staging` and exact-head hosted verification are missing (run 44888369939). No Render deployment or hosted Auth CRUD occurred; required-check settings remain unverified, as do the integrated hosted candidate, production observer, release tag and changelog. PR #268 remains blocked pending hosted acceptance and fresh review. |
-| 7. Current documentation, metrics and team records | Keep operations/API/model/release docs linked and current; provide bounded metric samples; retain actual dated team/instructor decisions, attendance, retrospective/Q&A and release records. | DevOps index, release record, environment map, failure evidence, runbook, metrics refresh, closeout prompt and linked project docs are reconciled on the review branch. Historical observations retain dates and sources. | **Open (partial).** Fourteen older references to absent benchmark companion artifacts in three summaries remain an evidence-packaging gap. Actual participant-sourced records, final instructor/team decisions, release tag and changelog are also absent. |
+| p. 3 and p. 49 | One defined real-data product path with working CRUD, backend-owned AI/data and user-facing error states | **FAIL** | Issue #153 states Chrome extension + Render API + Neon and retires the Vercel experiment, but authenticated Auth/CRUD and an accepted extension/backend/model journey are not proven. The last verified production analysis setting was disabled on November 20, but it was not reread in this refresh; no approved production model/provider is evidenced. |
+| pp. 33, 42 | Separate environments and protected secrets | **PARTIAL** | Local, CI, staging and production scopes are documented; no secret values were read. Current Render-to-Neon branch/role mapping, live Auth/provider settings and complete secret access controls are not verified. |
+| pp. 38–41 | PR checks, required gates and branch protection | **PARTIAL** | Current visible ruleset requires four statuses with strict checking off; approval ruleset requires one approval but latest-push approval is off. Classic protection returned 403; a prior eight-context read is stale. PR #268's local code, migration, browser-package, security and evaluation checks passed, but hosted jobs skipped and Secretary staging failed without the protected label. No current failure-blocking PR demonstration. |
+| pp. 39–40, p. 127 | Traceable artifact and same candidate through staging and production | **PARTIAL** | Current main extension and browser-acceptance artifacts are tied to SHA 811980c; production and staging run that backend SHA. The manual staging deploy is not proved as promotion of the identical accepted package, and no approved component manifest exists. |
+| p. 43 | Expand/contract migrations and application rollback compatibility | **PARTIAL** | Disposable PostgreSQL evidence covers migrations through schema 0004 and 11 saved-report CRUD tests from an older backend revision. Current production predecessor/config/schema compatibility is untested. |
+| pp. 44–46 | Current metrics and comparable optimization | **PARTIAL** | Four latest successful main-push CI runs: median 1.30 min, nearest-rank p90 1.90 min, range 1.10–1.90 min. Twenty latest production deploys: median 74.15 sec, p90 93.14 sec, range 60.30–408.03 sec. No comparable before/after end-to-end or user-flow result exists. |
+| p. 47, pp. 91–104 | AI evaluation in CI with an enforced release threshold | **PARTIAL** | Deterministic AI evaluation passes on main, but the cohort is synthetic, not held out, and no approved numeric model-quality threshold exists. The visible four-context ruleset does not include the AI evaluation context. |
+| pp. 92–104 | Representative model quality and release decision | **FAIL** | The 40-case result remains 65% accuracy, 18.75% phishing recall (3/16), 6.25% legitimate false positives (1/16), with all eight spam cases labelled legitimate. This is not representative holdout evidence or a quality pass. |
+| p. 115 | Input, rate, quota, output and spend controls | **PARTIAL** | Input/output bounds, per-request cost cap and evaluation-run limits exist. A shared durable production daily/monthly budget, per-user quota/rate control and cross-instance enforcement are not evidenced. |
+| pp. 106, 118–123 | Observability, SLOs and tested alert response | **PARTIAL** | Request IDs and structured allowlisted metadata exist. Scheduled drift checks source SHA, health and readiness. No approved extension-journey SLO, tested alert delivery/acknowledgement or current hosted-log evidence. |
+| pp. 127–130 | Approved versioned release, rollout control, kill switch and changelog | **FAIL** | Issue #153 remains NO-GO, yet Render auto-deploys main when checks pass. No GitHub Release or v1.0.0 tag exists; a disabled-aware smoke is available but has not been shown as automatic post-deploy release acceptance. |
+| p. 131 | Current-release application rollback rehearsal | **PARTIAL** | Runbook and an older staging drill exist. No exact compatible production rollback SHA/config/schema combination has been identified and rehearsed. |
+| p. 132 | Exact-SHA post-deploy smoke and monitoring | **PARTIAL** | Main now supports a disabled-aware zero-inference manual smoke. The scheduled drift check is limited to SHA/health/readiness; no exact-SHA feature smoke runs automatically after each production deploy. |
+| pp. 48, 133 | Incident detection, escalation and recovery | **PARTIAL** | Incident/runbook procedures and a primary release owner are documented. Backup responder, alert recipient/channel, tested delivery and measured response are not evidenced. |
+| p. 135 | Backups, restore and measured RTO/RPO | **PARTIAL** | Nov 20 manual snapshot restored to an isolated Neon branch; schema and aggregate counts matched. Free plan blocks production branch protection and scheduled snapshots; full-service RTO/RPO remain unmeasured. |
+| pp. 136, 140 | Current handover and readiness evidence | **PARTIAL** | Current main/deploy identities, workflow gates and open checklist are documented. Team explanation and full product/model/auth/recovery evidence remain incomplete; the ten-question matrix is not all PASS. |
 
-## Scoring rules to approve
+## Release stop conditions
 
-1. The team and instructor approve area weights that sum to 100% and whether
-   each area is binary or permits partial credit. Record the approvers and date.
-2. Each criterion links a durable artifact or system record and names its exact
-   candidate SHA/package/model/Auth/database identity. A plan, local patch,
-   green unrelated check, skipped job, or old snapshot does not pass it.
-3. Only then calculate the weighted result as passed weight divided by total
-   approved weight. Identify the reviewer and evidence cutoff date.
-4. Do not call the result `100%` unless every approved criterion passes. Keep
-   the release **NO-GO** while any required safety, identity, Auth/isolation,
-   quality, deployment or recovery gate is open, even if a future score is high.
-
-At this audit cutoff, **0 of 7 areas meet their complete pass definition**; all
-seven have partial artifacts or decisions still pending. This count is not a
-percentage. See the [current release record](release-record-2026-11-21.md),
-[environment map](environment-map-2026-11-21.md), and
-[evidence index](README.md).
+Keep NO-GO until authenticated staging CRUD/isolation passes on the exact
+extension/backend pair; a reviewed model cohort meets approved thresholds;
+current GitHub required-status and review behavior is demonstrated; production
+promotion and exact-SHA smoke are gated; current application rollback and
+isolated database recovery are rehearsed; and alert ownership, RTO/RPO and
+handover evidence are complete. Do not count a successful process-health check
+or a skipped job as product acceptance.

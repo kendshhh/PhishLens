@@ -24,17 +24,21 @@ saved-report history. Latest code/test commit is
 branch, and a fresh GET-only smoke passed against live staging at about 08:35
 UTC, including the expected anonymous `401 Bearer` boundary. These local checks
 do not establish the deployed PR revision or authenticated CRUD. The latest
-fully checked PR revision was `631b0ef21849e8abe877bb16b4676047f2aca86a`, a
-documentation-only update preserving code/test commit
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. CI run
-[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094)
-and workflow lint, dependency security, deterministic evaluation and CodeQL all
-passed. Hosted staging and preflight were skipped. GitHub reports the required
-`Secretary staging` context as failed because `needs-hosted-staging` and
-exact-head hosted verification are missing ([run
+recorded full CI for this code/test source ran on docs-only PR revision
+`631b0ef21849e8abe877bb16b4676047f2aca86a`: CI run
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
+passed. Hosted staging and preflight were skipped. GitHub reported the required
+`Secretary staging` context failed because `needs-hosted-staging` and exact-head
+hosted verification were missing ([run
 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
-no Render deploy or authenticated CRUD occurred. The PR remains blocked and
-needs fresh review after comments are resolved.
+no Render deploy or authenticated CRUD occurred. Subsequent PR #265 and closeout
+commits update documentation only; consult live PR checks for their current
+workflow result. PR #268 remains blocked pending hosted acceptance and fresh
+review.
 
 Render currently reports auto-deploy off for both services, while production's
 latest deploy record says `new_commit`; resolve that configuration/evidence

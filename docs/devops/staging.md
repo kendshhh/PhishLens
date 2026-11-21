@@ -22,7 +22,11 @@
 > No Render deployment occurred. These checks do not implement or
 > prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
 > on the observed `main` lacks a Neon Auth session, so the full staging job
-> remains open. Track details in the
+> remains open. The checks apply to docs-only revision `631b0ef` and unchanged
+> code/test commit `83a0df1`. The later PR #265 reconciliation and closeout
+> merge also change documentation only; read their current results from the live
+> PR checks.
+> Track details in the
 > [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md), and
 > do not label the staging gate passed until authenticated create/list/read/
 > update/delete, ownership/isolation, persistence, and cleanup pass on one exact
