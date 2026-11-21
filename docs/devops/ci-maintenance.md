@@ -51,6 +51,12 @@ requires this context. The obsolete `DEPENDENCY_REVIEW_ENABLED` variable was
 removed; neither current job uses `warn-only` or an opt-in gate. Check the Actions
 result on every PR rather than treating a skipped job as a clean scan.
 
+On 2026-11-21, the repository's dependency graph and vulnerability alerts were
+enabled after Dependency Review reported that the graph was unavailable. The
+rerun of PR #268's Dependency graph review passed. GitHub reported 15 existing
+Dependabot alerts on the default branch (12 high, 3 moderate); these are tracked
+in [the dependency audit record](dependency-audits.md) and were not dismissed.
+
 ## Validation and review
 
 - Local backend lint and tests must pass before publishing.
