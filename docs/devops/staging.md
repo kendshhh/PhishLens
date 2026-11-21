@@ -11,13 +11,14 @@
 > monitors server exit and preserves logs, and hosted deployment requires
 > successful staging, hosted preflight and backend results. The synchronized
 > branch passed `npm test` (321 tests) and a GET-only live smoke at about 08:35
-> UTC. PR head `bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
-> [44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+> UTC. Latest fully checked PR revision was docs-only commit
+> `631b0ef21849e8abe877bb16b4676047f2aca86a`; it passed CI run
+> [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
 > workflow lint, dependency security, deterministic evaluation and CodeQL.
 > Hosted staging and preflight were skipped. The PR's `Secretary staging`
 > context is failed because the `needs-hosted-staging` label and exact-head
 > verification are missing ([run
-> 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+> 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
 > No Render deployment occurred. These checks do not implement or
 > prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
 > on the observed `main` lacks a Neon Auth session, so the full staging job

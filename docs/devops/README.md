@@ -12,15 +12,17 @@ Bearer-aware history fix. The review branch synchronizes it with the bounded
 retry, diagnostics, server-liveness and fail-closed deployment changes in merge
 commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. PR head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed [CI run
-44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+and a GET-only live staging smoke passed at about 08:35 UTC. The latest fully
+checked PR revision was `631b0ef21849e8abe877bb16b4676047f2aca86a`, a
+documentation-only update preserving code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed [CI run
+44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
 including backend, extension, migration preflight and local staging integration.
 Workflow lint, dependency security, deterministic evaluation and CodeQL also
 passed. Hosted staging and preflight were skipped. The PR's required Secretary
 staging context is failed because the `needs-hosted-staging` label and exact-head
 hosted verification are absent; see [check run
-44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370).
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939).
 No Render deployment occurred and hosted Auth CRUD is not verified.
 
 ## Current source of truth

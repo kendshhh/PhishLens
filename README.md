@@ -23,15 +23,16 @@ saved-report history. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`. `npm test` passed all 321 Node tests on the synchronized
 branch, and a fresh GET-only smoke passed against live staging at about 08:35
 UTC, including the expected anonymous `401 Bearer` boundary. These local checks
-do not establish the deployed PR revision or authenticated CRUD. PR head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
-[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
-including backend, extension, migration preflight and local staging integration;
-workflow lint, dependency security, deterministic evaluation and CodeQL also
+do not establish the deployed PR revision or authenticated CRUD. The latest
+fully checked PR revision was `631b0ef21849e8abe877bb16b4676047f2aca86a`, a
+documentation-only update preserving code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. CI run
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094)
+and workflow lint, dependency security, deterministic evaluation and CodeQL all
 passed. Hosted staging and preflight were skipped. GitHub reports the required
 `Secretary staging` context as failed because `needs-hosted-staging` and
 exact-head hosted verification are missing ([run
-44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370));
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
 no Render deploy or authenticated CRUD occurred. The PR remains blocked and
 needs fresh review after comments are resolved.
 

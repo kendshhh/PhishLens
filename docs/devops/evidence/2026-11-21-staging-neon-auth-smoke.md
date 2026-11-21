@@ -299,3 +299,26 @@ CRUD; no Render deploy or staging write occurred. The checks cover the code/test
 commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` unchanged in this docs-only
 commit. Keep **NO-GO** and use the passing automated checks only as evidence for
 their stated local/CI scope.
+
+## Follow-up on current PR revision — 2026-11-21
+
+The latest completed CI checks on PR #268 ran on docs-only revision
+`631b0ef21849e8abe877bb16b4676047f2aca86a`, preserving code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. CI run
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114),
+and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
+passed. Local staging integration passed its history-auth smoke, API integration,
+log retention and deployment-guard tests.
+
+Hosted staging and preflight remained skipped. The required `Secretary staging`
+PR context remained failed with the `needs-hosted-staging`/exact-head verification
+message ([check run
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
+its assessment succeeded, but the preview was skipped. No Render deployment or
+hosted CRUD/write was run. At this evidence cutoff the PR was
+`BLOCKED`/`CHANGES_REQUESTED` and not ready to merge. The next pushed revision
+is a docs-only follow-up that leaves tested application code unchanged; read its
+own checks from the live PR. Keep **NO-GO**.

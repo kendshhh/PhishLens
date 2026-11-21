@@ -19,13 +19,14 @@ bounded smoke retries, failure summaries, local server-exit monitoring and log
 retention. Hosted deployment requires
 successful staging, hosted preflight and backend results at both job and deploy
 step level. The synchronized candidate passed 321 local Node tests and the
-GET-only smoke. PR head `bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed
-[CI run 44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166)
+GET-only smoke. The latest fully checked PR revision was docs-only commit
+`631b0ef21849e8abe877bb16b4676047f2aca86a`; it passed [CI run
+44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094)
 and its workflow lint, dependency security, deterministic evaluation and CodeQL
 checks. Hosted preflight and deployment were skipped. GitHub reports the
 required `Secretary staging` context as failed because the
 `needs-hosted-staging` label and exact-head hosted verification are absent
-([run 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+([run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
 The hosted CRUD runner remains unauthenticated, required-check settings are not
 reverified, and the effective production deploy trigger remains unresolved. Do
 not merge, promote, or claim release readiness from these changes alone.

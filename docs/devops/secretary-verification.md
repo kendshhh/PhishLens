@@ -14,17 +14,17 @@ bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
 conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
 321 Node tests and a fresh GET-only staging smoke
-passed at about 08:35 UTC. PR head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
-[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
-workflow lint [44887660108](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
-dependency security [44887660090](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
-deterministic evaluation [44887660089](https://github.com/kendshhh/PhishLens/actions/runs/44887660089),
-and CodeQL [136796452132](https://github.com/kendshhh/PhishLens/runs/136796452132).
+passed at about 08:35 UTC. The latest fully checked PR revision was docs-only
+commit `631b0ef21849e8abe877bb16b4676047f2aca86a`; it passed CI run
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114),
+and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015).
 Hosted staging and preflight were skipped. The PR's `Secretary staging`
 context is **failed** with the message that `needs-hosted-staging` and exact-head
 hosted verification are required ([check run
-44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
 The controller assessment passed but skipped its preview job; no Render deploy
 or CRUD ran. The CRUD step has no authenticated session and remains a blocker.
 The last recorded Secretary preview

@@ -46,18 +46,20 @@ removes the hosted job's `always()` override, requires all three dependency
 results to be `success`, monitors local server startup, and retains its log
 artifact. The synchronized branch's latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed `npm test` (321 tests)
-and a fresh GET-only live staging smoke at about 08:35 UTC. PR head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed [CI run
-44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+and a fresh GET-only live staging smoke at about 08:35 UTC. The latest fully
+checked PR revision was `631b0ef21849e8abe877bb16b4676047f2aca86a`, a
+documentation-only update preserving code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed [CI run
+44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
 including backend, extension, migration preflight and local staging integration;
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
-[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
-[deterministic evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44887660089)
-and [CodeQL](https://github.com/kendshhh/PhishLens/runs/136796452132)
-also passed. Hosted staging and preflight were skipped. The PR's required
+[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+[deterministic evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+and [CodeQL](https://github.com/kendshhh/PhishLens/runs/136797921015) also passed.
+Hosted staging and preflight were skipped. The PR's required
 `Secretary staging` context is failed because `needs-hosted-staging` and
 exact-head hosted verification are missing; see
-[check run 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370).
+[check run 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939).
 No Render deployment occurred. Authenticated history/CRUD, persistence,
 isolation and cleanup remain open, and the PR is not merge-ready.
 
