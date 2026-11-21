@@ -132,15 +132,22 @@ def checkout_identity() -> tuple[str | None, bool | None]:
 
 
 # Keep identity evidence alongside the ZIP, outside the installable package.
-# GITHUB_SHA is the tested merge revision on PRs; SOURCE_COMMIT is the PR head.
+# When an explicit PR-head checkout is used, set TESTED_COMMIT to that checkout;
+# GITHUB_SHA otherwise identifies the workflow event's synthetic merge commit.
 # An enclosing repository or missing/untracked inputs cannot establish a clean build.
 local_revision, input_changes = checkout_identity()
+explicit_tested_commit = os.getenv("TESTED_COMMIT")
+if explicit_tested_commit and explicit_tested_commit != local_revision:
+    raise ValueError("Explicit tested commit does not match the package checkout")
+explicit_source_commit = os.getenv("SOURCE_COMMIT")
+if explicit_tested_commit and explicit_source_commit and explicit_source_commit != local_revision:
+    raise ValueError("Explicit source commit does not match the package checkout")
 with archive.open("rb") as stream:
     archive_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
 evidence = {
     "recorded_at": dt.datetime.now(dt.UTC).isoformat(),
     "source_commit": os.getenv("SOURCE_COMMIT") or local_revision,
-    "tested_commit": os.getenv("GITHUB_SHA") or local_revision,
+    "tested_commit": explicit_tested_commit or os.getenv("GITHUB_SHA") or local_revision,
     "runtime_or_packaging_changes": input_changes,
     "extension_version": json.loads((EXTENSION / "manifest.json").read_text())["version"],
     "environment": "production",
