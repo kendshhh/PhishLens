@@ -30,6 +30,9 @@ http://127.0.0.1:8766/account-preview. Use fictional data only.
   the email filled in; the user then signs in with their password. Verification
   never signs in by itself: if the provider starts a session on verification, the
   extension ends it (agreed flow: Sign up → Verify → Verified → Sign in).
+  If the account service cannot confirm that sign-out (after one retry), the panel
+  does not report plain success: it shows an alert that the session may still exist
+  and asks the user to sign out from Account if they appear signed in on reopening.
 - Account headings scroll below the sticky navigation when changing screens.
   Browser checks assert the heading is unobscured at 380px and 320px popup widths.
 - Closing or leaving a form clears password/OTP fields. Resend checks that the email

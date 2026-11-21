@@ -100,10 +100,15 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     resend: input => adapter.resend(input),
     recover: input => adapter.recover(input),
     resetPassword: input => adapter.resetPassword(input),
+    // Resolves true only when the account service confirmed sign-out. Local access is
+    // removed either way; callers that must know the provider session ended check the result.
     async signOut() {
       await clear();
-      try { await adapter.signOut(); }
-      catch { publish('signed-out', 'Signed out on this device. The account service could not confirm sign-out.'); }
+      try { await adapter.signOut(); return true; }
+      catch {
+        publish('signed-out', 'Signed out on this device. The account service could not confirm sign-out.');
+        return false;
+      }
     },
     dispose() { disposed = true; ++revision; cancel(timer); listeners.clear(); session = null; client = null; }
   };

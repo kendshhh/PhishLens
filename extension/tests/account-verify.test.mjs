@@ -11,7 +11,7 @@ class ClassList {
 class Element {
   constructor(classes = '') { this.classList = new ClassList(classes); this.textContent = ''; this.value = ''; this.listeners = {}; }
   addEventListener(type, fn) { this.listeners[type] = fn; }
-  setAttribute() {}
+  setAttribute(name, value) { (this.attributes ??= {})[name] = value; }
   querySelectorAll() { return []; }
   focus() {}
   scrollIntoView() {}
@@ -70,7 +70,7 @@ for (const [label, providerSignsIn] of [['without a session', false], ['even whe
     let signedOut = 0;
     const ui = await render(async () => true, {
       verifyEmail: async () => providerSignsIn,
-      signOut: async () => { signedOut += 1; }
+      signOut: async () => { signedOut += 1; return true; }
     });
     await ui.submitVerify(' casey@example.test ', '123456');
     assert.deepEqual(ui.shown(), ['sign-in']);
@@ -79,3 +79,30 @@ for (const [label, providerSignsIn] of [['without a session', false], ['even whe
     assert.equal(signedOut, providerSignsIn ? 1 : 0);
   });
 }
+
+test('if ending the provider session fails, verification is not reported as a plain success', async () => {
+  let attempts = 0;
+  const ui = await render(async () => true, {
+    verifyEmail: async () => true,
+    signOut: async () => { attempts += 1; return false; }
+  });
+  await ui.submitVerify('casey@example.test', '123456');
+  assert.equal(attempts, 2, 'retries sign-out once');
+  assert.deepEqual(ui.shown(), ['sign-in']);
+  const status = ui.$('account-status');
+  assert.doesNotMatch(status.textContent, /verified successfully/);
+  assert.match(status.textContent, /could not end the session/);
+  assert.equal(status.attributes.role, 'alert');
+});
+
+test('a sign-out that succeeds on the retry still reports success', async () => {
+  let attempts = 0;
+  const ui = await render(async () => true, {
+    verifyEmail: async () => true,
+    signOut: async () => ++attempts === 2
+  });
+  await ui.submitVerify('casey@example.test', '123456');
+  assert.equal(attempts, 2);
+  assert.equal(ui.$('account-status').textContent, 'Email verified successfully. Sign in with your email and password.');
+  assert.equal(ui.$('account-status').attributes.role, 'status');
+});

@@ -79,10 +79,15 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     // Agreed flow: Sign up → Verify → "verified" → Sign in → signed in. Verification and
     // sign-in stay separate steps, so if the provider starts a session on verification,
     // end it and still ask for the password.
-    if (await accounts.verifyEmail({ email, code: $('verify-code').value.trim() })) await accounts.signOut();
+    const startedSession = await accounts.verifyEmail({ email, code: $('verify-code').value.trim() });
+    // Retry once; if the provider session still can't be ended, say so instead of
+    // reporting success, because reopening PhishLens could restore that session.
+    const ended = !startedSession || await accounts.signOut() || await accounts.signOut();
     $('account-email').value = email;
     screen('sign-in');
-    message('Email verified successfully. Sign in with your email and password.');
+    if (ended) message('Email verified successfully. Sign in with your email and password.');
+    else message('Your email is verified, but PhishLens could not end the session the account service started. ' +
+      'If PhishLens shows you as signed in when you reopen it, sign out from Account, then sign in with your password.', true);
   });
   $('resend-code').addEventListener('click', () => {
     if (!$('verify-email').reportValidity()) return;
