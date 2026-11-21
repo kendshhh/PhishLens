@@ -14,3 +14,10 @@ def test_health():
     }
 
     assert response.headers["content-type"].startswith("application/json")
+
+
+def test_health_returns_json_content_type():
+    with TestClient(app) as client:
+        response = client.get("/health")
+
+    assert response.headers["content-type"].startswith("application/json")
