@@ -57,6 +57,25 @@ still says `new_commit`, so the mismatch persists. A direct workstation HTTP
 probe timed out; control-plane Live status does not substitute for endpoint
 health verification.
 
+## GitHub dependency-alert reconciliation
+
+At 2026-11-21 07:46 UTC, a read-only GitHub Dependabot API query returned 15
+open alerts: 12 high alerts for `pyasn1` (IDs 30-37 and 39-42; four GHSA
+records across the root, backend runtime, and backend development requirements)
+and three medium alerts for `opentelemetry-api` (IDs 43-45). The advisories
+name `pyasn1` versions through 0.6.4 and `opentelemetry-api` versions through
+1.45.1 as vulnerable; their first patched versions are 0.6.5 and 1.45.2.
+
+The observed `origin/main` at `811980c2cbf70d9957146bf329627f0826a018f1`
+already pins those first patched versions in the three requirements manifests.
+Sample alert records 42 and 45 were last updated on their creation dates
+(October 31 and November 14 respectively). The open API state conflicts with
+the current pins; it does not prove that the current resolved environment is
+vulnerable, and it is not proof that GitHub has closed or rescanned the alerts.
+Reconcile the default-branch dependency graph and retain a fresh dependency
+review result before marking this security gate complete. The alert list is
+available at [GitHub Dependabot alerts](https://github.com/kendshhh/PhishLens/security/dependabot).
+
 ## Earlier repository correction
 
 `scripts/staging_smoke.mjs` now makes a direct anonymous GET of `/api/analyses`
