@@ -274,3 +274,28 @@ snapshot. It does not establish that the original user-supplied failing run had
 the same cause, that Render is running the PR revision, or that authenticated
 history/CRUD, persistence, isolation, cleanup, effective branch protection, or
 production acceptance has passed. Keep the release **NO-GO**.
+
+## Documentation-head verification — 2026-11-21
+
+The documentation refresh was pushed as commit
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`. CI run
+[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166)
+completed successfully on that exact PR head. Backend, extension, migration
+source preflight and local staging integration passed; the local staging job
+passed its history-auth smoke and server/deployment-guard tests. Workflow lint
+[44887660108](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
+dependency security [44887660090](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
+deterministic evaluation [44887660089](https://github.com/kendshhh/PhishLens/actions/runs/44887660089),
+and CodeQL [136796452132](https://github.com/kendshhh/PhishLens/runs/136796452132)
+passed. The Secretary report and generic label checks passed as well.
+
+Hosted preflight and hosted staging were skipped again. The PR's
+`Secretary staging` context remains failed because the protected-run label and
+exact-head hosted verification are missing ([check run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+Its assessment job succeeded while the preview job was skipped. This confirms
+the documentation-only push did not resolve hosted staging or authenticated
+CRUD; no Render deploy or staging write occurred. The checks cover the code/test
+commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` unchanged in this docs-only
+commit. Keep **NO-GO** and use the passing automated checks only as evidence for
+their stated local/CI scope.

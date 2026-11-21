@@ -47,17 +47,17 @@ results to be `success`, monitors local server startup, and retains its log
 artifact. The synchronized branch's latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed `npm test` (321 tests)
 and a fresh GET-only live staging smoke at about 08:35 UTC. PR head
-`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed [CI run
-44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192),
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed [CI run
+44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
 including backend, extension, migration preflight and local staging integration;
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44886742281),
-[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44886742188),
-[deterministic evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44886742189)
-and [CodeQL](https://github.com/kendshhh/PhishLens/actions/runs/44886738976)
+[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
+[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
+[deterministic evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44887660089)
+and [CodeQL](https://github.com/kendshhh/PhishLens/runs/136796452132)
 also passed. Hosted staging and preflight were skipped. The PR's required
 `Secretary staging` context is failed because `needs-hosted-staging` and
 exact-head hosted verification are missing; see
-[check run 44886970872](https://github.com/kendshhh/PhishLens/actions/runs/44886970872).
+[check run 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370).
 No Render deployment occurred. Authenticated history/CRUD, persistence,
 isolation and cleanup remain open, and the PR is not merge-ready.
 

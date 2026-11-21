@@ -24,15 +24,16 @@ saved-report history. Latest code/test commit is
 branch, and a fresh GET-only smoke passed against live staging at about 08:35
 UTC, including the expected anonymous `401 Bearer` boundary. These local checks
 do not establish the deployed PR revision or authenticated CRUD. PR head
-`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed CI run
-[44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192),
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
+[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
 including backend, extension, migration preflight and local staging integration;
 workflow lint, dependency security, deterministic evaluation and CodeQL also
 passed. Hosted staging and preflight were skipped. GitHub reports the required
 `Secretary staging` context as failed because `needs-hosted-staging` and
-exact-head hosted verification are missing; no Render deploy or authenticated
-CRUD occurred. The PR remains blocked and needs fresh review after comments
-are resolved.
+exact-head hosted verification are missing ([run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370));
+no Render deploy or authenticated CRUD occurred. The PR remains blocked and
+needs fresh review after comments are resolved.
 
 Render currently reports auto-deploy off for both services, while production's
 latest deploy record says `new_commit`; resolve that configuration/evidence
