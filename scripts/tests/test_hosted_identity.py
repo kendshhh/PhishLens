@@ -259,6 +259,21 @@ class HostedIdentityTests(unittest.TestCase):
 
     def test_hosted_staging_rechecks_current_head_before_deployment(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        extension_start = workflow.index("  extension:\n")
+        extension_end = workflow.index("  migration-source-preflight:\n", extension_start)
+        extension_job = workflow[extension_start:extension_end]
+        browser_test_start = extension_job.index("      - name: Test packaged extension in isolated Chromium")
+        browser_upload_start = extension_job.index("      - name: Upload browser acceptance evidence", browser_test_start)
+        browser_upload_end = extension_job.index("      - name: Upload extension package", browser_upload_start)
+        browser_upload = extension_job[browser_upload_start:browser_upload_end]
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", extension_job)
+        self.assertEqual(
+            extension_job.count("SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}"),
+            3,
+        )
+        self.assertIn("Require browser acceptance report and evidence", extension_job)
+        self.assertIn("if-no-files-found: error", browser_upload)
+
         hosted_start = workflow.index("  hosted-staging:\n")
         hosted_job = workflow[hosted_start:]
         preflight_marker = "      - name: Recheck PR head immediately before deployment"
