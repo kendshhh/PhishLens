@@ -32,14 +32,22 @@
 > do not label the staging gate passed until authenticated create/list/read/
 > update/delete, ownership/isolation, persistence, and cleanup pass on one exact
 > package/backend pair.
-> On the latest observed PR head `a151585ff92d55f21e0364e9838287a9cf04a68d`
-> at 11:08 UTC, `Extension checks` failed at the keyboard focus assertion in
+> At 11:08 UTC, PR head `a151585ff92d55f21e0364e9838287a9cf04a68d` failed
+> `Extension checks` at the keyboard focus assertion in
 > `scripts/browser_acceptance.mjs:700` ([CI 44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076)).
 > Staging integration and hosted preflight/deployment were skipped. Required
 > `Secretary staging` failed because the request label and exact-head hosted
 > verification were absent ([run 44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167)).
 > No Render deployment or authenticated CRUD occurred. The 10:14 snapshot
 > below is historical for the earlier head.
+> On docs-only head `dffdc4c29338142f458350b51c8ce69e0f36e988` at 11:21 UTC,
+> Backend, Extension, migration preflight and local Staging integration passed
+> in [CI 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208).
+> Hosted staging preflight/deployment were skipped. Required `Secretary
+> staging` failed because the request label and exact-head hosted verification
+> were absent ([run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
+> No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+> The docs-only sync after this snapshot needs its own checks.
 > On PR head `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` at 10:14 UTC, Backend,
 > Extension, migration preflight, Staging integration, hosted preflight, workflow
 > lint, dependency security, Dependency graph review and deterministic

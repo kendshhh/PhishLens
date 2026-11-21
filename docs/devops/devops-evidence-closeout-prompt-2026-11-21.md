@@ -204,6 +204,22 @@ while later CI run 44889931821 passed on merged main `95975cd`. Treat the
 recurrence as unresolved; compare the exact browser and focus evidence before
 calling it flaky or changing the assertion.
 
+### Latest completed workflow snapshot — 2026-11-21 11:21 UTC
+
+Docs-only head `dffdc4c29338142f458350b51c8ce69e0f36e988` passed Backend,
+Extension, migration preflight, Staging integration, workflow lint, dependency
+security/graph review, deterministic evaluation and the Secretary report (CI
+[44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208),
+[workflow lint 44898467185](https://github.com/kendshhh/PhishLens/actions/runs/44898467185),
+[dependency 44898467124](https://github.com/kendshhh/PhishLens/actions/runs/44898467124),
+[evaluation 44898467190](https://github.com/kendshhh/PhishLens/actions/runs/44898467190),
+[Secretary report 44898465856](https://github.com/kendshhh/PhishLens/actions/runs/44898465856)).
+Hosted preflight/deployment were skipped. Required `Secretary staging` failed
+because the `needs-hosted-staging` label and exact-head hosted verification
+were absent ([run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
+No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+A docs-only follow-up after this snapshot requires its own exact-head checks.
+
 ## Required working method
 
 ### 1. Establish the source of truth

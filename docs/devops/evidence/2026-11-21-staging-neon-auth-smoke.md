@@ -452,3 +452,23 @@ removed to preserve the read-only staging boundary. No Render deployment,
 authenticated CRUD, or current PR CodeQL result was observed. PR #268 still
 targets the merged PR #265 branch. Investigate the assertion, retarget to main,
 and obtain fresh exact-head CI before requesting authorized hosted acceptance.
+
+## Latest completed workflow snapshot — 2026-11-21 11:21 UTC
+
+The documentation follow-up was pushed as head
+`dffdc4c29338142f458350b51c8ce69e0f36e988`. Backend, Extension, migration
+source preflight and Staging integration passed in [CI 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208).
+Workflow lint [44898467185](https://github.com/kendshhh/PhishLens/actions/runs/44898467185),
+dependency security and graph review [44898467124](https://github.com/kendshhh/PhishLens/actions/runs/44898467124),
+deterministic evaluation [44898467190](https://github.com/kendshhh/PhishLens/actions/runs/44898467190),
+and the Secretary report [44898465856](https://github.com/kendshhh/PhishLens/actions/runs/44898465856)
+passed. The keyboard focus assertion that failed on `a151585` did not recur
+here, but its root cause remains undiagnosed; an older failure on `06f89d7`
+and a passing merged-main run also exist.
+
+Hosted staging preflight and Hosted staging were skipped. Required
+`Secretary staging` failed because the request label and exact-head hosted
+verification were absent ([run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
+No current PR CodeQL result, Render deployment or authenticated CRUD was
+observed. The docs-only sync after this snapshot needs its own checks. PR #268
+still targets the merged PR #265 branch and must be retargeted before merge.

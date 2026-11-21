@@ -103,6 +103,24 @@ Render deployment or authenticated hosted CRUD was run. PR #268 remains open,
 targets the merged PR #265 branch, and requires base retargeting and fresh
 checks after any follow-up commit.
 
+The next docs-only head, `dffdc4c29338142f458350b51c8ce69e0f36e988`, was
+checked at 11:21 UTC. Backend, Extension, migration preflight, Staging
+integration, workflow lint, dependency security and graph review, deterministic
+evaluation, and the Secretary report passed ([CI
+44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208),
+[workflow lint 44898467185](https://github.com/kendshhh/PhishLens/actions/runs/44898467185),
+[dependency checks 44898467124](https://github.com/kendshhh/PhishLens/actions/runs/44898467124),
+[evaluation 44898467190](https://github.com/kendshhh/PhishLens/actions/runs/44898467190),
+[Secretary report 44898465856](https://github.com/kendshhh/PhishLens/actions/runs/44898465856)).
+The keyboard focus assertion that failed on `a151585` passed on this follow-up
+head; its root cause remains unknown. Hosted preflight and Hosted staging were
+skipped. Required `Secretary staging` failed in
+[run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)
+because the request label and exact-head hosted verification were absent. No
+current PR CodeQL result, Render deployment or authenticated hosted CRUD was
+observed. This is the latest completed workflow snapshot before the current
+docs-only follow-up; its new head needs its own exact-head checks.
+
 See the [dated staging evidence](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
 for timestamps and scope.
 

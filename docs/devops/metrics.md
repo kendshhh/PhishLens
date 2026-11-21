@@ -59,6 +59,9 @@ passed. Staging integration and hosted checks were skipped, and required
 No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 These workflow outcomes are not performance samples.
 
+The latest completed PR-head workflow snapshot was docs-only SHA `dffdc4c`
+([CI 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208)): Backend, Extension, migration preflight and Staging integration passed. Hosted staging/preflight were skipped; required `Secretary staging` failed in [44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685) because the hosted request label and exact-head verification were absent. The docs-only sync after that snapshot needs separate checks. No Render deploy or authenticated CRUD occurred; this status sample is not a performance measurement.
+
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy
 is unresolved. See the [current environment map](environment-map-2026-11-21.md)
