@@ -27,10 +27,12 @@ from backend.app.observability import (
     set_ai_observation,
 )
 from backend.app.routers.history import router as history_router
+from backend.app.routers.neon_auth import router as neon_auth_router
 from backend.core.config import PROJECT_ROOT, ai_analysis_enabled, get_ai_config
 
 app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
+app.include_router(neon_auth_router)
 
 
 @app.middleware("http")

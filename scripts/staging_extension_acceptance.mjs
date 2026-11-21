@@ -98,7 +98,7 @@ async function verifyPreflight() {
 
   const extensionOrigin = `chrome-extension://${packageEvidence.chrome_extension_id}`;
   assert.equal(required('STAGING_AUTH_TRUSTED_CHROME_ORIGIN'), extensionOrigin,
-    'The staging Neon Auth trusted-origin setting must match this exact package ID');
+    'The staging Auth proxy origin must match this exact package ID');
   assert.equal(required('STAGING_NEON_BRANCH_KIND'), 'schema-only');
   assert.equal(process.env.STAGING_NEON_PARENT_ID?.trim() || '', '',
     'The staging Neon branch must be an independent root');
@@ -151,7 +151,7 @@ async function verifyPreflight() {
   };
   evidence.auth = {
     mode: 'neon-auth', enabled: true, branch_id: branchId,
-    trusted_chrome_origin: extensionOrigin,
+    proxy_extension_origin: extensionOrigin,
   };
   assert.match(required('STAGING_MIGRATION_REVISION'), /^[A-Za-z0-9_]+$/);
   evidence.ai_acceptance = modelApproval || { status: 'blocked', reason_code: modelApprovalProblem };
