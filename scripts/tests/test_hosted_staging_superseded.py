@@ -8,14 +8,15 @@ ROOT = Path(__file__).resolve().parents[2]
 class HostedStagingSupersededTests(unittest.TestCase):
     def test_changed_pr_head_skips_stale_evidence_without_failing_ci(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        start = workflow.index("      - name: Verify deployed merge identity and package staging assets")
+        start = workflow.index("      - name: Verify deployed PR-head identity and package staging assets")
         end = workflow.index("      - name: Preserve hosted staging evidence and extension", start)
         finalize = workflow[start:end]
         artifact = workflow[end:]
 
         self.assertIn("id: staging-finalize", finalize)
         self.assertIn("def superseded():", finalize)
-        self.assertIn("not current.get('draft', False)", finalize)
+        self.assertIn("live_pr_matches(", finalize)
+        self.assertIn("ReadOnlyGitHub", finalize)
         self.assertEqual(finalize.count("if superseded():"), 3)
         self.assertIn("raise SystemExit(0)", finalize)
         self.assertIn("result.write('current=false\\n')", finalize)
