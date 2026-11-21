@@ -21,7 +21,6 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   }
   for (const name of screens) $('open-' + name)?.addEventListener('click', () => {
     message('');
-    if (name === 'verify' && $('account-email').value.trim()) $('verify-email').value = $('account-email').value.trim();
     screen(name);
   });
   for (const button of $('account-panel').querySelectorAll('[data-account-back]')) {
@@ -51,7 +50,21 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   }
   function submit(id, action) { $(id).addEventListener('submit', event => { event.preventDefault(); return run(action); }); }
   submit('account-sign-in', async () => {
-    if (await accounts.signIn({ email: $('account-email').value.trim(), password: $('account-password').value })) {
+    const email = $('account-email').value.trim();
+    let signedIn;
+    try {
+      signedIn = await accounts.signIn({ email, password: $('account-password').value });
+    } catch (error) {
+      // Verification is asked for only after real credentials were submitted and the
+      // account service said the email is not verified yet (HTTP 403).
+      if (error?.status !== 403) throw error;
+      $('verify-email').value = email;
+      screen('verify');
+      message(preview ? 'Verify your email to finish signing in. Demo code: 123456. No email was sent.'
+        : 'Verify your email to finish signing in. Enter the code sent to your email, or resend it.');
+      return;
+    }
+    if (signedIn) {
       message(preview ? 'Signed in to the demo account. No live account was used.' : 'Signed in.');
       screen(null);
     }
