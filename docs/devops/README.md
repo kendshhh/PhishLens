@@ -7,11 +7,15 @@ service IDs, workflow settings or deployment observations as current.
 
 The staging smoke and CI guard implementation is on review branch
 `codex/devops-staging-closeout-20261121`, implementation commit
-`a80b95e146cd03a96ffca156ccfe5721ac871b68`. PR #268's latest application/test
-commit is `d27eaa07a28173c485d19f44524a88e71515fc10`. Its CI and local staging passed,
-and the direct GET-only smoke passed, but Hosted staging was skipped and no
-Render deployment occurred. It is not merged or verified by a hosted workflow
-run.
+`a80b95e146cd03a96ffca156ccfe5721ac871b68`. PR #268's latest code/test commit
+is `d27eaa07a28173c485d19f44524a88e71515fc10`; its current head is the docs-only
+sync `a2fb3f79e7857eeef20a2a2cf70f603906d86f31`. CI passed on both commits
+(runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)).
+Hosted staging and its preflight were skipped. Secretary staging run
+[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
+requires `needs-hosted-staging` and exact-head hosted verification. No Render
+deployment occurred; the change is not merged or hosted-verified.
 
 ## Current source of truth
 

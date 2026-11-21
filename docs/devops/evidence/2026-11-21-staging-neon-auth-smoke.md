@@ -171,15 +171,22 @@ left untouched. The branch:
   to the Render deployment step.
 
 The linked workflow already had explicit dependency-success predicates alongside
-`always()`; removing the status override is defense in depth. After publication,
-PR #268 head `d27eaa07a28173c485d19f44524a88e71515fc10` passed GitHub CI run
+`always()`; removing the status override is defense in depth. Code/test SHA
+`d27eaa07a28173c485d19f44524a88e71515fc10` passed GitHub CI run
 [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782),
-including local staging integration and deployment guard tests. Workflow lint,
-dependency security, CodeQL and deterministic AI evaluation also passed on
-that SHA. Hosted staging and its preflight were skipped; the separate
-[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44883823713)
-failed because `needs-hosted-staging` was absent. No Render deployment was
-started.
+including local staging integration and deployment guard tests. Current PR #268
+head is the documentation-only sync
+`a2fb3f79e7857eeef20a2a2cf70f603906d86f31`; it passed CI run
+[44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992),
+workflow lint [44884534973](https://github.com/kendshhh/PhishLens/actions/runs/44884534973),
+dependency security [44884535027](https://github.com/kendshhh/PhishLens/actions/runs/44884535027),
+CodeQL [44884532294](https://github.com/kendshhh/PhishLens/actions/runs/44884532294),
+and deterministic AI evaluation
+[44884534978](https://github.com/kendshhh/PhishLens/actions/runs/44884534978).
+Hosted staging and its preflight were skipped. The latest separate
+[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
+failed because the PR lacks `needs-hosted-staging` and exact-head hosted
+verification. No Render deployment was started.
 
 Local code checks on Node.js v24.20.0:
 
@@ -192,7 +199,7 @@ Local code checks on Node.js v24.20.0:
 | Markdown link and whitespace review | All 31 changed Markdown files checked; no missing local links. A broader scan of 141 repository Markdown files found 14 older local references to companion artifacts absent from three benchmark summaries (`english_real_v4_checkpoint_clean`, `real_email_v3`, and `real_readiness_v10`). `git diff --check` passed with CRLF-aware whitespace handling. | The 14 benchmark-artifact references are outside this DevOps change and remain an evidence-packaging gap; external URLs and GitHub-rendered layout were not validated. |
 | Live read-only smoke request to staging | Exit 1; repeated `/health` requests timed out after 10 seconds. | Workstation connectivity failure; does not establish that Render is unhealthy. |
 | `python -m unittest discover -s scripts/tests -v` | The earlier workstation attempt was incomplete under Python 3.10. On PR head `d27eaa0`, GitHub Staging integration ran all 226 deployment-guard tests successfully under Python 3.12. | The workstation failure is not a current CI failure; Hosted staging was skipped, so no hosted deployment is claimed. |
-| GitHub Actions workflow lint / hosted workflow | Pinned actionlint v1.7.9 passed locally; GitHub Workflow lint run [44883590568](https://github.com/kendshhh/PhishLens/actions/runs/44883590568) also passed on `d27eaa0`. | CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782) passed local staging. Hosted staging and its preflight were skipped; Secretary staging requires the `needs-hosted-staging` label. |
+| GitHub Actions workflow lint / hosted workflow | Pinned actionlint v1.7.9 passed locally. Workflow lint [44884534973](https://github.com/kendshhh/PhishLens/actions/runs/44884534973) and CI [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992) passed on current docs-only PR head `a2fb3f7`; application/test SHA `d27eaa0` passed CI [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782). | Hosted staging and its preflight were skipped; latest Secretary staging run [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725) requires the `needs-hosted-staging` label and exact-head hosted verification. |
 | Direct live staging smoke | At 08:15 UTC, `node scripts/staging_smoke.mjs` passed health, database readiness and anonymous history authentication (`HTTP 401 Bearer`) against the configured staging URL. | GET-only workstation run; it does not verify the deployed PR SHA, migration table, Auth session, CRUD, or cleanup. |
 
 The review-branch result is **focused Node regression tests PASS; live

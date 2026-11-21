@@ -12,7 +12,8 @@ The current release decision is **NO-GO**. The latest observed GitHub `main` is
 commit `3c858f7df51666e0545dea1a6dd5997574c16d43` (a descendant of that main).
 The implementation is recorded in commit
 `a80b95e146cd03a96ffca156ccfe5721ac871b68`; the latest application/test
-commit is `d27eaa07a28173c485d19f44524a88e71515fc10` in open PR #268.
+code/test commit is `d27eaa07a28173c485d19f44524a88e71515fc10`; the current
+PR #268 head is the documentation-only sync `a2fb3f79e7857eeef20a2a2cf70f603906d86f31`.
 The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d`
 remains dirty and was preserved. Production serves main with analysis intentionally disabled.
 Staging serves a different SHA and requires Bearer authentication for
@@ -20,9 +21,11 @@ saved-report history. The review branch now includes strict anonymous-auth
 smoke handling, bounded retries and failure summaries, early local-server crash
 detection/log retention, and fail-closed hosted deployment gates. Focused Node
 tests pass. GitHub CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-passed the local staging integration and deployment guards at the current PR
-head. The protected Hosted staging job was skipped, and the separate Secretary
-staging check requires the `needs-hosted-staging` label. A direct GET-only
+passed local staging integration and deployment guards on the code/test SHA;
+the docs-only head passed CI run [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992).
+Hosted staging and its preflight remain skipped. Secretary staging check
+[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
+requires the `needs-hosted-staging` label and exact-head hosted verification. A direct GET-only
 smoke at 08:15 UTC passed health, readiness, and the anonymous `401 Bearer`
 boundary; it did not verify the deployed PR revision or authenticated CRUD.
 An earlier workstation probe timed out.

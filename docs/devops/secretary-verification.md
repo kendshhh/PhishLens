@@ -16,9 +16,12 @@ Its Node regression suite passes. PR #268 head
 `d27eaa07a28173c485d19f44524a88e71515fc10` passed CI run
 [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782),
 including local staging integration and guard tests. A direct GET-only staging
-smoke passed at 08:15 UTC. Hosted staging was skipped, and the separate
-[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44883823713)
-requires `needs-hosted-staging`; no Render deploy occurred. The CRUD step has no
+smoke passed at 08:15 UTC. The current PR head is docs-only commit
+`a2fb3f79e7857eeef20a2a2cf70f603906d86f31`; CI run
+[44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
+passed. Hosted staging and its preflight were skipped. The latest separate
+[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
+requires `needs-hosted-staging` and exact-head hosted verification; no Render deploy occurred. The CRUD step has no
 authenticated session and remains a blocker. The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
