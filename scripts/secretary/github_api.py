@@ -1,6 +1,7 @@
 """Small bounded GitHub client. Never print request credentials or API error bodies."""
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -14,6 +15,8 @@ class APIError(RuntimeError):
 
 
 class GitHub:
+    allow_public_fallback = True
+
     def __init__(self, repo=None, token=None):
         self.repo = repo or os.environ["GITHUB_REPOSITORY"]
         self.token = token or os.environ["GITHUB_TOKEN"]
@@ -54,7 +57,12 @@ class GitHub:
         except urllib.error.HTTPError as exc:
             # Public repository metadata can be read without a token. Retrying
             # avoids dropping evidence when the Actions token is denied.
-            if exc.code == 403 and request_method == "GET" and data is None:
+            if (
+                exc.code == 403
+                and request_method == "GET"
+                and data is None
+                and self.allow_public_fallback
+            ):
                 public_req = urllib.request.Request(url, method="GET", headers={
                     "Accept": "application/vnd.github+json",
                     "X-GitHub-Api-Version": "2022-11-28",
@@ -85,3 +93,23 @@ class GitHub:
     def pull_request_files(self, number):
         """List PR files in compact pages because REST rows include diff patches."""
         return self.pages(f"pulls/{number}/files", per_page=10)
+
+
+class ReadOnlyGitHub(GitHub):
+    """GitHub client for live PR reads, backed by a narrowly scoped token."""
+
+    allow_public_fallback = False
+
+    def __init__(self, repo=None, token=None):
+        token = token if token is not None else os.getenv("SECRETARY_PR_READ_TOKEN", "")
+        if not isinstance(token, str) or not token.strip():
+            raise APIError("Dedicated read-only PR token is not configured")
+        super().__init__(repo=repo, token=token)
+
+    def request(self, path, data=None, method=None):
+        request_method = method or ("POST" if data is not None else "GET")
+        if data is not None or request_method.upper() != "GET":
+            raise APIError("Read-only GitHub client permits GET requests only")
+        if not re.fullmatch(r"pulls/[1-9][0-9]*", path):
+            raise APIError("Read-only GitHub client permits live pull-request reads only")
+        return super().request(path, method="GET")
