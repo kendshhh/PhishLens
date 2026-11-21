@@ -47,10 +47,10 @@ def main() -> None:
     service = render_request(f"services/{service_id}")
     verify_service(service, config)
     variables = render_request(f"services/{service_id}/env-vars?limit=100")
-    verify_environment(variables)
+    verify_environment(variables, require_authenticated=True)
     print(
         "Staging preflight passed: exact source SHA, migration head, service, "
-        "and private database target are validated.",
+        "authenticated report mode, and private database target are validated.",
         flush=True,
     )
 

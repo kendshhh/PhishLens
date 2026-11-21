@@ -10,11 +10,14 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
   const url = new URL(config.authUrl);
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
       !config.database || url.pathname !== `/${encodeURIComponent(config.database)}/auth` ||
-      config.apiOrigin !== apiOrigin || !hostPermissions.includes(url.origin + '/*')) {
+      config.apiOrigin !== apiOrigin || !hostPermissions.includes(apiOrigin + '/*')) {
     throw new Error('The account environment configuration or host permission does not match this build.');
   }
-  const sdk = sdkFactory(url.href, { adapter: adapterFactory({ fetchOptions: {
-    credentials: 'include', redirect: 'error', timeout: 10000, retry: 0
+  // Neon Auth rejects chrome-extension:// Origins. Route SDK requests through
+  // the API's HTTPS origin, which proxies only this pinned extension origin.
+  const authProxyUrl = new URL('/api/auth', apiOrigin).href;
+  const sdk = sdkFactory(authProxyUrl, { adapter: adapterFactory({ fetchOptions: {
+    credentials: 'include', redirect: 'error', timeout: 10000, retry: 0,
   } }) });
   const adapter = createNeonAccounts(sdk);
   return { adapter, createClient: session => createAnalysisClient(apiOrigin, fetchImpl, {

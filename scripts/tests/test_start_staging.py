@@ -6,13 +6,29 @@ from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 
-from scripts.start_staging import main, pin_ipv4_addresses
+from scripts.start_staging import (
+    main,
+    pin_ipv4_addresses,
+    validate_hosted_database_urls,
+)
 
 DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
 MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
 DATABASE_HOST = "ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech"
 DIRECT_DATABASE_HOST = "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech"
 PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
+STAGING_BRANCH_ID = "br-staging-123456"
+PRODUCTION_BRANCH_ID = "br-production-123456"
+STAGING_PROJECT_ID = "patient-bird-654321"
+PRODUCTION_PROJECT_ID = "patient-bird-123456"
+
+
+def validate_hosted_urls(runtime, migration, expected_host, app_role):
+    return validate_hosted_database_urls(
+        runtime, migration, expected_host, app_role,
+        PRODUCTION_DATABASE_HOST, STAGING_PROJECT_ID, PRODUCTION_PROJECT_ID,
+        STAGING_BRANCH_ID, PRODUCTION_BRANCH_ID,
+    )
 
 
 def ipv4_records(*addresses):
@@ -45,25 +61,24 @@ class HostedStagingIpv4Tests(unittest.TestCase):
         engine.dispose()
 
     def test_hosted_urls_require_same_staging_target_and_separate_roles(self):
-        from scripts.start_staging import validate_hosted_database_urls
 
-        validate_hosted_database_urls(
+        validate_hosted_urls(
             make_url(DATABASE_URL), make_url(MIGRATION_URL), DATABASE_HOST, "phishlens_staging_app"
         )
 
         with self.assertRaisesRegex(SystemExit, "phishlens_staging_app role"):
-            validate_hosted_database_urls(
+            validate_hosted_urls(
                 make_url(MIGRATION_URL), make_url(MIGRATION_URL), DATABASE_HOST, "neondb_owner"
             )
         with self.assertRaisesRegex(SystemExit, "match the isolated STAGING_DATABASE_HOST"):
-            validate_hosted_database_urls(
+            validate_hosted_urls(
                 make_url(DATABASE_URL),
                 make_url(MIGRATION_URL.replace(DATABASE_HOST, "production.invalid")),
                 DATABASE_HOST,
                 "phishlens_staging_app",
             )
         with self.assertRaisesRegex(SystemExit, "owner credential"):
-            validate_hosted_database_urls(
+            validate_hosted_urls(
                 make_url(DATABASE_URL),
                 make_url(MIGRATION_URL.replace("neondb_owner:owner-example-password", "phishlens_staging_app:example-password")),
                 DATABASE_HOST,
@@ -71,7 +86,6 @@ class HostedStagingIpv4Tests(unittest.TestCase):
             )
 
     def test_hosted_urls_reject_conninfo_injection_payloads_on_both_credentials(self):
-        from scripts.start_staging import validate_hosted_database_urls
 
         payloads = (
             (
@@ -104,12 +118,11 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 with self.subTest(field=field, credential=credential), self.assertRaisesRegex(
                     SystemExit, "unsupported query parameter"
                 ):
-                    validate_hosted_database_urls(
+                    validate_hosted_urls(
                         runtime, migration, DATABASE_HOST, "phishlens_staging_app"
                     )
 
     def test_hosted_urls_reject_case_encoded_and_repeated_identity_keys(self):
-        from scripts.start_staging import validate_hosted_database_urls
 
         invalid_queries = (
             "&user=neondb_owner",
@@ -128,7 +141,7 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 with self.subTest(credential=credential, query=query), self.assertRaisesRegex(
                     SystemExit, "unsupported query parameter"
                 ):
-                    validate_hosted_database_urls(
+                    validate_hosted_urls(
                         runtime, migration, DATABASE_HOST, "phishlens_staging_app"
                     )
 
@@ -193,7 +206,13 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                             "RENDER": "true",
                             "APP_ENV": "staging",
                             "STAGING_DATABASE_HOST": DATABASE_HOST,
+                            "STAGING_NEON_EXPECTED_HOST": DIRECT_DATABASE_HOST,
                             "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
+                            "PRODUCTION_NEON_EXPECTED_HOST": PRODUCTION_DATABASE_HOST,
+                            "STAGING_NEON_PROJECT_ID": STAGING_PROJECT_ID,
+                            "PRODUCTION_NEON_PROJECT_ID": PRODUCTION_PROJECT_ID,
+                            "STAGING_NEON_BRANCH_ID": STAGING_BRANCH_ID,
+                            "PRODUCTION_NEON_BRANCH_ID": PRODUCTION_BRANCH_ID,
                             "DATABASE_URL": runtime_url,
                             "STAGING_MIGRATION_DATABASE_URL": migration_url,
                         },
@@ -210,22 +229,20 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 run.assert_not_called()
 
     def test_direct_and_pooled_hosts_for_verified_staging_endpoint_are_allowed(self):
-        from scripts.start_staging import validate_hosted_database_urls
 
         direct_runtime = DATABASE_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
         direct_migration = MIGRATION_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
-        validate_hosted_database_urls(
+        validate_hosted_urls(
             make_url(direct_runtime), make_url(direct_migration), DIRECT_DATABASE_HOST,
             "phishlens_staging_app",
         )
 
     def test_matching_production_host_is_rejected_even_when_all_vars_agree(self):
-        from scripts.start_staging import validate_hosted_database_urls
 
         production_runtime = DATABASE_URL.replace(DATABASE_HOST, PRODUCTION_DATABASE_HOST)
         production_migration = MIGRATION_URL.replace(DATABASE_HOST, PRODUCTION_DATABASE_HOST)
         with self.assertRaisesRegex(SystemExit, "verified Neon staging endpoint"):
-            validate_hosted_database_urls(
+            validate_hosted_urls(
                 make_url(production_runtime), make_url(production_migration),
                 PRODUCTION_DATABASE_HOST, "phishlens_staging_app",
             )
@@ -253,7 +270,13 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                     "RENDER": "true",
                     "APP_ENV": "staging",
                     "STAGING_DATABASE_HOST": DATABASE_HOST,
+                    "STAGING_NEON_EXPECTED_HOST": DIRECT_DATABASE_HOST,
                     "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
+                    "PRODUCTION_NEON_EXPECTED_HOST": PRODUCTION_DATABASE_HOST,
+                            "STAGING_NEON_PROJECT_ID": STAGING_PROJECT_ID,
+                            "PRODUCTION_NEON_PROJECT_ID": PRODUCTION_PROJECT_ID,
+                    "STAGING_NEON_BRANCH_ID": STAGING_BRANCH_ID,
+                    "PRODUCTION_NEON_BRANCH_ID": PRODUCTION_BRANCH_ID,
                     "DATABASE_URL": DATABASE_URL,
                     "STAGING_MIGRATION_DATABASE_URL": MIGRATION_URL,
                     "PORT": "8123",
