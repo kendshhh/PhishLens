@@ -21,17 +21,34 @@ At freeze, record the final reviewed source SHA, code and artifact digests, runt
 
 ## Intake and blind review
 
-Propose recent, authentic English mail from two separately administered, permissioned cohorts. Use a campus security team's approved quarantine and opt-in mailbox exports for one cohort, and independently administered partner quarantine and opt-in exports for the second. Subject to written authorization, both cohorts contribute phishing, routine legitimate mail, genuine security notices, and non-phishing spam. Record the source date ranges, selection rules, permitted use, reviewers' access, and retention in a private source register.
+Propose a recent, authentic English held-out cohort. The sources below are intake candidates only; none is admitted or cleared by this proposal. For every candidate, verify written permission for this evaluation, exact source revision, absolute delivery dates, original collection provenance, permitted reuse, scoreable text, and independent family counts before admission. Keep the names of the two custodians and their exports restricted in the private source register.
 
-Written permission is pending from both custodians. The following targets are provisional. Record actual eligible counts after labeling and overlap review, and preserve two independent sources for every label and all policy minima.
+### Intake-candidate source-by-label matrix
 
-### Proposed source-by-label matrix
+| Intake candidate | Phishing | Legitimate | Spam | Security notices within legitimate | Intake status |
+| --- | --- | --- | --- | --- | --- |
+| Arizona / Cornell phishing candidates | Screen | — | — | — | Candidate only; exact datasets, revisions, rights, provenance, and counts pending |
+| Bruce Guenter / cw-l spam candidates | — | — | Screen | — | Candidate only; exact datasets, revisions, rights, provenance, and counts pending |
+| Arizona UAnnounce | — | Screen | — | Screen only if the original message is a genuine account-security notice | Candidate only; rights, revisions, delivery dates, provenance, and counts pending |
+| Cornell Verified Communications | — | Screen | — | Screen only if the original message is a genuine account-security notice | Candidate only; rights, revisions, delivery dates, provenance, and counts pending |
+| USNH verified legitimate mail | — | Screen | — | Screen if genuine account-security notices are present | Candidate only; rights, revisions, delivery dates, provenance, and counts pending |
+| Custodian export A (identity restricted) | — | Screen | — | Eligible only if verified as a genuine notice | Written permission and all inventory fields pending |
+| Custodian export B (identity restricted) | — | Screen | — | Eligible only if verified as a genuine notice | Written permission and all inventory fields pending |
+| Nitrosend security index / screened gallery | — | Screen as a notice lead | — | Screen | Wilberr reports 55 real notices sent in 2025–2026; rights, original collection provenance, absolute dates, scoreable text, and unique families unverified |
+| Sequenzy sign-in and account-change index | — | Screen as a notice lead | — | Screen | Candidate only; rights, original collection provenance, absolute dates, scoreable text, and unique families pending |
 
-| Proposed source | Phishing families | Legitimate families | Spam families | Security-notice families within legitimate |
-| --- | ---: | ---: | ---: | ---: |
-| Campus security quarantine and opt-in mail | 50 | 100 | 50 | 25 |
-| Independent partner quarantine and opt-in mail | 50 | 100 | 50 | 25 |
-| **Total** | **100** | **200** | **100** | **50** |
+Collapse shared issuer templates, reminders, and duplicates across all sources before counting independent families. The account-security target is at least 50 independent families within the legitimate set; the reported Nitrosend count is an intake lead, not an admitted count.
+
+### Proposed primary cohort minima
+
+| Label | Minimum eligible primary families |
+| --- | ---: |
+| Phishing | 100 |
+| Legitimate | 200 |
+| Spam | 100 |
+| Genuine account-security notices | 50, included within the 200 legitimate families |
+
+Require at least two independent sources for every label and at least 400 attempted primary results. Source-level allocations and actual admitted counts remain pending until permissions, independent labels, and overlap review are complete.
 
 Freeze one primary message selection per independent family. Require at least 100 phishing, 200 legitimate, and 100 spam families, at least two independent sources for every label, and at least 50 genuine security-notice families among the legitimate cases. Primary screening uses self-contained selected text. Keep context-dependent and stress cases as separate diagnostics. Count at least 400 attempted primary results.
 
@@ -49,6 +66,16 @@ Follow the [existing cohort protocol](tfidf-sprint-3-evaluation-protocol.md) and
 | Evaluation and AI decision owner | Wilberr (`EnviousCoal`) |
 
 Trixia (`xxTrixia`) reviews source permissions and the frozen cohort before scoring, and approves the private source inventory and exact final cohort lock SHA-256. Trixia and Wilberr (`EnviousCoal`) label independently without access to model scores or each other's labels; record both names in the private review record. Scoring requires Trixia's source-inventory and lock approval, confirmed written permissions, resolved labels, cleared overlap review, and a lock that matches the reviewed candidate and policy.
+
+### Current pre-scoring review record
+
+- Private source inventory revision/digest: not supplied for Trixia's review.
+- Trixia (`xxTrixia`) approval of the inventory: pending.
+- Exact frozen cohort lock SHA-256: not supplied for Trixia's review.
+- Trixia (`xxTrixia`) approval of the lock: pending.
+- First scoring run: blocked.
+
+The archived October 29 v12a advisory cohort is not the lock for this proposed cohort: its recorded scope used one phishing-collector family and excluded generic spam. Do not reuse that historical lock for this run.
 
 Share the lock SHA-256 and the redacted aggregate report. Keep raw mail, private source permissions, and reviewer packets in the authorized data store. Include the approved policy and report SHA-256 values in the model decision. The release remains NO-GO until the exact pinned run passes and its evidence is accepted.
 
