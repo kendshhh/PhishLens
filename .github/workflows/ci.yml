@@ -639,6 +639,30 @@ jobs:
               if skip_reason:
                   raise SystemExit(1)
           PY
+      - name: Require the protected synthetic staging Auth account
+        if: steps.staging-final-preflight.outputs.current == 'true'
+        env:
+          STAGING_NEON_AUTH_URL: ${{ vars.STAGING_NEON_AUTH_URL }}
+          STAGING_AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_TEST_EMAIL }}
+          STAGING_AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_TEST_PASSWORD }}
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          auth_url = os.environ.get('STAGING_NEON_AUTH_URL', '')
+          email = os.environ.get('STAGING_AUTH_TEST_EMAIL', '')
+          password = os.environ.get('STAGING_AUTH_TEST_PASSWORD', '')
+          parsed = urlsplit(auth_url)
+          hostname = parsed.hostname or ''
+          if (parsed.scheme != 'https' or parsed.username or parsed.password
+                  or parsed.query or parsed.fragment or parsed.path != '/phishlens_dev/auth'
+                  or '.neonauth.' not in hostname or not hostname.endswith('.aws.neon.tech')):
+              raise SystemExit('Set STAGING_NEON_AUTH_URL to the HTTPS Neon Auth URL for the staging database.')
+          if not email.strip() or not password:
+              raise SystemExit('Set the dedicated STAGING_AUTH_TEST_EMAIL and STAGING_AUTH_TEST_PASSWORD secrets in the staging environment.')
+          print('Synthetic staging Auth configuration is present.')
+          PY
       - name: Deploy PR merge commit using the trusted legacy script
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
@@ -651,7 +675,7 @@ jobs:
       - name: Verify legacy hosted API integration
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
-      - name: Check out the exact-head synthetic acceptance runner and blob client
+      - name: Check out the exact-head authenticated acceptance runner and blob client
         if: steps.staging-final-preflight.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -661,20 +685,25 @@ jobs:
           sparse-checkout: |
             package.json
             extension/js/api.js
+            extension/vendor/neon/sdk.mjs
             scripts/verify_crud.mjs
+            scripts/staging_auth.mjs
             scripts/secretary/github_api.py
           sparse-checkout-cone-mode: false
       - name: Verify saved report synthetic AI and CRUD checklist
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          STAGING_NEON_AUTH_URL: ${{ vars.STAGING_NEON_AUTH_URL }}
+          STAGING_AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_TEST_EMAIL }}
+          STAGING_AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_TEST_PASSWORD }}
           STAGING_EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging
           node pr-source/scripts/verify_crud.mjs \
             --base-url "$STAGING_BASE_URL" --environment staging \
-            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
+            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes --authenticate \
             | tee output/hosted-staging/saved-report-crud.json
       - name: Verify deployed merge identity and package staging assets
         id: staging-finalize

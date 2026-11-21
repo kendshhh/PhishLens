@@ -1,5 +1,18 @@
 # Pre-merge staging
 
+> Current status — November 21, 2026: staging runs Neon Auth and requires a
+> Bearer-authenticated session for saved-report history. The workspace now
+> updates the hosted CRUD runner to sign in with a dedicated synthetic staging
+> account, check the anonymous Bearer boundary, authenticate CRUD requests, and
+> sign out. The hosted job requires `STAGING_NEON_AUTH_URL` plus the
+> `STAGING_AUTH_TEST_EMAIL` and `STAGING_AUTH_TEST_PASSWORD` secrets in the
+> protected `staging` environment. Those values still need to be configured and
+> the hosted run has not yet passed. Track the earlier failure in the
+> [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md), and
+> do not label the staging gate passed until authenticated create/list/read/
+> update/delete, ownership/isolation, persistence, and cleanup pass on one exact
+> package/backend pair.
+
 > The November 15 point-in-time staging deployment and CRUD acceptance are recorded in
 > [the staging acceptance record](staging-acceptance-2026-11-15.md). That run predates
 > PR #226's URL identity fix and does not establish that current `main` is deployed
@@ -24,6 +37,18 @@ repeats the HTTP/client smoke checks. Missing configuration fails the job. A
 shared concurrency group prevents two workflow jobs from deploying or testing
 the staging service at once. GitHub can replace older pending jobs when several
 PRs queue; rerun the intended PR if necessary.
+
+The hosted saved-report check requires a pre-provisioned, email-verified
+synthetic Neon Auth account that belongs only to staging. In the GitHub
+`staging` environment, set `STAGING_NEON_AUTH_URL` to the staging Auth endpoint
+for the `phishlens_dev` Auth database, ending in `/phishlens_dev/auth`, and
+store the account email and password as
+`STAGING_AUTH_TEST_EMAIL` and `STAGING_AUTH_TEST_PASSWORD` secrets. The job
+checks these settings before deployment, signs in through the bundled Neon Auth
+client, keeps the JWT in memory, sends it on each saved-report request, deletes
+the synthetic report, and signs out. Keep reviewer protection enabled for this
+environment; do not reuse a personal account or place credentials in repository
+files, logs, or artifacts.
 
 Backend checks verify the Alembic graph on the exact merge commit and export its
 head as deployment evidence. Before deployment, the trusted controller checks
