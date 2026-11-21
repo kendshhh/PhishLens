@@ -177,6 +177,33 @@ or authenticated CRUD evidence exists. The documentation changes being
 prepared create a new head and need fresh checks; do not reuse this snapshot as
 their check evidence.
 
+### Latest observed PR state — 2026-11-21 11:08 UTC
+
+The documentation reconciliation was pushed as PR #268 head
+`a151585ff92d55f21e0364e9838287a9cf04a68d`. Backend and migration source
+preflight passed in [CI 44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076).
+Workflow lint [44897548088](https://github.com/kendshhh/PhishLens/actions/runs/44897548088),
+dependency security and graph review [44897548010](https://github.com/kendshhh/PhishLens/actions/runs/44897548010),
+deterministic evaluation [44897548070](https://github.com/kendshhh/PhishLens/actions/runs/44897548070),
+and the Secretary report [44897544530](https://github.com/kendshhh/PhishLens/actions/runs/44897544530)
+passed. Packaged `Extension checks` failed its Saved reports view keyboard
+focus assertion in `scripts/browser_acceptance.mjs:700`. Staging integration
+and hosted staging/preflight were skipped. Required `Secretary staging` failed
+because the `needs-hosted-staging` label and exact-head hosted verification
+were absent ([run 44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167)).
+No current PR CodeQL result appeared; no Render deployment or authenticated
+CRUD occurred. PR #268 remains open and targets the merged PR #265 branch.
+Retargeting, investigation of the keyboard-focus failure, a fresh exact-head
+CI run, and authorized hosted acceptance remain separate outstanding actions.
+Do not add the staging request label or run hosted writes without the owner's
+explicit approval. Do not claim a 100% score or merge while required checks
+fail or are skipped.
+
+The same focus assertion failed in earlier main CI run 44885148600 on `06f89d7`,
+while later CI run 44889931821 passed on merged main `95975cd`. Treat the
+recurrence as unresolved; compare the exact browser and focus evidence before
+calling it flaky or changing the assertion.
+
 ## Required working method
 
 ### 1. Establish the source of truth

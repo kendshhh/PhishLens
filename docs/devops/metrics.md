@@ -45,6 +45,20 @@ See the [release record](release-record-2026-11-21.md) and [staging evidence](ev
 Do not include these workflow outcomes in CI duration or deployment
 performance samples below.
 
+On the 11:08 UTC PR #268 head `a151585ff92d55f21e0364e9838287a9cf04a68d`,
+Backend and migration preflight passed, while packaged `Extension checks`
+failed the Saved reports view keyboard-focus assertion in
+`scripts/browser_acceptance.mjs:700` ([CI
+44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076)).
+Workflow lint [44897548088](https://github.com/kendshhh/PhishLens/actions/runs/44897548088),
+dependency security/graph [44897548010](https://github.com/kendshhh/PhishLens/actions/runs/44897548010),
+deterministic evaluation [44897548070](https://github.com/kendshhh/PhishLens/actions/runs/44897548070),
+and the Secretary report [44897544530](https://github.com/kendshhh/PhishLens/actions/runs/44897544530)
+passed. Staging integration and hosted checks were skipped, and required
+`Secretary staging` failed in [44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167).
+No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+These workflow outcomes are not performance samples.
+
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy
 is unresolved. See the [current environment map](environment-map-2026-11-21.md)

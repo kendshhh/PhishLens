@@ -44,6 +44,16 @@ graph review passed after the graph was enabled; 15 existing Dependabot alerts
 (12 high, 3 moderate) remain open. See [CI maintenance](ci-maintenance.md) and
 the [dependency audit](dependency-audits.md).
 
+The latest PR #268 head `a151585ff92d55f21e0364e9838287a9cf04a68d` failed
+`Extension checks` at the packaged Saved reports view keyboard-focus assertion
+in `scripts/browser_acceptance.mjs:700` ([CI
+44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076)).
+Staging integration and hosted staging/preflight were skipped. Required
+`Secretary staging` failed in [run 44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167)
+because the request label and exact-head hosted verification were absent. This
+supersedes the 10:14 check snapshot for current PR status; it does not establish
+hosted acceptance. No Render deployment or authenticated CRUD occurred.
+
 The owner-approved recovery objectives are RTO no greater than 30 minutes and
 RPO no greater than one hour. Neither has been measured. The November 20
 isolated restore verified schema and aggregate integrity, not service recovery

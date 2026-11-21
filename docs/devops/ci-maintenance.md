@@ -58,7 +58,7 @@ enabled after Dependency Review reported that the graph was unavailable. The
 rerun of PR #268's Dependency graph review passed on
 [`0d3818e`](https://github.com/kendshhh/PhishLens/commit/0d3818e95715cdd1dba2d4a3b6572a029c6fc1c),
 `def5e9b` ([run 44890690295](https://github.com/kendshhh/PhishLens/actions/runs/44890690295)),
-and current PR head `2e26327` ([run 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162)).
+and PR head `a151585` ([run 44897548010](https://github.com/kendshhh/PhishLens/actions/runs/44897548010)).
 GitHub reported 15 existing Dependabot alerts on the default branch (12 high,
 3 moderate); these are tracked in [the dependency audit record](dependency-audits.md)
 and were not dismissed. They remain open security work.

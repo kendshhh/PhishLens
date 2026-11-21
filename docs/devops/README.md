@@ -37,6 +37,17 @@ before merge. Fifteen Dependabot alerts (12 high, 3 moderate) remain open. The
 10:14 snapshot and earlier dated check history are detailed in the
 [staging evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
 
+At 11:08 UTC, documentation reconciliation was pushed as head
+`a151585ff92d55f21e0364e9838287a9cf04a68d`. Backend, migration source
+preflight, workflow lint, dependency security and graph review, deterministic
+evaluation and the Secretary report passed. Packaged `Extension checks` failed
+the keyboard-focus assertion in `scripts/browser_acceptance.mjs:700`; Staging
+integration and hosted staging/preflight were skipped. The required
+`Secretary staging` status failed because the request label and exact-head
+hosted verification were absent. See the current [release record](release-record-2026-11-21.md)
+and [staging evidence](evidence/2026-11-21-staging-neon-auth-smoke.md). The
+10:14 snapshot is historical for the previous head.
+
 ## Current source of truth
 
 - [Release record](release-record-2026-11-21.md): candidate identities,

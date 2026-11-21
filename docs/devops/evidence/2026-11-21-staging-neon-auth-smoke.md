@@ -418,3 +418,37 @@ before the documentation refresh; a later docs commit will need its own checks.
 These check results are not a hosted deployment or release acceptance. The
 branch remains unmerged, the authenticated staging CRUD path remains unresolved,
 and all pending and skipped gates must remain visible in the closeout record.
+
+## Latest documentation-head CI snapshot — 2026-11-21 11:08 UTC
+
+The DevOps evidence reconciliation was pushed as PR #268 head
+`a151585ff92d55f21e0364e9838287a9cf04a68d`. In [CI run 44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076),
+Backend and migration source preflight passed, but `Extension checks` failed
+in the packaged Chromium acceptance step. The assertion at
+`scripts/browser_acceptance.mjs:700` reported “Saved reports view: Tab must
+reach the popup controls.” This is a real failed required check on this SHA;
+the earlier pass on `2e26327` does not override it. Workflow lint
+[44897548088](https://github.com/kendshhh/PhishLens/actions/runs/44897548088),
+dependency security and graph review
+[44897548010](https://github.com/kendshhh/PhishLens/actions/runs/44897548010),
+deterministic evaluation
+[44897548070](https://github.com/kendshhh/PhishLens/actions/runs/44897548070),
+and the Secretary report [44897544530](https://github.com/kendshhh/PhishLens/actions/runs/44897544530)
+passed.
+
+The same keyboard-focus assertion also failed on main SHA `06f89d7` in
+[CI 44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600),
+while the later merged-main run for `95975cd` passed in
+[CI 44889931821](https://github.com/kendshhh/PhishLens/actions/runs/44889931821).
+This shows a repeat failure and an intervening pass; it does not establish
+whether the cause is intermittent browser behavior or a UI/test defect.
+
+Staging integration, Hosted staging preflight and Hosted staging were skipped
+after the Extension check failed. The separate required `Secretary staging`
+status failed in [run 44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167),
+whose assessment says application/runtime changes need the
+`needs-hosted-staging` label and exact-head hosted verification. The label was
+removed to preserve the read-only staging boundary. No Render deployment,
+authenticated CRUD, or current PR CodeQL result was observed. PR #268 still
+targets the merged PR #265 branch. Investigate the assertion, retarget to main,
+and obtain fresh exact-head CI before requesting authorized hosted acceptance.

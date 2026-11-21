@@ -103,7 +103,22 @@ CRUD occurred.
 PR #268 still targets the merged
 `codex/readiness-update-20261121` branch and must be retargeted to `main` before
 merge. The head `2e26327` is an empty CI-trigger commit; the documentation
-reconciliation will create a new head requiring its own checks.
+reconciliation later created head `a151585`, whose separate checks are recorded
+below.
+
+At 11:08 UTC, PR #268 head `a151585ff92d55f21e0364e9838287a9cf04a68d`
+passed Backend, migration source preflight, workflow lint, dependency security
+and graph review, deterministic evaluation and the Secretary report job. The
+packaged `Extension checks` failed at the keyboard focus assertion in
+`scripts/browser_acceptance.mjs:700` (“Saved reports view: Tab must reach the
+popup controls”) in [CI 44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076).
+Staging integration and hosted preflight/deployment were skipped. Required
+`Secretary staging` failed because the request label and exact-head hosted
+verification were absent ([run
+44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167)).
+No current PR CodeQL result, Render deployment or authenticated CRUD evidence
+exists. These results are specific to `a151585`; any later documentation or
+code commit needs fresh checks.
 
 The November 20 isolated Neon restore checked schema and aggregate integrity,
 but did not measure service RTO/RPO; current-production-compatible app rollback

@@ -82,8 +82,26 @@ No current PR CodeQL result appeared. No Render deployment or authenticated
 CRUD occurred.
 The base is still the now-merged `codex/readiness-update-20261121` branch and
 must be retargeted to `main`; the PR remains open and unmerged. This latest head
-is an empty CI-trigger commit, and a documentation push will create a new head
-whose checks must be read separately.
+was, at 10:14 UTC, an empty CI-trigger commit. The later documentation push
+created head `a151585`; its separate check results follow below.
+
+At 11:08 UTC, the documentation reconciliation was pushed as PR head
+`a151585ff92d55f21e0364e9838287a9cf04a68d`. Backend, migration source
+preflight, workflow lint, dependency security and graph review, and deterministic
+evaluation passed in [CI 44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076),
+[workflow lint 44897548088](https://github.com/kendshhh/PhishLens/actions/runs/44897548088),
+[dependency checks 44897548010](https://github.com/kendshhh/PhishLens/actions/runs/44897548010),
+and [evaluation 44897548070](https://github.com/kendshhh/PhishLens/actions/runs/44897548070).
+`Extension checks` failed in `scripts/browser_acceptance.mjs:700` with
+“Saved reports view: Tab must reach the popup controls.” Consequently Staging
+integration, hosted staging preflight and Hosted staging were skipped. The
+separate required `Secretary staging` status failed because the request label
+and exact-head hosted staging verification were absent ([run
+44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167)).
+The Secretary report job passed, but no current PR CodeQL result appeared. No
+Render deployment or authenticated hosted CRUD was run. PR #268 remains open,
+targets the merged PR #265 branch, and requires base retargeting and fresh
+checks after any follow-up commit.
 
 See the [dated staging evidence](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
 for timestamps and scope.
