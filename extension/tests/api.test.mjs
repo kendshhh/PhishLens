@@ -53,6 +53,9 @@ test("includes status and response detail on an HTTP failure", async () => {
     globalThis.fetch = async () => ({
         ok: false,
         status: 503,
+        headers: {
+            get: name => name === "www-authenticate" ? "Bearer realm=\"saved-reports\"" : null
+        },
         text: async () => "database unavailable"
     });
 
@@ -60,6 +63,7 @@ test("includes status and response detail on an HTTP failure", async () => {
         getAnalyses("https://example.test"),
         (error) => {
             assert.equal(error.status, 503);
+            assert.equal(error.wwwAuthenticate, "Bearer realm=\"saved-reports\"");
             assert.match(error.message, /HTTP 503/);
             assert.match(error.message, /database unavailable/);
             return true;
@@ -72,7 +76,11 @@ test("reports invalid response wrappers", async () => {
 
     await assert.rejects(
         getAnalyses("https://example.test"),
-        /Invalid history data/
+        error => {
+            assert.match(error.message, /Invalid history data/);
+            assert.equal(error.status, 200);
+            return true;
+        }
     );
 });
 
@@ -140,7 +148,11 @@ test("reports invalid JSON", async () => {
 
     await assert.rejects(
         getAnalyses("https://example.test"),
-        SyntaxError
+        error => {
+            assert.ok(error instanceof SyntaxError);
+            assert.equal(error.status, 200);
+            return true;
+        }
     );
 });
 

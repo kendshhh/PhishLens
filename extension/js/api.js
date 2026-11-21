@@ -108,19 +108,22 @@ async function readErrorBody(response) {
     }
 }
 
-export async function getAnalyses(baseUrl) {
+export async function getAnalyses(baseUrl, { timeoutMs = 10000 } = {}) {
     const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
     const url = `${cleanBaseUrl}/api/analyses`;
 
     let response;
     try {
         response = await fetch(url, {
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(timeoutMs),
             redirect: "error"
         });
     } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to load history: network request to ${url} failed (${reason})`);
+        throw new Error(
+            `Failed to load history: network request to ${url} failed (${reason})`,
+            { cause: error }
+        );
     }
 
     if (!response.ok) {
@@ -130,6 +133,7 @@ export async function getAnalyses(baseUrl) {
             `Failed to load history: ${url} returned HTTP ${response.status}${suffix}`
         );
         error.status = response.status;
+        error.wwwAuthenticate = response.headers?.get?.("www-authenticate") || "";
         throw error;
     }
 
@@ -137,17 +141,24 @@ export async function getAnalyses(baseUrl) {
     try {
         data = await response.json();
     } catch (error) {
-        if (error instanceof Error) throw error;
-        throw new Error("Invalid history response: response was not valid JSON");
+        const invalidJson = error instanceof Error
+            ? error
+            : new Error("Invalid history response: response was not valid JSON");
+        invalidJson.status = response.status;
+        throw invalidJson;
     }
 
     if (!data || !Array.isArray(data.items)) {
-        throw new Error("Invalid history data: response must contain an items array");
+        const error = new Error("Invalid history data: response must contain an items array");
+        error.status = response.status;
+        throw error;
     }
 
     for (const analysis of data.items) {
         if (!isValidAnalysis(analysis)) {
-            throw new Error("Invalid history data: response contains an invalid analysis record");
+            const error = new Error("Invalid history data: response contains an invalid analysis record");
+            error.status = response.status;
+            throw error;
         }
     }
 

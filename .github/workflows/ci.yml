@@ -495,13 +495,79 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/start_staging.py > /tmp/phishlens-staging.log 2>&1 &
+          mkdir -p output/staging
+          staging_log=output/staging/staging-server.log
+          : > "$staging_log"
+          python scripts/start_staging.py > "$staging_log" 2>&1 &
           api_pid=$!
-          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
-          if ! node scripts/staging_smoke.mjs; then
-            cat /tmp/phishlens-staging.log
+          cleanup() {
+            if [[ -n "$api_pid" ]]; then
+              kill "$api_pid" 2>/dev/null || true
+              wait "$api_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          startup_timeout=${STAGING_LOCAL_STARTUP_TIMEOUT_SECONDS:-180}
+          deadline=$((SECONDS + startup_timeout))
+          last_health_status=000
+          last_ready_status=000
+          ready=false
+          while (( SECONDS < deadline )); do
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              set +e
+              wait "$api_pid"
+              startup_exit=$?
+              set -e
+              api_pid=
+              {
+                echo '### Local staging startup failed'
+                echo '- Stage: migration, seeding, or API process startup'
+                echo '- Endpoint: http://127.0.0.1:8000/ready'
+                echo "- Final result: server process exited with status $startup_exit"
+                echo "- Last observed health/readiness: HTTP $last_health_status / HTTP $last_ready_status"
+                echo "- Server log: output/staging/staging-server.log (artifact uploaded even on failure)"
+              } >> "$GITHUB_STEP_SUMMARY"
+              cat "$staging_log"
+              exit 1
+            fi
+
+            last_health_status=$(curl --silent --connect-timeout 1 --max-time 2 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/health || true)
+            last_ready_status=$(curl --silent --connect-timeout 1 --max-time 2 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/ready || true)
+            if [[ "$last_health_status" == 200 && "$last_ready_status" == 200 ]]; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "$ready" != true ]]; then
+            {
+              echo '### Local staging startup failed'
+              echo '- Stage: API health and database readiness'
+              echo '- Endpoint: http://127.0.0.1:8000/ready'
+              echo '- Final result: startup deadline expired'
+              echo "- Last observed health/readiness: HTTP $last_health_status / HTTP $last_ready_status"
+              echo "- Deadline: $startup_timeout seconds"
+              echo "- Server log: output/staging/staging-server.log (artifact uploaded even on failure)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            cat "$staging_log"
             exit 1
           fi
+
+          export STAGING_SMOKE_TIMEOUT_MS=120000
+          if ! node scripts/staging_smoke.mjs; then
+            cat "$staging_log"
+            exit 1
+          fi
+      - name: Preserve local staging server log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Local-Staging-Server-Log
+          path: output/staging/staging-server.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Test staging deployment guards
         run: python -m unittest discover -s scripts/tests -v
 
@@ -571,7 +637,20 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') && vars.SECRETARY_PREVIEW_ENABLED == 'true' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
+    if: >-
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') &&
+      vars.SECRETARY_PREVIEW_ENABLED == 'true' &&
+      vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' &&
+      needs.staging.result == 'success' &&
+      needs.hosted-staging-preflight.result == 'success' &&
+      needs.hosted-staging-preflight.outputs.current == 'true' &&
+      needs.backend.result == 'success' &&
+      needs.backend.outputs.migration_revision != ''
     needs: [staging, hosted-staging-preflight, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -638,7 +717,15 @@ jobs:
                   raise SystemExit(1)
           PY
       - name: Deploy PR merge commit using the trusted legacy script
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
+        id: staging-deploy
+        if: >-
+          success() &&
+          needs.staging.result == 'success' &&
+          needs.hosted-staging-preflight.result == 'success' &&
+          needs.backend.result == 'success' &&
+          steps.staging-final-preflight.outputs.current == 'true' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          !github.event.pull_request.draft
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
@@ -647,9 +734,11 @@ jobs:
           STAGING_COMMIT: ${{ github.sha }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
+        id: staging-api-smoke
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         run: node scripts/staging_smoke.mjs
       - name: Check out the exact-head synthetic acceptance runner and blob client
+        id: staging-exact-head-checkout
         if: steps.staging-final-preflight.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -663,6 +752,7 @@ jobs:
             scripts/secretary/github_api.py
           sparse-checkout-cone-mode: false
       - name: Verify saved report synthetic AI and CRUD checklist
+        id: staging-crud
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
@@ -795,6 +885,7 @@ jobs:
               summary.write(f'- [x] Packaged extension browser checklist passed for `{pr_head_sha}` in `Extension-Browser-Acceptance` (tested checkout `{deploy_sha}`).\n')
           PY
       - name: Preserve hosted staging evidence and extension
+        id: staging-artifact-upload
         if: steps.staging-finalize.outputs.current == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -802,5 +893,51 @@ jobs:
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+      - name: Summarize hosted staging stage results
+        if: always()
+        env:
+          HEAD_PREFLIGHT_OUTCOME: ${{ steps.staging-final-preflight.outcome }}
+          HEAD_PREFLIGHT_CURRENT: ${{ steps.staging-final-preflight.outputs.current }}
+          DEPLOY_OUTCOME: ${{ steps.staging-deploy.outcome }}
+          API_SMOKE_OUTCOME: ${{ steps.staging-api-smoke.outcome }}
+          EXACT_HEAD_OUTCOME: ${{ steps.staging-exact-head-checkout.outcome }}
+          CRUD_OUTCOME: ${{ steps.staging-crud.outcome }}
+          FINALIZE_OUTCOME: ${{ steps.staging-finalize.outcome }}
+          FINALIZE_CURRENT: ${{ steps.staging-finalize.outputs.current }}
+          ARTIFACT_OUTCOME: ${{ steps.staging-artifact-upload.outcome }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+        run: |
+          python - <<'PY'
+          import os
+
+          stages = [
+              ('Final PR-head preflight', os.environ.get('HEAD_PREFLIGHT_OUTCOME', 'unknown')),
+              ('Render deployment and exact deployed revision', os.environ.get('DEPLOY_OUTCOME', 'unknown')),
+              ('Hosted health, readiness, and history smoke', os.environ.get('API_SMOKE_OUTCOME', 'unknown')),
+              ('Exact PR-head acceptance checkout', os.environ.get('EXACT_HEAD_OUTCOME', 'unknown')),
+              ('Synthetic saved-report CRUD and cleanup', os.environ.get('CRUD_OUTCOME', 'unknown')),
+              ('Evidence finalization and extension packaging', os.environ.get('FINALIZE_OUTCOME', 'unknown')),
+              ('Evidence artifact upload', os.environ.get('ARTIFACT_OUTCOME', 'unknown')),
+          ]
+          failed = [name for name, outcome in stages if outcome == 'failure']
+          blocked = os.environ.get('HEAD_PREFLIGHT_CURRENT') != 'true'
+          finalized = os.environ.get('FINALIZE_CURRENT') == 'true'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              if failed:
+                  summary.write(f"### Hosted staging failed for PR #{os.environ['STAGING_PR']}\n")
+                  summary.write(f"- First failed stage: **{failed[0]}**\n")
+                  summary.write('- Stage outcomes: ' + '; '.join(f'{name}: {outcome}' for name, outcome in stages) + '\n')
+              elif blocked:
+                  summary.write(f"### Hosted staging blocked for PR #{os.environ['STAGING_PR']}\n")
+                  summary.write('- The PR head was superseded or could not be confirmed. Deployment and acceptance were not authorized by this run.\n')
+                  summary.write('- Stage outcomes: ' + '; '.join(f'{name}: {outcome}' for name, outcome in stages) + '\n')
+              elif finalized:
+                  summary.write(f"### Hosted staging passed for PR #{os.environ['STAGING_PR']}\n")
+                  summary.write('- Exact-revision, hosted smoke, synthetic CRUD/cleanup, and evidence finalization completed.\n')
+              else:
+                  summary.write(f"### Hosted staging incomplete for PR #{os.environ['STAGING_PR']}\n")
+                  summary.write('- No final acceptance evidence was emitted. Review each stage outcome before treating this run as a pass.\n')
+                  summary.write('- Stage outcomes: ' + '; '.join(f'{name}: {outcome}' for name, outcome in stages) + '\n')
+          PY
 
 
