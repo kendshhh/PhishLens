@@ -53,7 +53,7 @@ def get_ai_config() -> tuple[str, str | None, str | None]:
 
 def ai_analysis_enabled() -> bool:
     """Return the backend inference switch; explicit malformed values fail closed."""
-    load_dotenv(ENV_FILE, override=False)
+    load_local_settings()
     configured = os.getenv("AI_ANALYSIS_ENABLED")
     if configured is None:
         return True
