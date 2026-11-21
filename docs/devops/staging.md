@@ -41,7 +41,8 @@ PRs queue; rerun the intended PR if necessary.
 The hosted saved-report check requires a pre-provisioned, email-verified
 synthetic Neon Auth account that belongs only to staging. In the GitHub
 `staging` environment, set `STAGING_NEON_AUTH_URL` to the staging Auth endpoint
-ending in `/neondb/auth`, and store the account email and password as
+for the `phishlens_dev` Auth database, ending in `/phishlens_dev/auth`, and
+store the account email and password as
 `STAGING_AUTH_TEST_EMAIL` and `STAGING_AUTH_TEST_PASSWORD` secrets. The job
 checks these settings before deployment, signs in through the bundled Neon Auth
 client, keeps the JWT in memory, sends it on each saved-report request, deletes

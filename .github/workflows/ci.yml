@@ -656,7 +656,7 @@ jobs:
           parsed = urlsplit(auth_url)
           hostname = parsed.hostname or ''
           if (parsed.scheme != 'https' or parsed.username or parsed.password
-                  or parsed.query or parsed.fragment or parsed.path != '/neondb/auth'
+                  or parsed.query or parsed.fragment or parsed.path != '/phishlens_dev/auth'
                   or '.neonauth.' not in hostname or not hostname.endswith('.aws.neon.tech')):
               raise SystemExit('Set STAGING_NEON_AUTH_URL to the HTTPS Neon Auth URL for the staging database.')
           if not email.strip() or not password:

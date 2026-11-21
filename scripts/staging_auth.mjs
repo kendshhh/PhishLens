@@ -1,4 +1,4 @@
-const AUTH_PATH = '/neondb/auth';
+const AUTH_PATH = '/phishlens_dev/auth';
 const NEON_AUTH_SUFFIX = '.aws.neon.tech';
 
 export function validateStagingAuthConfig(environment = process.env) {
