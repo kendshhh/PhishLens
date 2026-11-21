@@ -95,7 +95,8 @@ test('actual SDK HTTP failures preserve safe invalid-credentials, duplicate and 
     for (const [status, code, expectedStatus, message] of errors) {
       globalThis.fetch = async () => Response.json({ code, message: 'private-provider-value' }, { status });
       const { adapter } = createNeonIntegration({ apiOrigin,
-        config: { enabled: true, authUrl, database: 'test', apiOrigin }, hostPermissions: [origin + '/*'] });
+        config: { enabled: true, authUrl, database: 'test', apiOrigin },
+        hostPermissions: [origin + '/*', apiOrigin + '/*'] });
       await assert.rejects(adapter.resend({ email: user.email }), error =>
         error.status === expectedStatus && message.test(error.message) && !error.message.includes('private-provider-value'));
     }
@@ -135,7 +136,7 @@ test('failed remote logout blocks restoration in a new popup until explicit sign
   };
   const openPopup = () => createNeonIntegration({
     config: { enabled: true, authUrl, database: 'test', apiOrigin }, apiOrigin,
-    hostPermissions: [origin + '/*'], storage, sdkFactory: () => sdk
+    hostPermissions: [origin + '/*', apiOrigin + '/*'], storage, sdkFactory: () => sdk
   }).adapter;
   const first = openPopup();
   assert.ok(await first.restore());
