@@ -40,10 +40,11 @@
     },
     "model": {
       "type": "object", "additionalProperties": false,
-      "required": ["approved", "provider", "revision", "evaluation_sha256"],
+      "required": ["approved", "provider", "revision", "evaluation_sha256", "policy_sha256"],
       "properties": {
         "approved": { "const": true }, "provider": { "type": "string", "not": { "enum": ["mock", "disabled", "unavailable"] } },
-        "revision": { "type": "string", "minLength": 1 }, "evaluation_sha256": { "$ref": "#/$defs/sha256" }
+        "revision": { "type": "string", "minLength": 1 }, "evaluation_sha256": { "$ref": "#/$defs/sha256" },
+        "policy_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "auth": {
@@ -52,8 +53,10 @@
     },
     "database": {
       "type": "object", "additionalProperties": false,
-      "required": ["staging_branch_id", "branch_kind", "production_rows_present", "staging_parent_id", "migration_revision"],
+      "required": ["staging_project_id", "production_project_id", "staging_branch_id", "branch_kind", "production_rows_present", "staging_parent_id", "migration_revision"],
       "properties": {
+        "staging_project_id": { "type": "string", "pattern": "^[a-z0-9-]{8,64}$" },
+        "production_project_id": { "type": "string", "pattern": "^[a-z0-9-]{8,64}$" },
         "staging_branch_id": { "type": "string", "pattern": "^br-[a-z0-9-]+$" },
         "branch_kind": { "const": "schema-only" }, "production_rows_present": { "const": false },
         "staging_parent_id": { "type": "null" }, "migration_revision": { "type": "string", "minLength": 1 }

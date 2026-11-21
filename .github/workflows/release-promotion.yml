@@ -299,6 +299,7 @@ jobs:
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
           STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
           PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
           STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
@@ -321,6 +322,8 @@ jobs:
           STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
           STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
           PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
           STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
           PRODUCTION_NEON_EXPECTED_HOST: ${{ vars.PRODUCTION_NEON_EXPECTED_HOST }}
           STAGING_NEON_DATABASE_NAME: ${{ vars.STAGING_NEON_DATABASE_NAME }}
@@ -375,6 +378,7 @@ jobs:
           STAGING_AUTH_TRUSTED_CHROME_ORIGIN: ${{ vars.STAGING_AUTH_TRUSTED_CHROME_ORIGIN }}
           STAGING_NEON_BRANCH_ID: ${{ steps.neon-branch.outputs.branch_id }}
           STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
           STAGING_NEON_BRANCH_KIND: schema-only
           STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
           STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
@@ -513,9 +517,12 @@ jobs:
             'model': {'approved': staging['ai_acceptance'].get('approved'),
                       'provider': staging['ai_acceptance'].get('provider'),
                       'revision': staging['ai_acceptance'].get('model_revision'),
-                      'evaluation_sha256': staging['ai_acceptance'].get('evaluation_sha256')},
+                      'evaluation_sha256': staging['ai_acceptance'].get('evaluation_sha256'),
+                      'policy_sha256': staging['ai_acceptance'].get('policy_sha256')},
             'auth': {'mode': 'neon-auth', 'enabled': True},
-            'database': {'staging_branch_id': os.environ['STAGING_BRANCH_ID'], 'branch_kind': 'schema-only',
+            'database': {'staging_project_id': staging['database']['project_id'],
+                         'production_project_id': staging['database']['production_project_id'],
+                         'staging_branch_id': os.environ['STAGING_BRANCH_ID'], 'branch_kind': 'schema-only',
                          'production_rows_present': False, 'staging_parent_id': None,
                          'migration_revision': staging.get('database', {}).get('migration_revision')},
             'staging_acceptance': {'status': staging['status'], 'evidence_sha256': hashlib.sha256(staging_path.read_bytes()).hexdigest()},

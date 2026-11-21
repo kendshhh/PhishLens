@@ -1,29 +1,86 @@
 import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from scripts import release_readiness
+from scripts.manifest_key import chrome_extension_id
+from scripts.migrate_release_staging import validate_target
+from scripts.release_notes import extract_notes
 from scripts.release_readiness import (
     REQUIRED_CHECKS,
     GateError,
     check_required_statuses,
     validate_manifest,
+    validate_model_approval,
+    validate_pr_staging_acceptance,
+    validate_staging_acceptance,
     verify_release_extension_archive,
 )
-from scripts.manifest_key import chrome_extension_id
-from scripts.migrate_release_staging import validate_target
-from scripts.release_notes import extract_notes
 from scripts.verify_github_environment import EnvironmentGateError, validate_environment
 from scripts.verify_neon_release_branch import NeonReleaseError, verify_branch
-
 
 SOURCE_SHA = "a" * 40
 PR_HEAD_SHA = "d" * 40
 TREE_SHA = "e" * 40
 IMAGE_DIGEST = "sha256:" + "b" * 64
 EVALUATION_SHA = "c" * 64
+COHORT_SHA = "f" * 64
+QUALITY_POLICY = Path(__file__).resolve().parents[2] / "docs/devops/release-quality-policy.json"
+TEST_QUALITY_POLICY = json.loads(QUALITY_POLICY.read_text(encoding="utf-8"))
+TEST_QUALITY_POLICY["approval"] = {
+    "status": "approved",
+    "required_role": "AI/model owner",
+    "approved_by": "ai-owner",
+    "approved_at": "2026-11-21T00:00:00Z",
+    "record_url": "https://github.com/kendshhh/PhishLens/issues/153#issuecomment-123456",
+}
+TEST_QUALITY_POLICY_BYTES = (json.dumps(TEST_QUALITY_POLICY, indent=2) + "\n").encode()
+QUALITY_POLICY_SHA = hashlib.sha256(TEST_QUALITY_POLICY_BYTES).hexdigest()
+
+
+def model_approval(**overrides):
+    value = {
+        "approved": True,
+        "policy_sha256": QUALITY_POLICY_SHA,
+        "run_status": "finished",
+        "primary_screening": "met",
+        "provider": "tfidf",
+        "model_revision": "a" * 64,
+        "evaluation_sha256": EVALUATION_SHA,
+        "cohort_sha256": COHORT_SHA,
+        "reviewer": "ai-owner",
+        "cohort": {
+            "kind": "held-out-representative",
+            "primary_families": {"phishing": 100, "legitimate": 200, "spam": 100},
+            "primary_sources_by_label": {"phishing": 2, "legitimate": 2, "spam": 2},
+            "security_notice_families": 50,
+            "overlap_status": "cleared",
+        },
+        "label_review": {
+            "score_blind": True,
+            "reviewers": ["reviewer-a", "reviewer-b"],
+            "unresolved_admitted": 0,
+        },
+        "attempted_results": 400,
+        "valid_results": 400,
+        "metrics": {
+            "phishing_recall": 0.95,
+            "legitimate_false_positive_rate": 0.01,
+            "valid_result_rate": 1.0,
+        },
+        "thresholds": {
+            "phishing_recall_min": 0.90,
+            "legitimate_false_positive_rate_max": 0.03,
+            "valid_result_rate_min": 1.0,
+        },
+    }
+    value.update(overrides)
+    return value
 
 
 def check_runs(conclusion="success"):
@@ -61,16 +118,23 @@ def check_runs(conclusion="success"):
 def staging_evidence(path, *, overrides=None):
     values = {
         "status": "passed",
+        "product_status": "passed",
+        "format": "phishlens-staging-product-acceptance-v1",
+        "acceptance_mode": "pr-source",
         "environment": "staging",
         "source_sha": SOURCE_SHA,
+        "backend_source_sha": SOURCE_SHA,
         "backend_image_digest": IMAGE_DIGEST,
         "extension_zip_sha256": None,
         "extension_environment": "staging",
+        "staging_api_origin": "https://phishlens-staging.onrender.com",
         "production_requests": 0,
         "production_writes": 0,
         "production_auth_requests": 0,
+        "unexpected_external_requests": 0,
         "database": {
             "project_id": "patient-bird-25428852",
+            "production_project_id": "patient-bird-86753091",
             "branch_id": "br-release-schema-123456",
             "production_branch_id": "br-production-123456",
             "branch_kind": "schema-only",
@@ -99,11 +163,9 @@ def staging_evidence(path, *, overrides=None):
         },
         "ai_acceptance": {
             "status": "passed",
-            "approved": True,
-            "provider": "tfidf",
-            "model_revision": "a" * 64,
-            "evaluation_sha256": EVALUATION_SHA,
+            **model_approval(),
         },
+        "service": {"model_info": {"provider_mode": "tfidf", "model_revision": "a" * 64}},
         "evidence_path": str(path),
     }
     values.update(overrides or {})
@@ -114,6 +176,11 @@ class ReleaseReadinessTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
+        self.test_policy = self.root / "release-quality-policy.json"
+        self.test_policy.write_bytes(TEST_QUALITY_POLICY_BYTES)
+        self.policy_patch = patch.object(release_readiness, "QUALITY_POLICY_PATH", self.test_policy)
+        self.policy_patch.start()
+        self.addCleanup(self.policy_patch.stop)
         self.archive = self.root / "PhishLens-Staging-Extension.zip"
         auth_configs = {
             "production": {"enabled": True, "authUrl": "https://ep-production.neonauth.aws.neon.tech/phishlens/auth",
@@ -145,20 +212,20 @@ class ReleaseReadinessTests(unittest.TestCase):
         members = {
             "manifest.json": json.dumps({"key": public_key, "host_permissions": hosts}, sort_keys=True).encode(),
             "js/config.js": (
-                'export const API_BASE_URLS = Object.freeze({"production":"https://phishlens-api-ocvt.onrender.com",'
-                '"staging":"https://phishlens-staging.onrender.com"});\n'
-                'export const API_BASE_URL = API_BASE_URLS.production;\n'
-            ).encode(),
+                b'export const API_BASE_URLS = Object.freeze({"production":"https://phishlens-api-ocvt.onrender.com",'
+                b'"staging":"https://phishlens-staging.onrender.com"});\n'
+                b'export const API_BASE_URL = API_BASE_URLS.production;\n'
+            ),
             "js/auth-config.js": (
-                'export const AUTH_CONFIGS = Object.freeze({"production":{"enabled":true,'
-                '"authUrl":"https://ep-production.neonauth.aws.neon.tech/phishlens/auth",'
-                '"database":"phishlens","apiOrigin":"https://phishlens-api-ocvt.onrender.com",'
-                '"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
-                '"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
-                '"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
-                '"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
-                'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
-            ).encode(),
+                b'export const AUTH_CONFIGS = Object.freeze({"production":{"enabled":true,'
+                b'"authUrl":"https://ep-production.neonauth.aws.neon.tech/phishlens/auth",'
+                b'"database":"phishlens","apiOrigin":"https://phishlens-api-ocvt.onrender.com",'
+                b'"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
+                b'"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
+                b'"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
+                b'"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
+                b'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
+            ),
         }
         embedded_bytes = json.dumps(embedded, sort_keys=True).encode()
         with ZipFile(self.archive, "w", ZIP_DEFLATED) as archive:
@@ -182,6 +249,10 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.extension_evidence["chrome_extension_id"] = extension_id
         self.staging_path = self.root / "staging-evidence.json"
         self.staging = staging_evidence(self.staging_path)
+        self.staging["auth"].update({
+            "branch_id": "br-release-schema-123456",
+            "anonymous_history_rejected": True,
+        })
         self.staging["extension_zip_sha256"] = self.digest(self.archive)
         self.staging_path.write_text(json.dumps(self.staging), encoding="utf-8")
         self.changelog = self.root / "CHANGELOG.md"
@@ -204,9 +275,12 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "provider": "tfidf",
                 "revision": "a" * 64,
                 "evaluation_sha256": EVALUATION_SHA,
+                "policy_sha256": QUALITY_POLICY_SHA,
             },
             "auth": {"mode": "neon-auth", "enabled": True},
             "database": {
+                "staging_project_id": "patient-bird-25428852",
+                "production_project_id": "patient-bird-86753091",
                 "staging_branch_id": "br-release-schema-123456",
                 "branch_kind": "schema-only",
                 "production_rows_present": False,
@@ -276,6 +350,126 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.assertEqual(passed["tested_sha"], PR_HEAD_SHA)
         self.assertEqual(set(passed["checks"]), set(REQUIRED_CHECKS))
         self.assertEqual(passed["checks"]["Secretary staging"]["source"], "commit_status")
+
+    def test_release_quality_report_meets_frozen_thresholds_and_cohort_policy(self):
+        validate_model_approval(model_approval())
+
+        pending = json.loads(QUALITY_POLICY.read_text(encoding="utf-8"))
+        pending_path = self.root / "pending-release-quality-policy.json"
+        pending_path.write_text(json.dumps(pending), encoding="utf-8")
+        with (
+            patch.object(release_readiness, "QUALITY_POLICY_PATH", pending_path),
+            self.assertRaisesRegex(GateError, "pending explicit AI owner approval"),
+        ):
+            validate_model_approval(model_approval())
+
+        wrong_reviewer = model_approval(reviewer="unapproved-reviewer")
+        with self.assertRaisesRegex(GateError, "does not match the AI owner"):
+            validate_model_approval(wrong_reviewer)
+
+        weak_recall_threshold = model_approval()
+        weak_recall_threshold["thresholds"]["phishing_recall_min"] = 0.50
+        with self.assertRaisesRegex(GateError, "weakens the release policy"):
+            validate_model_approval(weak_recall_threshold)
+
+        weak_fpr_threshold = model_approval()
+        weak_fpr_threshold["thresholds"]["legitimate_false_positive_rate_max"] = 0.10
+        with self.assertRaisesRegex(GateError, "weakens the release policy"):
+            validate_model_approval(weak_fpr_threshold)
+
+        boolean_metric = model_approval()
+        boolean_metric["metrics"]["phishing_recall"] = True
+        with self.assertRaisesRegex(GateError, "missing or invalid"):
+            validate_model_approval(boolean_metric)
+
+        small_cohort = model_approval()
+        small_cohort["cohort"]["primary_sources_by_label"]["phishing"] = 1
+        with self.assertRaisesRegex(GateError, "source diversity is below policy"):
+            validate_model_approval(small_cohort)
+
+        not_held_out = model_approval()
+        not_held_out["primary_screening"] = "unassessed"
+        with self.assertRaisesRegex(GateError, "did not meet the primary screening criteria"):
+            validate_model_approval(not_held_out)
+
+    def test_complete_staging_evidence_passes_every_acceptance_gate(self):
+        validate_staging_acceptance(
+            self.staging,
+            source_sha=SOURCE_SHA,
+            image_digest=IMAGE_DIGEST,
+            extension_sha256=self.digest(self.archive),
+            branch_id="br-release-schema-123456",
+        )
+
+        product_only = json.loads(json.dumps(self.staging))
+        product_only["ai_acceptance"] = {
+            "status": "blocked",
+            "reason_code": "approval_not_provided",
+            "provider": "tfidf",
+            "model_revision": "a" * 64,
+        }
+        with self.assertRaisesRegex(GateError, "Approved model/provider acceptance is blocked or missing"):
+            validate_staging_acceptance(
+                product_only,
+                source_sha=SOURCE_SHA,
+                image_digest=IMAGE_DIGEST,
+                extension_sha256=self.digest(self.archive),
+                branch_id="br-release-schema-123456",
+            )
+
+    def test_pr_staging_evidence_binds_exact_source_package_and_auth_path(self):
+        pr_evidence = json.loads(json.dumps(self.staging))
+        pr_evidence["backend_image_digest"] = None
+        result = validate_pr_staging_acceptance(
+            pr_evidence,
+            extension_zip=self.archive,
+            extension_evidence=self.extension_evidence,
+            expected_sha=SOURCE_SHA,
+            branch_id="br-release-schema-123456",
+        )
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["backend_source_sha"], SOURCE_SHA)
+        self.assertEqual(result["model_quality"], "approved")
+
+        product_only = json.loads(json.dumps(pr_evidence))
+        product_only["ai_acceptance"] = {
+            "status": "blocked",
+            "reason_code": "approval_not_provided",
+            "provider": "tfidf",
+            "model_revision": "a" * 64,
+        }
+        result = validate_pr_staging_acceptance(
+            product_only,
+            extension_zip=self.archive,
+            extension_evidence=self.extension_evidence,
+            expected_sha=SOURCE_SHA,
+            branch_id="br-release-schema-123456",
+        )
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["model_quality"], "blocked")
+        self.assertEqual(result["release_decision"], "no-go")
+
+        anonymous_history = json.loads(json.dumps(pr_evidence))
+        anonymous_history["auth"]["anonymous_history_rejected"] = False
+        with self.assertRaisesRegex(GateError, "Live Neon Auth acceptance did not run"):
+            validate_pr_staging_acceptance(
+                anonymous_history,
+                extension_zip=self.archive,
+                extension_evidence=self.extension_evidence,
+                expected_sha=SOURCE_SHA,
+                branch_id="br-release-schema-123456",
+            )
+
+        changed = json.loads(json.dumps(pr_evidence))
+        changed["backend_source_sha"] = PR_HEAD_SHA
+        with self.assertRaisesRegex(GateError, "exact staging source SHA"):
+            validate_pr_staging_acceptance(
+                changed,
+                extension_zip=self.archive,
+                extension_evidence=self.extension_evidence,
+                expected_sha=SOURCE_SHA,
+                branch_id="br-release-schema-123456",
+            )
 
     def test_skipped_status_is_not_a_pass_for_promotion(self):
         with self.assertRaisesRegex(GateError, "expected completed/success"):
@@ -396,20 +590,80 @@ class ReleaseReadinessTests(unittest.TestCase):
     def test_neon_preflight_requires_schema_only_attestation_and_root_branch(self):
         with self.assertRaisesRegex(NeonReleaseError, "attest"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
+                          production_project_id="prod-project-654321",
                           production_branch_id="br-production-123456", schema_only_attestation="false")
         with self.assertRaisesRegex(NeonReleaseError, "independent root"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
+                          production_project_id="prod-project-654321",
                           production_branch_id="br-production-123456", schema_only_attestation="true",
                           expected_parent_id="br-production-123456")
         with self.assertRaisesRegex(NeonReleaseError, "production Neon branch"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-production-123456",
+                          production_project_id="prod-project-654321",
                           production_branch_id="br-production-123456", schema_only_attestation="true")
+        with self.assertRaisesRegex(NeonReleaseError, "separate Neon project"):
+            verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
+                          production_project_id="patient-bird-25428852",
+                          production_branch_id="br-production-123456", schema_only_attestation="true")
+
+    def test_neon_preflight_binds_database_host_to_the_exact_branch_endpoint(self):
+        class FakeResponse:
+            def __init__(self, value):
+                self.value = json.dumps(value).encode()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return self.value
+
+        branch_response = FakeResponse({"branch": {
+            "id": "br-release-schema-123456", "parent_id": None, "current_state": "ready",
+        }})
+        endpoints_response = FakeResponse({"endpoints": [{
+            "id": "ep-staging", "branch_id": "br-release-schema-123456",
+            "host": "ep-staging.c-4.ap-southeast-1.aws.neon.tech",
+        }]})
+        with (
+            patch.dict(os.environ, {"NEON_API_KEY": "test-token"}),
+            patch("scripts.verify_neon_release_branch.urlopen",
+                  side_effect=[branch_response, endpoints_response]),
+        ):
+            evidence = verify_branch(
+                project_id="patient-bird-25428852",
+                branch_id="br-release-schema-123456",
+                production_project_id="prod-project-654321",
+                production_branch_id="br-production-123456",
+                schema_only_attestation="true",
+                expected_host="ep-staging-pooler.c-4.ap-southeast-1.aws.neon.tech",
+            )
+        self.assertEqual(evidence["endpoint_host"], "ep-staging.c-4.ap-southeast-1.aws.neon.tech")
+
+        with (
+            patch.dict(os.environ, {"NEON_API_KEY": "test-token"}),
+            patch("scripts.verify_neon_release_branch.urlopen",
+                  side_effect=[branch_response, endpoints_response]),
+            self.assertRaisesRegex(NeonReleaseError, "not uniquely attached"),
+        ):
+            verify_branch(
+                project_id="patient-bird-25428852",
+                branch_id="br-release-schema-123456",
+                production_project_id="prod-project-654321",
+                production_branch_id="br-production-123456",
+                schema_only_attestation="true",
+                expected_host="ep-production.c-4.ap-southeast-1.aws.neon.tech",
+            )
 
     def test_staging_migration_target_rejects_production_and_unsafe_overrides(self):
         test_password = "synthetic-only"
         environment = {
             "STAGING_NEON_SCHEMA_ONLY_ATTESTATION": "true",
             "STAGING_NEON_PARENT_ID": "",
+            "STAGING_NEON_PROJECT_ID": "patient-bird-654321",
+            "PRODUCTION_NEON_PROJECT_ID": "patient-bird-123456",
             "STAGING_NEON_BRANCH_ID": "br-release-schema-123456",
             "PRODUCTION_NEON_BRANCH_ID": "br-production-123456",
             "STAGING_NEON_EXPECTED_HOST": "ep-staging.ap-southeast-1.aws.neon.tech",

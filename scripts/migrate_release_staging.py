@@ -20,8 +20,14 @@ def validate_target(env: dict[str, str]) -> str:
     if env.get("STAGING_NEON_PARENT_ID", ""):
         raise ValueError("Staging Neon branch must be an independent root")
     branch = env.get("STAGING_NEON_BRANCH_ID", "")
+    staging_project = env.get("STAGING_NEON_PROJECT_ID", "")
+    production_project = env.get("PRODUCTION_NEON_PROJECT_ID", "")
     if not re.fullmatch(r"br-[a-z0-9-]{8,64}", branch):
         raise ValueError("Staging Neon branch ID is invalid")
+    if (not re.fullmatch(r"[a-z0-9-]{8,64}", staging_project)
+            or not re.fullmatch(r"[a-z0-9-]{8,64}", production_project)
+            or staging_project == production_project):
+        raise ValueError("Staging must use a Neon project separate from production")
     if branch == env.get("PRODUCTION_NEON_BRANCH_ID"):
         raise ValueError("Refusing to migrate the production Neon branch")
     staging_host = env.get("STAGING_NEON_EXPECTED_HOST", "").rstrip(".").lower()

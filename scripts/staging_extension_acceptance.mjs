@@ -17,12 +17,15 @@ const SHA40 = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const evidence = {
   format: 'phishlens-staging-product-acceptance-v1',
+  acceptance_mode: null,
   status: 'blocked',
+  product_status: 'blocked',
   phase: 'preflight',
   environment: 'staging',
   production_requests: 0,
   production_writes: 0,
   production_auth_requests: 0,
+  unexpected_external_requests: 0,
   product: {},
   user_experience: {},
   ai_acceptance: { status: 'blocked' },
@@ -31,6 +34,7 @@ let context;
 let page;
 let activeAccount = null;
 let productionAuthOrigin = null;
+let stagingAuthOrigin = null;
 const accessTokens = new Map();
 const createdIds = new Map();
 const createdAnalysisEvidence = new Map();
@@ -60,14 +64,17 @@ async function verifyPreflight() {
   assert.equal(process.env.STAGING_BASE_URL, STAGING_ORIGIN, 'Only the approved staging API origin is allowed');
   const sourceSha = required('RELEASE_SOURCE_SHA');
   const backendSha = required('STAGING_EXPECTED_BACKEND_SHA');
-  const imageDigest = required('STAGING_EXPECTED_IMAGE_DIGEST');
+  const acceptanceMode = process.env.STAGING_ACCEPTANCE_MODE || 'release-image';
+  assert.ok(['release-image', 'pr-source'].includes(acceptanceMode), 'Unsupported staging acceptance mode');
+  const imageDigest = acceptanceMode === 'release-image'
+    ? required('STAGING_EXPECTED_IMAGE_DIGEST') : null;
   assert.match(sourceSha, SHA40);
   assert.equal(backendSha, sourceSha, 'Staging backend and release source SHA differ');
-  assert.match(imageDigest, /^sha256:[0-9a-f]{64}$/);
+  if (imageDigest) assert.match(imageDigest, /^sha256:[0-9a-f]{64}$/);
 
   const packagePath = path.resolve(required('RELEASE_EXTENSION_ZIP'));
   const packageEvidencePath = path.resolve(required('RELEASE_EXTENSION_EVIDENCE'));
-  const aiApproval = JSON.parse(required('STAGING_AI_APPROVAL_JSON'));
+  const aiApprovalRaw = process.env.STAGING_AI_APPROVAL_JSON?.trim() || '';
   const packageEvidence = await readJson(packageEvidencePath);
   const archiveDigest = sha256(await readFile(packagePath));
   assert.equal(packageEvidence.archive_sha256, archiveDigest);
@@ -82,6 +89,10 @@ async function verifyPreflight() {
     packageEvidence.auth_configs?.production?.authUrl || '',
     'Production Auth URL',
   );
+  stagingAuthOrigin = requireHttpsOrigin(
+    packageEvidence.auth_configs?.staging?.authUrl || '',
+    'Staging Auth URL',
+  );
   assert.equal(required('STAGING_AUTH_URL'), packageEvidence.auth_configs?.staging?.authUrl);
   assert.equal(required('STAGING_AUTH_DATABASE'), packageEvidence.auth_configs?.staging?.database);
 
@@ -91,20 +102,45 @@ async function verifyPreflight() {
   assert.equal(required('STAGING_NEON_BRANCH_KIND'), 'schema-only');
   assert.equal(required('STAGING_NEON_PARENT_ID'), '', 'The staging Neon branch must be an independent root');
   const branchId = required('STAGING_NEON_BRANCH_ID');
+  const stagingProjectId = required('STAGING_NEON_PROJECT_ID');
+  const productionProjectId = required('PRODUCTION_NEON_PROJECT_ID');
+  assert.match(stagingProjectId, /^[a-z0-9-]{8,64}$/);
+  assert.match(productionProjectId, /^[a-z0-9-]{8,64}$/);
+  assert.notEqual(stagingProjectId, productionProjectId,
+    'Staging must use a Neon project separate from production');
   assert.match(branchId, /^br-[a-z0-9-]+$/);
   assert.notEqual(branchId, required('PRODUCTION_NEON_BRANCH_ID'));
   assert.equal(required('STAGING_NEON_PRODUCTION_ROWS_PRESENT'), 'false');
 
-  const modelApproval = validateModelApproval(aiApproval);
+  const policyBytes = await readFile(path.join(root, 'docs/devops/release-quality-policy.json'));
+  const policy = JSON.parse(policyBytes.toString('utf8'));
+  const policySha = sha256(policyBytes);
+  let modelApproval = null;
+  let modelApprovalProblem = 'approval_not_provided';
+  if (aiApprovalRaw) {
+    try {
+      modelApproval = validateModelApproval(JSON.parse(aiApprovalRaw), policy, policySha);
+    } catch {
+      modelApprovalProblem = 'approval_invalid_or_below_policy';
+      if (acceptanceMode === 'release-image') {
+        throw new Error('Approved model-quality report is missing or fails the frozen policy');
+      }
+    }
+  } else if (acceptanceMode === 'release-image') {
+    throw new Error('Approved model-quality report is not configured');
+  }
   evidence.source_sha = sourceSha;
+  evidence.acceptance_mode = acceptanceMode;
   evidence.backend_source_sha = backendSha;
   evidence.backend_image_digest = imageDigest;
   evidence.extension_zip_sha256 = archiveDigest;
   evidence.extension_version = packageEvidence.extension_version;
   evidence.extension_id = packageEvidence.chrome_extension_id;
   evidence.staging_api_origin = STAGING_ORIGIN;
+  evidence.extension_environment = 'staging';
   evidence.database = {
-    project_id: required('STAGING_NEON_PROJECT_ID'),
+    project_id: stagingProjectId,
+    production_project_id: productionProjectId,
     branch_id: branchId,
     production_branch_id: process.env.PRODUCTION_NEON_BRANCH_ID,
     branch_kind: 'schema-only',
@@ -112,42 +148,93 @@ async function verifyPreflight() {
     production_rows_present: false,
     migration_revision: required('STAGING_MIGRATION_REVISION'),
   };
-  evidence.auth = { mode: 'neon-auth', enabled: true };
+  evidence.auth = {
+    mode: 'neon-auth', enabled: true, branch_id: branchId,
+    trusted_chrome_origin: extensionOrigin,
+  };
   assert.match(required('STAGING_MIGRATION_REVISION'), /^[A-Za-z0-9_]+$/);
-  evidence.ai_acceptance = modelApproval;
-  return { packagePath, packageEvidence, sourceSha, backendSha, imageDigest, branchId, modelApproval };
+  evidence.ai_acceptance = modelApproval || { status: 'blocked', reason_code: modelApprovalProblem };
+  return { packagePath, packageEvidence, sourceSha, backendSha, imageDigest, branchId, modelApproval, acceptanceMode };
 }
 
-function validateModelApproval(report) {
+function validateModelApproval(report, policy, policySha) {
+  const policyApproval = policy.approval || {};
+  assert.equal(policyApproval.status, 'approved',
+    'Release-quality thresholds are pending explicit AI owner approval');
+  assert.equal(policyApproval.required_role, 'AI/model owner');
+  assert.ok(typeof policyApproval.approved_by === 'string' && policyApproval.approved_by.trim());
+  assert.ok(typeof policyApproval.approved_at === 'string'
+    && Number.isFinite(Date.parse(policyApproval.approved_at))
+    && /(?:Z|[+-]\d{2}:\d{2})$/.test(policyApproval.approved_at));
+  assert.match(policyApproval.record_url || '',
+    /^https:\/\/github\.com\/kendshhh\/PhishLens\/(?:issues|pull)\/\d+(?:#issuecomment-\d+)?$/);
   assert.equal(report.approved, true, 'AI evaluation is not approved');
-  assert.equal(report.cohort?.kind, 'held-out-representative', 'AI evaluation is not a held-out cohort');
-  assert.ok(Number.isInteger(report.cohort?.phishing_families) && report.cohort.phishing_families >= 100);
-  assert.ok(Number.isInteger(report.cohort?.legitimate_families) && report.cohort.legitimate_families >= 200);
-  assert.ok(Number.isInteger(report.cohort?.spam_families) && report.cohort.spam_families >= 100);
+  assert.equal(report.policy_sha256, policySha, 'AI report was reviewed against a different quality policy');
+  assert.equal(report.run_status, 'finished', 'AI evaluation did not finish');
+  assert.equal(report.primary_screening, 'met', 'AI evaluation did not meet primary screening criteria');
+  assert.equal(report.cohort?.kind, policy.cohort.kind, 'AI evaluation is not a held-out representative cohort');
+  for (const [label, minimum] of Object.entries(policy.cohort.primary_families_minimum)) {
+    assert.ok(Number.isInteger(report.cohort?.primary_families?.[label])
+      && report.cohort.primary_families[label] >= minimum, `Insufficient ${label} family count`);
+    assert.ok(Number.isInteger(report.cohort?.primary_sources_by_label?.[label])
+      && report.cohort.primary_sources_by_label[label] >= policy.cohort.primary_sources_per_label_minimum,
+    `Insufficient ${label} source diversity`);
+  }
+  assert.ok(Number.isInteger(report.cohort?.security_notice_families)
+    && report.cohort.security_notice_families >= policy.cohort.security_notice_families_minimum);
+  assert.equal(report.cohort?.overlap_status, policy.review.overlap_status_required);
+  assert.ok(Number.isInteger(report.attempted_results)
+    && report.attempted_results >= policy.cohort.minimum_attempted_results);
   assert.equal(report.valid_results, report.attempted_results);
-  assert.ok(Number.isInteger(report.attempted_results) && report.attempted_results >= 400);
   assert.ok(Number.isFinite(report.metrics?.phishing_recall));
   assert.ok(Number.isFinite(report.metrics?.legitimate_false_positive_rate));
-  assert.ok(Number.isFinite(report.thresholds?.phishing_recall_min));
-  assert.ok(Number.isFinite(report.thresholds?.legitimate_false_positive_rate_max));
-  assert.ok(report.metrics.phishing_recall >= report.thresholds.phishing_recall_min);
-  assert.ok(report.metrics.legitimate_false_positive_rate <= report.thresholds.legitimate_false_positive_rate_max);
+  assert.ok(Number.isFinite(report.metrics?.valid_result_rate));
+  for (const key of ['phishing_recall_min', 'legitimate_false_positive_rate_max', 'valid_result_rate_min']) {
+    assert.ok(Number.isFinite(report.thresholds?.[key]), `AI threshold ${key} is missing`);
+  }
+  assert.ok(report.thresholds.phishing_recall_min >= policy.thresholds.phishing_recall_min,
+    'AI recall threshold weakens the release policy');
+  assert.ok(report.thresholds.legitimate_false_positive_rate_max <= policy.thresholds.legitimate_false_positive_rate_max,
+    'AI false-positive threshold weakens the release policy');
+  assert.ok(report.thresholds.valid_result_rate_min >= policy.thresholds.valid_result_rate_min,
+    'AI valid-output threshold weakens the release policy');
+  assert.ok(report.metrics.phishing_recall >= Math.max(
+    report.thresholds.phishing_recall_min, policy.thresholds.phishing_recall_min));
+  assert.ok(report.metrics.legitimate_false_positive_rate <= Math.min(
+    report.thresholds.legitimate_false_positive_rate_max,
+    policy.thresholds.legitimate_false_positive_rate_max));
+  assert.ok(report.metrics.valid_result_rate >= Math.max(
+    report.thresholds.valid_result_rate_min, policy.thresholds.valid_result_rate_min));
   assert.match(report.evaluation_sha256 || '', SHA256);
+  assert.match(report.cohort_sha256 || '', SHA256);
   assert.match(report.model_revision || '', /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/,
     'Model revision must be an exact immutable model identifier, not a moving alias');
   assert.doesNotMatch(report.model_revision, /^(latest|stable|default)$/i);
-  assert.ok(report.provider && !['disabled', 'mock'].includes(String(report.provider).toLowerCase()));
+  assert.ok(report.provider && !['disabled', 'unavailable', 'mock'].includes(String(report.provider).toLowerCase()));
   assert.ok(typeof report.reviewer === 'string' && report.reviewer.trim());
+  assert.equal(report.reviewer, policyApproval.approved_by,
+    'Evaluation reviewer does not match the AI owner who approved the policy');
+  assert.equal(report.label_review?.score_blind, true);
+  assert.equal(report.label_review?.unresolved_admitted, 0);
+  assert.ok(Array.isArray(report.label_review?.reviewers)
+    && report.label_review.reviewers.length >= policy.review.distinct_label_reviewers_minimum
+    && new Set(report.label_review.reviewers).size === report.label_review.reviewers.length);
   return {
     status: 'passed',
     approved: true,
     provider: report.provider,
     model_revision: report.model_revision,
     evaluation_sha256: report.evaluation_sha256,
+    policy_sha256: report.policy_sha256,
     cohort_sha256: report.cohort_sha256,
     cohort: report.cohort,
     metrics: report.metrics,
     thresholds: report.thresholds,
+    label_review: report.label_review,
+    run_status: report.run_status,
+    primary_screening: report.primary_screening,
+    attempted_results: report.attempted_results,
+    valid_results: report.valid_results,
     reviewer: report.reviewer,
   };
 }
@@ -158,7 +245,7 @@ async function getJson(url) {
   return response.json();
 }
 
-async function verifyService(modelApproval, sourceSha, imageDigest) {
+async function verifyService(modelApproval, sourceSha, imageDigest, acceptanceMode) {
   const [version, health, ready, model] = await Promise.all([
     getJson(STAGING_ORIGIN + '/version'),
     getJson(STAGING_ORIGIN + '/health'),
@@ -170,18 +257,32 @@ async function verifyService(modelApproval, sourceSha, imageDigest) {
   assert.equal(health.status, 'ok');
   assert.equal(ready.status, 'ready');
   assert.equal(ready.database, 'connected');
-  assert.equal(model.provider_mode, modelApproval.provider);
-  assert.notEqual(model.provider_mode, 'disabled');
-  assert.notEqual(model.provider_mode, 'unavailable');
-  assert.notEqual(model.provider_mode, 'mock');
-  if (model.provider_mode === 'tfidf') assert.equal(model.model_sha256, modelApproval.model_revision);
-  if (model.model && typeof model.model === 'string') assert.equal(model.model, modelApproval.model_revision);
-  if (modelApproval.provider === 'gemini') assert.equal(model.spend_guard_enabled, true);
+  assert.ok(['gemini', 'local', 'tfidf'].includes(model.provider_mode),
+    'Staging inference is disabled, unavailable, or mock');
+  const modelRevision = model.model_sha256 || model.model;
+  assert.match(typeof modelRevision === 'string' ? modelRevision : '',
+    /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/,
+    'Staging model identity must be an immutable, inspectable identifier');
+  assert.doesNotMatch(modelRevision, /^(latest|stable|default)$/i);
+  if (modelApproval) {
+    assert.equal(model.provider_mode, modelApproval.provider);
+    assert.equal(modelRevision, modelApproval.model_revision);
+    if (modelApproval.provider === 'gemini') assert.equal(model.spend_guard_enabled, true);
+    evidence.ai_acceptance = { ...modelApproval, status: 'passed' };
+  } else {
+    evidence.ai_acceptance = {
+      status: 'blocked',
+      reason_code: evidence.ai_acceptance.reason_code || 'approval_not_provided',
+      provider: model.provider_mode,
+      model_revision: typeof modelRevision === 'string' ? modelRevision : null,
+    };
+  }
   evidence.service = {
     version, health: { status: health.status }, ready,
-    model_info: model.provider_mode === 'tfidf'
-      ? { provider_mode: model.provider_mode, model_sha256: model.model_sha256 }
-      : { provider_mode: model.provider_mode, model: model.model },
+    model_info: {
+      provider_mode: model.provider_mode,
+      ...(typeof modelRevision === 'string' ? { model_revision: modelRevision } : {}),
+    },
   };
   evidence.backend_image_digest = imageDigest;
   return model;
@@ -214,25 +315,40 @@ async function launchExtension(archivePath, extensionId) {
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker', { timeout: 30000 });
   assert.equal(new URL(worker.url()).host, extensionId);
   page = await context.newPage();
-  observePage(page);
+  await observePage(page);
   await page.goto(`chrome-extension://${extensionId}/popup.html?environment=staging`);
   await page.locator('#show-account').waitFor();
   return profile;
 }
 
-function observePage(observedPage) {
-  observedPage.on('request', async request => {
-    const requestUrl = new URL(request.url());
+async function observePage(observedPage) {
+  await observedPage.route('**/*', async route => {
+    const requestUrl = new URL(route.request().url());
     const requestOrigin = requestUrl.origin;
     if (requestOrigin === PRODUCTION_ORIGIN) {
       evidence.production_requests++;
-      if (request.method() !== 'GET' && !['OPTIONS', 'HEAD'].includes(request.method())) {
+      if (route.request().method() !== 'GET' && !['OPTIONS', 'HEAD'].includes(route.request().method())) {
         evidence.production_writes++;
       }
+      await route.abort('blockedbyclient');
+      return;
     }
     if (productionAuthOrigin && requestOrigin === productionAuthOrigin) {
       evidence.production_auth_requests++;
+      await route.abort('blockedbyclient');
+      return;
     }
+    if (['http:', 'https:'].includes(requestUrl.protocol)
+        && ![STAGING_ORIGIN, stagingAuthOrigin].includes(requestOrigin)) {
+      evidence.unexpected_external_requests++;
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
+  observedPage.on('request', async request => {
+    const requestUrl = new URL(request.url());
+    const requestOrigin = requestUrl.origin;
     if (requestOrigin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/')) {
       const auth = (await request.allHeaders()).authorization;
       if (auth?.startsWith('Bearer ') && activeAccount) accessTokens.set(activeAccount, auth.slice(7));
@@ -251,6 +367,9 @@ async function signIn(account, email, password, { invalid = false } = {}) {
   if (invalid) {
     await page.locator('#account-status[role="alert"]').waitFor({ state: 'visible', timeout: 20000 });
     assert.match(await page.locator('#account-status').textContent(), /invalid|incorrect|not accepted|temporarily unavailable|try again|password|credentials/i);
+    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
+    await page.locator('#account-sign-in button[type="submit"]').waitFor({ state: 'visible' });
+    assert.equal(accessTokens.has(account), false, 'Rejected staging credentials created an authenticated session');
     evidence.user_experience.authentication_failure = true;
     return;
   }
@@ -286,8 +405,12 @@ async function createReport(subject, owner) {
   assert.ok(createdIds.has(owner), 'Real staging API create response was not observed');
   const analysis = createdAnalysisEvidence.get(owner);
   assert.equal(analysis?.analysis_mode, 'real', 'A mock or unverified model result cannot pass acceptance');
-  assert.equal(analysis?.provider_mode, evidence.ai_acceptance.provider);
-  assert.equal(analysis?.model_revision, evidence.ai_acceptance.model_revision);
+  assert.equal(analysis?.provider_mode, evidence.service.model_info.provider_mode);
+  assert.equal(analysis?.model_revision, evidence.service.model_info.model_revision);
+  if (evidence.ai_acceptance.status === 'passed') {
+    assert.equal(analysis?.provider_mode, evidence.ai_acceptance.provider);
+    assert.equal(analysis?.model_revision, evidence.ai_acceptance.model_revision);
+  }
   evidence.user_experience.success = true;
   return createdIds.get(owner);
 }
@@ -362,6 +485,16 @@ async function testFaultStates() {
   evidence.user_experience.timeout = true;
 }
 
+async function verifyAnonymousHistoryIsRejected() {
+  const response = await context.request.get(`${STAGING_ORIGIN}/api/analyses`, {
+    maxRedirects: 0,
+    timeout: 15000,
+  });
+  assert.ok([401, 403].includes(response.status()),
+    'Unauthenticated history must be rejected; the legacy anonymous history smoke is invalid');
+  evidence.auth.anonymous_history_rejected = true;
+}
+
 async function deleteCurrentReport(subject) {
   const item = page.locator('#history-list > li').filter({ hasText: subject });
   await item.getByRole('button', { name: `View ${subject}` }).click();
@@ -387,23 +520,22 @@ async function run() {
   try {
     const preflight = await verifyPreflight();
     const aiApproval = preflight.modelApproval;
-    const aiApprovalDigest = sha256(Buffer.from(required('STAGING_AI_APPROVAL_JSON')));
-    evidence.ai_acceptance.approval_record_sha256 = aiApprovalDigest;
-    const model = await verifyService(aiApproval, preflight.sourceSha, preflight.imageDigest);
-    const reportProvider = model.provider_mode;
-    const reportRevision = model.model_sha256 || model.model;
-    assert.equal(reportProvider, aiApproval.provider);
-    assert.equal(reportRevision, aiApproval.model_revision);
-    evidence.ai_acceptance.provider = reportProvider;
-    evidence.ai_acceptance.model_revision = reportRevision;
+    const approvalRaw = process.env.STAGING_AI_APPROVAL_JSON?.trim() || '';
+    if (approvalRaw && preflight.modelApproval) {
+      evidence.ai_acceptance.approval_record_sha256 = sha256(Buffer.from(approvalRaw));
+    }
+    const model = await verifyService(
+      preflight.modelApproval, preflight.sourceSha, preflight.imageDigest, preflight.acceptanceMode,
+    );
 
     profile = await launchExtension(preflight.packagePath, preflight.packageEvidence.chrome_extension_id);
+    await verifyAnonymousHistoryIsRejected();
     evidence.phase = 'account-a-auth';
     const emailA = required('STAGING_AUTH_USER_A_EMAIL');
     const passwordA = required('STAGING_AUTH_USER_A_PASSWORD');
     const emailB = required('STAGING_AUTH_USER_B_EMAIL');
     const passwordB = required('STAGING_AUTH_USER_B_PASSWORD');
-    await signIn('a', emailA, passwordA + '-incorrect-once', { invalid: true });
+    await signIn('a', emailA, `invalid-acceptance-${preflight.sourceSha}`, { invalid: true });
     await signIn('a', emailA, passwordA);
     evidence.account_subject_sha256 = { a: subjectHash(emailA.toLowerCase()) };
     await enterReports();
@@ -425,7 +557,7 @@ async function run() {
     await page.close();
 
     page = await context.newPage();
-    observePage(page);
+    await observePage(page);
     await page.goto(`chrome-extension://${preflight.packageEvidence.chrome_extension_id}/popup.html?environment=staging`);
     activeAccount = 'a';
     await page.locator('#account-sign-out').waitFor({ state: 'visible' });
@@ -476,8 +608,16 @@ async function run() {
     assert.equal(evidence.production_requests, 0);
     assert.equal(evidence.production_writes, 0);
     assert.equal(evidence.production_auth_requests, 0);
+    assert.equal(evidence.unexpected_external_requests, 0);
     evidence.phase = 'complete';
-    evidence.status = 'passed';
+    evidence.product_status = 'passed';
+    const productAcceptanceMode = preflight.acceptanceMode === 'pr-source';
+    evidence.status = productAcceptanceMode || evidence.ai_acceptance.status === 'passed' ? 'passed' : 'blocked';
+    if (evidence.ai_acceptance.status !== 'passed') {
+      evidence.phase = 'product_path_complete_model_quality_blocked';
+      evidence.model_quality_blocked = true;
+      evidence.failure_code = productAcceptanceMode ? null : 'ai_quality_approval_missing_or_rejected';
+    }
   } catch {
     evidence.status = 'blocked';
     evidence.failure_code = 'staging_acceptance_incomplete';
@@ -491,12 +631,14 @@ async function run() {
     await writeFile(output, JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
   }
   if (evidence.status !== 'passed') {
-    console.error(`Staging release acceptance blocked at phase ${evidence.phase}. No production data was requested or written.`);
+    console.error(`Staging acceptance blocked at phase ${evidence.phase}. No production data was requested or written.`);
     process.exitCode = 1;
     return;
   }
   console.log(JSON.stringify({
     status: evidence.status,
+    product_status: evidence.product_status,
+    ai_quality_status: evidence.ai_acceptance.status,
     source_sha: evidence.source_sha,
     backend_image_digest: evidence.backend_image_digest,
     extension_zip_sha256: evidence.extension_zip_sha256,

@@ -22,6 +22,13 @@ immutable digests, and carries those artifacts through the same workflow run.
 The backend image is pushed to GHCR; the extension ZIP remains a workflow
 artifact until a successful release publishes that exact ZIP.
 
+The PR-required `Hosted staging` status uses a separate `staging` environment.
+It now rejects anonymous history requests as expected, aborts production API/Auth
+requests from the extension page before they are sent, and runs the exact merge-SHA ZIP
+through real Neon Auth and persistent CRUD in Chromium. Its status proves the
+extension/backend product path only. It records model-quality approval separately
+and cannot turn that gate green by passing CRUD.
+
 The protected `release-staging` environment is required before the workflow
 will access staging credentials. It checks Neon branch metadata and requires a
 separate administrator attestation that the branch was created schema-only;
@@ -34,6 +41,16 @@ and extension loading/success/auth/API/timeout states. The test account data is
 synthetic. Production API and Auth origins are monitored and any request to
 them blocks acceptance. The approved model/provider and held-out evaluation are
 also required; an unavailable or disabled provider blocks the run.
+
+The model-quality policy in `docs/devops/release-quality-policy.json` has
+provisional floor values, but its approval state is deliberately `pending`.
+Those values are not represented as AI-owner-approved thresholds. An AI/model
+owner must review and approve the policy in a reviewed change, record the reviewer,
+timestamp, and GitHub review record, then supply a report bound to the resulting
+policy digest. The report must include a representative held-out cohort, blind
+label review, clear overlap review, immutable model identity, and measured metrics.
+Until then model quality is BLOCKED, even if the product acceptance and live
+inference request pass.
 
 Production promotion is a separate opt-in input. After approval it rechecks
 that the release SHA is still current `main` and that the version tag is still
@@ -59,32 +76,41 @@ published evidence supports GO.
 
 These settings are intentionally not changed by this pull request. A fresh
 read-only Render check on 2026-11-21 found production service
-`srv-db7eap25b2lc73fkelpg` still Git-backed to `main` with
-`autoDeploy=yes` / `autoDeployTrigger=checksPass`; staging service
-`srv-db92irlg1s2s739404i0` is also Git-backed, with auto-deploy off. This PR
-does not stop the existing production auto-deploy. An administrator must turn
-production auto-deploy off in Render before any further main push can be
-considered release-controlled. The new release preflight refuses Git-backed
-targets, so it cannot promote until both services are converted to the
-image-backed path. Render must first be changed by an administrator, without
+`srv-db7eap25b2lc73fkelpg` Git-backed to `main` with
+`autoDeploy=no` / `autoDeployTrigger=off`; staging service
+`srv-db92irlg1s2s739404i0` is also Git-backed with auto-deploy off. The
+production auto-deploy stop is now verified, but it is an interim control, not
+proof of digest-based promotion. The new release preflight refuses Git-backed
+targets, so promotion remains blocked until both services are configured for
+the image-backed path. Render must be changed by an administrator, without
 deploying:
 
-1. Turn production Git auto-deploy off. Convert staging and production to
+1. Keep production Git auto-deploy off. Convert staging and production to
    prebuilt-image services configured for `ghcr.io/kendshhh/phishlens-api` and
    configure Render to pull the private GHCR package. Set service environments
    and secrets to the correct branch-specific values without copying production
-   product data into staging.
+   product data into staging. Changing an existing Render service's backing
+   source triggers a deployment; schedule and approve that transition or
+   provision an image-backed replacement service. Do not switch the live
+   production service during this PR.
 2. Configure the image service's migration procedure and runtime database role.
    Staging migration credentials must be separate from the app role. The
    production schema migration must follow the team's reviewed expand/contract
    procedure; this workflow never reads or copies production product rows.
-3. Create a fresh, independent Neon root branch with **schema only**, enable
-   Neon Auth there, apply current migrations, and create two dedicated empty
-   staging users. The current `pr-58-staging` branch derives from a data-bearing
-   branch and is not acceptable for this release runner.
-4. Add the staging extension ID as a trusted Neon Auth origin and verify that
-   Render staging's runtime and migration roles target only the new branch.
-5. Configure the protected GitHub environments `release-staging` and
+3. Create a fresh Neon **project separate from production**, with an independent
+   root branch initialized with **schema only**. Enable Neon Auth there, apply
+   current migrations, and create two dedicated empty staging users. A root
+   branch in the production project is not sufficient isolation. The current
+   `pr-58-staging` branch (`br-delicate-paper-b381z98i`) derives from the
+   development lineage and is not acceptable for acceptance. Do not use the
+   restored production snapshot branch.
+4. Add the staging extension ID as a trusted Neon Auth origin. Configure Render
+   staging runtime and migration URLs, database host, branch ID, database name,
+   and separate roles to target only the new branch. Set the new
+   `STAGING_NEON_EXPECTED_HOST`, `STAGING_NEON_BRANCH_ID`, and
+   `PRODUCTION_NEON_EXPECTED_HOST` settings; the staging startup now checks these
+   against the service's runtime URLs before migrating or seeding.
+5. Configure protected GitHub environments `staging`, `release-staging`, and
    `production` with required reviewers. Production must prevent self-review;
    at least one production reviewer must be different from the source author.
 6. Configure the exact variables and secrets below. Never put credential values
@@ -107,7 +133,8 @@ In `release-staging`:
 
 - `STAGING_ACCEPTANCE_ENABLED=true`
 - `STAGING_NEON_PROJECT_ID`, `STAGING_NEON_BRANCH_ID`, and
-  `PRODUCTION_NEON_BRANCH_ID`
+  `PRODUCTION_NEON_PROJECT_ID`, and `PRODUCTION_NEON_BRANCH_ID`; the staging and
+  production project IDs must differ.
 - `STAGING_NEON_PARENT_ID` unset/empty and
   `STAGING_NEON_SCHEMA_ONLY_ATTESTATION=true`
 - `STAGING_NEON_EXPECTED_HOST`, `PRODUCTION_NEON_EXPECTED_HOST`,
@@ -119,6 +146,14 @@ In `release-staging`:
 - `STAGING_AUTH_TRUSTED_CHROME_ORIGIN=chrome-extension://<release-extension-id>`
 - `RENDER_STAGING_SERVICE_ID`
 - `PHISHLENS_STAGING_AUTH_URL` and `PHISHLENS_STAGING_AUTH_DATABASE`
+
+For the PR-required `staging` environment, duplicate the isolated project,
+branch, endpoint, production-identity, and Auth mapping variables above and
+configure `STAGING_BASE_URL`, `SECRETARY_STAGING_DB_HOST`,
+`SECRETARY_PRODUCTION_DB_HOST`, `STAGING_ACCEPTANCE_ENABLED=true`, and
+`RENDER_STAGING_SERVICE_ID`. Its protected secrets are `RENDER_STAGING_API_KEY`,
+`NEON_API_KEY`, and the two dedicated synthetic Auth account email/password
+pairs. The hosted PR workflow does not receive `STAGING_AI_APPROVAL_JSON`.
 
 In `production`:
 
@@ -167,6 +202,8 @@ hashes and synthetic row IDs are not emitted.
 No accepted staging evidence or production promotion has been generated in this
 pull request. CI tests validate gate logic, archive identity and an unpublished
 backend image build only. They are not a substitute for a live staging run.
-Until the protected environment is configured and the workflow passes with live
-Auth, persistent CRUD, and approved model evidence, both requested criteria
-remain BLOCKED/NO-GO.
+Until the protected staging flow passes live Auth and persistent CRUD, criterion
+pp. 3/49 remains blocked. That product pass alone does not approve model quality
+or authorize a release. The release remains NO-GO until the AI owner approves the
+quality policy/report, the protected release workflow accepts it, and Render is
+image-backed for digest promotion.

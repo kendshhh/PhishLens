@@ -50,7 +50,7 @@ class DeploymentTests(unittest.TestCase):
                 },
             },
         }
-        env_vars = render_staging_environment_rows()
+        env_vars = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
         return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):

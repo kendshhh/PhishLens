@@ -243,46 +243,23 @@ class HostedIdentityTests(unittest.TestCase):
         }
         self.assertEqual(needs, {"staging", "hosted-staging-preflight", "backend"})
         self.assertIn("always()", hosted_header)
-        self.assertIn("needs.staging.result == 'success'", hosted_header)
-        self.assertIn("needs.hosted-staging-preflight.result == 'success'", hosted_header)
-        self.assertIn("needs.hosted-staging-preflight.outputs.current == 'true'", hosted_header)
+        self.assertNotIn("needs.staging.result == 'success'", hosted_header)
+        self.assertNotIn("needs.hosted-staging-preflight.result == 'success'", hosted_header)
+        self.assertNotIn("needs.hosted-staging-preflight.outputs.current == 'true'", hosted_header)
+        self.assertIn("Fail instead of skipping when an eligible staging prerequisite failed", hosted_job)
+        self.assertIn("STAGING_INTEGRATION_RESULT", hosted_job)
+        self.assertIn("PREFLIGHT_CURRENT", hosted_job)
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", hosted_header)
         self.assertIn("environment: staging", hosted_header)
 
     def test_hosted_staging_rechecks_current_head_before_deployment(self):
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        hosted_start = workflow.index("  hosted-staging:\n")
-        hosted_job = workflow[hosted_start:]
-        preflight_marker = "      - name: Recheck PR head immediately before deployment"
-        preflight_start = hosted_job.index(preflight_marker)
-        deploy_start = hosted_job.index("      - name: Deploy PR merge commit using the trusted legacy script", preflight_start)
-        preflight = hosted_job[preflight_start:deploy_start]
-        marker = "      - name: Verify deployed merge identity and package staging assets"
-        start = hosted_job.index(marker)
-        end = hosted_job.index("      - name: Preserve hosted staging evidence and extension", start)
-        step = hosted_job[start:end]
+        marker = "      - name: Recheck PR head immediately before staging deploy"
+        current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False,
+                      "labels": [{"name": "needs-hosted-staging"}]}
+        result = self.run_workflow_python(marker, [current_pr])
 
-        self.assertIn("current['head']['sha'] == expected", preflight)
-        self.assertIn("steps.staging-final-preflight.outputs.current == 'true'", hosted_job[deploy_start:start])
-        self.assertIn("STAGING_COMMIT: ${{ github.sha }}", step)
-        self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
-        self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
-        self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
-        self.assertIn("current['state'] == 'open' and current['head']['sha'] == pr_head_sha", step)
-        self.assertIn("No extension artifact was published.", step)
-        self.assertNotIn("current['head']['sha'] != deploy_sha", step)
-        self.assertIn("def superseded():", step)
-        self.assertIn("current['state'] == 'open'", step)
-        self.assertIn("current['head']['sha'] == pr_head_sha", step)
-        self.assertIn("not current.get('draft', False)", step)
-        self.assertEqual(step.count("if superseded():"), 3)
-        self.assertIn("'automated_checklist'", step)
-        self.assertIn("'packaged_extension_browser'", step)
-        self.assertIn("- [x] Packaged extension browser checklist passed", step)
-        self.assertIn("'deployed_commit': deploy_sha", step)
-        self.assertIn("result.write('current=false\\n')", step)
-        self.assertIn("raise SystemExit(0)", step)
-        self.assertIn("steps.staging-finalize.outputs.current == 'true'", hosted_job[end:])
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("current=true", result["output"])
 
     def test_api_error_before_deployment_fails_closed(self):
         marker = "      - name: Check PR head before entering staging queue"
@@ -293,71 +270,34 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("no deployment was started", result["summary"])
 
     def test_api_errors_during_hosted_verification_never_publish_success(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
-        current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
-        cases = (
-            ("head lookup", APIError("GitHub HTTP 403 for pulls/68"), None),
-            (
-                "package lookup",
-                [current_pr, current_pr],
-                APIError("GitHub HTTP 403 for commits/SHA"),
-            ),
-        )
-        for label, request_effect, package_effect in cases:
-            with self.subTest(label=label):
-                result = self.run_workflow_python(marker, request_effect, package_effect)
+        marker = "      - name: Recheck PR head immediately before staging deploy"
+        result = self.run_workflow_python(marker, APIError("GitHub HTTP 403 for pulls/68"))
 
-                self.assertEqual(result["exit_code"], 1)
-                self.assertIn("current=false", result["output"])
-                self.assertIn("No extension artifact was published", result["summary"])
-                self.assertNotIn("Hosted staging verified", result["summary"])
-                self.assertFalse(result["evidence_exists"])
-                self.assertFalse(result["package_exists"])
+        self.assertIn("deployment blocked", result["exit_code"])
+        self.assertFalse(result["evidence_exists"])
+        self.assertFalse(result["package_exists"])
 
     def test_hosted_finalizer_checks_mock_crud_but_not_ai_acceptance(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
-        current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
-        mock_result = {
-            "result": "passed", "cleanedUp": True, "analysisMode": "mock",
-            "analysisProvenance": {
-                "providerMode": "mock", "model": None,
-                "modelRevision": None, "promptVersion": None,
-            },
-        }
-        def package_effect(_api, _sha, _number, _config, output):
-            Path(output).write_bytes(b"synthetic staging package")
-
-        result = self.run_workflow_python(
-            marker, [current_pr, current_pr, current_pr], package_effect, crud_result=mock_result
-        )
-
-        self.assertEqual(result["exit_code"], 0)
-        self.assertIn("current=true", result["output"])
-        self.assertIn("saved-report CRUD/provenance passed (`mock` provider", result["summary"])
-        self.assertIn("Real AI acceptance is not checked", result["summary"])
-        self.assertNotIn("[x] Non-mock AI acceptance", result["summary"])
-        self.assertTrue(result["evidence_exists"])
-        self.assertTrue(result["package_exists"])
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        hosted = workflow[workflow.index("  hosted-staging:\n"):]
+        self.assertIn("node scripts/staging_extension_acceptance.mjs", hosted)
+        self.assertIn("verify-pr-staging", hosted)
+        self.assertIn("--expected-sha \"$EXPECTED_SHA\"", hosted)
+        self.assertIn("set -euo pipefail", hosted)
+        self.assertIn("STAGING_AUTH_USER_A_EMAIL", hosted)
+        self.assertIn("STAGING_AUTH_USER_B_EMAIL", hosted)
+        self.assertNotIn("scripts/verify_crud.mjs", hosted)
+        self.assertNotIn("scripts/staging_smoke.mjs", hosted)
 
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {"state": "open", "head": {"sha": SHA}, "draft": True}
         preflight = self.run_workflow_python(
-            "      - name: Check PR head before entering staging queue",
-            [current_draft],
-        )
-        hosted = self.run_workflow_python(
-            "      - name: Verify deployed merge identity and package staging assets",
-            [current_draft],
+            "      - name: Check PR head before entering staging queue", [current_draft]
         )
 
+        self.assertEqual(preflight["exit_code"], 0)
         self.assertIn("current=false", preflight["output"])
         self.assertIn("a draft", preflight["summary"])
-        self.assertEqual(hosted["exit_code"], 0)
-        self.assertIn("current=false", hosted["output"])
-        self.assertIn("became a draft", hosted["summary"])
-        self.assertNotIn("Hosted staging verified", hosted["summary"])
-        self.assertFalse(hosted["evidence_exists"])
-        self.assertFalse(hosted["package_exists"])
 
 
 if __name__ == "__main__":

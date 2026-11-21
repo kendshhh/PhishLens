@@ -8,8 +8,10 @@ provide before it can perform those actions.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -43,6 +45,7 @@ PRODUCT_CHECKS = (
     "persistence_after_reload", "user_isolation", "ownership_checks", "cleanup",
 )
 UX_CHECKS = ("loading", "success", "authentication_failure", "api_error", "timeout")
+QUALITY_POLICY_PATH = Path(__file__).resolve().parents[1] / "docs/devops/release-quality-policy.json"
 
 
 class GateError(ValueError):
@@ -161,6 +164,244 @@ def _require(condition: bool, message: str, failures: list[str]) -> None:
         failures.append(message)
 
 
+def validate_model_approval(report: dict[str, Any]) -> None:
+    """Reject model reports that weaken the reviewed cohort or quality floor."""
+    failures: list[str] = []
+    policy = _read_json(QUALITY_POLICY_PATH)
+    policy_sha = sha256_file(QUALITY_POLICY_PATH)
+    cohort_policy = policy["cohort"]
+    review_policy = policy["review"]
+    thresholds_policy = policy["thresholds"]
+    approval_policy = policy.get("approval", {})
+
+    _require(approval_policy.get("status") == "approved",
+             "Release-quality thresholds are pending explicit AI owner approval", failures)
+    _require(approval_policy.get("required_role") == "AI/model owner",
+             "Release-quality policy does not identify the required AI owner role", failures)
+    approved_by = approval_policy.get("approved_by")
+    _require(isinstance(approved_by, str) and bool(approved_by.strip()),
+             "Release-quality policy approval identity is missing", failures)
+    approved_at = approval_policy.get("approved_at")
+    try:
+        parsed_approval_time = dt.datetime.fromisoformat(str(approved_at))
+        _require(parsed_approval_time.tzinfo is not None,
+                 "Release-quality policy approval timestamp must include a timezone", failures)
+    except ValueError:
+        failures.append("Release-quality policy approval timestamp is missing or invalid")
+    record_url = approval_policy.get("record_url")
+    _require(isinstance(record_url, str)
+             and re.fullmatch(r"https://github\.com/kendshhh/PhishLens/(?:issues|pull)/\d+(?:#issuecomment-\d+)?", record_url) is not None,
+             "Release-quality policy approval must link to its review record", failures)
+
+    _require(report.get("approved") is True, "AI evaluation lacks explicit owner approval", failures)
+    _require(report.get("policy_sha256") == policy_sha,
+             "AI evaluation was not reviewed against the current release-quality policy", failures)
+    _require(report.get("run_status") == "finished", "AI evaluation did not finish", failures)
+    _require(report.get("primary_screening") == "met",
+             "AI evaluation did not meet the primary screening criteria", failures)
+    _require(report.get("provider") not in (None, "", "disabled", "unavailable", "mock"),
+             "AI provider is disabled, unavailable, or mock", failures)
+    revision = report.get("model_revision")
+    _require(isinstance(revision, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}", revision) is not None
+             and revision.lower() not in {"latest", "stable", "default"},
+             "Model revision must be an immutable identifier", failures)
+    for key in ("evaluation_sha256", "cohort_sha256"):
+        value = report.get(key)
+        _require(isinstance(value, str) and SHA256.fullmatch(value) is not None,
+                 f"AI {key} is missing or invalid", failures)
+    _require(isinstance(report.get("reviewer"), str) and bool(report["reviewer"].strip()),
+             "An AI owner/release reviewer is not recorded", failures)
+    _require(report.get("reviewer") == approved_by,
+             "Evaluation reviewer does not match the AI owner who approved the policy", failures)
+
+    cohort = report.get("cohort")
+    _require(isinstance(cohort, dict), "Held-out cohort metadata is missing", failures)
+    if isinstance(cohort, dict):
+        _require(cohort.get("kind") == cohort_policy["kind"],
+                 "AI evaluation cohort is not held-out and representative", failures)
+        families = cohort.get("primary_families")
+        sources = cohort.get("primary_sources_by_label")
+        _require(isinstance(families, dict), "Primary family counts are missing", failures)
+        _require(isinstance(sources, dict), "Primary source counts are missing", failures)
+        if isinstance(families, dict):
+            for label, minimum in cohort_policy["primary_families_minimum"].items():
+                value = families.get(label)
+                _require(type(value) is int and value >= minimum,
+                         f"Primary {label} family count is below policy", failures)
+        if isinstance(sources, dict):
+            for label in cohort_policy["primary_families_minimum"]:
+                value = sources.get(label)
+                _require(type(value) is int and value >= cohort_policy["primary_sources_per_label_minimum"],
+                         f"Primary {label} source diversity is below policy", failures)
+        notice_count = cohort.get("security_notice_families")
+        _require(type(notice_count) is int and notice_count >= cohort_policy["security_notice_families_minimum"],
+                 "Security-notice family count is below policy", failures)
+        _require(cohort.get("overlap_status") == review_policy["overlap_status_required"],
+                 "Cohort overlap review is not cleared", failures)
+
+    review = report.get("label_review")
+    _require(isinstance(review, dict), "Blind label-review evidence is missing", failures)
+    if isinstance(review, dict):
+        reviewers = review.get("reviewers")
+        _require(review.get("score_blind") is True
+                 and isinstance(reviewers, list)
+                 and len(reviewers) >= review_policy["distinct_label_reviewers_minimum"]
+                 and all(isinstance(name, str) and name.strip() for name in reviewers)
+                 and len(set(reviewers)) == len(reviewers),
+                 "Two distinct score-blind label reviewers are required", failures)
+        unresolved = review.get("unresolved_admitted")
+        _require(type(unresolved) is int and unresolved <= review_policy["unresolved_admitted_maximum"],
+                 "Unresolved admitted labels remain", failures)
+
+    attempted = report.get("attempted_results")
+    valid = report.get("valid_results")
+    _require(type(attempted) is int and attempted >= cohort_policy["minimum_attempted_results"],
+             "AI evaluation has too few attempted results", failures)
+    _require(type(valid) is int and valid == attempted,
+             "AI evaluation must have valid output for every attempted case", failures)
+
+    metrics = report.get("metrics")
+    thresholds = report.get("thresholds")
+    _require(isinstance(metrics, dict), "AI evaluation metrics are missing", failures)
+    _require(isinstance(thresholds, dict), "AI approval thresholds are missing", failures)
+    if isinstance(metrics, dict) and isinstance(thresholds, dict):
+        policy_thresholds = (
+            ("phishing_recall_min", "phishing_recall", "min"),
+            ("legitimate_false_positive_rate_max", "legitimate_false_positive_rate", "max"),
+            ("valid_result_rate_min", "valid_result_rate", "min"),
+        )
+        for key, metric_name, direction in policy_thresholds:
+            limit = thresholds.get(key)
+            measured = metrics.get(metric_name)
+            policy_limit = thresholds_policy[key]
+            _require(type(limit) in (int, float) and math.isfinite(limit),
+                     f"AI threshold {key} is missing or invalid", failures)
+            _require(type(measured) in (int, float) and math.isfinite(measured)
+                     and 0 <= measured <= 1,
+                     f"AI metric {metric_name} is missing or invalid", failures)
+            if type(limit) in (int, float) and math.isfinite(limit):
+                if direction == "min":
+                    _require(limit >= policy_limit,
+                             f"AI threshold {key} weakens the release policy", failures)
+                else:
+                    _require(limit <= policy_limit,
+                             f"AI threshold {key} weakens the release policy", failures)
+            if type(limit) in (int, float) and type(measured) in (int, float):
+                if direction == "min":
+                    _require(measured >= max(limit, policy_limit),
+                             f"AI metric {metric_name} is below the release policy", failures)
+                else:
+                    _require(measured <= min(limit, policy_limit),
+                             f"AI metric {metric_name} is above the release policy", failures)
+
+    if failures:
+        raise GateError("AI quality approval rejected:\n- " + "\n- ".join(failures))
+
+
+def validate_pr_staging_acceptance(
+    evidence: dict[str, Any], *, extension_zip: str | Path,
+    extension_evidence: dict[str, Any], expected_sha: str, branch_id: str,
+) -> dict[str, Any]:
+    """Validate the exact-source PR journey without pretending it is image promotion."""
+    failures: list[str] = []
+    _require(evidence.get("format") == "phishlens-staging-product-acceptance-v1",
+             "Hosted staging evidence format is unsupported", failures)
+    _require(evidence.get("acceptance_mode") == "pr-source",
+             "Hosted staging did not use exact-source acceptance mode", failures)
+    _require(evidence.get("status") == "passed", "Authenticated staging acceptance did not pass", failures)
+    _require(evidence.get("product_status") == "passed",
+             "Authenticated extension product path did not pass", failures)
+    _require(evidence.get("environment") == "staging", "Evidence is not from staging", failures)
+    _require(evidence.get("source_sha") == expected_sha
+             and evidence.get("backend_source_sha") == expected_sha,
+             "Extension and deployed backend are not tied to the exact staging source SHA", failures)
+    _require(evidence.get("backend_image_digest") is None,
+             "PR source acceptance must not claim an image digest it did not deploy", failures)
+    _require(evidence.get("extension_environment") == "staging"
+             and evidence.get("staging_api_origin") == STAGING_ORIGIN,
+             "Extension did not use the fixed staging API configuration", failures)
+    try:
+        archive_digest = verify_release_extension_archive(extension_zip, extension_evidence, expected_sha)
+        _require(evidence.get("extension_zip_sha256") == archive_digest,
+                 "Staging evidence does not match the tested extension ZIP", failures)
+    except GateError as exc:
+        failures.append(str(exc))
+
+    for name in ("production_requests", "production_writes", "production_auth_requests",
+                 "unexpected_external_requests"):
+        _require(evidence.get(name) == 0, f"Acceptance recorded production traffic: {name}", failures)
+
+    database = evidence.get("database")
+    _require(isinstance(database, dict), "Isolated staging Neon identity is missing", failures)
+    if isinstance(database, dict):
+        _require(database.get("project_id") not in (None, ""), "Staging Neon project is missing", failures)
+        _require(database.get("production_project_id") not in (None, ""), "Production Neon project identity is missing", failures)
+        _require(database.get("project_id") != database.get("production_project_id"),
+                 "Staging must use a Neon project separate from production", failures)
+        _require(database.get("branch_id") == branch_id, "Staging Neon branch does not match preflight", failures)
+        _require(database.get("branch_id") != database.get("production_branch_id"),
+                 "Staging Neon uses the production branch", failures)
+        _require(database.get("branch_kind") == "schema-only" and database.get("parent_id") is None
+                 and database.get("production_rows_present") is False,
+                 "Staging Neon is not an independent schema-only branch", failures)
+
+    auth = evidence.get("auth")
+    _require(isinstance(auth, dict) and auth.get("mode") == "neon-auth" and auth.get("enabled") is True
+             and auth.get("branch_id") == branch_id and auth.get("anonymous_history_rejected") is True,
+             "Live Neon Auth acceptance did not run", failures)
+    product = evidence.get("product")
+    _require(isinstance(product, dict), "Authenticated CRUD evidence is missing", failures)
+    if isinstance(product, dict):
+        for check in PRODUCT_CHECKS:
+            _require(product.get(check) is True, f"Product acceptance failed: {check}", failures)
+    ux = evidence.get("user_experience")
+    _require(isinstance(ux, dict), "Extension UX evidence is missing", failures)
+    if isinstance(ux, dict):
+        for check in UX_CHECKS:
+            _require(ux.get(check) is True, f"Extension UX acceptance failed: {check}", failures)
+
+    ai = evidence.get("ai_acceptance")
+    _require(isinstance(ai, dict), "Staging model/provider identity evidence is missing", failures)
+    model_quality_status = "blocked"
+    model_quality_reason = "approval_not_provided"
+    if isinstance(ai, dict):
+        if ai.get("status") == "passed":
+            try:
+                validate_model_approval(ai)
+                model_quality_status = "approved"
+                model_quality_reason = None
+            except GateError as exc:
+                failures.extend(str(exc).splitlines()[1:] or [str(exc)])
+        else:
+            _require(ai.get("status") == "blocked"
+                     and ai.get("reason_code") in {"approval_not_provided", "approval_invalid_or_below_policy"},
+                     "Staging model-quality state is malformed", failures)
+            model_quality_reason = ai.get("reason_code", model_quality_reason)
+        service = evidence.get("service")
+        service_model = service.get("model_info", {}) if isinstance(service, dict) else {}
+        if not isinstance(service_model, dict):
+            service_model = {}
+        _require(ai.get("provider") == service_model.get("provider_mode"),
+                 "Staging provider differs from its live model identity", failures)
+        _require(ai.get("model_revision") == service_model.get("model_revision"),
+                 "Staging model revision differs from its live model identity", failures)
+
+    if failures:
+        raise GateError("Hosted staging acceptance rejected:\n- " + "\n- ".join(failures))
+    return {
+        "status": "passed",
+        "source_sha": expected_sha,
+        "backend_source_sha": expected_sha,
+        "extension_zip_sha256": evidence["extension_zip_sha256"],
+        "staging_branch_id": branch_id,
+        "product_checks": sorted(PRODUCT_CHECKS),
+        "user_experience_checks": sorted(UX_CHECKS),
+        "model_quality": model_quality_status,
+        "model_quality_reason": model_quality_reason,
+        "release_decision": "go" if model_quality_status == "approved" else "no-go",
+    }
+
+
 def validate_staging_acceptance(
     evidence: dict[str, Any], *, source_sha: str, image_digest: str,
     extension_sha256: str, branch_id: str,
@@ -187,6 +428,9 @@ def validate_staging_acceptance(
     _require(isinstance(database, dict), "Staging database identity is missing", failures)
     if isinstance(database, dict):
         _require(database.get("project_id"), "Staging Neon project ID is missing", failures)
+        _require(database.get("production_project_id"), "Production Neon project identity is missing", failures)
+        _require(database.get("project_id") != database.get("production_project_id"),
+                 "Staging must use a Neon project separate from production", failures)
         _require(database.get("branch_id") == branch_id, "Staging Neon branch ID does not match", failures)
         _require(database.get("branch_id") != database.get("production_branch_id"),
                  "Staging points at the production Neon branch", failures)
@@ -225,6 +469,10 @@ def validate_staging_acceptance(
                  "Reviewed AI evaluation digest is missing or invalid", failures)
         _require(ai.get("approved") is True,
                  "AI evaluation does not record explicit reviewed approval", failures)
+        try:
+            validate_model_approval(ai)
+        except GateError as exc:
+            failures.extend(str(exc).splitlines()[1:] or [str(exc)])
 
     if failures:
         raise GateError("Staging acceptance evidence is incomplete:\n- " + "\n- ".join(failures))
@@ -325,6 +573,9 @@ def validate_manifest(
     eval_sha = model.get("evaluation_sha256")
     _require(isinstance(eval_sha, str) and SHA256.fullmatch(eval_sha) is not None,
              "Approved evaluation SHA-256 is missing or invalid", failures)
+    policy_sha = model.get("policy_sha256")
+    _require(policy_sha == sha256_file(QUALITY_POLICY_PATH),
+             "Manifest model policy digest does not match the current release-quality policy", failures)
     _require(auth.get("mode") == "neon-auth" and auth.get("enabled") is True,
              "Release must use enabled Neon Auth", failures)
 
@@ -336,6 +587,19 @@ def validate_manifest(
              "Staging Neon branch must be verified schema-only and contain no production rows", failures)
     _require(database.get("staging_parent_id") is None,
              "Schema-only staging branch must be an independent root", failures)
+    _require(isinstance(database.get("staging_project_id"), str)
+             and bool(database.get("staging_project_id")),
+             "Staging Neon project ID is missing", failures)
+    _require(isinstance(database.get("production_project_id"), str)
+             and bool(database.get("production_project_id")),
+             "Production Neon project ID is missing", failures)
+    _require(database.get("staging_project_id") != database.get("production_project_id"),
+             "Staging must use a Neon project separate from production", failures)
+    staging_database = staging_evidence.get("database") if isinstance(staging_evidence, dict) else None
+    _require(isinstance(staging_database, dict)
+             and database.get("staging_project_id") == staging_database.get("project_id")
+             and database.get("production_project_id") == staging_database.get("production_project_id"),
+             "Manifest Neon project identities differ from staging acceptance evidence", failures)
     _require(database.get("migration_revision"), "Database migration revision is missing", failures)
 
     _require(acceptance.get("status") == "passed", "Staging acceptance status is not passed", failures)
@@ -355,6 +619,8 @@ def validate_manifest(
                  "Accepted staging model revision differs from the release manifest", failures)
         _require(ai.get("evaluation_sha256") == model.get("evaluation_sha256"),
                  "Accepted AI evaluation digest differs from the release manifest", failures)
+        _require(ai.get("policy_sha256") == model.get("policy_sha256"),
+                 "Accepted AI policy digest differs from the release manifest", failures)
 
     required_contexts = set(REQUIRED_CHECKS)
     check_evidence = checks if isinstance(checks, dict) else {}
@@ -585,6 +851,12 @@ def main() -> int:
     release_package_parser.add_argument("--archive", required=True)
     release_package_parser.add_argument("--evidence", required=True)
     release_package_parser.add_argument("--expected-sha", required=True)
+    pr_staging_parser = subparsers.add_parser("verify-pr-staging")
+    pr_staging_parser.add_argument("--evidence", required=True)
+    pr_staging_parser.add_argument("--extension-zip", required=True)
+    pr_staging_parser.add_argument("--extension-evidence", required=True)
+    pr_staging_parser.add_argument("--expected-sha", required=True)
+    pr_staging_parser.add_argument("--branch-id", required=True)
     manifest_parser = subparsers.add_parser("validate-manifest")
     manifest_parser.add_argument("--manifest", required=True)
     manifest_parser.add_argument("--extension-zip", required=True)
@@ -609,6 +881,15 @@ def main() -> int:
                 args.archive, _read_json(args.evidence), args.expected_sha,
             )
             print(json.dumps({"status": "passed", "archive_sha256": digest}, sort_keys=True))
+        elif args.command == "verify-pr-staging":
+            result = validate_pr_staging_acceptance(
+                _read_json(args.evidence),
+                extension_zip=args.extension_zip,
+                extension_evidence=_read_json(args.extension_evidence),
+                expected_sha=args.expected_sha,
+                branch_id=args.branch_id,
+            )
+            print(json.dumps(result, sort_keys=True))
         else:
             result = validate_manifest(
                 _read_json(args.manifest),
