@@ -1,5 +1,20 @@
 # Scope Changes
 
+## 2026-11-19 — Chrome extension release target
+
+The Sprint 4 release target is the Chrome Manifest V3 extension. The
+extension scans selected email text locally and sends explicitly saved
+reports to FastAPI on Render. Neon hosts PostgreSQL and provides account
+authentication for account-enabled packages.
+
+The team retired the temporary standalone web app and Vercel proposal.
+The web conversion PR was closed unmerged. [Release scope](https://github.com/kendshhh/PhishLens/issues/153) · [Web proposal](https://github.com/kendshhh/PhishLens/pull/244)
+
+For acceptance, pair the reviewed extension ZIP and fixed Chrome ID with
+the exact Render revision and approved Neon database and Auth configuration.
+Use the installed package for the connected sign-in, saved-report, failure
+and cleanup checks. [Auth acceptance runbook](auth-backend-acceptance-runbook.md)
+
 ## October 21 verification follow-up
 
 The October 13 status below is historical: reviewed migrations, repeated seed,

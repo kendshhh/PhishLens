@@ -1,4 +1,5 @@
 """Offline signed-token and API ownership tests; no hosted Auth calls."""
+import os
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -239,6 +240,64 @@ def test_unknown_mode_never_falls_back_to_demo(monkeypatch):
     with pytest.raises(HTTPException) as error:
         auth.report_owner(None)
     assert error.value.status_code == 503
+
+
+def test_hosted_service_requires_explicit_report_auth_mode(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "empty.env"
+    settings.write_text("")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+
+    with pytest.raises(HTTPException) as error:
+        auth.report_owner(None)
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "Authentication configuration unavailable"
+
+
+def test_hosted_service_does_not_trust_report_auth_mode_from_dotenv(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "hosted.env"
+    settings.write_text("REPORT_AUTH_MODE=demo\n")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+
+    config.get_ai_config()
+    for _ in range(2):
+        with pytest.raises(HTTPException) as error:
+            auth.report_owner(None)
+        assert error.value.status_code == 503
+        assert error.value.detail == "Authentication configuration unavailable"
+    assert "REPORT_AUTH_MODE" not in os.environ
+
+
+def test_hosted_service_accepts_explicit_report_auth_mode(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "empty.env"
+    settings.write_text("")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.setenv("REPORT_AUTH_MODE", "neon")
+    monkeypatch.setenv("RENDER", "true")
+
+    assert auth.auth_mode() == "neon"
+
+
+def test_local_service_keeps_demo_compatibility(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "empty.env"
+    settings.write_text("")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.delenv("RENDER", raising=False)
+
+    assert auth.auth_mode() == "demo"
 
 
 def test_expiry_claim_is_required(signed):
