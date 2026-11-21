@@ -649,10 +649,7 @@ jobs:
           STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
           STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python scripts/deploy_staging.py
-      - name: Verify legacy hosted API integration
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
-        run: node scripts/staging_smoke.mjs
-      - name: Check out the exact-head synthetic acceptance runner and blob client
+      - name: Check out exact-head source metadata helper
         if: steps.staging-final-preflight.outputs.current == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -660,23 +657,8 @@ jobs:
           path: pr-source
           persist-credentials: false
           sparse-checkout: |
-            package.json
-            extension/js/api.js
-            scripts/verify_crud.mjs
             scripts/secretary/github_api.py
           sparse-checkout-cone-mode: false
-      - name: Verify saved report synthetic AI and CRUD checklist
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
-        env:
-          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
-          STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          mkdir -p output/hosted-staging
-          node pr-source/scripts/verify_crud.mjs \
-            --base-url "$STAGING_BASE_URL" --environment staging \
-            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
-            | tee output/hosted-staging/saved-report-crud.json
       - name: Verify PR-head identity and package staging assets
         id: staging-finalize
         if: steps.staging-final-preflight.outputs.current == 'true'
@@ -693,6 +675,7 @@ jobs:
           import json
           import os
           import sys
+          import urllib.request
           from pathlib import Path
           from scripts.secretary.preview import package, smoke
 
@@ -735,19 +718,39 @@ jobs:
               return stop_without_artifact('The PR closed, became a draft, or its head changed during deployment.')
           if superseded():
               raise SystemExit(0)
-          evidence = smoke(config['staging_origin'], deploy_sha)
-          crud = json.loads((output / 'saved-report-crud.json').read_text())
-          provenance = crud.get('analysisProvenance')
-          provider_mode = provenance.get('providerMode') if isinstance(provenance, dict) else None
-          analysis_mode = crud.get('analysisMode')
-          valid_provenance = (
-              analysis_mode == 'mock' and provider_mode == 'mock'
-          ) or (
-              analysis_mode == 'real' and provider_mode in {'gemini', 'local', 'tfidf'}
-          )
-          if (crud.get('result') != 'passed' or crud.get('cleanedUp') is not True
-                  or not valid_provenance):
-              raise RuntimeError('The staging CRUD check requires consistent provider provenance and confirmed cleanup.')
+          evidence = smoke(config['staging_origin'], deploy_sha, report_auth_mode='neon')
+          bridge_origin = config['staging_origin'].rstrip('/')
+          extension_origin = 'chrome-extension://ceneonaedddlkdocdapimkfggbjcchlb'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, file_pointer, code, message, headers, new_url):
+                  return None
+          bridge_opener = urllib.request.build_opener(NoRedirect)
+          bridge_checks = {}
+          for path, content_type in (
+              ('/auth/bridge', 'text/html'),
+              ('/auth/bridge/client.js', 'javascript'),
+              ('/auth/bridge/sdk.mjs', 'javascript'),
+          ):
+              request = urllib.request.Request(
+                  bridge_origin + path, headers={'Cache-Control': 'no-cache'}
+              )
+              try:
+                  with bridge_opener.open(request, timeout=20) as response:
+                      actual_type = response.headers.get('Content-Type', '').lower()
+                      if response.status != 200 or response.geturl() != bridge_origin + path:
+                          raise RuntimeError('unexpected response')
+                      if content_type not in actual_type:
+                          raise RuntimeError('unexpected content type')
+                      if path == '/auth/bridge':
+                          if 'frame-ancestors ' + extension_origin not in response.headers.get('Content-Security-Policy', ''):
+                              raise RuntimeError('extension origin is not frame-allowed')
+                          body = response.read(65537).decode('utf-8', errors='replace')
+                          if len(body) > 65536 or 'data-extension-origin="' + extension_origin + '"' not in body:
+                              raise RuntimeError('bridge document does not bind the expected extension')
+                      bridge_checks[path] = 200
+              except Exception:  # noqa: BLE001 -- report only the bounded check result
+                  raise RuntimeError('Staging Auth bridge GET failed: ' + path) from None
+          evidence['auth_bridge'] = bridge_checks
           if superseded():
               raise SystemExit(0)
           try:
@@ -762,20 +765,15 @@ jobs:
               'migration_revision': os.environ['STAGING_MIGRATION_REVISION'],
               'recorded_at': dt.datetime.now(dt.UTC).isoformat(),
               'automated_checklist': {
-              'saved_report_crud': {
+                  'read_only_preflight': {
                       'result': 'passed',
-                      'analysis_mode': crud['analysisMode'],
-                  'provider_mode': provider_mode,
-                  'cleaned_up': crud['cleanedUp'],
-              },
-              'real_ai_acceptance': {
-                  'result': 'passed' if analysis_mode == 'real' else 'not_verified',
-                  'analysis_mode': analysis_mode,
-                  'provider_mode': provider_mode,
-                      'model': crud['analysisProvenance']['model'],
-                      'model_revision': crud['analysisProvenance']['modelRevision'],
-                      'prompt_version': crud['analysisProvenance']['promptVersion'],
+                      'auth_bridge': 'passed',
+                      'anonymous_saved_report': 'authentication_required',
+                      'seeded_history': 'not_checked',
+                      'application_crud_writes_performed': False,
                   },
+                  'live_auth_acceptance': {'result': 'not_run'},
+                  'saved_report_crud': {'result': 'not_run'},
                   'packaged_extension_browser': {
                       'result': 'passed',
                       'source_commit': pr_head_sha,
@@ -788,13 +786,11 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
               result.write('current=true\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using exact PR head `{deploy_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
-              summary.write('- [x] Health, readiness, version, seeded history, and staging package passed.\n')
-              summary.write(f"- [x] Synthetic saved-report CRUD/provenance passed (`{provider_mode}` provider; record cleaned up).\n")
-              if analysis_mode == 'real':
-                  summary.write(f"- [x] Non-mock AI acceptance passed with `{provider_mode}`.\n")
-              else:
-                  summary.write('- [ ] Real AI acceptance is not checked: staging used `mock`. Mock output is not AI acceptance.\n')
+              summary.write(f'Hosted staging read-only preflight passed for PR #{number} head `{pr_head_sha}` at exact deployed commit `{deploy_sha}`.\n\n')
+              summary.write('- [x] Health, readiness, exact version, Auth bridge assets, and anonymous Bearer challenge passed.\n')
+              summary.write('- [ ] Seeded history was not checked.\n')
+              summary.write('- [ ] Sign-up, email delivery, session behavior, authenticated history, and CRUD were not run; no account or saved-report writes were performed.\n')
+              summary.write('- [ ] Deployment and migrations are separate staging operations; this endpoint preflight uses GET requests only.\n')
               summary.write(f'- [x] Packaged extension browser checklist passed for `{pr_head_sha}` in `Extension-Browser-Acceptance` (tested checkout `{deploy_sha}`).\n')
           PY
       - name: Preserve hosted staging evidence and extension
