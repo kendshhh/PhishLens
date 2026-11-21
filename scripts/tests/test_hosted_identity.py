@@ -32,7 +32,7 @@ class HostedIdentityTests(unittest.TestCase):
             for line in block[1:-1]
         )
 
-    def run_workflow_python(self, marker, request_effect, package_effect=None, crud_result=None):
+    def run_workflow_python(self, marker, request_effect, package_effect=None):
         script = self.workflow_python_script(marker)
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -48,14 +48,6 @@ class HostedIdentityTests(unittest.TestCase):
             )
             output_dir = root / "output/hosted-staging"
             output_dir.mkdir(parents=True)
-            evidence = crud_result or {
-                "result": "passed", "cleanedUp": True, "analysisMode": "mock",
-                "analysisProvenance": {
-                    "providerMode": "mock", "model": None,
-                    "modelRevision": None, "promptVersion": None,
-                },
-            }
-            (output_dir / "saved-report-crud.json").write_text(json.dumps(evidence), encoding="utf-8")
             output_file = root / "github-output.txt"
             summary_file = root / "github-summary.md"
             script_file = root / "workflow-step.py"
@@ -71,6 +63,40 @@ class HostedIdentityTests(unittest.TestCase):
                 "STAGING_PR_HEAD_SHA": SHA,
                 "STAGING_PR": "68",
             }
+            extension_origin = "chrome-extension://ceneonaedddlkdocdapimkfggbjcchlb"
+            bridge_requests = []
+
+            class BridgeResponse:
+                def __init__(self, url):
+                    self.url = url
+                    self.status = 200
+                    path = url.split("?", 1)[0]
+                    content_type = "text/html; charset=utf-8" if path.endswith("/auth/bridge") else "application/javascript"
+                    self.headers = {"Content-Type": content_type}
+                    if path.endswith("/auth/bridge"):
+                        self.headers["Content-Security-Policy"] = f"frame-ancestors {extension_origin}"
+                    self.body = (
+                        f'<div data-extension-origin="{extension_origin}"></div>'.encode()
+                        if path.endswith("/auth/bridge") else b""
+                    )
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_args):
+                    return False
+
+                def geturl(self):
+                    return self.url
+
+                def read(self, _limit=-1):
+                    return self.body
+
+            class BridgeOpener:
+                def open(self, request, timeout=20):
+                    bridge_requests.append((request.get_method(), request.full_url, timeout))
+                    return BridgeResponse(request.full_url)
+
             previous_dir = Path.cwd()
             exit_code = None
             step_error = None
@@ -80,7 +106,7 @@ class HostedIdentityTests(unittest.TestCase):
                     GitHub, "request", side_effect=request_effect
                 ), patch("scripts.secretary.preview.smoke", return_value={"health": "passed"}), patch(
                     "scripts.secretary.preview.package", side_effect=package_effect
-                ):
+                ), patch("urllib.request.build_opener", return_value=BridgeOpener()):
                     try:
                         runpy.run_path(str(script_file), run_name="__main__")
                     except SystemExit as error:
@@ -100,6 +126,9 @@ class HostedIdentityTests(unittest.TestCase):
                 "summary": summary_file.read_text(encoding="utf-8") if summary_file.exists() else "",
                 "evidence_exists": (output_dir / "evidence.json").exists(),
                 "package_exists": (output_dir / "PhishLens-Staging-Extension.zip").exists(),
+                "evidence": json.loads((output_dir / "evidence.json").read_text(encoding="utf-8"))
+                    if (output_dir / "evidence.json").exists() else None,
+                "bridge_requests": bridge_requests,
             }
 
     def responses(self):
@@ -255,16 +284,16 @@ class HostedIdentityTests(unittest.TestCase):
         hosted_job = workflow[hosted_start:]
         preflight_marker = "      - name: Recheck PR head immediately before deployment"
         preflight_start = hosted_job.index(preflight_marker)
-        deploy_start = hosted_job.index("      - name: Deploy PR merge commit using the trusted legacy script", preflight_start)
+        deploy_start = hosted_job.index("      - name: Deploy exact PR head using the trusted legacy script", preflight_start)
         preflight = hosted_job[preflight_start:deploy_start]
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+        marker = "      - name: Verify PR-head identity and package staging assets"
         start = hosted_job.index(marker)
         end = hosted_job.index("      - name: Preserve hosted staging evidence and extension", start)
         step = hosted_job[start:end]
 
         self.assertIn("current['head']['sha'] == expected", preflight)
         self.assertIn("steps.staging-final-preflight.outputs.current == 'true'", hosted_job[deploy_start:start])
-        self.assertIn("STAGING_COMMIT: ${{ github.sha }}", step)
+        self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
         self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
@@ -293,7 +322,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("no deployment was started", result["summary"])
 
     def test_api_errors_during_hosted_verification_never_publish_success(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+        marker = "      - name: Verify PR-head identity and package staging assets"
         current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
         cases = (
             ("head lookup", APIError("GitHub HTTP 403 for pulls/68"), None),
@@ -314,30 +343,43 @@ class HostedIdentityTests(unittest.TestCase):
                 self.assertFalse(result["evidence_exists"])
                 self.assertFalse(result["package_exists"])
 
-    def test_hosted_finalizer_checks_mock_crud_but_not_ai_acceptance(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+    def test_hosted_finalizer_is_read_only_and_records_auth_bridge_checks(self):
+        marker = "      - name: Verify PR-head identity and package staging assets"
         current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
-        mock_result = {
-            "result": "passed", "cleanedUp": True, "analysisMode": "mock",
-            "analysisProvenance": {
-                "providerMode": "mock", "model": None,
-                "modelRevision": None, "promptVersion": None,
-            },
-        }
+
         def package_effect(_api, _sha, _number, _config, output):
             Path(output).write_bytes(b"synthetic staging package")
 
         result = self.run_workflow_python(
-            marker, [current_pr, current_pr, current_pr], package_effect, crud_result=mock_result
+            marker, [current_pr, current_pr, current_pr], package_effect
         )
 
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("current=true", result["output"])
-        self.assertIn("saved-report CRUD/provenance passed (`mock` provider", result["summary"])
-        self.assertIn("Real AI acceptance is not checked", result["summary"])
-        self.assertNotIn("[x] Non-mock AI acceptance", result["summary"])
+        self.assertIn("Hosted staging read-only preflight passed", result["summary"])
+        self.assertIn("no account or saved-report writes were performed", result["summary"])
+        self.assertIn("endpoint preflight uses GET requests only", result["summary"])
         self.assertTrue(result["evidence_exists"])
         self.assertTrue(result["package_exists"])
+
+        checklist = result["evidence"]["automated_checklist"]
+        read_only = checklist["read_only_preflight"]
+        self.assertEqual(read_only["result"], "passed")
+        self.assertEqual(read_only["auth_bridge"], "passed")
+        self.assertEqual(read_only["anonymous_saved_report"], "authentication_required")
+        self.assertEqual(read_only["seeded_history"], "not_checked")
+        self.assertFalse(read_only["application_crud_writes_performed"])
+        self.assertEqual(checklist["live_auth_acceptance"]["result"], "not_run")
+        self.assertEqual(checklist["saved_report_crud"]["result"], "not_run")
+        self.assertEqual(
+            [request[0] for request in result["bridge_requests"]],
+            ["GET", "GET", "GET"],
+        )
+        self.assertEqual(
+            [request[1].removeprefix("https://phishlens-staging.onrender.com")
+             for request in result["bridge_requests"]],
+            ["/auth/bridge", "/auth/bridge/client.js", "/auth/bridge/sdk.mjs"],
+        )
 
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {"state": "open", "head": {"sha": SHA}, "draft": True}
@@ -346,7 +388,7 @@ class HostedIdentityTests(unittest.TestCase):
             [current_draft],
         )
         hosted = self.run_workflow_python(
-            "      - name: Verify deployed merge identity and package staging assets",
+            "      - name: Verify PR-head identity and package staging assets",
             [current_draft],
         )
 

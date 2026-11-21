@@ -24,6 +24,7 @@ ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js
           "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
 ACCOUNT_UI_ASSETS = ("js/account-popup.js", "js/account-session.js", "js/account-ui.js")
 NEON_AUTH_ASSETS = (
+    "js/neon-bridge-client.js",
     "js/neon-integration.js", "js/neon-accounts.js", "js/auth-config.js",
     "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
 )

@@ -80,10 +80,16 @@ python scripts/package_staging_extension.py \
   --expected-staging FULL_VERIFIED_BACKEND_SHA \
   --auth-url https://CONFIRMED_NEON_AUTH_HOST/neondb/auth \
   --auth-database neondb \
+  --auth-transport https-bridge \
   --manifest-key-file /private/path/extension-public-key.txt \
   --output /private/path/PhishLens-Staging-Auth.zip \
   --evidence /private/path/PhishLens-Staging-Auth-evidence.json
 ```
+
+For preparation before deployment, add `--candidate-only` and supply the reviewed
+source SHA to `--expected-staging`. Candidate evidence leaves the observed staging
+SHA empty and records hosted acceptance as unverified. After deployment, compare
+the actual `/version` SHA against the candidate's source SHA before any live trial.
 
 The key file contains only the extension owner's canonical base64 RSA
 SubjectPublicKeyInfo DER public manifest key. The builder rejects malformed or
@@ -100,10 +106,16 @@ The package receives only the staging API host and that exact Auth origin as
 required host permissions. The builder rejects credentials, query strings,
 extra hosts, non-Neon Auth domains, missing or mismatched public keys and source
 checkouts whose extension inputs are dirty. The evidence records the expected
-Chrome ID from the public key and leaves `trusted_chrome_origin` unset. After
-Leyan independently confirms the installed ID matches, have the Neon
-administrator verify that exact
-origin before any Auth setting change. This local package build is preparation;
+Chrome ID from the public key. With `--auth-transport https-bridge`, the package
+uses `/auth/bridge` on the staging API. Confirm that Render serves the bridge
+with the matching Auth URL, `REPORT_AUTH_MODE=neon`, and
+`RENDER_EXTERNAL_URL=https://phishlens-staging.onrender.com` (or the explicit
+`AUTH_BRIDGE_ORIGIN` override). Register `https://phishlens-staging.onrender.com`
+as the Neon trusted domain. The fixed installed Chrome origin is checked by
+the bridge's frame policy and message handler. Record the verified HTTPS domain
+in the private plan's `trusted_origin`. The evidence records the required HTTPS
+domain, and leaves the historical `trusted_chrome_origin` field unset.
+This local package build is preparation;
 it does not install the extension, update Neon trusted origins, configure
 Render, or authorize hosted testing. The trusted Secretary controller must be
 reviewed and promoted before its hosted preview can use a new packager revision.

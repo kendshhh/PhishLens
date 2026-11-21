@@ -99,11 +99,17 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     signUp: input => adapter.signUp(input),
     resend: input => adapter.resend(input),
     recover: input => adapter.recover(input),
-    resetPassword: input => adapter.resetPassword(input),
-    async signOut() {
+    async resetPassword(input) {
+      await adapter.resetPassword(input);
       await clear();
-      try { await adapter.signOut(); }
-      catch { publish('signed-out', 'Signed out on this device. The account service could not confirm sign-out.'); }
+    },
+    async signOut() {
+      const clearing = clear();
+      const version = revision;
+      const [local, remote] = await Promise.allSettled([clearing, adapter.signOut()]);
+      if (version === revision && (local.status === 'rejected' || remote.status === 'rejected')) {
+        publish('signed-out', 'The account service could not confirm sign-out. Try signing out again after signing in.');
+      }
     },
     dispose() { disposed = true; ++revision; cancel(timer); listeners.clear(); session = null; client = null; }
   };

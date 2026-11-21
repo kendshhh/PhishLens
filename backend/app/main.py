@@ -26,11 +26,13 @@ from backend.app.observability import (
     request_observability_middleware,
     set_ai_observation,
 )
+from backend.app.routers.auth_bridge import router as auth_bridge_router
 from backend.app.routers.history import router as history_router
 from backend.core.config import PROJECT_ROOT, ai_analysis_enabled, get_ai_config
 
 app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
+app.include_router(auth_bridge_router)
 
 
 @app.middleware("http")

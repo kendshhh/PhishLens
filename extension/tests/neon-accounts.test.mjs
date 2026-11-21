@@ -83,6 +83,25 @@ test('rejects opaque, expired, or mismatched tokens without returning them', asy
   }
 });
 
+test('actual SDK HTTP failures preserve safe invalid-credentials, duplicate and expired-code errors', async () => {
+  const original = globalThis.fetch;
+  const errors = [
+    [401, 'INVALID_EMAIL_OR_PASSWORD', 401, /Email or password/],
+    [422, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 409, /Try signing in/],
+    [400, 'OTP_EXPIRED', 400, /This code expired/],
+    [429, 'TOO_MANY_REQUESTS', 429, /Too many attempts/]
+  ];
+  try {
+    for (const [status, code, expectedStatus, message] of errors) {
+      globalThis.fetch = async () => Response.json({ code, message: 'private-provider-value' }, { status });
+      const { adapter } = createNeonIntegration({ apiOrigin,
+        config: { enabled: true, authUrl, database: 'test', apiOrigin }, hostPermissions: [origin + '/*'] });
+      await assert.rejects(adapter.resend({ email: user.email }), error =>
+        error.status === expectedStatus && message.test(error.message) && !error.message.includes('private-provider-value'));
+    }
+  } finally { globalThis.fetch = original; }
+});
+
 test('service errors are sanitized and bounded; rate limits retain useful status', async () => {
   const adapter = createNeonAccounts({ getSession: async () => ({ error: { status: 429, message: 'secret token' } }) });
   await assert.rejects(adapter.restore(), error => error.status === 429 && !error.message.includes('secret'));
@@ -99,6 +118,59 @@ test('sign-out invalidates late restoration even if remote logout fails', async 
   finish({ data: session(jwt()) });
   assert.equal(await pending, null);
   assert.equal(await adapter.getAccessToken(user.id), null);
+});
+
+test('failed remote logout blocks restoration in a new popup until explicit sign-in', async () => {
+  const values = new Map();
+  const storage = {
+    async get(key) { return { [key]: values.get(key) }; },
+    async set(items) { for (const [key, value] of Object.entries(items)) values.set(key, value); },
+    async remove(key) { values.delete(key); }
+  };
+  let reads = 0;
+  const sdk = {
+    async getSession() { reads++; return { data: session(jwt()) }; },
+    async signOut() { return { error: { status: 503 } }; },
+    signIn: { async email() { return { data: {} }; } }
+  };
+  const openPopup = () => createNeonIntegration({
+    config: { enabled: true, authUrl, database: 'test', apiOrigin }, apiOrigin,
+    hostPermissions: [origin + '/*'], storage, sdkFactory: () => sdk
+  }).adapter;
+  const first = openPopup();
+  assert.ok(await first.restore());
+  await assert.rejects(first.signOut(), { status: 503 });
+  assert.deepEqual([...values.values()], [true]);
+  const reopened = openPopup();
+  assert.equal(await reopened.restore(), null);
+  assert.equal(await reopened.getAccessToken(user.id), null);
+  assert.equal(reads, 1);
+  await assert.rejects(reopened.signIn({ email: 'other@example.test', password: 'Synthetic-password' }), { status: 401 });
+  assert.equal(await reopened.restore(), null);
+  assert.ok(await reopened.signIn({ email: user.email, password: 'Synthetic-password' }));
+  assert.equal(values.size, 0);
+  assert.ok(await openPopup().restore());
+});
+
+test('invalid registration stays local and duplicate and expired code errors are sanitized', async () => {
+  let signUps = 0;
+  const adapter = createNeonAccounts({
+    signUp: { async email() {
+      signUps++;
+      return { error: { status: 422, code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', message: 'private provider details' } };
+    } },
+    emailOtp: { async verifyEmail() {
+      return { error: { status: 400, code: 'OTP_EXPIRED', message: 'private provider details' } };
+    } }
+  });
+  const valid = { name: 'Test A', email: user.email, password: 'Synthetic-password' };
+  for (const input of [{ name: '   ' }, { email: 'invalid' }, { password: 'short' }]) {
+    await assert.rejects(adapter.signUp({ ...valid, ...input }), { status: 400 });
+  }
+  assert.equal(signUps, 0);
+  await assert.rejects(adapter.signUp(valid), { status: 409, message: /Try signing in/ });
+  await assert.rejects(adapter.verifyEmail({ email: user.email, code: '123456' }),
+    { status: 400, message: 'This code expired. Request a new code and try again.' });
 });
 
 test('provider session renewal preserves reports and updates the expiry timer', async () => {

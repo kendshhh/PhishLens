@@ -1,4 +1,5 @@
 """Offline signed-token and API ownership tests; no hosted Auth calls."""
+import os
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -81,6 +82,71 @@ def test_jwks_outage_is_not_invalid_credentials(signed, monkeypatch):
         auth.verify_identity(signed())
     assert error.value.status_code == 503
     assert "internal detail" not in error.value.detail
+
+
+@pytest.mark.parametrize("base_url", [
+    "https://[malformed-host",
+    "https://auth.example.test:not-a-port",
+])
+def test_malformed_auth_url_is_configuration_unavailable(signed, monkeypatch, base_url):
+    jwks = Mock(side_effect=AssertionError("invalid configuration reached JWKS"))
+    monkeypatch.setattr(auth, "jwks_client", lambda base: SimpleNamespace(get_signing_key_from_jwt=jwks))
+    monkeypatch.setenv("NEON_AUTH_BASE_URL", base_url)
+
+    with pytest.raises(HTTPException) as error:
+        auth.verify_identity(signed())
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "Authentication configuration unavailable"
+    jwks.assert_not_called()
+
+
+def test_model_info_cannot_load_dotenv_auth_mode_before_authenticated_request(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "render.env"
+    settings.write_text("REPORT_AUTH_MODE=demo\nAI_ANALYSIS_ENABLED=false\n")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.delenv("AI_ANALYSIS_ENABLED", raising=False)
+
+    old = app.dependency_overrides.copy()
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        with TestClient(app) as client:
+            info = client.get("/model-info")
+            saved_reports = client.get("/api/analyses")
+    finally:
+        app.dependency_overrides = old
+
+    assert info.status_code == 200
+    assert "AI_ANALYSIS_ENABLED" not in os.environ
+    assert "REPORT_AUTH_MODE" not in os.environ
+    assert saved_reports.status_code == 503
+    assert saved_reports.json()["detail"] == "Authentication configuration unavailable"
+
+
+@pytest.mark.parametrize("changes", [
+    {"sub": ""},
+    {"email": None},
+])
+def test_invalid_identity_claims_challenge_before_user_mapping(signed, monkeypatch, changes):
+    token = signed(**changes)
+    resolve = Mock(side_effect=AssertionError("Invalid identity reached user mapping"))
+    monkeypatch.setattr(auth, "resolve_user", resolve)
+    old = app.dependency_overrides.copy()
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/analyses", headers={"Authorization": "Bearer " + token})
+    finally:
+        app.dependency_overrides = old
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+    assert token not in response.text
+    resolve.assert_not_called()
 
 @pytest.mark.parametrize("method,path,body", [
     ("GET", "/api/analyses", None),
@@ -239,6 +305,64 @@ def test_unknown_mode_never_falls_back_to_demo(monkeypatch):
     with pytest.raises(HTTPException) as error:
         auth.report_owner(None)
     assert error.value.status_code == 503
+
+
+def test_hosted_service_requires_explicit_report_auth_mode(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "empty.env"
+    settings.write_text("")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+
+    with pytest.raises(HTTPException) as error:
+        auth.report_owner(None)
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "Authentication configuration unavailable"
+
+
+def test_hosted_service_does_not_trust_report_auth_mode_from_dotenv(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "hosted.env"
+    settings.write_text("REPORT_AUTH_MODE=demo\n")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+
+    config.get_ai_config()
+    for _ in range(2):
+        with pytest.raises(HTTPException) as error:
+            auth.report_owner(None)
+        assert error.value.status_code == 503
+        assert error.value.detail == "Authentication configuration unavailable"
+    assert "REPORT_AUTH_MODE" not in os.environ
+
+
+def test_hosted_service_accepts_explicit_report_auth_mode(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "empty.env"
+    settings.write_text("")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.setenv("REPORT_AUTH_MODE", "neon")
+    monkeypatch.setenv("RENDER", "true")
+
+    assert auth.auth_mode() == "neon"
+
+
+def test_local_service_keeps_demo_compatibility(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "empty.env"
+    settings.write_text("")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.delenv("RENDER", raising=False)
+
+    assert auth.auth_mode() == "demo"
 
 
 def test_expiry_claim_is_required(signed):
