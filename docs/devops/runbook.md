@@ -19,29 +19,30 @@ bounded smoke retries, failure summaries, local server-exit monitoring and log
 retention. Hosted deployment requires
 successful staging, hosted preflight and backend results at both job and deploy
 step level. The synchronized candidate passed 321 local Node tests and the
-GET-only smoke. PR #268 head `d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed
-Backend, Extension and Staging integration in
-[run 44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192);
-hosted staging was skipped. Current main `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
-has a separate CI failure at packaged-extension Chromium browser acceptance in
-[run 44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600),
-while Backend passed. Earlier PR #268 CI run
+GET-only smoke. PR #265 merged to main at `95975cd47dceeac74ea36054610956f0a1db1fa9`;
+its CI [44889931821](https://github.com/kendshhh/PhishLens/actions/runs/44889931821)
+and CodeQL [44889931096](https://github.com/kendshhh/PhishLens/actions/runs/44889931096)
+passed. PR #268 head `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` passed Backend,
+Extension, Staging integration, migration preflight and hosted preflight in
+[run 44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201);
+workflow lint [44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+dependency security and Dependency graph review [44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+and deterministic evaluation [44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190)
+passed. Hosted staging job 136807616481 ended with conclusion success, but its
+final freshness guard marked the request superseded after the label was removed
+at 09:54 UTC; deployment, smoke, CRUD and artifact steps were skipped. The job
+summary classifies this as blocked, not hosted acceptance. Required `Secretary
+staging` failed in [run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807).
+No current PR CodeQL result appeared. The hosted CRUD runner remains unauthenticated,
+required-check settings are not reverified, and the effective production deploy
+trigger remains unresolved. The PR still targets the merged #265 branch and
+should be retargeted to main before merge. Do not merge, promote, or claim release
+readiness from these changes alone. Earlier PR #268 CI run
 [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-passed local staging integration and guard tests. The hosted preflight and
-deployment jobs were skipped pending the `needs-hosted-staging` label; the
-separate Secretary staging check requires that protected run. The hosted CRUD
-runner remains unauthenticated, required-check settings are not reverified, and
-the effective production deploy trigger remains unresolved. Do not merge,
-promote, or claim release readiness from these changes alone.
-
-At 09:31 UTC, GitHub reported PR #268 head
-`7dbebfd060298a80e99a38a52663901e776935cb`. Backend, Extension, migration
-source preflight, Staging integration, workflow lint, dependency security and
-deterministic evaluation passed. Dependency graph review failed because GitHub
-reports the repository Dependency graph is disabled. CodeQL failed all three
-language jobs; annotations attribute this to Actions installation API rate
-limits and report no CodeQL findings. Hosted preflight and deployment were
-skipped. The newer evidence sync requires current-head checks before merge.
+passed local staging integration and guard tests. On `2e26327`, Dependency
+graph review passed after the graph was enabled; 15 existing Dependabot alerts
+(12 high, 3 moderate) remain open. See [CI maintenance](ci-maintenance.md) and
+the [dependency audit](dependency-audits.md).
 
 The owner-approved recovery objectives are RTO no greater than 30 minutes and
 RPO no greater than one hour. Neither has been measured. The November 20

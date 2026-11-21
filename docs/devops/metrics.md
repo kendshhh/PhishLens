@@ -7,8 +7,9 @@ performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
 from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
 and `/model-info` returned HTTP 200; analysis is disabled
 (`analysis_enabled=false`, `provider_mode=disabled`). GitHub `main` later
-advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; this record does not
-verify a later production deploy. Staging serves
+advanced through `06f89d7a0b5b9dec316dfa11f2846767a32086c5` to
+`95975cd47dceeac74ea36054610956f0a1db1fa9`; this record does not verify a later
+production deploy. Staging serves
 `ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
 `dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
 TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
@@ -21,18 +22,28 @@ used the mainline-synchronized smoke helper. Neither run checked
 performance sample. Treat the deployment identity above as the 07:31 UTC
 control-plane observation.
 
-CI evidence is not a performance metric. At 09:22 UTC, GitHub reported PR #268
-head `7dbebfd060298a80e99a38a52663901e776935cb`: Backend, Extension and migration
-source preflight passed; Staging integration later completed successfully.
-Workflow lint, dependency security and deterministic evaluation passed, while
-dependency graph review failed because GitHub reports Dependency graph is
-disabled. CodeQL later failed all three language jobs on Actions installation
-API rate limits; annotations reported no CodeQL findings. Hosted
-preflight/deployment were skipped. See the exact run links and the
-Secretary report state in the [release record](release-record-2026-11-21.md)
-and [staging evidence](evidence/2026-11-21-staging-neon-auth-smoke.md). Do not
-include these workflow outcomes in CI duration or deployment performance
-samples below.
+CI evidence is not a performance metric. PR #265 merged to main at
+`95975cd47dceeac74ea36054610956f0a1db1fa9`; its CI and CodeQL passed in runs
+44889931821 and 44889931096. On PR #268 head
+`2e26327254c71b6cb7d655181cffb21e8dd1ee9b` at 10:14 UTC, Backend, Extension,
+migration source preflight, Staging integration, hosted preflight, workflow
+lint, dependency security, Dependency graph review and deterministic evaluation
+passed. Hosted staging job 136807616481 ended with conclusion success, but its
+final freshness guard blocked deployment, smoke, CRUD and artifact steps after
+the request label was removed at 09:54 UTC. The job summary says blocked, not
+hosted acceptance. The separate required `Secretary staging` status failed in
+[run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807).
+No current PR CodeQL check appeared;
+the prior `7dbebfd` CodeQL run failed because Actions hit installation API rate
+limits. Dependency graph review passes after
+graph enablement, while 15 existing Dependabot alerts (12 high, 3 moderate)
+remain open. The latest checks are [CI 44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201),
+[workflow lint 44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+[dependency checks 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+and [evaluation 44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190).
+See the [release record](release-record-2026-11-21.md) and [staging evidence](evidence/2026-11-21-staging-neon-auth-smoke.md).
+Do not include these workflow outcomes in CI duration or deployment
+performance samples below.
 
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy
@@ -59,9 +70,12 @@ also passed on that SHA. The scheduled [Production drift run
 passed source-SHA, health and readiness checks.
 
 This is a historical performance sample, not the current main check result.
-Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`. Its latest
-CI run [44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
-failed in packaged-extension Chromium browser acceptance; Backend passed.
+Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, then to
+`95975cd47dceeac74ea36054610956f0a1db1fa9`. The CI failure at packaged-extension
+Chromium browser acceptance on `06f89d7` in
+[44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
+is historical; the merged `95975cd` snapshot passed its complete CI and CodeQL
+checks. The `06f89d7` Backend passed.
 Workflow lint [44885148613](https://github.com/kendshhh/PhishLens/actions/runs/44885148613)
 and dependency security [44885148629](https://github.com/kendshhh/PhishLens/actions/runs/44885148629)
 passed. Those current statuses are not included in the timing sample above.

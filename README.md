@@ -6,14 +6,16 @@ risk indicators, and manage saved analysis reports.
 
 ## Current Status — November 21, 2026
 
-The current release decision is **NO-GO**. The latest observed GitHub `main` is
-`06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which includes the Bearer-aware
-staging history correction. This closeout is on
+The current release decision is **NO-GO**. GitHub `main` is
+`95975cd47dceeac74ea36054610956f0a1db1fa9`, which merged PR #265's readiness
+baseline and includes the Bearer-aware staging history correction from
+`06f89d7`. This closeout is on
 `codex/devops-staging-closeout-20261121`, synchronized with that main through
-merge commit `14874d339bbb4042172df954f97596080aa303ee`. It adds bounded retry
-diagnostics, local server crash detection/log retention, and fail-closed hosted
-deployment gates. The earlier
-implementation and regression commits remain in the branch history.
+merge commit `14874d339bbb4042172df954f97596080aa303ee` plus the PR #265
+documentation baseline (`ca29235`, merged to main at `95975cd`). It contains
+bounded retry diagnostics, local server crash detection/log retention, and
+fail-closed hosted deployment gates. The original implementation and regression
+commits remain in the branch history.
 The original developer checkout at `16f955321caf5dc368181be7ce5c00643750545d`
 remains dirty and was preserved. At the 07:31 UTC Render refresh, production
 served the earlier SHA `811980c2cbf70d9957146bf329627f0826a018f1` with analysis
@@ -46,6 +48,43 @@ but hosted staging/preflight remained skipped on that same prior head. No Render
 deployment or authenticated CRUD occurred. These observations predate this
 evidence-sync head, so its checks must be read afresh before treating any gate
 as passed.
+
+At 09:42 UTC, PR #268 head `def5e9b3d925e94a9aa664a24f90c73b960c7f99` had
+Backend, Extension, migration preflight, Staging integration, workflow lint,
+dependency security, Dependency graph review and deterministic evaluation
+passed. Hosted staging and preflight were skipped. The current PR check set had
+no CodeQL result; the prior run on `7dbebfd` failed because GitHub Actions hit
+an installation API rate limit. By contrast, the merged `main` revision
+`95975cd` has passing CI and CodeQL checks ([CI
+44889931821](https://github.com/kendshhh/PhishLens/actions/runs/44889931821),
+[CodeQL 44889931096](https://github.com/kendshhh/PhishLens/actions/runs/44889931096)).
+GitHub enabled Dependency graph and alerts; 15 existing Dependabot alerts
+(12 high, 3 moderate) remain open. PR #268 is still based on the now-merged
+`ca29235` branch and must be retargeted to `main` before merging. No Render
+deployment or authenticated hosted CRUD was performed.
+
+At 10:14 UTC, PR #268 was at `2e26327254c71b6cb7d655181cffb21e8dd1ee9b`.
+Backend, Extension, migration source preflight, Staging integration, hosted
+preflight, workflow lint, dependency security, Dependency graph review and
+deterministic evaluation passed in the exact-head checks ([CI
+44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201),
+[workflow lint 44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+[dependency checks 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+[evaluation 44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190)).
+Hosted staging job [136807616481](https://github.com/kendshhh/PhishLens/actions/runs/44891131201/job/136807616481)
+completed with conclusion `success`, but its final recheck marked the run
+superseded after the request label was removed; the Render deployment, API
+smoke, CRUD and artifact steps were skipped. The run summary classifies this as
+blocked, not hosted acceptance. The separate required `Secretary staging`
+status failed because the label and exact-head hosted verification were absent
+([run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807)).
+No current PR CodeQL result appeared. No Render deployment or authenticated
+CRUD occurred.
+The base is still the now-merged `codex/readiness-update-20261121` branch and
+must be retargeted to `main`; the PR remains open and unmerged. This latest head
+is an empty CI-trigger commit, and a documentation push will create a new head
+whose checks must be read separately.
+
 See the [dated staging evidence](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
 for timestamps and scope.
 
@@ -57,8 +96,8 @@ scorecard's 41/100 DevOps evidence estimate is descriptive only; there is no
 approved grade or overall release score.
 
 Use the [DevOps evidence index](docs/devops/README.md) for the current release
-record, environment map, scorecard, staging failure evidence, runbooks and
-closeout prompt. See [PIPELINE.md](PIPELINE.md) for the current delivery view
+record, environment map, scorecard, staging failure evidence, CI maintenance,
+runbooks and closeout prompt. See [PIPELINE.md](PIPELINE.md) for the current delivery view
 and [pipeline metrics](docs/devops/metrics.md) for dated, bounded measurements.
 Historical status reports remain dated snapshots. The isolated Chrome software
 audit and synthetic browser evidence for Issue #131 are recorded in

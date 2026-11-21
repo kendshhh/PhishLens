@@ -13,9 +13,9 @@ prove that this was its response. Review branch merge commit `14874d339bbb404217
 bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
 conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
-321 Node tests and a fresh GET-only staging smoke
-passed at about 08:35 UTC. The last verified PR head before documentation
-reconciliation was `631b0ef21849e8abe877bb16b4676047f2aca86a`; CI
+321 Node tests and a fresh GET-only staging smoke passed at about 08:35 UTC.
+PR #265 has merged to main at `95975cd`; CI and CodeQL passed for that main
+revision. Earlier verified PR head `631b0ef21849e8abe877bb16b4676047f2aca86a`; CI
 [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
 workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
 dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
@@ -41,7 +41,19 @@ had passed, while hosted staging and preflight remained skipped. Secretary repor
 said **WAITING FOR CHECKS** at 09:22. Hosted staging was not requested. The exact
 timestamped result and scope are in the
 [staging evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
-The later evidence-sync head still needs its own checks.
+At 10:14 UTC, PR #268 head `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` passed
+Backend, Extension, migration preflight, Staging integration, hosted preflight,
+workflow lint, dependency security, Dependency graph review and deterministic
+evaluation. Hosted staging job 136807616481 ended with conclusion success, but
+its final freshness guard marked the request superseded after the label was
+removed at 09:54 UTC; deployment, smoke, CRUD and artifact steps were skipped.
+The job summary classifies it as blocked. Required `Secretary staging` failed
+in [run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807).
+No current PR CodeQL result appeared. Authenticated CRUD remains unverified.
+PR #268 still targets the merged PR #265
+branch; retarget it to main before merge. The exact run links and prior CodeQL
+rate-limit failure are in the
+[staging evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
 
 The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and

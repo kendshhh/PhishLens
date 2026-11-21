@@ -32,14 +32,20 @@
 > do not label the staging gate passed until authenticated create/list/read/
 > update/delete, ownership/isolation, persistence, and cleanup pass on one exact
 > package/backend pair.
-> On PR head `7dbebfd060298a80e99a38a52663901e776935cb`, Staging integration
-> completed successfully by 09:31 UTC. Backend, Extension, migration preflight,
-> workflow lint, dependency security and deterministic evaluation also passed.
-> Dependency graph review failed because GitHub reports the repository
-> Dependency graph is disabled. CodeQL failed all three language jobs; GitHub
-> annotations attribute this to Actions installation API rate limits and report
-> no CodeQL findings. Hosted staging/preflight were skipped; no Render deploy or
-> authenticated CRUD occurred. The newer evidence-sync head requires fresh CI.
+> On PR head `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` at 10:14 UTC, Backend,
+> Extension, migration preflight, Staging integration, hosted preflight, workflow
+> lint, dependency security, Dependency graph review and deterministic
+> evaluation passed. Hosted staging job 136807616481 ended with conclusion
+> success, but the final freshness guard marked the request superseded after
+> its label was removed at 09:54 UTC; deployment, smoke, CRUD and artifact steps
+> were skipped. The job summary classifies the run as blocked, not hosted
+> acceptance. Required `Secretary staging` failed in [run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807).
+> No current PR CodeQL result appeared; the prior CodeQL run on `7dbebfd` failed
+> because of an Actions installation API rate limit.
+> Dependency graph review now passes after GitHub enabled the graph. No Render
+> deployment or authenticated CRUD occurred. PR #268 still targets the merged
+> #265 branch and should be retargeted to main before merge. The pending docs
+> update creates a new head and requires fresh exact-head checks.
 
 > The November 15 point-in-time staging deployment and CRUD acceptance are recorded in
 > [the staging acceptance record](staging-acceptance-2026-11-15.md). That run predates

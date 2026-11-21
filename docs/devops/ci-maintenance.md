@@ -1,7 +1,9 @@
 # CI runtime and package-cache maintenance
 
 > This page includes historical October maintenance notes. Current deployment
-> and security state is summarized in the [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+> state is summarized in the [November 21 release record](release-record-2026-11-21.md)
+> and [environment map](environment-map-2026-11-21.md); older deployment notes
+> below are dated snapshots.
 
 ## Current pinned Actions — 2026-11-15
 
@@ -53,9 +55,13 @@ result on every PR rather than treating a skipped job as a clean scan.
 
 On 2026-11-21, the repository's dependency graph and vulnerability alerts were
 enabled after Dependency Review reported that the graph was unavailable. The
-rerun of PR #268's Dependency graph review passed. GitHub reported 15 existing
-Dependabot alerts on the default branch (12 high, 3 moderate); these are tracked
-in [the dependency audit record](dependency-audits.md) and were not dismissed.
+rerun of PR #268's Dependency graph review passed on
+[`0d3818e`](https://github.com/kendshhh/PhishLens/commit/0d3818e95715cdd1dba2d4a3b6572a029c6fc1c),
+`def5e9b` ([run 44890690295](https://github.com/kendshhh/PhishLens/actions/runs/44890690295)),
+and current PR head `2e26327` ([run 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162)).
+GitHub reported 15 existing Dependabot alerts on the default branch (12 high,
+3 moderate); these are tracked in [the dependency audit record](dependency-audits.md)
+and were not dismissed. They remain open security work.
 
 ## Validation and review
 

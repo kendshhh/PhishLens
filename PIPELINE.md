@@ -11,10 +11,12 @@ See the current [release record](docs/devops/release-record-2026-11-21.md),
 ### Source and candidate
 
 Latest observed GitHub `main` is
-[`06f89d7a0b5b9dec316dfa11f2846767a32086c5`](https://github.com/kendshhh/PhishLens/commit/06f89d7a0b5b9dec316dfa11f2846767a32086c5)
-(PR #263), which includes the Bearer-aware staging history correction. The
-review branch `codex/devops-staging-closeout-20261121` has synchronized with
-that main through merge commit `14874d339bbb4042172df954f97596080aa303ee`; the original developer checkout remains at `16f955321caf5dc368181be7ce5c00643750545d`
+[`95975cd47dceeac74ea36054610956f0a1db1fa9`](https://github.com/kendshhh/PhishLens/commit/95975cd47dceeac74ea36054610956f0a1db1fa9),
+which merged PR #265's shared documentation baseline; it includes the
+Bearer-aware staging history correction from `06f89d7`. The review branch
+`codex/devops-staging-closeout-20261121` has that code through merge commit
+`14874d339bbb4042172df954f97596080aa303ee` and the shared docs from `ca29235`;
+the original developer checkout remains at `16f955321caf5dc368181be7ce5c00643750545d`
 with existing user changes and has not been overwritten. No single reviewed
 extension/backend/model/Auth release candidate is selected. The Chrome MV3
 extension plus Render API and Neon remain the intended product scope; instructor
@@ -24,9 +26,9 @@ confirmation of the frontend requirement is pending.
 
 At the 07:31 UTC Render refresh, production served deploy
 `dep-dc07rs67bikc73fjgjq0` on
-`811980c2cbf70d9957146bf329627f0826a018f1`. Main has since advanced to
-`06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later production deploy was
-verified. Read-only `/version`, `/health`,
+`811980c2cbf70d9957146bf329627f0826a018f1`. Main has since advanced through
+`06f89d7a0b5b9dec316dfa11f2846767a32086c5` to `95975cd47dceeac74ea36054610956f0a1db1fa9`;
+no later production deploy was verified. Read-only `/version`, `/health`,
 `/ready` and `/model-info` returned HTTP 200. Analysis is intentionally disabled
 (`analysis_enabled=false`, `provider_mode=disabled`). This confirms service
 identity and disabled state, not product/AI acceptance; no production observer
@@ -44,30 +46,23 @@ explicit `401 Bearer` anonymous challenge, preserves seeded-history checks for
 writes endpoint/status/error details to the job summary. The branch also
 removes the hosted job's `always()` override, requires all three dependency
 results to be `success`, monitors local server startup, and retains its log
-artifact. The synchronized branch's latest code/test commit is
+artifact. The latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed `npm test` (321 tests)
-and a fresh GET-only live staging smoke at about 08:35 UTC. At the 08:53 UTC
-audit cutoff, PR #268 head `d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` had
-passed Backend, Extension and Staging integration in
-[run 44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192);
-hosted staging was skipped. Earlier CI passed the pre-sync code and docs commits.
-Hosted staging remains a separate protected check and is untriggered; the PR
-needs `needs-hosted-staging` and exact-head hosted verification. No Render
-deployment occurred. Authenticated history/CRUD, persistence, isolation and
-cleanup remain open.
-
-At 09:22 UTC, the remote PR head was
-`7dbebfd060298a80e99a38a52663901e776935cb`. Backend, Extension and migration
-source preflight passed; Staging integration later completed successfully.
-Workflow lint, dependency security and deterministic evaluation passed.
-Dependency graph review failed because GitHub reports the repository
-Dependency graph is disabled. CodeQL later failed all three language jobs; the
-annotations attribute those failures to Actions installation API rate limits
-and report no CodeQL findings. Hosted preflight and deployment were skipped.
-Secretary report
-[44889108682](https://github.com/kendshhh/PhishLens/actions/runs/44889108682)
-said **WAITING FOR CHECKS**. Hosted staging was not requested. This snapshot
-does not certify the later evidence-sync head; read its own checks.
+and a GET-only live staging smoke at about 08:35 UTC. At 09:42 UTC, PR #268
+head `def5e9b3d925e94a9aa664a24f90c73b960c7f99` passed Backend, Extension,
+migration source preflight and Staging integration in
+[CI 44890690426](https://github.com/kendshhh/PhishLens/actions/runs/44890690426).
+Workflow lint [44890690321](https://github.com/kendshhh/PhishLens/actions/runs/44890690321),
+dependency review and security [44890690295](https://github.com/kendshhh/PhishLens/actions/runs/44890690295),
+and deterministic evaluation [44890690376](https://github.com/kendshhh/PhishLens/actions/runs/44890690376)
+passed. Hosted staging and preflight were skipped. No CodeQL check appeared on
+this PR head; the earlier run on `7dbebfd` failed because GitHub Actions hit an
+installation API rate limit. The 0d3818e docs update records Dependency graph
+enablement; the PR dependency review now passes. No Render deployment occurred.
+Authenticated hosted CRUD, persistence, isolation and cleanup remain open.
+PR #268 still targets the PR #265 branch at `ca29235`, now merged into main at
+`95975cd`; retarget it to main before merging. The exact snapshots and remaining
+security alerts are in the [release record](docs/devops/release-record-2026-11-21.md).
 
 ### Controls and release gates
 
@@ -79,16 +74,36 @@ current configuration was not rechecked in this audit. The staging Neon branch
 and migration revision `0004_neon_auth_subject` were inspected read-only; the
 private Render-to-Neon branch/role mapping remains unverified.
 
-Main has since advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`.
-Its latest CI run, [44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600),
-failed in the packaged-extension Chromium browser-acceptance step; Backend
-checks passed, and the matching [workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44885148613)
-and [dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44885148629)
-runs passed. At the 08:53 UTC audit cutoff, PR #268 head
-`d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` had passed Backend, Extension and
-Staging integration in
-[run 44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192);
-hosted staging was skipped.
+The `06f89d7` main CI browser-acceptance failure in
+[run 44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
+is historical. Merged main `95975cd` passed [CI
+44889931821](https://github.com/kendshhh/PhishLens/actions/runs/44889931821)
+and [CodeQL 44889931096](https://github.com/kendshhh/PhishLens/actions/runs/44889931096).
+GitHub reports 15 existing Dependabot alerts (12 high, 3 moderate); see
+[CI maintenance](docs/devops/ci-maintenance.md) and the
+[dependency audit](docs/devops/dependency-audits.md). The current PR's dependency
+review passes after the graph was enabled.
+
+At 10:14 UTC, PR #268 head `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` passed
+Backend, Extension, migration source preflight, Staging integration, hosted
+preflight, workflow lint, dependency security, Dependency graph review and
+deterministic evaluation ([CI 44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201),
+[workflow lint 44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+[dependency checks 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+[evaluation 44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190)).
+Hosted staging job [136807616481](https://github.com/kendshhh/PhishLens/actions/runs/44891131201/job/136807616481)
+completed with conclusion `success`, but the final freshness guard marked the
+run superseded after the request label was removed; Render deployment, hosted
+smoke, CRUD and artifact steps were skipped. The job summary classifies it as
+blocked, not hosted acceptance. The separate required `Secretary staging`
+status failed because the request label and exact-head hosted verification
+were absent ([run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807)).
+No current PR CodeQL result appeared. No Render deployment or authenticated
+CRUD occurred.
+PR #268 still targets the merged
+`codex/readiness-update-20261121` branch and must be retargeted to `main` before
+merge. The head `2e26327` is an empty CI-trigger commit; the documentation
+reconciliation will create a new head requiring its own checks.
 
 The November 20 isolated Neon restore checked schema and aggregate integrity,
 but did not measure service RTO/RPO; current-production-compatible app rollback

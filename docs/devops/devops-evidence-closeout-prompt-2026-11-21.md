@@ -82,8 +82,10 @@ before relying on them and add the actual observation date and source:
   showed `new_commit`; reconcile the settings and event source with the owner.
 - The original developer checkout contained pre-existing user changes and was
   preserved. The review work used an isolated worktree and synchronized latest
-  `main` through merge commit `14874d339bbb4042172df954f97596080aa303ee`.
-  Inspect the actual tree, do not reset, clean, stash, rebase, merge or push over
+  main code through merge commit `14874d339bbb4042172df954f97596080aa303ee`.
+  PR #265's docs at `ca29235` subsequently merged into main at `95975cd`. The
+  review branch remains based on the merged #265 branch. Inspect the actual tree,
+  do not reset, clean, stash, rebase, merge or push over
   unreviewed user work.
 
 ### Verified follow-up evidence — November 21, 2026
@@ -118,7 +120,7 @@ branch `codex/devops-staging-closeout-20261121` had code/test commit
   status and response body; do not assert a proven root cause from the later
   `401 Bearer` read-only observation.
 
-### Later PR-head check observation — 2026-11-21 09:22 UTC
+### Later PR-head check observation — 2026-11-21 09:22–09:31 UTC
 
 GitHub reported remote PR #268 head
 `7dbebfd060298a80e99a38a52663901e776935cb` after the PR #265 documentation
@@ -133,10 +135,47 @@ The Secretary report
 [44889108682](https://github.com/kendshhh/PhishLens/actions/runs/44889108682)
 said **WAITING FOR CHECKS** at 09:22 UTC. Hosted staging/preflight remained
 skipped at 09:31. No Render deploy or authenticated CRUD occurred. These results
-are a prior-head snapshot; rerun
-the full source, review, CI, deployment-control and documentation reconciliation
-for the candidate branch head before reuse. Do not infer a 100% score from
-partial or in-progress checks.
+are a prior-head snapshot; do not transfer them to later branch heads. At that
+time GitHub's dependency graph was then enabled afterward, and Dependency graph
+review passed on subsequent PR commits. The 15 existing Dependabot alerts
+(12 high, 3 moderate) remain open; the rate-limit failure on that older CodeQL
+run also remains unresolved on a new PR head.
+
+### Latest observed PR-head check snapshot — 2026-11-21 09:42 UTC
+
+PR #268 head `def5e9b3d925e94a9aa664a24f90c73b960c7f99` passed Backend,
+Extension, migration source preflight, Staging integration, workflow lint,
+dependency security, Dependency graph review and deterministic evaluation.
+Hosted staging and preflight were skipped. The PR check set showed no CodeQL
+result. Merged main `95975cd47dceeac74ea36054610956f0a1db1fa9` passed CI and
+CodeQL. PR #268 still targets `codex/readiness-update-20261121` at
+`ca29235`, now merged into main; retarget it to `main` before merge. The
+authenticated hosted CRUD runner, protected Render deployment and current PR
+CodeQL result remain open. Re-run source review, every required check, deployment
+control and documentation reconciliation on the exact candidate before reuse.
+Do not infer a 100% score from partial evidence.
+
+### Latest observed PR state — 2026-11-21 10:14 UTC
+
+PR #268 head is `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` (an empty CI-trigger
+commit). Backend, Extension, migration source preflight, Staging integration,
+hosted preflight, workflow lint, dependency security, Dependency graph review
+and deterministic evaluation passed in [CI 44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201),
+[workflow lint 44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+[dependency checks 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+and [evaluation 44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190).
+Hosted staging job 136807616481 ended with conclusion success, but its final
+freshness guard marked the request superseded after its label was removed at
+09:54 UTC; deployment, smoke, CRUD and artifact steps were skipped. Its summary
+classifies the run as blocked, not hosted acceptance. Required `Secretary
+staging` failed because the label and exact-head hosted verification were absent
+([run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807)).
+No current PR CodeQL result appeared. PR #268 still targets
+the merged PR #265 branch, not `main`; retargeting remains outstanding. Fifteen
+Dependabot alerts (12 high, 3 moderate) remain open. No exact deployed candidate
+or authenticated CRUD evidence exists. The documentation changes being
+prepared create a new head and need fresh checks; do not reuse this snapshot as
+their check evidence.
 
 ## Required working method
 

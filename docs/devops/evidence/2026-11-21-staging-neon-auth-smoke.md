@@ -362,3 +362,59 @@ attribute their failures to Actions installation API rate limits; rerun CodeQL
 on a fresh exact head after the limit clears. The run does not establish a
 CodeQL finding, but its failed status remains a failed gate until a successful
 analysis is recorded.
+
+## Current PR-head check snapshot — 2026-11-21 09:42 UTC
+
+PR #265 merged into `main` at `95975cd47dceeac74ea36054610956f0a1db1fa9`.
+That merged main revision passed CI [44889931821](https://github.com/kendshhh/PhishLens/actions/runs/44889931821)
+and CodeQL [44889931096](https://github.com/kendshhh/PhishLens/actions/runs/44889931096).
+The review branch now reports PR #268 head
+`def5e9b3d925e94a9aa664a24f90c73b960c7f99`, still based on PR #265's merged
+head `ca29235b42ac839f4cd7c4b417ef83d4c701c6a8`.
+
+- [CI 44890690426](https://github.com/kendshhh/PhishLens/actions/runs/44890690426)
+  passed Backend, Extension, migration source preflight and Staging integration.
+  Hosted staging and hosted preflight were skipped; the job did not deploy to
+  Render or run authenticated CRUD.
+- [Workflow lint 44890690321](https://github.com/kendshhh/PhishLens/actions/runs/44890690321),
+  [Dependency security and Dependency graph review 44890690295](https://github.com/kendshhh/PhishLens/actions/runs/44890690295),
+  and [deterministic evaluation 44890690376](https://github.com/kendshhh/PhishLens/actions/runs/44890690376)
+  passed. The repository's Dependency graph and vulnerability alerts were
+  enabled after the 7dbebfd failure; 15 existing Dependabot alerts (12 high,
+  3 moderate) remain open.
+- No CodeQL check appeared on the `def5e9b` PR head. The retry commit did not
+  supply a current PR CodeQL result. The prior CodeQL run on `7dbebfd` failed
+  after GitHub Actions installation API rate limits; main's CodeQL pass does not
+  substitute for the PR candidate's result.
+- PR #268 remains open and still targets `codex/readiness-update-20261121`, now
+  merged into main. Retarget the PR to `main` before merging. No CodeQL pass,
+  authenticated staging CRUD, protected hosted deployment or exact deployed
+  candidate has been established for this PR.
+
+## Exact-head checks and hosted-job state — 2026-11-21 10:14 UTC
+
+GitHub reported PR #268 head
+`2e26327254c71b6cb7d655181cffb21e8dd1ee9b`, an empty commit requesting an
+exact-head verification run. This SHA is the latest remote snapshot observed
+before the documentation refresh; a later docs commit will need its own checks.
+
+- Backend, Extension, migration source preflight, Staging integration, and
+  Hosted staging preflight passed in [CI run 44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201).
+  Hosted staging job [136807616481](https://github.com/kendshhh/PhishLens/actions/runs/44891131201/job/136807616481)
+  completed with conclusion `success`, but the final freshness check reported `current=false` and classified the run as superseded after the request label
+  was removed at 09:54 UTC. Render deployment, hosted API smoke, authenticated CRUD,
+  evidence finalization and artifact steps were skipped; the job summary classifies
+  this run as blocked, not hosted acceptance. No Render deployment or authenticated CRUD was observed.
+- [Workflow lint 44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+  [Dependency security and Dependency graph review 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+  and [deterministic evaluation 44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190)
+  passed. Required `Secretary staging` failed because the request label and exact-head hosted verification were absent ([run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807)). No current PR CodeQL result appeared. The earlier `7dbebfd`
+  CodeQL failure remains attributed by its annotations to Actions installation
+  API rate limits, with no finding reported.
+- The merged base PR #265 is now on `main` at `95975cd`, but PR #268 still has
+  base `codex/readiness-update-20261121` at `ca29235`. Retarget it to `main`
+  before merge. Fifteen Dependabot alerts (12 high, 3 moderate) remain open.
+
+These check results are not a hosted deployment or release acceptance. The
+branch remains unmerged, the authenticated staging CRUD path remains unresolved,
+and all pending and skipped gates must remain visible in the closeout record.

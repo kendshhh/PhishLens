@@ -7,31 +7,34 @@ service IDs, workflow settings or deployment observations as current.
 
 The staging smoke and CI guard implementation is on review branch
 `codex/devops-staging-closeout-20261121`. Latest observed `main` is
-`06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which already includes the basic
-Bearer-aware history fix. The review branch synchronizes it with the bounded
-retry, diagnostics, server-liveness and fail-closed deployment changes in merge
-commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. Those earlier CI
-results are preserved in the evidence record, not treated as current. At 09:22
-UTC GitHub reported PR #268 head
-`7dbebfd060298a80e99a38a52663901e776935cb`: Backend, Extension and migration
-source preflight passed in [run
-44889070392](https://github.com/kendshhh/PhishLens/actions/runs/44889070392),
-but Staging integration was still running. Workflow lint
-[44889070441](https://github.com/kendshhh/PhishLens/actions/runs/44889070441),
-dependency security [44889070418](https://github.com/kendshhh/PhishLens/actions/runs/44889070418)
-and deterministic evaluation
-[44889070455](https://github.com/kendshhh/PhishLens/actions/runs/44889070455)
-passed. Dependency graph review failed because GitHub reports the repository
-Dependency graph is disabled. CodeQL
-[44889065082](https://github.com/kendshhh/PhishLens/actions/runs/44889065082)
-later failed all three language jobs on Actions installation API rate limits;
-the job annotations did not report CodeQL findings. At 09:31 UTC, Staging
-integration had passed on that prior head, while hosted staging/preflight were
-skipped. No Render deploy occurred and authenticated hosted CRUD is not verified.
-This sync creates a newer head; check its own results before calling a gate
-passed. Full timestamps and scope are in the
+`95975cd47dceeac74ea36054610956f0a1db1fa9`, after PR #265 merged the shared
+readiness baseline. Main includes the Bearer-aware history fix from `06f89d7`.
+The review branch contains that code through merge commit
+`14874d339bbb4042172df954f97596080aa303ee` and the PR #265 documentation baseline
+at `ca29235`. Latest code/test commit is
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`; its local `npm test` passed 321
+tests, and a GET-only live staging smoke passed at about 08:35 UTC. Those are
+historical implementation evidence, not current-head checks.
+
+At 10:14 UTC, PR #268 head
+`2e26327254c71b6cb7d655181cffb21e8dd1ee9b` passed Backend, Extension, migration
+preflight, Staging integration, hosted preflight, workflow lint, dependency
+security, Dependency graph review and deterministic evaluation (CI
+[44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201),
+workflow lint [44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+dependency checks [44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+evaluation [44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190)).
+The Hosted staging job wrapper concluded `success`, but its final freshness
+guard superseded the run after the request label was removed; deployment,
+smoke, CRUD and artifact steps were skipped, and the job summary calls the run
+blocked. Required `Secretary staging` failed because the request label and
+exact-head hosted verification were absent
+([run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807)).
+No current PR CodeQL result, Render deployment or authenticated CRUD evidence
+exists. The merged `main` revision `95975cd` passed CI and CodeQL. PR #268 is
+still based on the now-merged PR #265 branch and must be retargeted to `main`
+before merge. Fifteen Dependabot alerts (12 high, 3 moderate) remain open. The
+10:14 snapshot and earlier dated check history are detailed in the
 [staging evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
 
 ## Current source of truth
@@ -47,6 +50,9 @@ passed. Full timestamps and scope are in the
   acceptance plan.
 - [Reusable closeout prompt](devops-evidence-closeout-prompt-2026-11-21.md):
   an evidence-first instruction for resolving the remaining gaps safely.
+- [CI maintenance and dependency-review setup](ci-maintenance.md) and
+  [dependency audit record](dependency-audits.md): enablement state and
+  unresolved Dependabot alerts.
 - [Deployment and recovery runbook](runbook.md), [staging runbook](staging.md),
   [production smoke](production-deploy-smoke.md), [metrics](metrics.md), and
   [Secretary verification](secretary-verification.md): operating instructions
