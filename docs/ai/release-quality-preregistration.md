@@ -25,6 +25,8 @@ Propose recent, authentic English mail from two separately administered, permiss
 
 Written permission is pending from both custodians. The following targets are provisional. Record actual eligible counts after labeling and overlap review, and preserve two independent sources for every label and all policy minima.
 
+### Proposed source-by-label matrix
+
 | Proposed source | Phishing families | Legitimate families | Spam families | Security-notice families within legitimate |
 | --- | ---: | ---: | ---: | ---: |
 | Campus security quarantine and opt-in mail | 50 | 100 | 50 | 25 |
@@ -41,18 +43,18 @@ Follow the [existing cohort protocol](tfidf-sprint-3-evaluation-protocol.md) and
 
 | Role | Reviewer |
 | --- | --- |
-| Blind label reviewer 1 | Pending confirmation with Trixia |
-| Blind label reviewer 2 | Pending confirmation with Trixia |
+| Blind label reviewer 1 | Trixia (`xxTrixia`) |
+| Blind label reviewer 2 | Wilberr (`EnviousCoal`) |
 | Source inventory and cohort lock approver | Trixia (`xxTrixia`) |
 | Evaluation and AI decision owner | Wilberr (`EnviousCoal`) |
 
-Trixia (`xxTrixia`) must approve the private source inventory and the final frozen cohort lock before the first scoring run. Record her source-inventory decision and approval of the exact lock SHA-256 in the review trail. Scoring requires both approvals, confirmed blind reviewer identities, and a lock that matches the reviewed candidate and policy.
+Trixia (`xxTrixia`) reviews source permissions and the frozen cohort before scoring, and approves the private source inventory and exact final cohort lock SHA-256. Trixia and Wilberr (`EnviousCoal`) label independently without access to model scores or each other's labels; record both names in the private review record. Scoring requires Trixia's source-inventory and lock approval, confirmed written permissions, resolved labels, cleared overlap review, and a lock that matches the reviewed candidate and policy.
 
 Share the lock SHA-256 and the redacted aggregate report. Keep raw mail, private source permissions, and reviewer packets in the authorized data store. Include the approved policy and report SHA-256 values in the model decision. The release remains NO-GO until the exact pinned run passes and its evidence is accepted.
 
 ## Proposed release thresholds
 
-**Proposed decision.** Retain the current thresholds, subject to independent policy review. Apply them to the unrounded metrics on the frozen actual-mail primary set. At the intake minima, at least 90 of 100 phishing families must alert, at most 6 of 200 legitimate families may alert, and all 400 attempts must return valid results.
+**Proposed decision for owner review:** retain the existing inference cutoff (alert when the raw TF-IDF margin is at least 0) and retain the release targets of at least 90% phishing recall, at most 3% legitimate false-positive rate, and 100% valid primary results. Do not tune the cutoff on the frozen cohort. These are proposed policy thresholds, not an approved decision; Wilberr (`EnviousCoal`) must approve or revise them before scoring. Apply the targets to unrounded metrics on the frozen actual-mail primary set. At the intake minima, at least 90 of 100 phishing families must alert, no more than 6 of 200 legitimate families may alert (including the 50 security-notice families), and all 400 attempts must return valid results.
 
 | Metric | Proposed threshold | Denominator |
 | --- | ---: | --- |
