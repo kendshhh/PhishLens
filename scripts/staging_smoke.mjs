@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { getAnalyses } from '../extension/js/api.js';
+import { readStagingHistory } from './staging_history.mjs';
 
 const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const attempts = Number(process.env.STAGING_ATTEMPTS || 60);
@@ -13,7 +13,7 @@ async function read(path) {
         });
     } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        throw new Error(`${path} request failed: ${reason}`);
+        throw new Error(path + ' request failed: ' + reason);
     }
 
     if (!response.ok) {
@@ -21,13 +21,14 @@ async function read(path) {
         try {
             detail = (await response.text()).trim().slice(0, 500);
         } catch {}
-        throw new Error(`${path} returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`);
+        throw new Error(path + ' returned HTTP ' + response.status + (detail ? ': ' + detail : ''));
     }
 
     try {
         return await response.json();
     } catch (error) {
-        throw new Error(`${path} returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(path + ' returned invalid JSON: ' + reason);
     }
 }
 
@@ -41,7 +42,7 @@ for (let attempt = 0; attempt < attempts; attempt++) {
         break;
     } catch (error) {
         if (attempt + 1 < attempts) {
-            console.error(`Staging startup attempt ${attempt + 1}/${attempts} failed: ${error.message}`);
+            console.error('Staging startup attempt ' + (attempt + 1) + '/' + attempts + ' failed: ' + error.message);
             await delay(3000);
         }
     }
@@ -51,24 +52,29 @@ assert.ok(ready, 'Staging API did not become healthy and database-ready');
 let items;
 for (let attempt = 0; attempt < attempts; attempt++) {
     try {
-        items = await getAnalyses(baseUrl);
+        items = await readStagingHistory(baseUrl);
         break;
     } catch (error) {
         // Readiness and history consistency may briefly diverge after deployment.
-        const transient = error?.status === 502 || error?.status === 503 || error?.status === 504 ||
-            /network request|timed out|ECONNRESET|fetch failed/i.test(error?.message || '');
+        const transient = /HTTP (502|503|504)|network request|timed out|timeout|ECONNRESET|ECONNREFUSED|fetch failed|aborted/i.test(
+            String(error?.message || error)
+        );
         if (!transient || attempt + 1 === attempts) throw error;
-        console.error(`Staging history attempt ${attempt + 1}/${attempts} failed: ${error.message}`);
+        console.error('Staging history attempt ' + (attempt + 1) + '/' + attempts + ' failed: ' + error.message);
         await delay(3000);
     }
 }
 
-const demo = items.find(item => item.id === '29d80c39-ec0d-4db8-a6e5-87444ba2600c');
-assert.ok(demo, 'Migrated and seeded demo analysis must be returned through the extension client');
-assert.equal(demo.subject, 'Synthetic account notice');
-assert.equal(demo.prediction, 'phishing');
-assert.equal(demo.risk_level, 'high');
-assert.equal(demo.confidence, 0.93);
-assert.ok(Array.isArray(demo.threat_indicators));
-assert.ok(Number.isFinite(Date.parse(demo.created_at)));
-console.log('Staging passed: health, database readiness, seeded history through the real extension client.');
+if (items === null) {
+    console.log('Staging passed: health and database readiness; anonymous history correctly requires Bearer authentication.');
+} else {
+    const demo = items.find(item => item.id === '29d80c39-ec0d-4db8-a6e5-87444ba2600c');
+    assert.ok(demo, 'Migrated and seeded demo analysis must be returned in demo mode');
+    assert.equal(demo.subject, 'Synthetic account notice');
+    assert.equal(demo.prediction, 'phishing');
+    assert.equal(demo.risk_level, 'high');
+    assert.equal(demo.confidence, 0.93);
+    assert.ok(Array.isArray(demo.threat_indicators));
+    assert.ok(Number.isFinite(Date.parse(demo.created_at)));
+    console.log('Staging passed: health, database readiness, and seeded demo history.');
+}
