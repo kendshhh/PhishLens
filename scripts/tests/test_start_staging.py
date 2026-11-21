@@ -8,10 +8,10 @@ from sqlalchemy.engine import make_url
 
 from scripts.start_staging import main, pin_ipv4_addresses
 
-DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-DATABASE_HOST = "ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech"
-DIRECT_DATABASE_HOST = "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech"
+DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-long-fire-b31uvz7u-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-long-fire-b31uvz7u-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+DATABASE_HOST = "ep-long-fire-b31uvz7u-pooler.c-4.ap-southeast-1.aws.neon.tech"
+DIRECT_DATABASE_HOST = "ep-long-fire-b31uvz7u.c-4.ap-southeast-1.aws.neon.tech"
 PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
 
 
