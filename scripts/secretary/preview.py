@@ -240,6 +240,9 @@ def package(api, sha, number, config, output):
     if b"./js/account-popup.js" in files["popup.js"]:
         for asset in ACCOUNT_UI_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
+    # Decorative side-panel companion; present in sources after the sidebar redesign.
+    if b"./js/ghost.js" in files["popup.js"]:
+        files["js/ghost.js"] = read_extension_asset(api, sha, "js/ghost.js")
     if any(marker in files["popup.js"] for marker in (b"./js/neon-integration.js", b"./js/auth-config.js")):
         for asset in NEON_AUTH_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)

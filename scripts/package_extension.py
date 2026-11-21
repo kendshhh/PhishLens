@@ -26,6 +26,7 @@ assets = (
     "js/report-client.js",
     "js/report-workflow.js",
     "js/popup.js",
+    "js/ghost.js",
     "js/account-session.js",
     "js/account-ui.js",
     "js/account-popup.js",
