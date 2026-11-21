@@ -11,6 +11,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let currentStage = { name: 'startup readiness', endpoint: '/health', status: undefined };
 
 function transient(error) {
+    // Once an HTTP response exists, classify its status before reading any error text.
     if (Number.isInteger(error?.status)) return retryableStatuses.has(error.status);
     const messages = [];
     const seen = new Set();
