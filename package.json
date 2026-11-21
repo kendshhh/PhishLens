@@ -8,7 +8,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node --test extension/tests/*.test.mjs",
+    "test": "node --test extension/tests/*.test.mjs scripts/tests/*.test.mjs",
     "test:browser": "node scripts/browser_acceptance.mjs",
     "lint": "eslint extension/",
     "validate": "python scripts/validate_extension.py",

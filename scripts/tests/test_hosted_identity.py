@@ -242,10 +242,12 @@ class HostedIdentityTests(unittest.TestCase):
             for dependency in needs_line.partition(":")[2].strip().strip("[]").split(",")
         }
         self.assertEqual(needs, {"staging", "hosted-staging-preflight", "backend"})
-        self.assertIn("always()", hosted_header)
+        self.assertNotIn("always()", hosted_header)
         self.assertIn("needs.staging.result == 'success'", hosted_header)
         self.assertIn("needs.hosted-staging-preflight.result == 'success'", hosted_header)
         self.assertIn("needs.hosted-staging-preflight.outputs.current == 'true'", hosted_header)
+        self.assertIn("needs.backend.result == 'success'", hosted_header)
+        self.assertIn("needs.backend.outputs.migration_revision != ''", hosted_header)
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", hosted_header)
         self.assertIn("environment: staging", hosted_header)
 

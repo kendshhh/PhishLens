@@ -1,9 +1,11 @@
 # PhishLens architecture and environment map
 
-This describes the repository's current implementation as of 2026-11-14. It is
-not proof that every hosted service is running this revision. See the
-[deployment and acceptance status](devops/kendra-sprint-1-3-status-2026-11-14.md)
-for the latest verified limits.
+This is an architecture snapshot from 2026-11-14, not a claim that every hosted
+service uses the described workflow or runs this revision. For the November 21
+service identities, staging Auth finding and current release limits, use the
+[DevOps evidence index](devops/README.md),
+[environment map](devops/environment-map-2026-11-21.md), and
+[release record](devops/release-record-2026-11-21.md).
 
 ## System boundary
 
@@ -39,7 +41,7 @@ checks an exact candidate SHA under the protected `staging` environment.
 | Environment | App / delivery | Database target | Status and boundary |
 | --- | --- | --- | --- |
 | Local development | Developer checkout; `.env` is ignored | Dedicated local/development target | `.env.example` documents app configuration without real values. Do not use hosted staging or production credentials locally. |
-| Staging | Render staging service; GitHub `staging` environment gates hosted workflow | Neon `pr-58-staging` branch is the documented target | The Render-to-Neon mapping must be checked against the current masked service configuration before hosted writes. Historical `/ready` success alone does not establish branch identity. |
+| Staging | Render staging service; GitHub `staging` environment gates hosted workflow | Neon project `phishlens-staging`, branch `staging-root`, database `phishlens_dev` is the current source pin target | The Nov 21 hosted run found a stale source pin; code now targets the staging root. Privately verify the current Render-to-Neon project/branch mapping before hosted writes. Historical `/ready` success alone does not establish branch identity. |
 | Production | Render API; checked `main` auto-deploy | Neon `production` branch; production database name is `phishlens_dev` in the current read-only inventory | The live Render `DATABASE_URL` mapping was not freshly compared with Neon during this closeout. Verify target before writes or promotion. |
 
 The database name `phishlens_dev` is used on more than one branch. A database

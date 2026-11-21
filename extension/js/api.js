@@ -99,27 +99,66 @@ function isValidAnalysis(analysis) {
     return true;
 }
 
-export async function getAnalyses(baseUrl) {
+async function readErrorBody(response) {
+    try {
+        const body = await response.text();
+        return body.trim().slice(0, 500);
+    } catch {
+        return "";
+    }
+}
+
+export async function getAnalyses(baseUrl, { timeoutMs = 10000 } = {}) {
     const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+    const url = `${cleanBaseUrl}/api/analyses`;
 
-    const response = await fetch(
-        `${cleanBaseUrl}/api/analyses`,
-        { signal: AbortSignal.timeout(10000), redirect: 'error' }
-    );
-
-    if (!response.ok) {
-        throw new Error("Failed to load history");
+    let response;
+    try {
+        response = await fetch(url, {
+            signal: AbortSignal.timeout(timeoutMs),
+            redirect: "error"
+        });
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new Error(
+            `Failed to load history: network request to ${url} failed (${reason})`,
+            { cause: error }
+        );
     }
 
-    const data = await response.json();
+    if (!response.ok) {
+        const detail = await readErrorBody(response);
+        const suffix = detail ? `: ${detail}` : "";
+        const error = new Error(
+            `Failed to load history: ${url} returned HTTP ${response.status}${suffix}`
+        );
+        error.status = response.status;
+        error.wwwAuthenticate = response.headers?.get?.("www-authenticate") || "";
+        throw error;
+    }
+
+    let data;
+    try {
+        data = await response.json();
+    } catch (error) {
+        const invalidJson = error instanceof Error
+            ? error
+            : new Error("Invalid history response: response was not valid JSON");
+        invalidJson.status = response.status;
+        throw invalidJson;
+    }
 
     if (!data || !Array.isArray(data.items)) {
-        throw new Error("Invalid history data");
+        const error = new Error("Invalid history data: response must contain an items array");
+        error.status = response.status;
+        throw error;
     }
 
     for (const analysis of data.items) {
         if (!isValidAnalysis(analysis)) {
-            throw new Error("Invalid history data");
+            const error = new Error("Invalid history data: response contains an invalid analysis record");
+            error.status = response.status;
+            throw error;
         }
     }
 
@@ -147,7 +186,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                 error.code = 'session_unavailable';
                 throw error;
             }
-            if (typeof token !== 'string' || !/^[A-Za-z0-9._~+/-]+=*$/.test(token)) {
+            if (typeof token !== 'string' || !/^[-A-Za-z0-9._+\/]+=*$/.test(token)) {
                 const error = new Error('Sign in to access saved analyses.');
                 error.status = 401;
                 error.code = 'authentication_required';

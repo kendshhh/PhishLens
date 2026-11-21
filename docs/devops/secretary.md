@@ -1,5 +1,12 @@
 # DevOps Secretary — operator guide
 
+> Architecture and rollout design reference. For the current controller
+> observation and staging/Auth gaps, see
+> [Secretary verification](secretary-verification.md) and the
+> [DevOps evidence index](README.md). Treat workflow and Render settings in
+> this guide as design assumptions unless a current control-plane observation
+> confirms them.
+
 This is a reporting-only pilot for Veriqo, in the existing `kendshhh/PhishLens`
 repository. The source repository still uses the PhishLens name. No separate
 dashboard or new hosting service is needed. Start here, then use
