@@ -13,8 +13,8 @@ See the current [release record](docs/devops/release-record-2026-11-21.md),
 PR #268 targets `main` at
 [`31e86c78523cbdcfb6da83f99d331c86409bf0fa`](https://github.com/kendshhh/PhishLens/commit/31e86c78523cbdcfb6da83f99d331c86409bf0fa),
 which includes the merged PR #265 documentation baseline and PR #271's
-Secretary status behavior. The current PR head is
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`; it is no longer stacked on #265.
+Secretary status behavior. Its current head is
+`9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`; it is no longer stacked on #265.
 The branch includes the earlier Bearer-aware staging correction and merge
 commit `aee49fe5a11da37ed441464c80ad9a09e0b9dda8`;
 the original developer checkout remains at `16f955321caf5dc368181be7ce5c00643750545d`
@@ -23,13 +23,14 @@ extension/backend/model/Auth release candidate is selected. The Chrome MV3
 extension plus Render API and Neon remain the intended product scope; instructor
 confirmation of the frontend requirement is pending.
 
-On head `d269071`, Backend, Extension, Staging integration, migration source
-preflight, workflow lint, dependency security/graph review, deterministic
-evaluation, CodeQL and the Secretary report passed. Hosted staging preflight and
-Hosted staging were skipped. Required `Secretary staging` failed because the
-`needs-hosted-staging` label and exact-head hosted verification were absent. No
-Render deployment or authenticated hosted CRUD occurred. These check results
-are tied to `d269071`; dated PR snapshots below are historical.
+Latest completed checks on previous head `943bbdb` passed Backend, Extension,
+Staging integration, migration source preflight, workflow lint, dependency
+security/graph review, deterministic evaluation, CodeQL and the Secretary
+report. Hosted staging preflight passed; Hosted staging failed before migrations
+because the retired `pr-58-staging` endpoint pin did not match the new
+`phishlens-staging` root endpoint. This branch updates the pin and fixtures;
+exact-head checks on `9036132` are running. No PR #268 hosted smoke, CRUD or
+artifact result is claimed yet. Dated PR snapshots below are historical.
 
 ### Live services and staging Auth
 
@@ -44,36 +45,18 @@ no later production deploy was verified. Read-only `/version`, `/health`,
 identity and disabled state, not product/AI acceptance; no production observer
 workflow was run.
 
-Staging serves deploy `dep-dc0im3h7lnhs738pncng` on
-`ba0b6c5475eb6a8f99c509c40384020d292e17e6`. Read-only `/version`, `/health`,
-`/ready` and `/model-info` returned HTTP 200; TF-IDF model SHA-256 is
-`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
-Anonymous `/api/analyses` returns `401 Bearer`. The supplied hosted smoke failed
-with a generic history error; its log omitted HTTP status/body and does not
-identify the underlying request cause. The review branch accepts only an
-explicit `401 Bearer` anonymous challenge, preserves seeded-history checks for
-`200`, retries only transient failures inside a 120-second deadline, and
-writes endpoint/status/error details to the job summary. The branch also
-removes the hosted job's `always()` override, requires all three dependency
-results to be `success`, monitors local server startup, and retains its log
-artifact. The latest code/test commit is
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed `npm test` (321 tests)
-and a GET-only live staging smoke at about 08:35 UTC. At 09:42 UTC, PR #268
-head `def5e9b3d925e94a9aa664a24f90c73b960c7f99` passed Backend, Extension,
-migration source preflight and Staging integration in
-[CI 44890690426](https://github.com/kendshhh/PhishLens/actions/runs/44890690426).
-Workflow lint [44890690321](https://github.com/kendshhh/PhishLens/actions/runs/44890690321),
-dependency review and security [44890690295](https://github.com/kendshhh/PhishLens/actions/runs/44890690295),
-and deterministic evaluation [44890690376](https://github.com/kendshhh/PhishLens/actions/runs/44890690376)
-passed. Hosted staging and preflight were skipped. No CodeQL check appeared on
-this PR head; the earlier run on `7dbebfd` failed because GitHub Actions hit an
-installation API rate limit. The 0d3818e docs update records Dependency graph
-enablement; the PR dependency review now passes. No Render deployment occurred.
-Authenticated hosted CRUD, persistence, isolation and cleanup remain open.
-PR #268's earlier snapshots below include the period when it still targeted the
-PR #265 branch; that was resolved when the branch was retargeted to `main`.
-The exact snapshots and remaining security alerts are in the
-[release record](docs/devops/release-record-2026-11-21.md).
+At 13:25 UTC, Render reported deployment `dep-dc0pmu17lnhs739d14b0` live on
+merge SHA `683eee44f9089b79b4d7b38163f7ab68bce89656`. This is a different
+revision from PR #268; it is not exact-head acceptance evidence. The latest
+completed PR checks are on previous head `943bbdb`: Hosted staging preflight
+passed, then the Render build succeeded but startup exited before migrations
+because the old `pr-58-staging` endpoint pin rejected the current staging root.
+Head `9036132` updates the pin and fixtures to `phishlens-staging`'s
+`staging-root`. At 13:45 UTC, its non-hosted exact-head checks had passed and
+Hosted staging was waiting at the protected environment. No PR #268 hosted
+smoke, authenticated CRUD, or packaged artifact result is claimed yet. The current
+private Render-to-Neon mapping still requires owner verification. The release
+record contains the dated earlier service and CI snapshots.
 
 ### Controls and release gates
 

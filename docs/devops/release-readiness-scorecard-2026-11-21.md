@@ -2,15 +2,17 @@
 
 **Current release: NO-GO. Estimated DevOps evidence progress: 41/100.**
 
-PR #268's latest recorded status at 12:38 UTC is head
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab` on base `main`
-(`31e86c78523cbdcfb6da83f99d331c86409bf0fa`); #265 has merged. Backend,
-Extension, Staging integration, migration source preflight, workflow lint,
-dependency review/security, deterministic evaluation, CodeQL and the Secretary
-report passed on that head. Hosted staging jobs were skipped and the required
-`Secretary staging` context failed because the opt-in label and exact-head
-hosted verification were absent. No deployment or authenticated hosted CRUD
-occurred. Older PR heads and CI results in this scorecard are historical.
+At 13:45 UTC, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa`, with branch head
+`9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`; #265 had merged. The exact-head
+checks on `9036132` passed Backend, Extension, Staging integration, migration
+preflight, workflow lint, dependency review/security, deterministic evaluation,
+CodeQL and the Secretary report. Hosted staging preflight passed; Hosted
+staging is waiting at the protected `staging` environment and has not started.
+This head updates the stale staging endpoint pin and fixtures. Exact-head
+hosted verification remains pending; the documentation refresh triggers a new
+exact-head run. No hosted acceptance is claimed. Older PR heads and CI results
+in this scorecard are historical.
 
 This estimate uses the 16 criteria below as equally weighted checklist items:
 PASS = 1, PARTIAL = 0.5, FAIL or NOT VERIFIED = 0. The current evidence has
@@ -92,11 +94,11 @@ The current docs-only sync needs its own exact-head checks.
 |---|---|---|---|
 | p. 3 and p. 49 | One defined real-data product path with working CRUD, backend-owned AI/data and user-facing error states | **FAIL** | Issue #153 states Chrome extension + Render API + Neon and retires the Vercel experiment, but authenticated Auth/CRUD and an accepted extension/backend/model journey are not proven. The last verified production analysis setting was disabled on November 20, but it was not reread in this refresh; no approved production model/provider is evidenced. |
 | pp. 33, 42 | Separate environments and protected secrets | **PARTIAL** | Local, CI, staging and production scopes are documented; no secret values were read. GitHub Dependency graph is enabled and the current PR dependency-review check passes, but 15 Dependabot alerts (12 high, 3 moderate) remain open. Current Render-to-Neon branch/role mapping, live Auth/provider settings and complete secret access controls are not verified. |
-| pp. 38–41 | PR checks, required gates and branch protection | **PARTIAL** | Main `95975cd` CI and CodeQL passed. Latest completed PR #268 snapshot `f79098c` passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency review/security and deterministic evaluation. Hosted staging/preflight were skipped; required `Secretary staging` failed in run 44899423134. No current PR CodeQL, hosted acceptance or authenticated CRUD evidence exists. The keyboard-focus assertion failed on `a151585` but passed on docs-only follow-ups `dffdc4c` and `f79098c`; root cause remains unknown. Earlier `2e26327` hosted staging was blocked by its freshness guard after the request label was removed. The CI ruleset requires Backend, Extension, Staging integration and Secretary staging, with strict checking off; the approval ruleset requires one approval but not latest-push approval. Classic protection returned 403; no current failure-blocking PR demonstration. PR #268 still targets the merged #265 branch. |
+| pp. 38–41 | PR checks, required gates and branch protection | **PARTIAL** | Main `95975cd` CI and CodeQL passed. PR #268 head `9036132` passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency review/security, deterministic evaluation, CodeQL and the Secretary report. Hosted preflight passed; Hosted staging is waiting at the protected `staging` environment. Collaborator re-review is pending; no hosted acceptance or authenticated CRUD is claimed. The keyboard-focus assertion's earlier intermittent failures remain unexplained. The CI ruleset requires Backend, Extension, Staging integration and Secretary staging; older protection observations below are historical. |
 | pp. 39–40, p. 127 | Traceable artifact and same candidate through staging and production | **PARTIAL** | The PhishLens-Extension and browser-acceptance artifacts are tied to SHA 811980c, which is still the production SHA; staging serves `ba0b6c5`, and main is `95975cd`. No accepted package/backend/model/Auth manifest or same-candidate production promotion exists. |
 | p. 43 | Expand/contract migrations and application rollback compatibility | **PARTIAL** | Disposable PostgreSQL evidence covers migrations through schema 0004 and 11 saved-report CRUD tests from an older backend revision. Current production predecessor/config/schema compatibility is untested. |
 | pp. 44–46 | Current metrics and comparable optimization | **PARTIAL** | Four successful main-push CI runs through SHA 811980c had median 1.30 min, nearest-rank p90 1.90 min and range 1.10–1.90 min; this is a dated sample. Main `95975cd` CI passes but is not a comparable performance sample. Twenty production deploys through Nov 20 had median 74.15 sec and p90 93.14 sec. No comparable before/after end-to-end or user-flow result exists. |
-| p. 47, pp. 91–104 | AI evaluation in CI with an enforced release threshold | **PARTIAL** | Deterministic AI evaluation passed on merged main `95975cd` and latest completed PR #268 head `f79098c` (also on `dffdc4c`, `a151585` and `2e26327`), but no approved numeric model-quality threshold exists. The visible four-context ruleset does not include the AI evaluation context. |
+| p. 47, pp. 91–104 | AI evaluation in CI with an enforced release threshold | **PARTIAL** | Deterministic AI evaluation passed on merged main `95975cd` and PR #268 head `9036132`. No approved numeric model-quality threshold exists. The visible four-context ruleset does not include the AI evaluation context. |
 | pp. 92–104 | Representative model quality and release decision | **FAIL** | The 40-case synthetic result remains 65% accuracy, 18.75% phishing recall (3/16), and 6.25% legitimate false positives (1/16), with all eight spam cases labelled legitimate. Frozen English source-pair TF-IDF v12a achieved 190/200 phishing recall and 1/999 legitimate false positives but is advisory only; a 12-case synthetic diagnostic detected 1/12. No contemporary broad holdout or human explanation review establishes release quality. |
 | p. 115 | Input, rate, quota, output and spend controls | **PARTIAL** | Input/output bounds, per-request cost cap and evaluation-run limits exist. A shared durable production daily/monthly budget, per-user quota/rate control and cross-instance enforcement are not evidenced. |
 | pp. 106, 118–123 | Observability, SLOs and tested alert response | **PARTIAL** | Request IDs and structured allowlisted metadata exist. Scheduled drift checks source SHA, health and readiness. No approved extension-journey SLO, tested alert delivery/acknowledgement or current hosted-log evidence. |

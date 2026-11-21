@@ -1,19 +1,24 @@
 # Pre-merge staging
 
-> **Latest PR #268 snapshot — 2026-11-21 12:38 UTC:** the PR targets `main` at
-> `31e86c78523cbdcfb6da83f99d331c86409bf0fa`, with head
-> `d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 has merged. Backend,
-> Extension, Staging integration, migration source preflight, workflow lint,
-> dependency review/security, deterministic evaluation, CodeQL and the
-> Secretary report passed. Hosted staging jobs were skipped; `Secretary
-> staging` failed because the opt-in label and exact-head hosted verification
-> were absent. No Render deployment or authenticated hosted CRUD occurred.
+> **PR #268 check snapshot — 2026-11-21 13:45 UTC:** head
+> `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d` targeted `main` at
+> `31e86c78523cbdcfb6da83f99d331c86409bf0fa`. PR #265 has merged and GitHub
+> reports this PR mergeable. Backend, Extension, Staging integration,
+> migration source preflight, workflow lint, dependency review/security,
+> deterministic evaluation, CodeQL and the Secretary report passed on this
+> exact head. Hosted preflight passed; Hosted staging is waiting at the
+> protected `staging` environment and has not started. This head updates the
+> stale endpoint pin and fixtures. Exact-head hosted verification remains
+> pending and this documentation refresh triggers a new exact-head run. No
+> hosted acceptance is claimed.
 > Earlier PR heads and check references below are historical snapshots.
 
-> Current status — November 21, 2026: a separate read-only staging observation
-> returned `401 Bearer` for anonymous saved-report history. The supplied hosted
-> failure omitted HTTP status/body, so that observation remains a plausible,
-> unconfirmed cause. Main commit `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
+> Current status — November 21, 2026: Render build logs show the PR #268 deploy
+> built successfully, then `start_staging.py` exited before migrations because
+> its old endpoint pin rejected the current `phishlens-staging` root endpoint.
+> The PR source commit `9036132` updates the pin and fixtures; Hosted staging is
+> waiting at the protected environment, so exact-head hosted verification is
+> pending. Main commit `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
 > added the Bearer-aware history correction. Review branch merge commit
 > `14874d339bbb4042172df954f97596080aa303ee` adds bounded transient retries and failure summaries; code/test commit
 > `83a0df1af1d64048b3b5fa3158f6509e83d71555` also prevents retries for permanent
@@ -167,18 +172,19 @@ claim installed-Chrome acceptance; that remains a separate human test.
   The change updates the service source setting; it does not deploy a new commit.
   The hosted workflow uses the Render API to deploy the selected PR merge SHA.
 
-The selected staging target is Neon branch `pr-58-staging`, database
-`phishlens_dev`. Keep development on the `development` branch and production on
-`production`; never point staging at either one.
+The current staging target is the separate Neon project `phishlens-staging`,
+branch `staging-root`, database `phishlens_dev`. Keep development and production
+on their own targets; never point staging at either one.
 
 The hosted startup guard pins `STAGING_DATABASE_HOST` and both database URLs to
-the verified Neon endpoint `ep-soft-fog-b3orfa8a` (direct or pooler hostname),
-which maps to project `patient-bird-25428852`, branch `br-delicate-paper-b381z98i`
-(`pr-58-staging`). If Neon replaces that endpoint or branch, verify the new
-project/branch mapping through Neon and update the code pin with review; changing
-Render variables alone cannot authorize a different database target.
+the reviewed root endpoint `ep-long-fire-b31uvz7u` (direct or pooler hostname).
+The 2026-11-21 Render failure showed that the running service no longer matched
+the retired `ep-soft-fog-b3orfa8a` pin; the current PR updates the source guard
+and fixtures. Before migrations, seeding, or manual writes, privately verify the
+Render-to-Neon project and branch mapping. Changing Render variables alone
+cannot authorize a different database target.
 
-On 2026-10-28, the Render Environment page was privately checked:
+Historically, on 2026-10-28, the Render Environment page was privately checked:
 `DATABASE_URL` resolves to the host and
 database for `pr-58-staging/phishlens_dev`, and `STAGING_DATABASE_HOST` matches
 that host; `APP_ENV=staging` and `AI_MODE=mock`. Only the branch/database result
@@ -221,13 +227,12 @@ Configure two credentials in this service's Render environment:
   branch and is consumed only by the startup migration subprocess. The startup
   process removes it before seeding or launching Uvicorn.
 
-Both URLs must target Neon branch `pr-58-staging`, database `phishlens_dev`, and
-the same exact host in `STAGING_DATABASE_HOST`. Keep `development` for local and
-shared development; `pr-58-staging` is a separate branch created from a
-development snapshot. The startup script checks database names and exact hosts,
-but cannot resolve a Neon branch name from the URL. Before migrations, seeding,
-or manual writes, privately confirm that Render's connection hostname maps to
-`pr-58-staging` in Neon. Set
+Both URLs must target Neon project `phishlens-staging`, branch `staging-root`,
+database `phishlens_dev`, and the same exact host in `STAGING_DATABASE_HOST`.
+Keep development and production on their separate targets. The startup script
+checks database names and exact hosts, but cannot resolve a Neon branch name
+from the URL. Before migrations, seeding, or manual writes, privately confirm
+that Render's connection hostname maps to the intended staging root in Neon. Set
 `STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging`.
 Startup rejects mismatched hosts, database names, or role identities before
 migrations or seed run. The trusted hosted-staging controller checks the
@@ -266,7 +271,7 @@ preflight:
 
 | Name | Value |
 |---|---|
-| `SECRETARY_STAGING_DB_HOST` | Exact hostname for Neon `pr-58-staging` |
+| `SECRETARY_STAGING_DB_HOST` | Exact hostname for the `phishlens-staging` `staging-root` branch |
 | `SECRETARY_PRODUCTION_DB_HOST` | Production Neon hostname, distinct from staging |
 
 Keep host values private to the GitHub environment configuration. Do not put

@@ -4,24 +4,27 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
-## PR #268 verification snapshot — November 21, 2026, 12:38 UTC
+## PR #268 check snapshot — November 21, 2026, 13:45 UTC
 
-At this snapshot, PR #268 targeted `main` at
-`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 had merged to `main`;
-there is no remaining stack or merge-order dependency.
+At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`
+targeted `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 has
+merged and GitHub reported the PR mergeable. Backend, Extension, Staging
+integration, migration preflight, workflow lint, dependency security/graph
+review, deterministic evaluation, CodeQL, and the Secretary report passed on
+that exact head ([CI 44909945177](https://github.com/kendshhh/PhishLens/actions/runs/44909945177)).
 
-On head `d269071`, Backend, Extension, Staging integration, migration source
-preflight, workflow lint, dependency security/graph review, deterministic
-evaluation, CodeQL, and the Secretary report passed. Hosted staging preflight
-and Hosted staging were skipped. The required `Secretary staging` status failed
-because this application/runtime PR had no `needs-hosted-staging` label or
-exact-head hosted verification. No Render deployment or authenticated hosted
-CRUD occurred. A hosted deployment remains subject to approval by the protected
-`staging` environment. Release #153 remains **NO-GO**.
+Hosted staging preflight passed. Hosted staging is waiting at the protected
+`staging` environment; its deployment has not started. The endpoint pin and
+fixtures were updated after the previous head's startup failed before
+migrations because the old `pr-58-staging` pin did not match the new
+`phishlens-staging` root endpoint. The previous-head `Secretary staging`
+failure is [assessment 44907861763](https://github.com/kendshhh/PhishLens/actions/runs/44907861763).
+Exact-head staging CRUD, cleanup, and artifact results are not claimed. This
+documentation refresh triggers a new exact-head check run. Release #153 remains
+**NO-GO**.
 
-The dated material below records earlier PR heads and check runs; treat those
-entries as historical evidence for their named revisions.
+The dated material below records earlier PR heads and check runs as historical
+evidence for their named revisions.
 
 ## Historical release and CI snapshots — November 21, 2026
 

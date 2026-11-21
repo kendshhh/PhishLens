@@ -2,27 +2,26 @@
 
 ## Current recovery position — 2026-11-21
 
-PR #268's latest recorded CI snapshot is head
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`, based on `main` at
-`31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 has merged. Backend,
-Extension, Staging integration, migration source preflight, workflow lint,
-dependency review/security, deterministic evaluation, CodeQL and the Secretary
-report passed. Hosted staging jobs were skipped and `Secretary staging` failed
-because the opt-in label and exact-head hosted verification were absent. No
-deployment or authenticated hosted CRUD occurred. PR-specific checks later in
-this section that name earlier heads are historical.
+At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d` was
+based on `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 had
+merged. Backend, Extension, Staging integration, migration preflight, workflow
+lint, security, evaluation, CodeQL and the Secretary report passed on that
+head. Hosted staging preflight passed; Hosted staging is waiting at the
+protected `staging` environment and has not started. The head updates the stale
+endpoint pin. Hosted verification is pending; this documentation refresh
+triggers new exact-head checks. Collaborator re-review is pending, and no
+hosted acceptance is claimed. PR-specific checks later in this section that
+name earlier heads are historical.
 
 Release remains **NO-GO**. The current service identities and evidence limits
 are maintained in the [release record](release-record-2026-11-21.md) and
 [environment map](environment-map-2026-11-21.md). The recorded production
 deployment is `dep-dc07rs67bikc73fjgjq0` on
 `811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. The
-recorded staging deployment is `dep-dc0im3h7lnhs738pncng` on
-`ba0b6c5475eb6a8f99c509c40384020d292e17e6`; its anonymous saved-report
-endpoint requires a Bearer session. Direct GET-only smokes from the review
-branch passed at 08:15 and about 08:35 UTC for health, readiness and anonymous
-`401 Bearer`; they do not verify deployed PR identity, authenticated CRUD, or
-deployment state.
+latest observed staging deployment is `dep-dc0pmu17lnhs739d14b0` on merge
+SHA `683eee44f9089b79b4d7b38163f7ab68bce89656`, which is not PR #268's exact
+merge revision. Earlier GET-only smokes do not verify deployed PR identity,
+authenticated CRUD, or this PR's deployment state.
 
 The review branch includes main's Bearer-aware history correction and adds
 bounded smoke retries, failure summaries, local server-exit monitoring and log

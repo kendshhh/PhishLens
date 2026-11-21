@@ -12,18 +12,20 @@ this is not a course grade or project-completion percentage. None of the seven
 release areas meets its full pass definition, and no weighted seven-area score
 is calculated because the weights are not approved.
 
-## PR #268 verification snapshot — 2026-11-21 12:38 UTC
+## PR #268 check snapshot — 2026-11-21 13:45 UTC
 
-At this snapshot, PR #268 targeted `main` at
-`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 had merged; this PR was
-not stacked on its former branch. Backend, Extension, Staging integration,
-migration source preflight, workflow lint, dependency security/graph review,
-deterministic evaluation, CodeQL and the Secretary report passed on this head.
-Hosted staging preflight and Hosted staging were skipped; `Secretary staging`
-failed because the `needs-hosted-staging` label and exact-head hosted
-verification were absent. No Render deployment or authenticated hosted CRUD
-occurred. The dated check snapshots below apply only to their named revisions.
+At 13:45 UTC, PR #268 targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa`, with branch head
+`9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`. Backend, Extension, Staging
+integration, migration source preflight, workflow lint, dependency
+security/graph review, deterministic evaluation, CodeQL and the Secretary
+report passed on that exact head. Hosted staging preflight passed; Hosted
+staging is waiting at the protected `staging` environment and has not started.
+This head updates the stale endpoint pin and fixtures. Hosted verification is
+pending, and this documentation refresh triggers a new exact-head run. GitHub
+reported the PR mergeable, with collaborator re-review still required. No PR
+#268 hosted smoke, authenticated CRUD or artifact result is claimed yet. Dated
+check snapshots below apply only to their named revisions.
 
 ## Candidate and deployment identities
 
@@ -100,9 +102,9 @@ its cause has not been established.
 
 | Component | Observed identity | Evidence and acceptance state |
 |---|---|---|
-| Review source | PR #268, branch `codex/devops-staging-closeout-20261121`; latest completed check head at 11:31 UTC is `f79098cc075784563d2022cbca87d7abe8f0a635`, followed by a docs-only sync. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` is synchronized with the Bearer-aware main code through merge commit `14874d339bbb4042172df954f97596080aa303ee`; shared docs from PR #265 are at `ca29235`. | On `f79098c`, Backend, Extension, migration preflight, Staging integration, workflow lint, dependency security/graph, deterministic evaluation and the Secretary report passed. Hosted staging/preflight were skipped; required `Secretary staging` failed ([CI 44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736), [Secretary staging 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)). No current PR CodeQL result, Render deployment or authenticated CRUD. PR #268 is still open and targets the old PR #265 branch, now merged into main at `95975cd`; retarget to `main` before merging. |
+| Review source | At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d` targeted `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa`. It includes the PR #265 merge and has no stack dependency. | Backend, Extension, Staging integration, migration preflight, workflow lint, dependency review/security, evaluation, CodeQL and Secretary report passed. Hosted preflight passed; Hosted staging waited at the protected environment and did not start. Collaborator re-review remains required; no hosted acceptance is claimed. |
 | Production API | Last observed at 07:31 UTC: Render deploy `dep-dc07rs67bikc73fjgjq0`, source SHA `811980c2cbf70d9957146bf329627f0826a018f1`. | Render reported live. Main later advanced first to `06f89d7` and then to merged main `95975cd47dceeac74ea36054610956f0a1db1fa9`; no later production deployment was verified. At the observed deploy, read-only `/version`, `/health`, `/ready` and `/model-info` returned HTTP 200. Model info said `analysis_enabled=false`, `provider_mode=disabled`, `supports_required_provider=false`, and `accepts_tfidf_reports=false`. No production inference or saved-report write was made; the production smoke workflow was not run. This is service-state evidence, not product acceptance. |
-| Staging API | Render deploy `dep-dc0im3h7lnhs738pncng`, source SHA `ba0b6c5475eb6a8f99c509c40384020d292e17e6`. | Render reports live. Read-only `/version`, `/health`, `/ready` and `/model-info` returned HTTP 200; model info reports TF-IDF and model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. Anonymous `/api/analyses` returns `401` with `WWW-Authenticate: Bearer`. GET-only smokes at 08:15 and about 08:35 UTC passed health, readiness and the anonymous auth boundary; neither verified deployed PR identity. No authenticated CRUD acceptance is established. |
+| Staging API | Render service `phishlens-staging` (`srv-db92irlg1s2s739404i0`); latest observed live deployment at 13:25 UTC is `dep-dc0pmu17lnhs739d14b0`, source merge SHA `683eee44f9089b79b4d7b38163f7ab68bce89656`. | Render reports this different merge revision live; startup logs show migrations and API startup. It is not PR #268's exact merge SHA and is not acceptance evidence for this PR. The failed PR #268 deployment `dep-dc0phpgm7kps73e7p6kg` exited before migrations due to the stale endpoint pin. No current `/version` or authenticated CRUD was verified. |
 | Extension build | PhishLens-Extension artifact ID `14651606496` from [CI run 44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624), source SHA `811980c2cbf70d9957146bf329627f0826a018f1`; archive digest `sha256:8f07bf6fd9e5844ee541b4c13439cd32b57d231ca8c297bbd5513346bc17244d`, expires November 27. | This artifact is tied to the earlier `811980c` source, not current main `95975cd`. The digest is GitHub's artifact archive digest, not a separately verified ZIP SHA-256. No accepted extension/backend/model manifest is published. |
 | Browser acceptance evidence | Extension-Browser-Acceptance artifact ID `14652195937` from CI run `44779598624`, source SHA `811980c2cbf70d9957146bf329627f0826a018f1`; digest `sha256:e953b567b84d99f70182b5a7fb22eedc4f3876b467a804f27cdcfe2e745b6c1b`, expires February 18, 2027. | Packaged browser checks ran for the earlier main source. The later main CI run for `06f89d7` failed at packaged-extension Chromium browser acceptance; see the current workflow evidence below. This artifact does not establish acceptance for current main or authenticated live staging. |
 | Model/provider | Main's 40-case synthetic result recorded 65% accuracy, 18.75% phishing recall (3/16) and 6.25% legitimate false positives (1/16). Frozen English source-pair TF-IDF v12a evaluation recorded 190/200 phishing recall, 1/999 legitimate false positives and 1,200 valid outputs. | Both are advisory evidence only. A 12-case synthetic diagnostic detected 1/12. There is no approved broad release threshold, contemporary held-out cohort or human explanation review. Production's last observed model-info response reported `analysis_enabled=false` and `provider_mode=disabled`; production analysis remains unaccepted. |

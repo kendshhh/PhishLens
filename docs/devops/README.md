@@ -5,19 +5,19 @@ the current evidence set and its limits. Historical records stay dated and
 retain their original findings; successor links may be added, but do not treat old
 service IDs, workflow settings or deployment observations as current.
 
-## PR #268 verification snapshot — 2026-11-21 12:38 UTC
+## PR #268 check snapshot — 2026-11-21 13:45 UTC
 
-At this snapshot, PR #268 targeted `main` at
-`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 had merged to `main`;
-the former stack dependency is resolved. On this exact head, Backend,
-Extension, Staging integration, migration source preflight, workflow lint,
-dependency security/graph review, deterministic evaluation, CodeQL and the
-Secretary report passed. Hosted staging preflight and Hosted staging were
-skipped; required `Secretary staging` failed because the `needs-hosted-staging`
-label and exact-head hosted verification were absent. No Render deployment or
-authenticated hosted CRUD occurred. The dated PR summaries below are historical
-snapshots for their named heads. Release #153 remains **NO-GO**.
+At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`
+targeted `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 had
+merged and GitHub reported the PR mergeable. Backend, Extension, Staging
+integration, migration preflight, workflow lint, dependency security/graph
+review, deterministic evaluation, CodeQL and the Secretary report passed on
+that exact head. Hosted staging preflight passed; Hosted staging is waiting at
+the protected `staging` environment and has not started. This head fixes the
+retired `pr-58-staging` endpoint pin. Exact-head hosted verification is pending;
+the documentation refresh triggers a new exact-head check run. No hosted
+acceptance is claimed for PR #268 yet. Release #153 remains **NO-GO**. Older PR
+summaries below are historical snapshots for their named heads.
 
 ## Historical PR snapshots
 

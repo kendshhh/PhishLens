@@ -1,16 +1,17 @@
 # Secretary verification and rollout log
 
-## Current hosted-controller status — 2026-11-21
+## Hosted-controller status snapshot — 2026-11-21 13:45 UTC
 
-At the 12:38 UTC snapshot, PR #268 targeted `main` at
-`31e86c78523cbdcfb6da83f99d331c86409bf0fa` with head
-`d2690714b0f07e715285ca7f6c2e1690ecceb5ab`; PR #265 had merged. The
-current-head backend, extension, staging integration, migration source
-preflight, workflow lint, dependency review/security, deterministic evaluation,
-CodeQL and Secretary report passed. Hosted preflight and Hosted staging were
-skipped, and required `Secretary staging` failed because no opt-in label or
-exact-head hosted verification was present. No Render deployment or hosted
-CRUD occurred. The dated PR checks below are historical snapshots.
+At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`
+targeted `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 had
+merged. Backend, Extension, Staging integration, migration preflight, workflow
+lint, dependency, evaluation, CodeQL and the Secretary report passed on this
+head. Hosted preflight passed; Hosted staging is waiting at the protected
+`staging` environment and has not started. The previous head failed on a stale
+endpoint pin; this head updates the pin and fixtures. The hosted `Secretary
+staging` assessment remains pending successful exact-head hosted verification.
+Collaborator re-review remains pending. The dated PR checks below are historical
+snapshots.
 
 The latest observed staging route is the legacy hosted-staging workflow in
 `origin/main`'s `.github/workflows/ci.yml`: it deploys via the trusted default

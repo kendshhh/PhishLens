@@ -619,7 +619,7 @@ This is a documentation-only evidence refresh on top of the tested merge head;
 its own exact-head CI must pass before review/merge. The source and workflow
 changes from main were tested in run 44902645800 and associated checks above.
 
-## Exact-head CI and review snapshot — 2026-11-21 12:38 UTC
+## Historical exact-head CI and review snapshot — 2026-11-21 12:38 UTC
 
 PR #268 targets `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa` and is at
 head `d2690714b0f07e715285ca7f6c2e1690ecceb5ab`. PR #265 has merged; the old
@@ -640,3 +640,35 @@ and exact-head hosted verification
 ([assessment 44903321363](https://github.com/kendshhh/PhishLens/actions/runs/44903321363)).
 No Render deployment or authenticated hosted CRUD occurred. This check snapshot
 is tied to `d269071`; later branch changes need their own exact-head results.
+
+## Hosted staging failure and endpoint-pin update — 2026-11-21 13:14 UTC
+
+PR #268 head `943bbdb8c2dd076a93dc93a6de360078615f55b8` targeted `main` at
+`31e86c78523cbdcfb6da83f99d331c86409bf0fa`. Backend, Extension, Staging
+integration, migration source preflight, workflow lint, dependency
+security/graph review, deterministic evaluation, CodeQL, and the Secretary
+report passed in [CI 44907276432](https://github.com/kendshhh/PhishLens/actions/runs/44907276432).
+Hosted staging preflight passed. Render built the merge commit successfully,
+then `start_staging.py` rejected the old `pr-58-staging` endpoint pin before
+migrations with “Hosted staging must use the verified Neon staging endpoint.”
+Deployment `dep-dc0phpgm7kps73e7p6kg` ended with a nonzero exit; hosted smoke,
+CRUD, identity verification, and artifact packaging did not run. The required
+`Secretary staging` assessment failed at
+[44907861763](https://github.com/kendshhh/PhishLens/actions/runs/44907861763).
+
+At the time of this 13:14 UTC snapshot, the new PR source head
+`9036132d8ff70cbf9ceae97175a7f59ba0b1e61d` updated the source pin and test
+fixtures to the `phishlens-staging` `staging-root` endpoint; its exact-head
+checks had not yet completed. A later Render deployment from a different merge
+SHA became live; it is not PR #268 acceptance evidence.
+
+## Exact-head status after endpoint-pin fix — 2026-11-21 13:45 UTC
+
+On PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`, Backend,
+Extension, Staging integration, migration preflight, workflow lint, dependency
+security/graph review, deterministic evaluation, CodeQL, the Secretary report,
+and Hosted staging preflight passed ([CI 44909945177](https://github.com/kendshhh/PhishLens/actions/runs/44909945177)).
+The Hosted staging job is waiting at the protected `staging` environment; it
+has not started, so there is no deployment, smoke, CRUD, or package evidence for
+this head. The doc-only update that records this status triggers a new exact-
+head run. Collaborator re-review is still required.
