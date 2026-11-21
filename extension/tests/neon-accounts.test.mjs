@@ -12,7 +12,7 @@ const jwt = (sub = user.id, exp = Date.now() / 1000 + 900) =>
   ['header', Buffer.from(JSON.stringify({ sub, exp })).toString('base64url'), 'signature'].join('.');
 const session = token => ({ user, session: { expiresAt: new Date(Date.now() + 3600000).toISOString(), token } });
 
-test('disabled integration does not initialize an SDK; configuration requires exact origin permission and database', () => {
+test('disabled integration does not initialize an SDK; configuration requires the API proxy permission and database', () => {
   assert.deepEqual(createNeonIntegration({ sdkFactory: () => assert.fail('SDK initialized') }), {});
   for (const config of [
     { authUrl, database: 'other', apiOrigin }, { authUrl, database: 'test', apiOrigin: 'https://wrong.test' },
@@ -27,11 +27,11 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
   globalThis.fetch = async (url, options = {}) => {
     const target = new URL(String(url));
     requests.push({ url: target.href, options });
-    assert.ok([origin, apiOrigin].includes(target.origin), 'unexpected network origin');
-    if (target.origin === apiOrigin) return Response.json({ items: [] });
+    assert.equal(target.origin, apiOrigin, 'Auth and API traffic must use the same-origin backend');
+    const path = target.pathname.replace('/api/auth', '');
+    if (!target.pathname.startsWith('/api/auth/')) return Response.json({ items: [] });
     assert.equal(options.credentials, 'include');
     assert.equal(options.redirect, 'error');
-    const path = target.pathname;
     if (path.endsWith('/sign-out')) { active = false; return Response.json({ success: true }); }
     if (path.endsWith('/sign-in/email')) { active = true; return Response.json(session('opaque-cookie-token')); }
     if (path.endsWith('/get-session')) return Response.json(active ? session('opaque-cookie-token') : null,
@@ -44,22 +44,22 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
   try {
     const { adapter, createClient } = createNeonIntegration({
       config: { enabled: true, authUrl, database: 'test', apiOrigin }, apiOrigin,
-      hostPermissions: [origin + '/*'], fetchImpl: (...args) => globalThis.fetch(...args)
+      hostPermissions: [origin + '/*', apiOrigin + '/*'], fetchImpl: (...args) => globalThis.fetch(...args)
     });
     const current = await adapter.restore();
     assert.equal(current.user.id, user.id);
     assert.equal('token' in current, false);
     const client = createClient(current);
     await client.listAnalyses();
-    let apiCalls = requests.filter(r => new URL(r.url).origin === apiOrigin);
+    let apiCalls = requests.filter(r => new URL(r.url).pathname.startsWith('/api/analyses'));
     assert.equal(new Headers(apiCalls.at(-1).options.headers).get('Authorization'), 'Bearer ' + token);
     token = jwt(user.id, Date.now() / 1000 + 1800);
     await client.listAnalyses();
-    apiCalls = requests.filter(r => new URL(r.url).origin === apiOrigin);
+    apiCalls = requests.filter(r => new URL(r.url).pathname.startsWith('/api/analyses'));
     assert.equal(new Headers(apiCalls.at(-1).options.headers).get('Authorization'), 'Bearer ' + token);
     token = jwt('another-account');
     await assert.rejects(client.listAnalyses(), { status: 401 });
-    assert.equal(requests.filter(r => new URL(r.url).origin === apiOrigin).length, apiCalls.length);
+    assert.equal(requests.filter(r => new URL(r.url).pathname.startsWith('/api/analyses')).length, apiCalls.length);
     token = jwt();
     await adapter.signUp({ name: user.name, email: user.email, password: 'Synthetic-password-only' });
     await adapter.resend({ email: user.email });

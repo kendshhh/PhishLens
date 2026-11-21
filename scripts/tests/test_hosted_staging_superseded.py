@@ -1,37 +1,59 @@
-import textwrap
+"""Hosted staging stays non-green when its candidate is stale or incomplete."""
+
+import re
 import unittest
 from pathlib import Path
 
+from scripts.secretary.hosted_status import decision
+
 ROOT = Path(__file__).resolve().parents[2]
+SHA = "a" * 40
+REPO = "kendshhh/PhishLens"
+CONFIG = {"preview_opt_in_label": "needs-hosted-staging"}
+
+
+def pr():
+    return {"state": "open", "draft": False,
+            "head": {"sha": SHA, "repo": {"full_name": REPO}},
+            "labels": [{"name": "needs-hosted-staging"}]}
+
+
+def jobs(hosted_status="completed", hosted_conclusion="success"):
+    result = {name: {"status": "completed", "conclusion": "success"}
+              for name in ("Backend checks", "Extension checks", "Staging integration")}
+    result["Hosted staging"] = {"status": hosted_status, "conclusion": hosted_conclusion}
+    return result
 
 
 class HostedStagingSupersededTests(unittest.TestCase):
-    def test_changed_pr_head_skips_stale_evidence_without_failing_ci(self):
+    def test_stale_head_and_every_incomplete_hosted_result_stay_non_green(self):
+        current = pr()
+        current["head"]["sha"] = "b" * 40
+        state, _ = decision(current, [{"filename": "extension/history.js"}],
+                            {"head_sha": SHA, "conclusion": "success"}, jobs(), REPO, CONFIG)
+        self.assertEqual(state, "stale")
+
+        for status, conclusion in (("in_progress", None), ("completed", "failure"),
+                                  ("completed", "skipped")):
+            state, _ = decision(pr(), [{"filename": "extension/history.js"}],
+                                {"head_sha": SHA, "conclusion": "success"},
+                                jobs(status, conclusion), REPO, CONFIG)
+            self.assertEqual(state, "failure")
+
+    def test_workflow_does_not_skip_eligible_runtime_gate_when_prerequisite_fails(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        start = workflow.index("      - name: Verify deployed PR-head identity and package staging assets")
-        end = workflow.index("      - name: Preserve hosted staging evidence and extension", start)
-        finalize = workflow[start:end]
-        artifact = workflow[end:]
+        start = workflow.index("  hosted-staging:\n")
+        body_start = start + len("  hosted-staging:\n")
+        next_job = re.search(r"(?m)^  [a-z][a-z0-9_-]*:\s*$", workflow[body_start:])
+        end = body_start + next_job.start() if next_job else len(workflow)
+        hosted = workflow[start:end]
+        header = hosted.split("    needs:", 1)[0]
 
-        self.assertIn("id: staging-finalize", finalize)
-        self.assertIn("def superseded():", finalize)
-        self.assertIn("live_pr_matches(", finalize)
-        self.assertIn("ReadOnlyGitHub", finalize)
-        self.assertEqual(finalize.count("if superseded():"), 3)
-        self.assertIn("raise SystemExit(0)", finalize)
-        self.assertIn("result.write('current=false\\n')", finalize)
-        self.assertIn("result.write('current=true\\n')", finalize)
-        self.assertNotIn("PR changed during deployment; rerun CI", finalize)
-        self.assertIn("if: steps.staging-finalize.outputs.current == 'true'", artifact)
-
-        marker = "          python - <<'PY'\n"
-        script_start = finalize.index(marker) + len(marker)
-        script_end = finalize.index("\n          PY", script_start)
-        compile(
-            textwrap.dedent(finalize[script_start:script_end]),
-            ".github/workflows/ci.yml hosted-staging-finalize",
-            "exec",
-        )
+        self.assertIn("if: always()", header)
+        self.assertNotIn("needs.staging.result == 'success'", header)
+        self.assertIn("Fail instead of skipping when an eligible staging prerequisite failed", hosted)
+        self.assertIn("STAGING_INTEGRATION_RESULT", hosted)
+        self.assertIn("PREFLIGHT_CURRENT", hosted)
 
 
 if __name__ == "__main__":

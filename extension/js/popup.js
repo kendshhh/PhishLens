@@ -440,7 +440,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
 export function initializePopup({ documentImpl = document, chromeImpl = globalThis.chrome,
     fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve(),
-    locationImpl = globalThis.location } = {}) {
+    locationImpl = globalThis.location, preview = false, apiOrigin = API_BASE_URL } = {}) {
     // popup.html serves both the right-click action popup and the toolbar side panel. The
     // manifest opens the popup as popup.html?surface=popup; a popup sizes itself from its
     // content, so it keeps a fixed width, while the side panel fills its width.
@@ -448,7 +448,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         documentImpl.documentElement?.classList.add('popup-surface');
     }
     const $ = id => documentImpl.getElementById(id);
-    const client = clientImpl || createAnalysisClient(API_BASE_URL, fetchImpl, { requiredModel: MODEL_SHA256 });
+    const client = clientImpl || createAnalysisClient(apiOrigin, fetchImpl, { requiredModel: MODEL_SHA256 });
     let state, stateGeneration = 0, accountEpoch = 0;
     let savedReport = null;
     let reportBusy = false;
@@ -479,6 +479,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     });
     const show = (id, visible) => $(id).classList.toggle('hidden', !visible);
     const text = (id, value) => { $(id).textContent = value; };
+    show('reports-preview-notice', preview);
     function updateSaveControls() {
         const alreadySaved = Boolean(state?.scanId && savedReport?.scanId === state.scanId);
         for (const id of ['save-report', 'report-subject', 'save-consent']) $(id).disabled = reportBusy || alreadySaved || !canAccessReports();
@@ -717,7 +718,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             $('save-status').setAttribute('data-kind', 'info');
             $('save-status').setAttribute('role', 'status');
             const outcome = await saveLocalReport({
-                client, baseUrl: API_BASE_URL, modelSha: MODEL_SHA256, input,
+                client, baseUrl: apiOrigin, modelSha: MODEL_SHA256, input,
                 idempotencyKey: attempt.key, fetchImpl,
                 async beforeCreate() {
                     if (saveEpoch !== accountEpoch) throw new Error('The account changed before saving.');

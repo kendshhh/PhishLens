@@ -40,6 +40,8 @@ class DeploymentTests(unittest.TestCase):
             "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
             "SECRETARY_STAGING_DB_HOST": "staging.invalid",
             "SECRETARY_PRODUCTION_DB_HOST": "production.invalid",
+            "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            "STAGING_AUTH_DATABASE": "phishlens_dev",
         }, clear=True)
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -91,7 +93,7 @@ class DeploymentTests(unittest.TestCase):
                 },
             },
         }
-        env_vars = render_staging_environment_rows()
+        env_vars = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
         return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):
