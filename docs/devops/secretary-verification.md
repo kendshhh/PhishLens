@@ -14,22 +14,35 @@ bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
 conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
 321 Node tests and a fresh GET-only staging smoke
-passed at about 08:35 UTC. The latest fully checked PR revision was docs-only
-commit `631b0ef21849e8abe877bb16b4676047f2aca86a`; it passed CI run
+passed at about 08:35 UTC. The last verified PR head before documentation
+reconciliation was `631b0ef21849e8abe877bb16b4676047f2aca86a`; CI
 [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
 workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
 dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
-deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114),
-and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015).
+and deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+passed.
 Hosted staging and preflight were skipped. The PR's `Secretary staging`
 context is **failed** with the message that `needs-hosted-staging` and exact-head
 hosted verification are required ([check run
 44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
 The controller assessment passed but skipped its preview job; no Render deploy
 or CRUD ran. The CRUD step has no authenticated session and remains a blocker.
-These results apply to docs-only revision `631b0ef` and unchanged code/test
-commit `83a0df1`. The later PR #265 reconciliation and closeout merge also
-change documentation only; their current checks must be read from the live PR.
+These results apply to `631b0ef`; the PR #265 documentation reconciliation
+requires fresh checks on the resulting PR head.
+At 09:22 UTC the later remote PR head `7dbebfd060298a80e99a38a52663901e776935cb`
+had Backend, Extension and migration source preflight passed; Staging
+integration remained in progress. Workflow lint, dependency security and
+deterministic evaluation passed. Dependency graph review failed because GitHub
+reports the repository Dependency graph is disabled. CodeQL later failed its
+three language jobs; annotations attribute the failure to Actions installation
+API rate limits and report no CodeQL findings. By 09:31 UTC, Staging integration
+had passed, while hosted staging and preflight remained skipped. Secretary report
+[44889108682](https://github.com/kendshhh/PhishLens/actions/runs/44889108682)
+said **WAITING FOR CHECKS** at 09:22. Hosted staging was not requested. The exact
+timestamped result and scope are in the
+[staging evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
+The later evidence-sync head still needs its own checks.
+
 The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this

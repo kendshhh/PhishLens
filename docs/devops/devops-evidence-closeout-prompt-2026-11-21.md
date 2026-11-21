@@ -91,16 +91,15 @@ before relying on them and add the actual observation date and source:
 Recheck all live systems before reuse. At the `631b0ef` audit snapshot, PR #268
 branch `codex/devops-staging-closeout-20261121` had code/test commit
 `83a0df1af1d64048b3b5fa3158f6509e83d71555` and tested PR head
-`631b0ef21849e8abe877bb16b4676047f2aca86a` (docs-only over the code/test
-commit):
+`631b0ef21849e8abe877bb16b4676047f2aca86a`:
 
 - `npm test` passed 321 tests; the GET-only staging smoke passed health,
   readiness and the anonymous `401 Bearer` boundary. It did not perform writes,
   sign in, or verify authenticated history/CRUD.
 - CI run [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094)
   passed backend, extension, migration preflight and local staging integration.
-  Workflow lint, dependency security, deterministic evaluation and CodeQL
-  passed at 44888140104, 44888140135, 44888140114 and 136797921015 respectively.
+  Workflow lint, dependency security and deterministic evaluation passed at
+  44888140104, 44888140135 and 44888140114 respectively.
 - Hosted staging and preflight were skipped. The required `Secretary staging`
   PR check is failed because `needs-hosted-staging` and exact-head hosted
   verification are absent ([check run
@@ -118,6 +117,26 @@ commit):
   environment map. The provided original smoke log lacks run ID, tested SHA,
   status and response body; do not assert a proven root cause from the later
   `401 Bearer` read-only observation.
+
+### Later PR-head check observation — 2026-11-21 09:22 UTC
+
+GitHub reported remote PR #268 head
+`7dbebfd060298a80e99a38a52663901e776935cb` after the PR #265 documentation
+reconciliation. By 09:31 UTC, Backend, Extension, migration source preflight
+and Staging integration passed in
+[run 44889070392](https://github.com/kendshhh/PhishLens/actions/runs/44889070392).
+Workflow lint, dependency security and deterministic evaluation passed.
+Dependency graph review failed because GitHub says the repository Dependency
+graph is disabled. CodeQL failed all three language jobs; annotations attribute
+failure to Actions installation API rate limits and show no CodeQL findings.
+The Secretary report
+[44889108682](https://github.com/kendshhh/PhishLens/actions/runs/44889108682)
+said **WAITING FOR CHECKS** at 09:22 UTC. Hosted staging/preflight remained
+skipped at 09:31. No Render deploy or authenticated CRUD occurred. These results
+are a prior-head snapshot; rerun
+the full source, review, CI, deployment-control and documentation reconciliation
+for the candidate branch head before reuse. Do not infer a 100% score from
+partial or in-progress checks.
 
 ## Required working method
 
@@ -193,6 +212,12 @@ commit):
   migrations, workflow checkout behavior, auto-deploy settings, required
   checks, metrics windows, recovery facts and scoring language. When sources
   conflict, preserve the discrepancy and leave the gate open until verified.
+- Treat CI infrastructure failures as blockers too. On PR #268 head `7dbebfd`,
+  GitHub's dependency-review job failed because repository Dependency graph was
+  disabled; an administrator must enable it in Security settings and rerun the
+  check. CodeQL analysis failed on Actions installation API rate limits, so
+  rerun it on the exact candidate after the limit clears. Do not record either
+  failure as a code pass or silently omit it.
 - Check every internal Markdown link, every evidence reference and every
   repeated status statement. Remove stale `current/latest/passed/100%` claims
   only after establishing a newer source; preserve dated context.

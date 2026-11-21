@@ -300,19 +300,65 @@ commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` unchanged in this docs-only
 commit. Keep **NO-GO** and use the passing automated checks only as evidence for
 their stated local/CI scope.
 
-The PR branch advanced to docs commit
-`631b0ef21849e8abe877bb16b4676047f2aca86a`, then received the PR #265
-documentation reconciliation. The CI results for `631b0ef` are now recorded:
-CI run [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
+The PR branch later advanced to docs commit
+`631b0ef21849e8abe877bb16b4676047f2aca86a`. On that exact head, CI
+[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
 workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
 dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
-deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114),
-and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
-passed. Staging integration passed its history-auth smoke, local server/API
-integration, server-log preservation and deployment guard tests. Hosted staging
-and preflight were skipped; the required Secretary staging check failed because
-`needs-hosted-staging` and exact-head hosted verification were absent (run
-44888369939). No Render deployment or authenticated CRUD occurred. The PR #265
-merge and subsequent closeout merge are documentation-only over code/test SHA
-`83a0df1`; read their own latest checks from the live PR. No product/release gate
-is promoted by the documentation reconciliation.
+and deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+passed. The `Secretary staging` check failed because the protected hosted run
+and exact-head verification were not requested ([run
+44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
+no hosted deployment or authenticated CRUD ran. The PR #265 documentation
+reconciliation postdates those checks, so fresh checks are required on the
+resulting candidate.
+
+## PR #265 reconciliation check snapshot — 2026-11-21 09:22 UTC
+
+GitHub reported remote PR #268 head
+`7dbebfd060298a80e99a38a52663901e776935cb`, whose merge history includes PR
+#265's shared readiness-document baseline. This exact SHA is a documentation
+reconciliation head; the underlying code/test commit remains
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`.
+
+- Backend checks, Extension checks and Migration source preflight passed in
+  [run 44889070392](https://github.com/kendshhh/PhishLens/actions/runs/44889070392).
+  Staging integration was `in_progress` when the check-runs API was read at
+  09:22 UTC.
+- [Workflow lint 44889070441](https://github.com/kendshhh/PhishLens/actions/runs/44889070441),
+  [dependency security 44889070418](https://github.com/kendshhh/PhishLens/actions/runs/44889070418),
+  and [deterministic evaluation 44889070455](https://github.com/kendshhh/PhishLens/actions/runs/44889070455)
+  had succeeded. The separate `Dependency graph review (GitHub Advanced
+  Security)` check in run 44889070418 had failed. CodeQL run
+  [44889065082](https://github.com/kendshhh/PhishLens/actions/runs/44889065082)
+  was `in_progress`.
+- Secretary report [44889108682](https://github.com/kendshhh/PhishLens/actions/runs/44889108682)
+  said **WAITING FOR CHECKS**. Hosted staging was not requested. No Render
+  deployment, staging write or authenticated CRUD occurred.
+- The present evidence reconciliation creates a newer PR head. Results above
+  are not transferable to that SHA; read the new check run and report any failed,
+  skipped, missing or pending gate explicitly.
+
+## Settled check state — 2026-11-21 09:31 UTC
+
+The remote PR still pointed to `7dbebfd060298a80e99a38a52663901e776935cb`.
+Staging integration completed successfully in run 44889070392. Hosted staging
+and preflight remained skipped. The three CodeQL language jobs in run 44889065082
+completed with failure; GitHub annotations state that Actions installation API
+rate limits prevented analysis. They contain no reported CodeQL findings. The
+separate dependency graph review failed because GitHub says the repository's
+Dependency graph is disabled (see [job log
+136800698597](https://github.com/kendshhh/PhishLens/actions/runs/44889070418/job/136800698597)).
+No hosted deployment or authenticated CRUD was performed. This later status
+observation supersedes the 09:22 in-progress states above, but applies only to
+the exact `7dbebfd` head. The current documentation reconciliation needs its
+own checks.
+
+The dependency review failure is an administrative prerequisite: have an
+authorized repository administrator enable Dependency graph in GitHub Security
+settings and then rerun dependency review. The CodeQL language job annotations
+for [run 44889065082](https://github.com/kendshhh/PhishLens/actions/runs/44889065082)
+attribute their failures to Actions installation API rate limits; rerun CodeQL
+on a fresh exact head after the limit clears. The run does not establish a
+CodeQL finding, but its failed status remains a failed gate until a successful
+analysis is recorded.

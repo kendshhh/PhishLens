@@ -1,24 +1,29 @@
 # Production deployment smoke
 
-> Current state — November 21, 2026: production is Live on SHA
-> 811980c2cbf70d9957146bf329627f0826a018f1 in deploy
-> dep-dc07rs67bikc73fjgjq0. The scheduled Production drift run passed source
-> SHA, health and readiness checks only. Staging was manually deployed to the
-> same SHA in dep-dc07s1cipgvc73dh0150; no authenticated product acceptance is
-> inferred. The current model-info state was not checked in this refresh. The
-> smoke supports a disabled-aware zero-inference check, but remains manual-only.
-> See the [current release record](release-record-2026-11-21.md). The November
-> 14 production result below is historical.
+> Last observed live state — November 21, 2026 07:31 UTC: production deploy
+> `dep-dc07rs67bikc73fjgjq0` serves SHA
+> `811980c2cbf70d9957146bf329627f0826a018f1`. GitHub `main` later advanced to
+> `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later production deployment
+> was verified. Read-only `/version`, `/health`,
+> `/ready` and `/model-info` return 200; model info reports
+> `analysis_enabled=false` and `provider_mode=disabled`. The disabled-aware
+> observer in `main` can report identity/health/readiness/disablement with zero
+> inference, paid calls and database writes, but the workflow was not run in
+> this audit. This is not product acceptance. The workflow remains manual-only.
+> See [PIPELINE.md](../../PIPELINE.md). The November 14 result below is historical.
 
 ## What the check verifies
 
 [`production-deploy-smoke.yml`](../../.github/workflows/production-deploy-smoke.yml)
 and `scripts/production_deploy_smoke.py` take a full deployment SHA, wait for
 production `/version` to report that exact SHA, then check `/health`, `/ready`,
-and `/model-info`. On the current `main` implementation, the smoke also
-requires a non-paid TF-IDF provider and checks two fixed synthetic analysis
-cases. The preflight requires `/model-info` to advertise
-`supports_required_provider=true`. Each analysis request sends
+and `/model-info`. On current `main`, analysis disabled is accepted only when
+`analysis_enabled=false`, `provider_mode=disabled`, and required-provider
+support is false; the observer exits with zero inference requests, paid calls
+and database writes. When analysis is enabled, the smoke requires a non-paid
+TF-IDF provider and checks two fixed synthetic analysis cases. The enabled-path
+preflight requires `/model-info` to advertise `supports_required_provider=true`.
+Each analysis request sends
 `X-Require-Provider: tfidf` to `/analyses/revision/{expected_sha}`. The API
 checks its own source revision and active provider before inference, then echoes
 the serving revision in `X-PhishLens-Revision`. An older instance without the
@@ -28,11 +33,9 @@ every analysis request. The TF-IDF behavior checks make no saved-report/database
 write and no paid provider request. A failed identity or provider preflight
 stops before analysis.
 
-PR #257 merged the disabled-mode path into main. When model-info returns
-analysis_enabled=false and provider_mode=disabled, the smoke rechecks exact
-deployment identity and reports health/readiness/model state without sending
-an inference request. This verifies the disabled state only; it is not product
-or model acceptance. No current successful manual run of this path is recorded.
+The disabled-mode observer verifies the kill switch and service identity only;
+it is not product or model acceptance. No production smoke workflow run was
+performed in this audit.
 
 ## Workflow trust boundary
 
@@ -43,32 +46,35 @@ credentials disabled. Its `GITHUB_TOKEN` permission is limited to
 repository contents, or modify branch protection or required checks. Artifact
 upload is the only retained output.
 
-The workflow remains manual. Run it from Actions after a production
+The workflow is currently manual. Run it from Actions after a production
 deployment and supply the full SHA reported by Render. It uploads a redacted
-summary artifact. Do not treat a successful readiness response alone as feature
-acceptance. The current SHA has not passed this smoke. When analysis is
-disabled, the smoke must confirm the disabled response and send zero inference
-requests; do not attempt AI behavior while the owner has asked to keep AI off.
+summary artifact. Do not treat `/ready` or the disabled-mode observer as feature
+acceptance. No workflow run for current production SHA
+`811980c2cbf70d9957146bf329627f0826a018f1` was performed in this audit.
 
 ## Why it is not automatically deploy-triggered yet
 
-The production Render service auto-deploys from main when checks pass. The
-latest production deploy dep-dc07rs67bikc73fjgjq0 is Live on
-811980c2cbf70d9957146bf329627f0826a018f1. The production smoke workflow is
-still workflow_dispatch-only; no deploy-ended webhook or automatic smoke
-trigger is configured or verified. The read-only workspace metadata does not
-expose the current plan. A workflow_run check on the same default-branch commit
-could remain pending while Render waits for checks to deploy that commit, so
-that trigger could create a deploy/check cycle.
+Render service metadata currently reports production auto-deploy off, while its
+latest deployment record is triggered by `new_commit`. Treat this as an
+unresolved configuration/evidence discrepancy and verify the Dashboard before
+relying on automatic deployment.
+No deploy-ended webhook or automatic smoke trigger is configured or verified.
+Render documents workspace webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
+([Render Webhooks](https://render.com/docs/webhooks)). The connected read-only
+workspace metadata does not expose the current workspace plan. A
+`workflow_run` check on the same default-branch commit could also become a
+pending check while Render is waiting for checks to deploy that commit, so this
+workflow does not register that trigger and risk a check/deploy cycle.
 
-To automate post-deploy acceptance, either:
+Therefore the repository has the verification code, but **it does not yet run
+automatically after every production deployment**. To close the gap, either:
 
-1. use a Render deploy_ended webhook on a plan that supports it, validate the
+1. use a Render `deploy_ended` webhook on a plan that supports it, validate the
    signed event, and dispatch this workflow with the exact deployed SHA; or
 2. move production deployment into a GitHub-controlled release workflow that
    deploys after CI, waits for the exact SHA to become live, then runs the
-   smoke. That changes the current auto-deploy path and needs an approved
-   Render API credential and deployment configuration.
+   smoke. This requires owner-approved Render deployment configuration and
+   reconciliation with the currently reported auto-deploy-off setting.
 
 Until one of those paths is configured and verified, the manual run is a
 runbook action, not automatic deployment evidence.

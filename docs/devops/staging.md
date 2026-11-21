@@ -11,10 +11,13 @@
 > monitors server exit and preserves logs, and hosted deployment requires
 > successful staging, hosted preflight and backend results. The synchronized
 > branch passed `npm test` (321 tests) and a GET-only live smoke at about 08:35
-> UTC. Latest fully checked PR revision was docs-only commit
-> `631b0ef21849e8abe877bb16b4676047f2aca86a`; it passed CI run
+> UTC. The last verified PR head before documentation reconciliation was
+> `631b0ef21849e8abe877bb16b4676047f2aca86a`; CI
 > [44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
-> workflow lint, dependency security, deterministic evaluation and CodeQL.
+> workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
+> dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
+> and deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
+> passed.
 > Hosted staging and preflight were skipped. The PR's `Secretary staging`
 > context is failed because the `needs-hosted-staging` label and exact-head
 > verification are missing ([run
@@ -22,15 +25,21 @@
 > No Render deployment occurred. These checks do not implement or
 > prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
 > on the observed `main` lacks a Neon Auth session, so the full staging job
-> remains open. The checks apply to docs-only revision `631b0ef` and unchanged
-> code/test commit `83a0df1`. The later PR #265 reconciliation and closeout
-> merge also change documentation only; read their current results from the live
-> PR checks.
+> remains open. These results apply to `631b0ef`; the PR #265 documentation
+> reconciliation requires fresh checks on the resulting PR head.
 > Track details in the
 > [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md), and
 > do not label the staging gate passed until authenticated create/list/read/
 > update/delete, ownership/isolation, persistence, and cleanup pass on one exact
 > package/backend pair.
+> On PR head `7dbebfd060298a80e99a38a52663901e776935cb`, Staging integration
+> completed successfully by 09:31 UTC. Backend, Extension, migration preflight,
+> workflow lint, dependency security and deterministic evaluation also passed.
+> Dependency graph review failed because GitHub reports the repository
+> Dependency graph is disabled. CodeQL failed all three language jobs; GitHub
+> annotations attribute this to Actions installation API rate limits and report
+> no CodeQL findings. Hosted staging/preflight were skipped; no Render deploy or
+> authenticated CRUD occurred. The newer evidence-sync head requires fresh CI.
 
 > The November 15 point-in-time staging deployment and CRUD acceptance are recorded in
 > [the staging acceptance record](staging-acceptance-2026-11-15.md). That run predates

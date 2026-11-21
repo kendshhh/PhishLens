@@ -12,21 +12,27 @@ Bearer-aware history fix. The review branch synchronizes it with the bounded
 retry, diagnostics, server-liveness and fail-closed deployment changes in merge
 commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. The latest recorded
-full CI for this code/test source ran on docs-only PR revision
-`631b0ef21849e8abe877bb16b4676047f2aca86a`: [CI run
-44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
-workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
-dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
-deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
-and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
-passed. Hosted staging and preflight were skipped. GitHub reported the required
-Secretary staging context failed because the `needs-hosted-staging` label and
-exact-head hosted verification were absent ([check run
-44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939)).
-No Render deployment occurred and hosted Auth CRUD is not verified. Later
-documentation-only commits include the PR #265 reconciliation; consult live PR
-checks for their current workflow result.
+and a GET-only live staging smoke passed at about 08:35 UTC. Those earlier CI
+results are preserved in the evidence record, not treated as current. At 09:22
+UTC GitHub reported PR #268 head
+`7dbebfd060298a80e99a38a52663901e776935cb`: Backend, Extension and migration
+source preflight passed in [run
+44889070392](https://github.com/kendshhh/PhishLens/actions/runs/44889070392),
+but Staging integration was still running. Workflow lint
+[44889070441](https://github.com/kendshhh/PhishLens/actions/runs/44889070441),
+dependency security [44889070418](https://github.com/kendshhh/PhishLens/actions/runs/44889070418)
+and deterministic evaluation
+[44889070455](https://github.com/kendshhh/PhishLens/actions/runs/44889070455)
+passed. Dependency graph review failed because GitHub reports the repository
+Dependency graph is disabled. CodeQL
+[44889065082](https://github.com/kendshhh/PhishLens/actions/runs/44889065082)
+later failed all three language jobs on Actions installation API rate limits;
+the job annotations did not report CodeQL findings. At 09:31 UTC, Staging
+integration had passed on that prior head, while hosted staging/preflight were
+skipped. No Render deploy occurred and authenticated hosted CRUD is not verified.
+This sync creates a newer head; check its own results before calling a gate
+passed. Full timestamps and scope are in the
+[staging evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
 
 ## Current source of truth
 

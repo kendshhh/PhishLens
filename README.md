@@ -23,28 +23,38 @@ saved-report history. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`. `npm test` passed all 321 Node tests on the synchronized
 branch, and a fresh GET-only smoke passed against live staging at about 08:35
 UTC, including the expected anonymous `401 Bearer` boundary. These local checks
-do not establish the deployed PR revision or authenticated CRUD. The latest
-recorded full CI for this code/test source ran on docs-only PR revision
-`631b0ef21849e8abe877bb16b4676047f2aca86a`: CI run
-[44888140094](https://github.com/kendshhh/PhishLens/actions/runs/44888140094),
-workflow lint [44888140104](https://github.com/kendshhh/PhishLens/actions/runs/44888140104),
-dependency security [44888140135](https://github.com/kendshhh/PhishLens/actions/runs/44888140135),
-deterministic evaluation [44888140114](https://github.com/kendshhh/PhishLens/actions/runs/44888140114)
-and CodeQL [136797921015](https://github.com/kendshhh/PhishLens/runs/136797921015)
-passed. Hosted staging and preflight were skipped. GitHub reported the required
-`Secretary staging` context failed because `needs-hosted-staging` and exact-head
-hosted verification were missing ([run
-44888369939](https://github.com/kendshhh/PhishLens/actions/runs/44888369939));
-no Render deploy or authenticated CRUD occurred. Subsequent PR #265 and closeout
-commits update documentation only; consult live PR checks for their current
-workflow result. PR #268 remains blocked pending hosted acceptance and fresh
-review.
+do not establish the deployed PR revision or authenticated CRUD. Earlier
+verified PR head `631b0ef21849e8abe877bb16b4676047f2aca86a` passed CI and its
+related workflow checks; it is now a historical snapshot. At 09:22 UTC, GitHub
+reported PR #268 head `7dbebfd060298a80e99a38a52663901e776935cb`. Backend,
+Extension and migration source preflight passed in [run
+44889070392](https://github.com/kendshhh/PhishLens/actions/runs/44889070392),
+while Staging integration was still running. [Workflow lint
+44889070441](https://github.com/kendshhh/PhishLens/actions/runs/44889070441),
+[dependency security 44889070418](https://github.com/kendshhh/PhishLens/actions/runs/44889070418)
+and [deterministic evaluation
+44889070455](https://github.com/kendshhh/PhishLens/actions/runs/44889070455)
+passed; the dependency graph review in 44889070418 failed because GitHub
+reported the repository Dependency graph is disabled. CodeQL run
+[44889065082](https://github.com/kendshhh/PhishLens/actions/runs/44889065082)
+later failed in all three language jobs; GitHub annotations attribute the
+failures to the Actions installation API rate limit, with no CodeQL finding
+reported in those annotations. Secretary report
+[44889108682](https://github.com/kendshhh/PhishLens/actions/runs/44889108682)
+said **WAITING FOR CHECKS** at 09:22. By 09:31, Staging integration had passed
+but hosted staging/preflight remained skipped on that same prior head. No Render
+deployment or authenticated CRUD occurred. These observations predate this
+evidence-sync head, so its checks must be read afresh before treating any gate
+as passed.
+See the [dated staging evidence](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
+for timestamps and scope.
 
 Render currently reports auto-deploy off for both services, while production's
 latest deploy record says `new_commit`; resolve that configuration/evidence
 discrepancy before relying on deployment behavior. The effective GitHub required
-checks and private Render-to-Neon role mapping are also not verified. There is
-no approved release score; no percentage should be reported.
+checks and private Render-to-Neon role mapping are also not verified. The
+scorecard's 41/100 DevOps evidence estimate is descriptive only; there is no
+approved grade or overall release score.
 
 Use the [DevOps evidence index](docs/devops/README.md) for the current release
 record, environment map, scorecard, staging failure evidence, runbooks and
