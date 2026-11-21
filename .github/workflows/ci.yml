@@ -165,7 +165,7 @@ jobs:
   backend:
     name: Backend checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
       migration_revision: ${{ steps.migration-lineage.outputs.head }}
     needs: migration-source-preflight
@@ -257,6 +257,18 @@ jobs:
 
       - name: Test trusted secretary controllers
         run: python -m pytest scripts/tests/test_secretary.py -q -p no:cacheprovider
+
+      - name: Test release manifest, target safety, and artifact gates
+        run: python -m pytest scripts/tests/test_release_readiness.py scripts/tests/test_release_extension_package.py scripts/tests/test_release_render.py -q -p no:cacheprovider
+
+      - name: Build backend image without publishing
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >-
+          docker build --pull
+          --tag "phishlens-api:ci-${{ github.run_id }}"
+          --build-arg "PHISHLENS_SOURCE_SHA=$SOURCE_COMMIT"
+          --file backend/Dockerfile .
 
       - name: Verify exact merge commit migration lineage
         id: migration-lineage

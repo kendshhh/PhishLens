@@ -1,0 +1,639 @@
+name: Controlled release promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version; must match extension/manifest.json and CHANGELOG.md
+        required: true
+        type: string
+      promote_production:
+        description: Require protected production approval, promote the exact staged image, and publish a release
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phishlens-controlled-release
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Validate release request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+      statuses: read
+    outputs:
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+      source_author: ${{ steps.identity.outputs.source_author }}
+      source_pr_number: ${{ steps.identity.outputs.source_pr_number }}
+      required_checks_b64: ${{ steps.identity.outputs.required_checks_b64 }}
+      version: ${{ steps.identity.outputs.version }}
+      image_repository: ${{ steps.identity.outputs.image_repository }}
+    steps:
+      - name: Check out the selected main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify main identity, changelog, and exact required checks
+        id: identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          main_sha="$(gh api "repos/$GH_REPO/commits/main" --jq .sha)"
+          test "$main_sha" = "$SOURCE_SHA"
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          version = os.environ['RELEASE_VERSION']
+          if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', version):
+              raise SystemExit('Release version must be semantic version X.Y.Z.')
+          extension = json.loads(Path('extension/manifest.json').read_text())
+          if extension.get('version') != version:
+              raise SystemExit('Release version must equal extension/manifest.json version.')
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8')
+          if f'## [{version}] - Candidate, not released' not in changelog:
+              raise SystemExit('CHANGELOG.md must contain the exact unreleased candidate section.')
+          PY
+          tag="v$RELEASE_VERSION"
+          if response="$(gh api "repos/$GH_REPO/git/ref/tags/$tag" 2>&1)"; then
+            echo "Release tag $tag already exists; refusing to redeploy or overwrite it."
+            exit 1
+          else
+            case "$response" in
+              *"Not Found"*|*"HTTP 404"*) ;;
+              *) echo "GitHub could not verify whether $tag exists; refusing release."; exit 1 ;;
+            esac
+          fi
+          gh api "repos/$GH_REPO/commits/$SOURCE_SHA/pulls" \
+            > "$RUNNER_TEMP/associated-pull-requests.json"
+          gh api "repos/$GH_REPO/git/commits/$SOURCE_SHA" \
+            > "$RUNNER_TEMP/release-commit.json"
+          python - "$RUNNER_TEMP/associated-pull-requests.json" "$RUNNER_TEMP/release-commit.json" \
+            "$RUNNER_TEMP/merged-pull-request.json" "$SOURCE_SHA" "$GH_REPO" <<'PY'
+          import json, sys
+          prs_path, commit_path, output_path, source_sha, repo = sys.argv[1:]
+          prs = json.load(open(prs_path, encoding='utf-8'))
+          commit = json.load(open(commit_path, encoding='utf-8'))
+          matches = [pr for pr in prs if pr.get('merged_at') and pr.get('merge_commit_sha') == source_sha]
+          if len(matches) != 1:
+              raise SystemExit('Release SHA must map to exactly one merged pull request.')
+          pr = matches[0]
+          head = pr.get('head') or {}
+          base = pr.get('base') or {}
+          head_repo = (head.get('repo') or {}).get('full_name')
+          head_sha = head.get('sha')
+          if (base.get('ref') != 'main' or head_repo != repo or not isinstance(head_sha, str)
+                  or len(head_sha) != 40 or pr.get('state') != 'closed'):
+              raise SystemExit('Release pull request identity or base branch is invalid.')
+          json.dump({
+              'number': pr['number'], 'merged_at': pr['merged_at'],
+              'merge_commit_sha': source_sha, 'base_ref': base['ref'],
+              'head_repository': head_repo, 'head_sha': head_sha,
+              'author': (pr.get('user') or {}).get('login'),
+              'merge_tree_sha': (commit.get('tree') or {}).get('sha'),
+          }, open(output_path, 'w', encoding='utf-8'))
+          PY
+          pr_head_sha="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["head_sha"])' "$RUNNER_TEMP/merged-pull-request.json")"
+          gh api "repos/$GH_REPO/git/commits/$pr_head_sha" > "$RUNNER_TEMP/tested-pr-commit.json"
+          gh api "repos/$GH_REPO/commits/$pr_head_sha/check-runs?filter=latest&per_page=100" \
+            > "$RUNNER_TEMP/pr-check-runs.json"
+          gh api "repos/$GH_REPO/commits/$pr_head_sha/status" \
+            > "$RUNNER_TEMP/pr-commit-status.json"
+          python - "$RUNNER_TEMP/merged-pull-request.json" "$RUNNER_TEMP/tested-pr-commit.json" \
+            "$RUNNER_TEMP/pr-check-runs.json" \
+            "$RUNNER_TEMP/pr-commit-status.json" "$RUNNER_TEMP/release-check-input.json" "$GH_REPO" <<'PY'
+          import json, sys
+          pr_path, head_commit_path, runs_path, statuses_path, output_path, repo = sys.argv[1:]
+          pr = json.load(open(pr_path, encoding='utf-8'))
+          pr['tree_sha'] = (json.load(open(head_commit_path, encoding='utf-8')).get('tree') or {}).get('sha')
+          json.dump({
+              'repository': repo,
+              'pull_request': pr,
+              'check_runs': json.load(open(runs_path, encoding='utf-8')),
+              'statuses': json.load(open(statuses_path, encoding='utf-8')),
+          }, open(output_path, 'w', encoding='utf-8'))
+          PY
+          python -m scripts.release_readiness verify-checks \
+            --expected-sha "$SOURCE_SHA" --input "$RUNNER_TEMP/release-check-input.json" \
+            > "$RUNNER_TEMP/verified-required-checks.json"
+          source_author="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["required_checks"]["author"])' "$RUNNER_TEMP/verified-required-checks.json")"
+          source_pr_number="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["required_checks"]["pull_request"])' "$RUNNER_TEMP/verified-required-checks.json")"
+          required_checks_b64="$(base64 -w 0 "$RUNNER_TEMP/verified-required-checks.json")"
+          test -n "$source_author"
+          test -n "$source_pr_number"
+          image_repository='ghcr.io/kendshhh/phishlens-api'
+          {
+            echo "source_sha=$SOURCE_SHA"
+            echo "source_author=$source_author"
+            echo "source_pr_number=$source_pr_number"
+            echo "required_checks_b64=$required_checks_b64"
+            echo "version=$RELEASE_VERSION"
+            echo "image_repository=$image_repository"
+          } >> "$GITHUB_OUTPUT"
+
+  build-candidate:
+    name: Build immutable candidate
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    outputs:
+      image_ref: ${{ steps.identity.outputs.image_ref }}
+      image_digest: ${{ steps.identity.outputs.image_digest }}
+      extension_sha256: ${{ steps.identity.outputs.extension_sha256 }}
+    steps:
+      - name: Check out exact main SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Carry verified required-check evidence to the candidate
+        env:
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          REQUIRED_CHECKS_B64: ${{ needs.preflight.outputs.required_checks_b64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$REQUIRED_CHECKS_B64" | base64 --decode > "$RUNNER_TEMP/required-checks.json"
+          python - "$RUNNER_TEMP/required-checks.json" "$SOURCE_SHA" <<'PY'
+          import json, sys
+          evidence = json.load(open(sys.argv[1], encoding='utf-8'))
+          if evidence.get('status') != 'passed' or evidence.get('required_checks', {}).get('candidate_sha') != sys.argv[2]:
+              raise SystemExit('Verified check evidence does not match the immutable release SHA.')
+          PY
+
+      - name: Build the backend image once and push its digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx create --use --name phishlens-release-builder
+          docker buildx build --platform linux/amd64 --push \
+            --tag "$IMAGE_REPOSITORY:sha-$SOURCE_SHA" \
+            --build-arg "PHISHLENS_SOURCE_SHA=$SOURCE_SHA" \
+            --metadata-file "$RUNNER_TEMP/backend-build-metadata.json" \
+            --file backend/Dockerfile .
+          digest="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["containerimage.digest"])' "$RUNNER_TEMP/backend-build-metadata.json")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf '%s\n' "$IMAGE_REPOSITORY@$digest" > "$RUNNER_TEMP/backend-image-ref.txt"
+
+      - name: Build the one dual-environment extension ZIP
+        env:
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          PRODUCTION_AUTH_URL: ${{ vars.PHISHLENS_PRODUCTION_AUTH_URL }}
+          PRODUCTION_AUTH_DATABASE: ${{ vars.PHISHLENS_PRODUCTION_AUTH_DATABASE }}
+          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
+          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/phishlens-candidate"
+          python scripts/package_release_extension.py \
+            --expected-sha "$SOURCE_SHA" \
+            --production-auth-url "$PRODUCTION_AUTH_URL" \
+            --production-auth-database "$PRODUCTION_AUTH_DATABASE" \
+            --staging-auth-url "$STAGING_AUTH_URL" \
+            --staging-auth-database "$STAGING_AUTH_DATABASE" \
+            --output "$RUNNER_TEMP/phishlens-candidate/PhishLens-Release.zip" \
+            --evidence "$RUNNER_TEMP/phishlens-candidate/extension-evidence.json"
+          python -m scripts.release_readiness verify-release-extension \
+            --archive "$RUNNER_TEMP/phishlens-candidate/PhishLens-Release.zip" \
+            --evidence "$RUNNER_TEMP/phishlens-candidate/extension-evidence.json" \
+            --expected-sha "$SOURCE_SHA"
+
+      - name: Record candidate artifact identities
+        id: identity
+        env:
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
+        run: |
+          set -euo pipefail
+          image_ref="$(cat "$RUNNER_TEMP/backend-image-ref.txt")"
+          image_digest="${image_ref##*@}"
+          extension_sha256="$(sha256sum "$RUNNER_TEMP/phishlens-candidate/PhishLens-Release.zip" | cut -d' ' -f1)"
+          python - "$RUNNER_TEMP/phishlens-candidate/candidate.json" "$SOURCE_SHA" "$image_ref" "$image_digest" "$extension_sha256" <<'PY'
+          import json, sys
+          path, source, image, digest, extension = sys.argv[1:]
+          with open(path, 'w', encoding='utf-8') as out:
+              json.dump({'source_sha': source, 'backend_image': image, 'backend_digest': digest,
+                         'extension_sha256': extension}, out, indent=2)
+              out.write('\n')
+          PY
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+          echo "image_digest=$image_digest" >> "$GITHUB_OUTPUT"
+          echo "extension_sha256=$extension_sha256" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/phishlens-candidate/evidence"
+          cp "$RUNNER_TEMP/required-checks.json" "$RUNNER_TEMP/phishlens-candidate/evidence/required-checks.json"
+
+      - name: Retain candidate ZIP, provenance, and checks
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phishlens-release-candidate
+          path: ${{ runner.temp }}/phishlens-candidate/
+          if-no-files-found: error
+          retention-days: 90
+
+  staging:
+    name: Isolated staging product acceptance
+    needs: [preflight, build-candidate]
+    outputs:
+      neon_branch_id: ${{ steps.neon-branch.outputs.branch_id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: release-staging
+    concurrency:
+      group: phishlens-release-staging
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      packages: read
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Download the immutable candidate artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: phishlens-release-candidate
+          path: ${{ runner.temp }}/phishlens-candidate
+
+      - name: Verify GitHub staging environment protection rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/environments/release-staging" \
+            | python -m scripts.verify_github_environment release-staging
+
+      - name: Verify isolated schema-only Neon branch metadata
+        id: neon-branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
+          STAGING_NEON_SCHEMA_ONLY_ATTESTATION: ${{ vars.STAGING_NEON_SCHEMA_ONLY_ATTESTATION }}
+        run: |
+          set -euo pipefail
+          python -m scripts.verify_neon_release_branch > "$RUNNER_TEMP/phishlens-candidate/neon-branch.json"
+          branch_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["branch_id"])' "$RUNNER_TEMP/phishlens-candidate/neon-branch.json")"
+          echo "branch_id=$branch_id" >> "$GITHUB_OUTPUT"
+
+      - name: Require a private Render-to-Neon branch mapping attestation
+        env:
+          MAPPING_ATTESTATION: ${{ vars.STAGING_RENDER_DATABASE_CONFIG_ATTESTATION }}
+        run: test "$MAPPING_ATTESTATION" = current
+
+      - name: Migrate only the attested schema-only staging branch
+        id: migrate-staging
+        env:
+          STAGING_NEON_SCHEMA_ONLY_ATTESTATION: ${{ vars.STAGING_NEON_SCHEMA_ONLY_ATTESTATION }}
+          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
+          STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
+          PRODUCTION_NEON_EXPECTED_HOST: ${{ vars.PRODUCTION_NEON_EXPECTED_HOST }}
+          STAGING_NEON_DATABASE_NAME: ${{ vars.STAGING_NEON_DATABASE_NAME }}
+          STAGING_NEON_MIGRATION_ROLE: ${{ vars.STAGING_NEON_MIGRATION_ROLE }}
+          STAGING_MIGRATION_DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r backend/requirements.txt
+          python scripts/migrate_release_staging.py
+
+      - name: Verify Render staging can accept this image digest
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
+        run: python scripts/release_render.py preflight --service-id "$RENDER_STAGING_SERVICE_ID" --image-repository "$IMAGE_REPOSITORY"
+
+      - name: Deploy the exact backend image to staging and check service identity
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
+          IMAGE_REF: ${{ needs.build-candidate.outputs.image_ref }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          STAGING_AI_APPROVAL_JSON: ${{ secrets.STAGING_AI_APPROVAL_JSON }}
+        run: |
+          set -euo pipefail
+          model="$(python -c 'import json,os; print(json.loads(os.environ["STAGING_AI_APPROVAL_JSON"])["model_revision"])')"
+          provider="$(python -c 'import json,os; print(json.loads(os.environ["STAGING_AI_APPROVAL_JSON"])["provider"])')"
+          python scripts/release_render.py deploy \
+            --service-id "$RENDER_STAGING_SERVICE_ID" --image-repository "$IMAGE_REPOSITORY" \
+            --image-ref "$IMAGE_REF" --base-url https://phishlens-staging.onrender.com \
+            --environment staging --source-sha "$SOURCE_SHA" --provider "$provider" \
+            --model-revision "$model" > "$RUNNER_TEMP/phishlens-candidate/staging-deploy.json"
+
+      - name: Install exact package acceptance dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Authenticate with two synthetic staging users and verify persistent product flow
+        env:
+          STAGING_ACCEPTANCE_ENABLED: ${{ vars.STAGING_ACCEPTANCE_ENABLED }}
+          STAGING_BASE_URL: https://phishlens-staging.onrender.com
+          RELEASE_SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          STAGING_EXPECTED_BACKEND_SHA: ${{ needs.preflight.outputs.source_sha }}
+          STAGING_EXPECTED_IMAGE_DIGEST: ${{ needs.build-candidate.outputs.image_digest }}
+          RELEASE_EXTENSION_ZIP: ${{ runner.temp }}/phishlens-candidate/PhishLens-Release.zip
+          RELEASE_EXTENSION_EVIDENCE: ${{ runner.temp }}/phishlens-candidate/extension-evidence.json
+          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
+          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+          STAGING_AUTH_TRUSTED_CHROME_ORIGIN: ${{ vars.STAGING_AUTH_TRUSTED_CHROME_ORIGIN }}
+          STAGING_NEON_BRANCH_ID: ${{ steps.neon-branch.outputs.branch_id }}
+          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          STAGING_NEON_BRANCH_KIND: schema-only
+          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
+          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
+          STAGING_MIGRATION_REVISION: ${{ steps.migrate-staging.outputs.migration_revision }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_AI_APPROVAL_JSON: ${{ secrets.STAGING_AI_APPROVAL_JSON }}
+          STAGING_AUTH_USER_A_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
+          STAGING_AUTH_USER_A_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
+          STAGING_AUTH_USER_B_EMAIL: ${{ secrets.STAGING_AUTH_USER_B_EMAIL }}
+          STAGING_AUTH_USER_B_PASSWORD: ${{ secrets.STAGING_AUTH_USER_B_PASSWORD }}
+          STAGING_ACCEPTANCE_OUTPUT: ${{ runner.temp }}/phishlens-candidate/staging-evidence.json
+        run: node scripts/staging_extension_acceptance.mjs
+
+      - name: Retain sanitized staging acceptance and screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phishlens-staging-acceptance
+          path: |
+            ${{ runner.temp }}/phishlens-candidate/staging-evidence.json
+            ${{ runner.temp }}/phishlens-candidate/staging-extension-report.png
+            ${{ runner.temp }}/phishlens-candidate/staging-deploy.json
+            ${{ runner.temp }}/phishlens-candidate/neon-branch.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  production:
+    name: Independently approved production promotion
+    needs: [preflight, build-candidate, staging]
+    if: inputs.promote_production == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: production
+    concurrency:
+      group: phishlens-production-promotion
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: write
+      deployments: read
+      packages: read
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Download exact candidate ZIP and staging evidence
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: phishlens-release-candidate
+          path: ${{ runner.temp }}/phishlens-candidate
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: phishlens-staging-acceptance
+          path: ${{ runner.temp }}/phishlens-candidate
+
+      - name: Verify GitHub production environment protection rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/environments/production" \
+            | python -m scripts.verify_github_environment production
+
+      - name: Recheck current main and release tag before promotion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GH_REPO/commits/main" --jq .sha)" = "$SOURCE_SHA"
+          tag="v$RELEASE_VERSION"
+          if response="$(gh api "repos/$GH_REPO/git/ref/tags/$tag" 2>&1)"; then
+            echo "Release tag $tag already exists; refusing production promotion."
+            exit 1
+          else
+            case "$response" in
+              *"Not Found"*|*"HTTP 404"*) ;;
+              *) echo "GitHub could not verify whether $tag exists; refusing promotion."; exit 1 ;;
+            esac
+          fi
+
+      - name: Bind independent approval, artifact identities, and changelog in release manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+          SOURCE_AUTHOR: ${{ needs.preflight.outputs.source_author }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          IMAGE_REF: ${{ needs.build-candidate.outputs.image_ref }}
+          IMAGE_DIGEST: ${{ needs.build-candidate.outputs.image_digest }}
+          EXTENSION_SHA256: ${{ needs.build-candidate.outputs.extension_sha256 }}
+          STAGING_BRANCH_ID: ${{ needs.staging.outputs.neon_branch_id }}
+          PROMOTION_ENABLED: ${{ inputs.promote_production }}
+          RELEASE_PROMOTION_ENABLED: ${{ vars.RELEASE_PROMOTION_ENABLED }}
+          PRODUCTION_CONFIG_ATTESTATION: ${{ vars.PRODUCTION_RELEASE_CONFIG_ATTESTATION }}
+        run: |
+          set -euo pipefail
+          test "$PROMOTION_ENABLED" = true
+          test "$RELEASE_PROMOTION_ENABLED" = true
+          test "$PRODUCTION_CONFIG_ATTESTATION" = current
+          gh api "repos/$GH_REPO/actions/runs/$RUN_ID/approvals" > "$RUNNER_TEMP/approvals.json"
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'phishlens-candidate'
+          staging_path = root / 'staging-evidence.json'
+          staging = json.loads(staging_path.read_text())
+          checks = json.loads((root / 'evidence/required-checks.json').read_text())
+          approval_rows = json.loads((Path(os.environ['RUNNER_TEMP']) / 'approvals.json').read_text())
+          author = os.environ['SOURCE_AUTHOR']
+          approved_by = None
+          for approval in approval_rows if isinstance(approval_rows, list) else []:
+              if approval.get('state') != 'approved':
+                  continue
+              environments = approval.get('environments', [])
+              if any(isinstance(item, dict) and item.get('name') == 'production' for item in environments):
+                  login = (approval.get('user') or {}).get('login')
+                  if login and login != author:
+                      approved_by = login
+          if not approved_by:
+              raise SystemExit('An independent approved production-environment reviewer was not verified.')
+          extension = json.loads((root / 'extension-evidence.json').read_text())
+          manifest = {
+            'format': 'phishlens-release-v1',
+            'release': {'version': os.environ['RELEASE_VERSION'], 'tag': 'v' + os.environ['RELEASE_VERSION']},
+            'source': {'sha': os.environ['SOURCE_SHA'], 'author': author},
+            'backend': {'image': os.environ['IMAGE_REF'], 'digest': os.environ['IMAGE_DIGEST'], 'source_sha': os.environ['SOURCE_SHA']},
+            'extension': {'sha256': os.environ['EXTENSION_SHA256'], 'version': extension['extension_version']},
+            'model': {'approved': staging['ai_acceptance'].get('approved'),
+                      'provider': staging['ai_acceptance'].get('provider'),
+                      'revision': staging['ai_acceptance'].get('model_revision'),
+                      'evaluation_sha256': staging['ai_acceptance'].get('evaluation_sha256')},
+            'auth': {'mode': 'neon-auth', 'enabled': True},
+            'database': {'staging_branch_id': os.environ['STAGING_BRANCH_ID'], 'branch_kind': 'schema-only',
+                         'production_rows_present': False, 'staging_parent_id': None,
+                         'migration_revision': staging.get('database', {}).get('migration_revision')},
+            'staging_acceptance': {'status': staging['status'], 'evidence_sha256': hashlib.sha256(staging_path.read_bytes()).hexdigest()},
+            'required_checks': checks['required_checks'],
+            'approval': {'approved': True, 'mechanism': 'github-environment', 'independent': True,
+                         'approved_by': approved_by, 'run_id': os.environ['RUN_ID']},
+            'failure_switch': {'promotion_enabled': True, 'tested_fail_closed': True, 'ai_kill_switch': 'AI_ANALYSIS_ENABLED'},
+            'changelog': {'path': 'CHANGELOG.md', 'sha256': hashlib.sha256(Path('CHANGELOG.md').read_bytes()).hexdigest()},
+            'external_production_config_attestation': 'current',
+          }
+          (root / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+          python -m scripts.release_readiness validate-manifest \
+            --manifest "$RUNNER_TEMP/phishlens-candidate/release-manifest.json" \
+            --extension-zip "$RUNNER_TEMP/phishlens-candidate/PhishLens-Release.zip" \
+            --extension-evidence "$RUNNER_TEMP/phishlens-candidate/extension-evidence.json" \
+            --staging-evidence "$RUNNER_TEMP/phishlens-candidate/staging-evidence.json" \
+            --changelog CHANGELOG.md --expected-sha "$SOURCE_SHA"
+
+      - name: Verify Render production is manually controlled and image-backed
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_PRODUCTION_SERVICE_ID: ${{ vars.RENDER_PRODUCTION_SERVICE_ID }}
+          IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
+        run: python scripts/release_render.py preflight --service-id "$RENDER_PRODUCTION_SERVICE_ID" --image-repository "$IMAGE_REPOSITORY"
+
+      - name: Refuse production deployment unless the currently configured provider is approved
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/phishlens-candidate/staging-evidence.json"
+          model="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["ai_acceptance"]["model_revision"])' "$evidence")"
+          provider="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["ai_acceptance"]["provider"])' "$evidence")"
+          python scripts/release_render.py provider-preflight \
+            --base-url https://phishlens-api-ocvt.onrender.com --environment production \
+            --provider "$provider" --model-revision "$model"
+
+      - name: Promote the identical staged backend image and verify public release identity
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_PRODUCTION_SERVICE_ID: ${{ vars.RENDER_PRODUCTION_SERVICE_ID }}
+          IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
+          IMAGE_REF: ${{ needs.build-candidate.outputs.image_ref }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/phishlens-candidate/staging-evidence.json"
+          model="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["ai_acceptance"]["model_revision"])' "$evidence")"
+          provider="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["ai_acceptance"]["provider"])' "$evidence")"
+          python scripts/release_render.py deploy \
+            --service-id "$RENDER_PRODUCTION_SERVICE_ID" --image-repository "$IMAGE_REPOSITORY" \
+            --image-ref "$IMAGE_REF" --base-url https://phishlens-api-ocvt.onrender.com \
+            --environment production --source-sha "$SOURCE_SHA" --provider "$provider" \
+            --model-revision "$model" > "$RUNNER_TEMP/production-verification.json"
+
+      - name: Publish version tag, release record, and exact built extension ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/phishlens-candidate"
+          python scripts/release_notes.py --version "$RELEASE_VERSION" \
+            --changelog CHANGELOG.md --output "$RUNNER_TEMP/release-notes.md"
+          gh release create "v$RELEASE_VERSION" "$root/PhishLens-Release.zip" \
+            "$root/extension-evidence.json" "$root/release-manifest.json" \
+            --repo "$GH_REPO" --target "$SOURCE_SHA" \
+            --title "PhishLens v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Preserve production verification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phishlens-production-verification
+          path: |
+            ${{ runner.temp }}/production-verification.json
+            ${{ runner.temp }}/phishlens-candidate/release-manifest.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  release-outcome:
+    name: Report release outcome
+    if: always()
+    needs: [preflight, build-candidate, staging, production]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Distinguish staging-only acceptance from a published release
+        env:
+          PROMOTE_PRODUCTION: ${{ inputs.promote_production }}
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          BUILD_RESULT: ${{ needs.build-candidate.result }}
+          STAGING_RESULT: ${{ needs.staging.result }}
+          PRODUCTION_RESULT: ${{ needs.production.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$PREFLIGHT_RESULT" != success || "$BUILD_RESULT" != success || "$STAGING_RESULT" != success ]]; then
+            echo "Required preflight, build, or staging acceptance did not pass." >&2
+            exit 1
+          fi
+          if [[ "$PROMOTE_PRODUCTION" == true ]]; then
+            if [[ "$PRODUCTION_RESULT" != success ]]; then
+              echo "Production promotion was requested but did not complete successfully." >&2
+              exit 1
+            fi
+            {
+              echo '## Release published'
+              echo
+              echo 'Required checks, live staging acceptance, protected production approval, deployment identity, and post-deploy verification passed.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            if [[ "$PRODUCTION_RESULT" != skipped ]]; then
+              echo "Production must remain skipped when promotion was not requested." >&2
+              exit 1
+            fi
+            {
+              echo '## Staging acceptance only — no release published'
+              echo
+              echo 'Production promotion was not requested. No production deployment, version tag, or GitHub release was created.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

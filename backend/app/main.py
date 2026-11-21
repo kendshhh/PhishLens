@@ -151,7 +151,9 @@ def health():
 def version():
     """Public deployment identity only; never expose environment or credential values."""
     return {
-        "commit": os.getenv("RENDER_GIT_COMMIT", "unknown"),
+        # Git-backed Render services set RENDER_GIT_COMMIT. Image-backed
+        # promotions embed the same source SHA into the image at build time.
+        "commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("PHISHLENS_SOURCE_SHA", "unknown"),
         "environment": os.getenv("APP_ENV", "development"),
     }
 

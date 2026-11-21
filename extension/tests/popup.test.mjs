@@ -115,7 +115,7 @@ test("HTML provides associated labels, focusable CRUD controls, a bounded popup 
   assert.match(css, /min-width:\s*300px/);
   assert.match(css, /max-width:\s*520px/);
   assert.match(css, /overflow-y:\s*auto/);
-  assert.match(popup, /createAnalysisClient\(API_BASE_URL, fetchImpl, \{ requiredModel: MODEL_SHA256 \}\)/);
+  assert.match(popup, /createAnalysisClient\(apiOrigin, fetchImpl, \{ requiredModel: MODEL_SHA256 \}\)/);
   assert.doesNotMatch(popup, /in-memory-analysis-client/);
 });
 
