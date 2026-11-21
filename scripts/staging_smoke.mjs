@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readStagingHistory } from './staging_history.mjs';
+import {
+    isRetryableStagingHistoryError,
+    readStagingHistory,
+} from './staging_history.mjs';
 
 const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const attempts = Number(process.env.STAGING_ATTEMPTS || 60);
@@ -56,10 +59,7 @@ for (let attempt = 0; attempt < attempts; attempt++) {
         break;
     } catch (error) {
         // Readiness and history consistency may briefly diverge after deployment.
-        const transient = /HTTP (502|503|504)|network request|timed out|timeout|ECONNRESET|ECONNREFUSED|fetch failed|aborted/i.test(
-            String(error?.message || error)
-        );
-        if (!transient || attempt + 1 === attempts) throw error;
+        if (!isRetryableStagingHistoryError(error) || attempt + 1 === attempts) throw error;
         console.error('Staging history attempt ' + (attempt + 1) + '/' + attempts + ' failed: ' + error.message);
         await delay(3000);
     }
