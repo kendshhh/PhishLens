@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { appendFile } from 'node:fs/promises';
-import { getAnalyses } from '../extension/js/api.js';
+import { readStagingHistory } from './staging_history.mjs';
 
 const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const timeoutMs = Number(process.env.STAGING_SMOKE_TIMEOUT_MS || 120000);
@@ -154,16 +154,13 @@ async function main() {
     assert.deepEqual(readiness, { status: 'ready', database: 'connected' }, '/ready response contract changed');
 
     const result = await retryStage('saved-report history', '/api/analyses', async remainingMs => {
-        try {
-            const items = await getAnalyses(baseUrl, { timeoutMs: Math.max(1, Math.min(10000, remainingMs)) });
-            currentStage.status = 200;
-            return { kind: 'history', items };
-        } catch (error) {
-            if (error?.status === 401 && /^Bearer\b/i.test(error.wwwAuthenticate || '')) {
-                return { kind: 'authentication-required' };
-            }
-            throw error;
-        }
+        const items = await readStagingHistory(
+            baseUrl,
+            undefined,
+            { timeoutMs: Math.max(1, Math.min(10000, remainingMs)) },
+        );
+        currentStage.status = items === null ? 401 : 200;
+        return items === null ? { kind: 'authentication-required' } : { kind: 'history', items };
     }, deadline);
 
     if (result.kind === 'authentication-required') {
@@ -179,7 +176,7 @@ async function main() {
     assert.equal(demo.confidence, 0.93);
     assert.ok(Array.isArray(demo.threat_indicators));
     assert.ok(Number.isFinite(Date.parse(demo.created_at)));
-    console.log('Staging passed: health, database readiness, and seeded history through the real extension client.');
+    console.log('Staging passed: health, database readiness, and seeded history through the staging history contract.');
 }
 
 main().catch(async error => {

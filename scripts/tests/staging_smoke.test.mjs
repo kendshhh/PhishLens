@@ -91,7 +91,7 @@ test('fails a permanent 401 without Bearer and reports endpoint and status', asy
     assert.equal(historyRequests, 1, 'a permanent authentication contract error must not be retried');
     assert.match(result.summary, /Endpoint: .*\/api\/analyses/);
     assert.match(result.summary, /Final result: HTTP 401/);
-    assert.match(result.summary, /Failed to load history/);
+    assert.match(result.summary, /Anonymous history .*HTTP 401 without a Bearer/);
 });
 
 test('does not retry a rejected redirect from saved-report history', async t => {
@@ -109,7 +109,7 @@ test('does not retry a rejected redirect from saved-report history', async t => 
     assert.match(result.summary, /attempts: 1/);
 });
 
-test('retries a transient history 503 then validates seeded history through the extension client', async t => {
+test('retries a transient history 503 then validates seeded history through the staging history contract', async t => {
     let historyRequests = 0;
     const demo = {
         id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c',
@@ -133,7 +133,7 @@ test('retries a transient history 503 then validates seeded history through the 
 
     assert.equal(result.code, 0, result.stderr);
     assert.equal(historyRequests, 2);
-    assert.match(result.stdout, /seeded history through the real extension client/);
+    assert.match(result.stdout, /seeded history through the staging history contract/);
 });
 
 test('does not retry a successful HTTP response that violates the seeded-history contract', async t => {
