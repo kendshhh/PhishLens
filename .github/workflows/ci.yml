@@ -754,7 +754,7 @@ jobs:
           STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
         run: |
           set -euo pipefail
-          python pr-source/scripts/package_release_extension.py \
+          python scripts/package_release_extension.py \
             --expected-sha "$STAGING_COMMIT" \
             --production-auth-url "$PRODUCTION_AUTH_URL" \
             --production-auth-database "$PRODUCTION_AUTH_DATABASE" \
