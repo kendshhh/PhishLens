@@ -2,19 +2,17 @@
 
 > Current status — November 21, 2026: a separate read-only staging observation
 > returned `401 Bearer` for anonymous saved-report history. The supplied hosted
-> failure omitted HTTP status/body, so that observation is a plausible cause,
-> not a confirmed cause. Review branch
-> `codex/devops-staging-closeout-20261121` adds strict anonymous-auth handling,
-> bounded transient retries and failure summaries; the local CI job monitors
-> server exit and preserves logs, and hosted deployment is gated on successful
-> staging, hosted preflight and backend results. PR head
-> Code/test SHA `d27eaa07a28173c485d19f44524a88e71515fc10` passed local staging
-> integration in GitHub CI. The current PR head is docs-only commit
-> `a2fb3f79e7857eeef20a2a2cf70f603906d86f31`, whose CI also passed. Hosted
-> staging was skipped and no Render deployment occurred; Secretary staging
-> check [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-> requires the `needs-hosted-staging` label and exact-head hosted verification.
-> A direct GET-only smoke passed at 08:15 UTC. These checks do not implement or
+> failure omitted HTTP status/body, so that observation remains a plausible,
+> unconfirmed cause. Main commit `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
+> added the Bearer-aware history correction. Review branch merge commit
+> `14874d339bbb4042172df954f97596080aa303ee` adds bounded transient retries and failure summaries; local CI
+> monitors server exit and preserves logs, and hosted deployment requires
+> successful staging, hosted preflight and backend results. The synchronized
+> branch passed `npm test` (320 tests) and a GET-only live smoke at about 08:35
+> UTC. GitHub CI for this candidate is pending. Hosted staging has not run; the
+> last Secretary check [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
+> required the `needs-hosted-staging` label and exact-head verification. No
+> Render deployment occurred. These checks do not implement or
 > prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
 > on the observed `main` lacks a Neon Auth session, so the full staging job
 > remains open. Track details in the

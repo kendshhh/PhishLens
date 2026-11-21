@@ -9,16 +9,19 @@ deployment is `dep-dc07rs67bikc73fjgjq0` on
 `811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. The
 recorded staging deployment is `dep-dc0im3h7lnhs738pncng` on
 `ba0b6c5475eb6a8f99c509c40384020d292e17e6`; its anonymous saved-report
-endpoint requires a Bearer session. A direct GET-only smoke from the review
-branch passed at 08:15 UTC for health, readiness and the anonymous `401 Bearer`
-boundary; it does not verify deployed PR identity, authenticated CRUD, or
+endpoint requires a Bearer session. Direct GET-only smokes from the review
+branch passed at 08:15 and about 08:35 UTC for health, readiness and anonymous
+`401 Bearer`; they do not verify deployed PR identity, authenticated CRUD, or
 deployment state.
 
-The review branch adds bounded staging smoke retries, failure summaries,
-local server-exit monitoring and log retention. Hosted deployment requires
+The review branch includes main's Bearer-aware history correction and adds
+bounded smoke retries, failure summaries, local server-exit monitoring and log
+retention. Hosted deployment requires
 successful staging, hosted preflight and backend results at both job and deploy
-step level. PR #268 CI run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-passed the local staging integration and guard tests. Its hosted preflight and
+step level. The synchronized candidate passed 320 local Node tests and the
+GET-only smoke; GitHub CI for it is pending. Earlier PR #268 CI run
+[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+passed local staging integration and guard tests. The hosted preflight and
 deployment jobs were skipped pending the `needs-hosted-staging` label; the
 separate Secretary staging check requires that protected run. The hosted CRUD
 runner remains unauthenticated, required-check settings are not reverified, and

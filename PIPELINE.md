@@ -11,10 +11,10 @@ smoke correction are in
 ### Source and candidate
 
 Latest observed GitHub `main` is
-[`811980c2cbf70d9957146bf329627f0826a018f1`](https://github.com/kendshhh/PhishLens/commit/811980c2cbf70d9957146bf329627f0826a018f1)
-(PR #264). The review branch `codex/devops-staging-closeout-20261121` is based
-on `3c858f7df51666e0545dea1a6dd5997574c16d43`, a repair branch descended from
-that main SHA; the original developer checkout remains at `16f955321caf5dc368181be7ce5c00643750545d`
+[`06f89d7a0b5b9dec316dfa11f2846767a32086c5`](https://github.com/kendshhh/PhishLens/commit/06f89d7a0b5b9dec316dfa11f2846767a32086c5)
+(PR #263), which includes the Bearer-aware staging history correction. The
+review branch `codex/devops-staging-closeout-20261121` has synchronized with
+that main through merge commit `14874d339bbb4042172df954f97596080aa303ee`; the original developer checkout remains at `16f955321caf5dc368181be7ce5c00643750545d`
 with existing user changes and has not been overwritten. No single reviewed
 extension/backend/model/Auth release candidate is selected. The Chrome MV3
 extension plus Render API and Neon remain the intended product scope; instructor
@@ -22,8 +22,11 @@ confirmation of the frontend requirement is pending.
 
 ### Live services and staging Auth
 
-Production serves deploy `dep-dc07rs67bikc73fjgjq0` on
-`811980c2cbf70d9957146bf329627f0826a018f1`. Read-only `/version`, `/health`,
+At the 07:31 UTC Render refresh, production served deploy
+`dep-dc07rs67bikc73fjgjq0` on
+`811980c2cbf70d9957146bf329627f0826a018f1`. Main has since advanced to
+`06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later production deploy was
+verified. Read-only `/version`, `/health`,
 `/ready` and `/model-info` returned HTTP 200. Analysis is intentionally disabled
 (`analysis_enabled=false`, `provider_mode=disabled`). This confirms service
 identity and disabled state, not product/AI acceptance; no production observer
@@ -41,20 +44,14 @@ explicit `401 Bearer` anonymous challenge, preserves seeded-history checks for
 writes endpoint/status/error details to the job summary. The branch also
 removes the hosted job's `always()` override, requires all three dependency
 results to be `success`, monitors local server startup, and retains its log
-artifact. Code/test SHA `d27eaa07a28173c485d19f44524a88e71515fc10` passed CI run
-[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-for local staging integration and guard tests. Current PR #268 head is the
-documentation-only sync `a2fb3f79e7857eeef20a2a2cf70f603906d86f31`; its CI run
-[44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
-also passed. A direct GET-only smoke
-at 08:15 UTC also passed health, readiness and anonymous `401 Bearer` on the
-current staging endpoint. Hosted staging and its preflight were skipped because
-the PR lacks `needs-hosted-staging`; Secretary staging run
-[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-requires that label and exact-head hosted verification. No Render deployment
-occurred. Until the fix reaches the
-trusted default branch, its hosted controller still uses the old smoke script.
-Authenticated history/CRUD, persistence, isolation and cleanup remain open.
+artifact. The synchronized branch passed `npm test` (320 tests) and a fresh
+GET-only live staging smoke at about 08:35 UTC. CI for merge commit
+`14874d339bbb4042172df954f97596080aa303ee` is pending after the synchronization.
+Earlier CI passed the pre-sync code and docs commits.
+Hosted staging remains a separate protected check and is untriggered; the PR
+needs `needs-hosted-staging` and exact-head hosted verification. No Render
+deployment occurred. Authenticated history/CRUD, persistence, isolation and
+cleanup remain open.
 
 ### Controls and release gates
 

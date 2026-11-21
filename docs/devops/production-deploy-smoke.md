@@ -1,8 +1,10 @@
 # Production deployment smoke
 
-> Current state — November 21, 2026: production deploy
+> Last observed live state — November 21, 2026 07:31 UTC: production deploy
 > `dep-dc07rs67bikc73fjgjq0` serves SHA
-> `811980c2cbf70d9957146bf329627f0826a018f1`. Read-only `/version`, `/health`,
+> `811980c2cbf70d9957146bf329627f0826a018f1`. GitHub `main` later advanced to
+> `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; no later production deployment
+> was verified. Read-only `/version`, `/health`,
 > `/ready` and `/model-info` return 200; model info reports
 > `analysis_enabled=false` and `provider_mode=disabled`. The disabled-aware
 > observer in `main` can report identity/health/readiness/disablement with zero

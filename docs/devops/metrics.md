@@ -6,14 +6,17 @@ This read-only refresh records service identity and endpoint behavior, not a
 performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
 from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
 and `/model-info` returned HTTP 200; analysis is disabled
-(`analysis_enabled=false`, `provider_mode=disabled`). Staging serves
+(`analysis_enabled=false`, `provider_mode=disabled`). GitHub `main` later
+advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; this record does not
+verify a later production deploy. Staging serves
 `ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
 `dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
 TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
 No inference, database write, or production smoke workflow run was made.
-An earlier workstation smoke attempt timed out on staging `/health`. A later
-GET-only smoke at 08:15 UTC passed `/health`, `/ready`, and anonymous history
-authentication (`401 Bearer`) using review-branch code. It did not check
+An earlier workstation smoke attempt timed out on staging `/health`. GET-only
+smokes at 08:15 and about 08:35 UTC passed `/health`, `/ready`, and anonymous
+history authentication (`401 Bearer`) using review-branch code. The later run
+used the mainline-synchronized smoke helper. Neither run checked
 `/version`, deployed PR identity, or authenticated CRUD, and it is not a
 performance sample. Treat the deployment identity above as the 07:31 UTC
 control-plane observation.

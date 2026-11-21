@@ -6,16 +6,19 @@ retain their original findings; successor links may be added, but do not treat o
 service IDs, workflow settings or deployment observations as current.
 
 The staging smoke and CI guard implementation is on review branch
-`codex/devops-staging-closeout-20261121`, implementation commit
-`a80b95e146cd03a96ffca156ccfe5721ac871b68`. PR #268's latest code/test commit
-is `d27eaa07a28173c485d19f44524a88e71515fc10`; its current head is the docs-only
-sync `a2fb3f79e7857eeef20a2a2cf70f603906d86f31`. CI passed on both commits
-(runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
-and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)).
-Hosted staging and its preflight were skipped. Secretary staging run
-[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-requires `needs-hosted-staging` and exact-head hosted verification. No Render
-deployment occurred; the change is not merged or hosted-verified.
+`codex/devops-staging-closeout-20261121`. Latest observed `main` is
+`06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which already includes the basic
+Bearer-aware history fix. The review branch synchronizes it with the bounded
+retry, diagnostics, server-liveness and fail-closed deployment changes in merge
+commit `14874d339bbb4042172df954f97596080aa303ee`. Local `npm test` passed 320
+tests and a GET-only live staging smoke passed at about 08:35 UTC. GitHub CI for
+the synchronized candidate is
+pending. Earlier CI runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
+passed on pre-sync source/docs commits. Hosted staging was not triggered; its
+prior Secretary staging check required `needs-hosted-staging` and exact-head
+hosted verification. No Render deployment occurred and no hosted Auth CRUD is
+verified.
 
 ## Current source of truth
 

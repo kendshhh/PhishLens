@@ -5,24 +5,21 @@
 The latest observed staging route is the legacy hosted-staging workflow in
 `origin/main`'s `.github/workflows/ci.yml`: it deploys via the trusted default
 branch controller, runs `scripts/staging_smoke.mjs`, then invokes the exact-PR
-head `scripts/verify_crud.mjs --allow-writes`. The supplied smoke log fails at
-the anonymous history call with a generic history error; it has no HTTP
-status/body, so the cause cannot be confirmed. A separate dated probe returned
-`401 Bearer`, consistent with the staging Auth boundary. Review branch
-`codex/devops-staging-closeout-20261121` adds strict Bearer handling, bounded
-transient-only retries, endpoint/status/error summaries, local server-exit
-monitoring and log retention, plus fail-closed hosted deployment conditions.
-Its Node regression suite passes. PR #268 head
-`d27eaa07a28173c485d19f44524a88e71515fc10` passed CI run
-[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782),
-including local staging integration and guard tests. A direct GET-only staging
-smoke passed at 08:15 UTC. The current PR head is docs-only commit
-`a2fb3f79e7857eeef20a2a2cf70f603906d86f31`; CI run
-[44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
-passed. Hosted staging and its preflight were skipped. The latest separate
-[Secretary staging check](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
-requires `needs-hosted-staging` and exact-head hosted verification; no Render deploy occurred. The CRUD step has no
-authenticated session and remains a blocker. The last recorded Secretary preview
+head `scripts/verify_crud.mjs --allow-writes`. Main commit
+`06f89d7a0b5b9dec316dfa11f2846767a32086c5` added a Bearer-aware helper so a
+valid anonymous `401 Bearer` response passes the smoke's auth-boundary check.
+The supplied earlier smoke log omitted the HTTP status/body, so it does not
+prove that this was its response. Review branch merge commit `14874d339bbb4042172df954f97596080aa303ee` adds
+bounded transient-only retries, endpoint/status/error summaries, local
+server-exit monitoring and log retention, plus fail-closed hosted deployment
+conditions. `npm test` passed 320 Node tests and a fresh GET-only staging smoke
+passed at about 08:35 UTC. GitHub CI for this synchronized candidate is pending;
+pre-sync code and docs runs passed at [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992).
+Hosted staging is not triggered; the last Secretary staging check
+[44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
+required `needs-hosted-staging` and exact-head verification. No Render deploy
+occurred. The CRUD step has no authenticated session and remains a blocker. The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
 audit. No current Secretary exact-head authenticated CRUD acceptance is
