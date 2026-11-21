@@ -94,6 +94,23 @@ test('fails a permanent 401 without Bearer and reports endpoint and status', asy
     assert.match(result.summary, /Anonymous history .*HTTP 401 without a Bearer/);
 });
 
+test('does not retry permanent HTTP errors whose response text resembles a transient network failure', async t => {
+    for (const status of [400, 401, 403]) {
+        let historyRequests = 0;
+        const result = await runSmoke(t, (request, response) => {
+            if (readyEndpoint(request, response)) return;
+            historyRequests += 1;
+            sendJson(response, status, { detail: 'upstream timeout: fetch failed' }, status === 401
+                ? { 'www-authenticate': 'Basic realm="saved-reports"' }
+                : {});
+        });
+
+        assert.equal(result.code, 1, `HTTP ${status} must fail`);
+        assert.equal(historyRequests, 1, `HTTP ${status} must not be retried`);
+        assert.match(result.summary, new RegExp(`Final result: HTTP ${status}`));
+    }
+});
+
 test('does not retry a rejected redirect from saved-report history', async t => {
     let historyRequests = 0;
     const result = await runSmoke(t, (request, response) => {

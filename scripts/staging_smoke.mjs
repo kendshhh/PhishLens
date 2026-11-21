@@ -11,7 +11,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let currentStage = { name: 'startup readiness', endpoint: '/health', status: undefined };
 
 function transient(error) {
-    if (retryableStatuses.has(error?.status)) return true;
+    if (Number.isInteger(error?.status)) return retryableStatuses.has(error.status);
     const messages = [];
     const seen = new Set();
     let current = error;
