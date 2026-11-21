@@ -1,25 +1,51 @@
-export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch) {
-    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
-    const response = await fetchImpl(`${cleanBaseUrl}/api/analyses`, {
-        signal: AbortSignal.timeout(10000),
-        redirect: 'error'
-    });
+import { getAnalyses } from '../extension/js/api.js';
 
-    if (response.status === 401) {
-        const challenge = response.headers.get('www-authenticate') || '';
-        if (!/^\s*Bearer(?:\s|$)/i.test(challenge)) {
-            throw new Error('Anonymous history returned HTTP 401 without a Bearer challenge');
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function isTransientHistoryFailure(error) {
+    return error?.origin === 'network' || error?.origin === 'timeout' ||
+        error?.status === 408 || error?.status === 425 || error?.status === 429 ||
+        (error?.status >= 500 && error.status <= 599);
+}
+
+export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch, {
+    attempts = 6,
+    delayMs = 1000,
+    timeoutMs = 5000,
+} = {}) {
+    if (!Number.isSafeInteger(attempts) || attempts < 1) {
+        throw new Error('History endpoint attempts must be a positive integer');
+    }
+    if (!Number.isSafeInteger(delayMs) || delayMs < 0) {
+        throw new Error('History retry delay must be a nonnegative integer');
+    }
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            return await getAnalyses(baseUrl, {
+                fetchImpl,
+                timeoutMs,
+                retries: 0,
+            });
+        } catch (error) {
+            error.attempt = attempt;
+            error.attempts = attempt;
+            error.maxAttempts = attempts;
+
+            if (error.status === 401) {
+                const challenge = error.wwwAuthenticate || '';
+                if (!/^\s*Bearer(?:\s|$)/i.test(challenge)) {
+                    error.code = 'history_missing_bearer_challenge';
+                    error.message += '; anonymous history returned HTTP 401 without a Bearer challenge';
+                    throw error;
+                }
+                return null;
+            }
+
+            if (attempt === attempts || !isTransientHistoryFailure(error)) throw error;
+            await delay(delayMs);
         }
-        return null;
     }
 
-    if (!response.ok) {
-        throw new Error(`Failed to load staging history (HTTP ${response.status})`);
-    }
-
-    const data = await response.json();
-    if (!data || !Array.isArray(data.items)) {
-        throw new Error('Invalid staging history data');
-    }
-    return data.items;
+    throw new Error('History endpoint attempts exhausted');
 }
