@@ -63,7 +63,7 @@ because the request label and exact-head hosted verification were absent.
 skipped. No hosted deployment or authenticated CRUD was run. The 10:14
 snapshot above applies to the previous head only.
 
-On docs-only follow-up head `dffdc4c29338142f458350b51c8ce69e0f36e988`,
+On preceding docs-only follow-up head `dffdc4c29338142f458350b51c8ce69e0f36e988`,
 Backend, Extension, migration preflight and Staging integration passed in [CI
 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208).
 The Secretary report passed in [44898465856](https://github.com/kendshhh/PhishLens/actions/runs/44898465856),
@@ -71,6 +71,15 @@ but required `Secretary staging` failed because the hosted request label and
 exact-head verification were absent ([run
 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
 Hosted preflight/deployment were skipped; this is not staging acceptance.
+
+The latest completed head `f79098cc075784563d2022cbca87d7abe8f0a635` passed
+Backend, Extension, migration preflight and Staging integration in [CI
+44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+The Secretary report passed in [44899190365](https://github.com/kendshhh/PhishLens/actions/runs/44899190365),
+but required `Secretary staging` failed because the request label and exact-head
+hosted verification were absent ([run
+44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)).
+Hosted staging preflight/deployment were skipped; this is not hosted acceptance.
 
 The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and

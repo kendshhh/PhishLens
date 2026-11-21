@@ -48,7 +48,7 @@ hosted verification were absent. See the current [release record](release-record
 and [staging evidence](evidence/2026-11-21-staging-neon-auth-smoke.md). The
 10:14 snapshot is historical for the previous head.
 
-The latest completed workflow snapshot before this docs-only sync was head
+The preceding completed workflow snapshot before this docs-only sync was head
 `dffdc4c29338142f458350b51c8ce69e0f36e988` at 11:21 UTC: Backend, Extension,
 migration preflight, Staging integration, workflow lint, dependency review and
 security, deterministic evaluation, and the Secretary report passed. Hosted
@@ -57,6 +57,14 @@ because the request label and exact-head hosted verification were absent
 ([run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
 The focus-order failure on the previous head did not recur; its cause is still
 unresolved. The docs-only sync following this snapshot needs its own check run.
+
+That sync was pushed as `f79098cc075784563d2022cbca87d7abe8f0a635` and its
+checks completed at 11:31 UTC. Backend, Extension, migration preflight, Staging
+integration, workflow lint, dependency checks, deterministic evaluation and
+the Secretary report passed. Hosted staging/preflight were skipped; required
+`Secretary staging` failed in [run 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)
+because the request label and exact-head hosted verification were absent. The
+following docs-only sync needs a new exact-head run.
 
 ## Current source of truth
 

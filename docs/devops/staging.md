@@ -48,6 +48,14 @@
 > were absent ([run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
 > No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 > The docs-only sync after this snapshot needs its own checks.
+> The latest completed docs-only head `f79098cc075784563d2022cbca87d7abe8f0a635`
+> at 11:31 UTC passed Backend, Extension, migration preflight and Staging
+> integration in [CI 44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+> Workflow lint, dependency review/security, deterministic evaluation and the
+> Secretary report passed. Hosted staging preflight/deployment were skipped;
+> required `Secretary staging` failed because the request label and exact-head
+> hosted verification were absent ([run 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)).
+> The next docs-only sync needs its own exact-head checks.
 > On PR head `2e26327254c71b6cb7d655181cffb21e8dd1ee9b` at 10:14 UTC, Backend,
 > Extension, migration preflight, Staging integration, hosted preflight, workflow
 > lint, dependency security, Dependency graph review and deterministic

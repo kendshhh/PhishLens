@@ -453,7 +453,7 @@ authenticated CRUD, or current PR CodeQL result was observed. PR #268 still
 targets the merged PR #265 branch. Investigate the assertion, retarget to main,
 and obtain fresh exact-head CI before requesting authorized hosted acceptance.
 
-## Latest completed workflow snapshot — 2026-11-21 11:21 UTC
+## Previous completed workflow snapshot — 2026-11-21 11:21 UTC
 
 The documentation follow-up was pushed as head
 `dffdc4c29338142f458350b51c8ce69e0f36e988`. Backend, Extension, migration
@@ -472,3 +472,23 @@ verification were absent ([run 44898698685](https://github.com/kendshhh/PhishLen
 No current PR CodeQL result, Render deployment or authenticated CRUD was
 observed. The docs-only sync after this snapshot needs its own checks. PR #268
 still targets the merged PR #265 branch and must be retargeted before merge.
+
+## Latest completed workflow snapshot — 2026-11-21 11:31 UTC
+
+Docs-only head `f79098cc075784563d2022cbca87d7abe8f0a635` passed Backend,
+Extension, migration preflight and Staging integration in [CI
+44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+Workflow lint [44899191771](https://github.com/kendshhh/PhishLens/actions/runs/44899191771),
+dependency security/graph [44899191710](https://github.com/kendshhh/PhishLens/actions/runs/44899191710),
+deterministic evaluation [44899191787](https://github.com/kendshhh/PhishLens/actions/runs/44899191787),
+and the Secretary report [44899190365](https://github.com/kendshhh/PhishLens/actions/runs/44899190365)
+passed. The keyboard-focus assertion that failed on `a151585` also passed on
+this no-code-change follow-up; its root cause remains undiagnosed.
+
+Hosted staging preflight and Hosted staging were skipped. Required
+`Secretary staging` failed because the request label and exact-head hosted
+verification were absent ([run 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)).
+No current PR CodeQL result, Render deployment or authenticated CRUD was
+observed. The docs-only sync following this snapshot needs its own checks. PR
+#268 remains based on the merged PR #265 branch and must be retargeted before
+merge.

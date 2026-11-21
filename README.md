@@ -103,7 +103,7 @@ Render deployment or authenticated hosted CRUD was run. PR #268 remains open,
 targets the merged PR #265 branch, and requires base retargeting and fresh
 checks after any follow-up commit.
 
-The next docs-only head, `dffdc4c29338142f458350b51c8ce69e0f36e988`, was
+The preceding docs-only head, `dffdc4c29338142f458350b51c8ce69e0f36e988`, was
 checked at 11:21 UTC. Backend, Extension, migration preflight, Staging
 integration, workflow lint, dependency security and graph review, deterministic
 evaluation, and the Secretary report passed ([CI
@@ -119,7 +119,22 @@ skipped. Required `Secretary staging` failed in
 because the request label and exact-head hosted verification were absent. No
 current PR CodeQL result, Render deployment or authenticated hosted CRUD was
 observed. This is the latest completed workflow snapshot before the current
-docs-only follow-up; its new head needs its own exact-head checks.
+docs-only follow-up at that point; the next paragraph records that head's
+checks.
+
+That follow-up, `f79098cc075784563d2022cbca87d7abe8f0a635`, completed at
+11:31 UTC. Backend, Extension, migration preflight and Staging integration
+passed in [CI 44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736);
+workflow lint [44899191771](https://github.com/kendshhh/PhishLens/actions/runs/44899191771),
+dependency security/graph [44899191710](https://github.com/kendshhh/PhishLens/actions/runs/44899191710),
+deterministic evaluation [44899191787](https://github.com/kendshhh/PhishLens/actions/runs/44899191787),
+and the Secretary report [44899190365](https://github.com/kendshhh/PhishLens/actions/runs/44899190365)
+passed. Hosted preflight and Hosted staging were skipped; required `Secretary
+staging` failed because the request label and exact-head hosted verification
+were absent ([run 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)).
+No PR CodeQL, Render deployment, or authenticated CRUD was observed. This is
+the latest completed check snapshot; the next docs-only commit needs its own
+CI run.
 
 See the [dated staging evidence](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
 for timestamps and scope.

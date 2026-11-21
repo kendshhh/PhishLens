@@ -54,13 +54,21 @@ because the request label and exact-head hosted verification were absent. This
 supersedes the 10:14 check snapshot for current PR status; it does not establish
 hosted acceptance. No Render deployment or authenticated CRUD occurred.
 
-On the latest completed docs-only head `dffdc4c29338142f458350b51c8ce69e0f36e988`,
+On preceding docs-only head `dffdc4c29338142f458350b51c8ce69e0f36e988`,
 Backend, Extension and Staging integration passed in [CI 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208).
 Hosted preflight and Hosted staging were skipped. Required `Secretary staging`
 failed in [run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)
 because the request label and exact-head hosted verification were absent. The
 docs-only sync after this snapshot needs fresh checks; no Render deployment or
 authenticated CRUD is established.
+
+The latest completed head `f79098cc075784563d2022cbca87d7abe8f0a635` passed
+Backend, Extension and Staging integration in [CI 44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+Hosted preflight/deployment were skipped. Required `Secretary staging` failed
+in [run 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)
+because the request label and exact-head hosted verification were absent. The
+docs-only sync following this snapshot needs fresh checks; no hosted deployment
+or authenticated CRUD is established.
 
 The owner-approved recovery objectives are RTO no greater than 30 minutes and
 RPO no greater than one hour. Neither has been measured. The November 20

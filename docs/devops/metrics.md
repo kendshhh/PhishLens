@@ -59,8 +59,21 @@ passed. Staging integration and hosted checks were skipped, and required
 No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 These workflow outcomes are not performance samples.
 
-The latest completed PR-head workflow snapshot was docs-only SHA `dffdc4c`
+The 11:21 completed PR-head workflow snapshot was docs-only SHA `dffdc4c`
 ([CI 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208)): Backend, Extension, migration preflight and Staging integration passed. Hosted staging/preflight were skipped; required `Secretary staging` failed in [44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685) because the hosted request label and exact-head verification were absent. The docs-only sync after that snapshot needs separate checks. No Render deploy or authenticated CRUD occurred; this status sample is not a performance measurement.
+
+The following completed docs-only head, `f79098cc075784563d2022cbca87d7abe8f0a635`,
+also passed Backend, Extension, migration preflight and Staging integration in
+[CI 44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+Workflow lint [44899191771](https://github.com/kendshhh/PhishLens/actions/runs/44899191771),
+dependency security/graph [44899191710](https://github.com/kendshhh/PhishLens/actions/runs/44899191710),
+deterministic evaluation [44899191787](https://github.com/kendshhh/PhishLens/actions/runs/44899191787),
+and the Secretary report [44899190365](https://github.com/kendshhh/PhishLens/actions/runs/44899190365)
+passed. Hosted staging/preflight were skipped; required `Secretary staging`
+failed in [44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134).
+No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+This is a check snapshot, not a performance sample; the next docs-only sync
+needs its own checks.
 
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy

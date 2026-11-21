@@ -204,7 +204,7 @@ while later CI run 44889931821 passed on merged main `95975cd`. Treat the
 recurrence as unresolved; compare the exact browser and focus evidence before
 calling it flaky or changing the assertion.
 
-### Latest completed workflow snapshot — 2026-11-21 11:21 UTC
+### Previous completed workflow snapshot — 2026-11-21 11:21 UTC
 
 Docs-only head `dffdc4c29338142f458350b51c8ce69e0f36e988` passed Backend,
 Extension, migration preflight, Staging integration, workflow lint, dependency
@@ -219,6 +219,23 @@ because the `needs-hosted-staging` label and exact-head hosted verification
 were absent ([run 44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685)).
 No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 A docs-only follow-up after this snapshot requires its own exact-head checks.
+
+### Latest completed workflow snapshot — 2026-11-21 11:31 UTC
+
+Docs-only head `f79098cc075784563d2022cbca87d7abe8f0a635` passed Backend,
+Extension, migration preflight and Staging integration in [CI
+44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+Workflow lint [44899191771](https://github.com/kendshhh/PhishLens/actions/runs/44899191771),
+dependency security/graph [44899191710](https://github.com/kendshhh/PhishLens/actions/runs/44899191710),
+deterministic evaluation [44899191787](https://github.com/kendshhh/PhishLens/actions/runs/44899191787),
+and the Secretary report [44899190365](https://github.com/kendshhh/PhishLens/actions/runs/44899190365)
+passed. Hosted preflight/deployment were skipped. Required `Secretary staging`
+failed because the `needs-hosted-staging` label and exact-head hosted
+verification were absent ([run 44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134)).
+No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+The docs-only update after this snapshot needs its own current checks. Keep the
+release NO-GO and do not claim 100% while hosted acceptance, required checks and
+other listed release evidence remain open.
 
 ## Required working method
 
