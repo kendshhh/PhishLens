@@ -12,19 +12,24 @@ The supplied earlier smoke log omitted the HTTP status/body, so it does not
 prove that this was its response. Review branch merge commit `14874d339bbb4042172df954f97596080aa303ee` adds
 bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
-conditions. At the code/test snapshot
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`, 321 Node tests and a fresh
-GET-only staging smoke passed at about 08:35 UTC. At the last recorded PR head,
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension and staging
-integration passed in [CI run
-44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
-and the packaged browser checklist passed. The required `Secretary staging`
-check failed because hosted staging and exact-head verification were not
-requested ([check run
+conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
+321 Node tests and a fresh GET-only staging smoke
+passed at about 08:35 UTC. PR head
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
+[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+workflow lint [44887660108](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
+dependency security [44887660090](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
+deterministic evaluation [44887660089](https://github.com/kendshhh/PhishLens/actions/runs/44887660089),
+and CodeQL [136796452132](https://github.com/kendshhh/PhishLens/runs/136796452132).
+Hosted staging and preflight were skipped. The PR's `Secretary staging`
+context is **failed** with the message that `needs-hosted-staging` and exact-head
+hosted verification are required ([check run
 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
-The subsequent PR #265 documentation reconciliation requires fresh checks on
-the resulting head. No Render deploy or authenticated hosted CRUD occurred. The
-CRUD step has no authenticated session and remains a blocker. The last recorded Secretary preview
+The controller assessment passed but skipped its preview job; no Render deploy
+or CRUD ran. The CRUD step has no authenticated session and remains a blocker.
+These results apply to `bc9a6b0`; later documentation updates and PR #265
+reconciliation require fresh checks on the resulting PR head.
+The last recorded Secretary preview
 variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
 `SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
 audit. No current Secretary exact-head authenticated CRUD acceptance is

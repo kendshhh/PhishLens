@@ -243,7 +243,7 @@ hosted verification, and authenticated persistence/isolation/cleanup all pass.
 
 ## Exact-head CI refresh — 2026-11-21
 
-At this recorded point, PR #268 head
+After the preceding snapshot, PR #268 head
 `d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` completed its GitHub checks. The
 code/test content is commit `83a0df1af1d64048b3b5fa3158f6509e83d71555`; the
 tested PR head adds the synchronized documentation. [CI run
@@ -275,16 +275,32 @@ the same cause, that Render is running the PR revision, or that authenticated
 history/CRUD, persistence, isolation, cleanup, effective branch protection, or
 production acceptance has passed. Keep the release **NO-GO**.
 
-## Latest recorded PR checks before documentation reconciliation — 2026-11-21
+## Documentation-head verification — 2026-11-21
 
-PR #268 advanced to head
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`. The Secretary report for that exact
-head records successful backend, extension, and staging-integration jobs in
-[run 44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166)
-and a passing packaged browser checklist artifact. The required
-`Secretary staging` check is **failed** ([run
-44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370))
-because the hosted-staging label and exact-head verification were not requested;
-no hosted deployment or authenticated CRUD ran. This evidence predates the
-PR #265 documentation reconciliation. The resulting PR head needs fresh checks;
-these earlier results do not certify it.
+The documentation refresh was pushed as commit
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`. CI run
+[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166)
+completed successfully on that exact PR head. Backend, extension, migration
+source preflight and local staging integration passed; the local staging job
+passed its history-auth smoke and server/deployment-guard tests. Workflow lint
+[44887660108](https://github.com/kendshhh/PhishLens/actions/runs/44887660108),
+dependency security [44887660090](https://github.com/kendshhh/PhishLens/actions/runs/44887660090),
+deterministic evaluation [44887660089](https://github.com/kendshhh/PhishLens/actions/runs/44887660089),
+and CodeQL [136796452132](https://github.com/kendshhh/PhishLens/runs/136796452132)
+passed. The Secretary report and generic label checks passed as well.
+
+Hosted preflight and hosted staging were skipped again. The PR's
+`Secretary staging` context remains failed because the protected-run label and
+exact-head hosted verification are missing ([check run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
+Its assessment job succeeded while the preview job was skipped. This confirms
+the documentation-only push did not resolve hosted staging or authenticated
+CRUD; no Render deploy or staging write occurred. The checks cover the code/test
+commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` unchanged in this docs-only
+commit. Keep **NO-GO** and use the passing automated checks only as evidence for
+their stated local/CI scope.
+
+The PR branch later advanced to docs commit
+`631b0ef21849e8abe877bb16b4676047f2aca86a`, then received the PR #265
+documentation reconciliation. No check result is claimed here for those later
+heads; fresh checks are required on the resulting candidate.

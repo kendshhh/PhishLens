@@ -9,9 +9,8 @@ risk indicators, and manage saved analysis reports.
 The current release decision is **NO-GO**. The latest observed GitHub `main` is
 `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which includes the Bearer-aware
 staging history correction. This closeout is on
-`codex/devops-staging-closeout-20261121`; its initial main synchronization was
-merge commit `14874d339bbb4042172df954f97596080aa303ee`. Later commits add
-bounded retry
+`codex/devops-staging-closeout-20261121`, synchronized with that main through
+merge commit `14874d339bbb4042172df954f97596080aa303ee`. It adds bounded retry
 diagnostics, local server crash detection/log retention, and fail-closed hosted
 deployment gates. The earlier
 implementation and regression commits remain in the branch history.
@@ -21,17 +20,23 @@ served the earlier SHA `811980c2cbf70d9957146bf329627f0826a018f1` with analysis
 intentionally disabled; no later deploy was verified after main advanced.
 Staging serves a different SHA and requires Bearer authentication for
 saved-report history. Latest code/test commit is
-`83a0df1af1d64048b3b5fa3158f6509e83d71555`. At that code/test snapshot,
-`npm test` passed all 321 Node tests and a fresh GET-only smoke passed against
-live staging at about 08:35 UTC, including the
-expected anonymous `401 Bearer` boundary. These local checks do not establish
-the deployed PR revision or authenticated CRUD. At the last recorded PR head,
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension, staging
-integration and the packaged browser checklist passed. The required
-`Secretary staging` check failed because the hosted-staging label and exact-head
-verification were absent; hosted staging was not requested. The later PR #265
-documentation reconciliation requires fresh checks on the resulting head. No
-Render deployment or authenticated hosted CRUD is verified.
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. `npm test` passed all 321 Node tests on the synchronized
+branch, and a fresh GET-only smoke passed against live staging at about 08:35
+UTC, including the expected anonymous `401 Bearer` boundary. These local checks
+do not establish the deployed PR revision or authenticated CRUD. Last verified
+PR head
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
+[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+including backend, extension, migration preflight and local staging integration;
+workflow lint, dependency security, deterministic evaluation and CodeQL also
+passed. Hosted staging and preflight were skipped. GitHub reports the required
+`Secretary staging` context as failed because `needs-hosted-staging` and
+exact-head hosted verification are missing ([run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370));
+no Render deploy or authenticated CRUD occurred. Later docs-only commits and the
+PR #265 documentation reconciliation changed the candidate; they require fresh
+checks on the resulting head. The PR remains blocked pending fresh review and
+required checks.
 
 Render currently reports auto-deploy off for both services, while production's
 latest deploy record says `new_commit`; resolve that configuration/evidence

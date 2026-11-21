@@ -8,19 +8,23 @@ service IDs, workflow settings or deployment observations as current.
 The staging smoke and CI guard implementation is on review branch
 `codex/devops-staging-closeout-20261121`. Latest observed `main` is
 `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which already includes the basic
-Bearer-aware history fix. The review branch's initial main synchronization was
-merge commit `14874d339bbb4042172df954f97596080aa303ee`; later code/test commit
+Bearer-aware history fix. The review branch synchronizes it with the bounded
+retry, diagnostics, server-liveness and fail-closed deployment changes in merge
+commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
 `83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
-and a GET-only live staging smoke passed at about 08:35 UTC. These results are
-bound to that code/test snapshot. At the last recorded PR head,
-`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension, staging
-integration and the packaged browser checklist passed in CI run
-[44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166).
-The required `Secretary staging` check failed because hosted staging and
-exact-head verification were not requested ([check run
-44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
-PR #265 documentation reconciliation requires fresh checks on the resulting
-head. No Render deployment occurred and no hosted Auth CRUD is verified.
+and a GET-only live staging smoke passed at about 08:35 UTC. Last verified PR
+head
+`bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed [CI run
+44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+including backend, extension, migration preflight and local staging integration.
+Workflow lint, dependency security, deterministic evaluation and CodeQL also
+passed. Hosted staging and preflight were skipped. The PR's required Secretary
+staging context is failed because the `needs-hosted-staging` label and exact-head
+hosted verification are absent; see [check run
+44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370).
+No Render deployment occurred and hosted Auth CRUD is not verified. Later
+documentation commits and the PR #265 reconciliation changed the candidate;
+fresh checks are required on the resulting head.
 
 ## Current source of truth
 
@@ -28,8 +32,8 @@ head. No Render deployment occurred and no hosted Auth CRUD is verified.
   decision, exact blockers and next acceptance evidence.
 - [Environment and secret map](environment-map-2026-11-21.md): service and
   database targets, non-secret settings, and unverified secret/mapping controls.
-- [Readiness scorecard](release-readiness-scorecard-2026-11-21.md): 16 criteria
-  and a 41/100 evidence-progress estimate; not an official course score.
+- [Readiness scorecard](release-readiness-scorecard-2026-11-21.md): seven
+  release areas, evidence needed for a full pass, and scoring status.
 - [Staging Neon Auth smoke evidence](evidence/2026-11-21-staging-neon-auth-smoke.md):
   supplied failure, current live observations, code/workflow mismatch and fix
   acceptance plan.

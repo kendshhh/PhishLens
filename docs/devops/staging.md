@@ -9,19 +9,21 @@
 > `83a0df1af1d64048b3b5fa3158f6509e83d71555` also prevents retries for permanent
 > HTTP responses whose body contains transient-looking text. Local CI
 > monitors server exit and preserves logs, and hosted deployment requires
-> successful staging, hosted preflight and backend results. At code/test commit
-> `83a0df1af1d64048b3b5fa3158f6509e83d71555`, `npm test` passed 321 tests and a
-> GET-only live smoke passed at about 08:35 UTC. At the last recorded PR head,
-> `bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47`, backend, extension, staging
-> integration and the packaged browser checklist passed. The required
-> `Secretary staging` check failed because hosted staging and exact-head
-> verification were not requested ([run
+> successful staging, hosted preflight and backend results. The synchronized
+> branch passed `npm test` (321 tests) and a GET-only live smoke at about 08:35
+> UTC. PR head `bc9a6b0b742d1b75d9bdcbb6004f07d69e17ac47` passed CI run
+> [44887660166](https://github.com/kendshhh/PhishLens/actions/runs/44887660166),
+> workflow lint, dependency security, deterministic evaluation and CodeQL.
+> Hosted staging and preflight were skipped. The PR's `Secretary staging`
+> context is failed because the `needs-hosted-staging` label and exact-head
+> verification are missing ([run
 > 44887876370](https://github.com/kendshhh/PhishLens/actions/runs/44887876370)).
-> PR #265 documentation reconciliation requires fresh checks on the resulting
-> head. No Render deployment occurred. These checks do not implement or
+> No Render deployment occurred. These checks do not implement or
 > prove authenticated CRUD. The separate `verify_crud.mjs --allow-writes` path
 > on the observed `main` lacks a Neon Auth session, so the full staging job
-> remains open. Track details in the
+> remains open. These results apply to `bc9a6b0`; later documentation updates
+> and PR #265 reconciliation require fresh checks on the resulting PR head.
+> Track details in the
 > [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md), and
 > do not label the staging gate passed until authenticated create/list/read/
 > update/delete, ownership/isolation, persistence, and cleanup pass on one exact
