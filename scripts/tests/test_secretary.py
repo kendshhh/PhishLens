@@ -742,6 +742,30 @@ class PreviewTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "valid PR head SHA"):
             workflow_pr_identity(run, "123", "not-a-sha")
 
+    def test_workflow_pr_identity_fails_closed_without_trusted_inputs_or_association(self):
+        from scripts.secretary.preview import workflow_pr_identity
+
+        run = {
+            "head_sha": SHA,
+            "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
+        }
+        for number in ("", "0", "abc", "123x"):
+            with self.subTest(number=number), self.assertRaisesRegex(RuntimeError, "valid PR number"):
+                workflow_pr_identity(run, number, SHA)
+        for sha in ("", "A" * 40, "g" * 40):
+            with self.subTest(sha=sha), self.assertRaisesRegex(RuntimeError, "valid PR head SHA"):
+                workflow_pr_identity(run, "123", sha)
+
+        for unassociated_run in (
+            {"head_sha": SHA},
+            {"head_sha": SHA, "pull_requests": []},
+            {"head_sha": SHA, "pull_requests": [{"number": 123, "head": {"sha": "c" * 40}}]},
+        ):
+            with self.subTest(run=unassociated_run), self.assertRaisesRegex(
+                RuntimeError, "not associated with this workflow run"
+            ):
+                workflow_pr_identity(unassociated_run, "123", SHA)
+
     def test_predeploy_live_guard_rejects_an_advanced_pr_head(self):
         from scripts.secretary.preview import require_live_pr_eligibility
 
