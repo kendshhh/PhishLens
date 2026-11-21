@@ -80,6 +80,20 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn('"context": config["preview_check"]', controller)
         self.assertIn('"name": preview_check_run_name(config)', controller)
 
+    def test_preview_passes_workflow_run_pr_identity_and_read_only_token(self):
+        workflow = (WORKFLOWS / "secretary-preview.yml").read_text(encoding="utf-8")
+        controller = (ROOT / "scripts/secretary/preview.py").read_text(encoding="utf-8")
+        client = (ROOT / "scripts/secretary/github_api.py").read_text(encoding="utf-8")
+
+        self.assertEqual(workflow.count("SECRETARY_PR_READ_TOKEN: ${{ secrets.SECRETARY_PR_READ_TOKEN }}"), 2)
+        self.assertEqual(workflow.count("SECRETARY_PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}"), 2)
+        self.assertEqual(workflow.count("SECRETARY_PR_HEAD_SHA: ${{ github.event.workflow_run.pull_requests[0].head.sha }}"), 2)
+        self.assertNotIn("${{ github.sha }}", workflow)
+        self.assertIn("workflow_pr_identity(", controller)
+        self.assertIn("require_live_pr_eligibility(", controller)
+        self.assertIn("class ReadOnlyGitHub", client)
+        self.assertIn("request_method.upper() != \"GET\"", client)
+
     def test_report_runs_once_after_workflow_completion(self):
         workflow = (WORKFLOWS / "secretary-report.yml").read_text(encoding="utf-8")
         workflow_run = workflow.split("  schedule:", 1)[0]
@@ -129,7 +143,7 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("Authenticated saved-report history and CRUD were not run", workflow)
         self.assertIn("analysisProvenance:", (ROOT / "scripts/verify_crud.mjs").read_text(encoding="utf-8"))
         self.assertIn("Real AI acceptance is not checked", workflow)
-        self.assertIn("verify_saved_report(config[\"staging_origin\"], run[\"head_sha\"])", controller)
+        self.assertIn("verify_saved_report(config[\"staging_origin\"], staging_sha)", controller)
 
 
 if __name__ == "__main__":
