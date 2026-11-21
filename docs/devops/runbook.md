@@ -1,6 +1,47 @@
 # Deployment and Recovery Runbook
 
-## Current recovery position — 2026-11-20
+## Current recovery position — 2026-11-21
+
+Release remains **NO-GO**. The current service identities and evidence limits
+are maintained in the [release record](release-record-2026-11-21.md) and
+[environment map](environment-map-2026-11-21.md). The recorded production
+deployment is `dep-dc07rs67bikc73fjgjq0` on
+`811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. The
+recorded staging deployment is `dep-dc0im3h7lnhs738pncng` on
+`ba0b6c5475eb6a8f99c509c40384020d292e17e6`; its anonymous saved-report
+endpoint requires a Bearer session. Direct GET-only smokes from the review
+branch passed at 08:15 and about 08:35 UTC for health, readiness and anonymous
+`401 Bearer`; they do not verify deployed PR identity, authenticated CRUD, or
+deployment state.
+
+The review branch includes main's Bearer-aware history correction and adds
+bounded smoke retries, failure summaries, local server-exit monitoring and log
+retention. Hosted deployment requires
+successful staging, hosted preflight and backend results at both job and deploy
+step level. The synchronized candidate passed 321 local Node tests and the
+GET-only smoke. PR #268 head `d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed
+Backend, Extension and Staging integration in
+[run 44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192);
+hosted staging was skipped. Current main `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
+has a separate CI failure at packaged-extension Chromium browser acceptance in
+[run 44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600),
+while Backend passed. Earlier PR #268 CI run
+[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+passed local staging integration and guard tests. The hosted preflight and
+deployment jobs were skipped pending the `needs-hosted-staging` label; the
+separate Secretary staging check requires that protected run. The hosted CRUD
+runner remains unauthenticated, required-check settings are not reverified, and
+the effective production deploy trigger remains unresolved. Do not merge,
+promote, or claim release readiness from these changes alone.
+
+The owner-approved recovery objectives are RTO no greater than 30 minutes and
+RPO no greater than one hour. Neither has been measured. The November 20
+isolated restore verified schema and aggregate integrity, not service recovery
+time or recoverable-point age. Production-compatible app/config/schema rollback,
+durable backup scheduling, and named primary/backup responders remain open.
+See the [November 20 recovery drill](recovery-drill-2026-11-20.md).
+
+## Historical recovery position — 2026-11-20
 
 Render has deployed application SHA
 `0c382dda175db3570e6bb7122841122254ba131d` as deploy
@@ -124,23 +165,21 @@ them with the service owner and test alert delivery before relying on them.
 5. Record recovery duration and data point achieved. Application rollback does
    not restore deleted or corrupted database state.
 
-RTO and RPO targets are **not currently approved or measured**. Provisional
-discussion targets are RTO ≤30 minutes and RPO ≤1 hour; confirm Neon capability
-and owner tolerance before adopting them. Rehearse application rollback and
-isolated data restore separately, recording start/end times, release/data
-identities, steps, outcome, data-loss implication and follow-up actions.
+At the time of this November 20 note, the owner-approved RTO ≤30 minutes and
+RPO ≤1 hour targets had not been measured. The current position above retains
+that limit and records that these objectives remain unproven.
 
 > The entries below are dated observations. The [current pipeline status](../../PIPELINE.md)
 > supersedes older statements where service SHAs or release state differ.
 
-## October 21 playbook handoff
+## Historical October 21 playbook handoff
 
 See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
 the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
 
-## Current post-merge verification — October 29, 2026 00:31 UTC
+## Historical post-merge verification — October 29, 2026 00:31 UTC
 
 PR #86 merged as `1344fcb061272bac93ced5911f1ab8fbb3b6785d`; production deploy
 `dep-dbh8v6ivcj2c73fql7c0` is Live on that commit. Read-only `/version`,
@@ -205,13 +244,11 @@ observations. Archive package `evidence.json` alongside the ZIP before expiry;
 compare its source/tested SHA and ZIP hash before installing. Packaging does not
 establish browser execution or database isolation.
 
-Before a rollback, record both app revisions and their expected schema revisions.
-Current source has migration `0001_initial_schema`; compare migration trees and
-coordinate with Trixia if either revision introduces schema changes. Do not run
-reverse migrations or a production failure drill to fill an evidence checkbox.
-Reuse the verified October 14 drill; its complete recovery time remains unknown.
-For the next necessary recovery, record incident start, action start, live result,
-independent restored `/version`/health/readiness time, and actual affected behavior.
+At this October 2026 snapshot, source had migration `0001_initial_schema`. That
+is historical context, not the current schema revision; staging's observed
+revision is `0004_neon_auth_subject`. Before a future rollback, compare the
+exact app/schema revisions and use the current approved recovery procedure.
+Do not reuse the October 14 drill as proof of current production recovery.
 
 The [Secretary pilot operator guide](secretary.md) adds exact-SHA preview and
 production observation. Its observer produces `metrics.json` and, on failure, an
@@ -235,7 +272,7 @@ Database connectivity is verified; schema-backed frontend and AI integration
 remain pending. Rollback and restoration were exercised, including one failed
 restoration attempt. See incidents.md for the evidence and limitations.
 
-## Service Configuration
+## Historical service configuration snapshot — initial deployment
 
 - Repository: kendshhh/PhishLens
 - Branch: main
@@ -254,7 +291,7 @@ Start command:
 
     python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
 
-## Initial Deployment
+## Historical initial deployment procedure
 
 1. Confirm the backend PR is reviewed and merged.
 2. Confirm CI passes on the merged main commit.
@@ -269,31 +306,42 @@ Start command:
 The health endpoint verifies the API process only.
 It does not verify database access, AI inference or extension integration.
 
-## Subsequent Deployments
+## Current deployment procedure — fail closed
 
-Before merging, follow [pre-merge staging](staging.md): all four required checks,
-the exact PR commit live on staging, Chrome verification with the staging package,
-and teammate approval. Missing staging settings must be fixed before merge.
+Release remains **NO-GO** until every current gate in the
+[scorecard](release-readiness-scorecard-2026-11-21.md) passes for one exact
+candidate and reviewers accept its linked evidence.
 
-1. Open a focused PR.
-2. Pass required checks and obtain teammate approval.
-3. Merge into main.
-4. Confirm main CI passes.
-5. Confirm Render deploys that commit automatically.
-6. From GitHub Actions, manually run **Production evidence** on `main` after the
-   exact commit is live. Retain its metrics artifact and confirm the exact SHA.
-7. Verify /health and the behavior affected by the change.
-8. Record merge-to-live time and evidence.
+1. Review the current DevOps index, candidate record, and open blockers. Keep
+   the original dirty checkout untouched; use a clean review branch.
+2. Require the relevant CI checks and independent review. The hosted-staging
+   job must run only when the local staging integration, current-head preflight
+   and backend migration lineage all succeed. Skipped or failed dependencies
+   cannot authorize a Render staging deploy.
+3. Verify current PR head immediately before deployment, then verify the exact
+   deployed `/version` SHA, migration, readiness, history/auth contract,
+   authenticated CRUD/cleanup and package provenance. A local integration pass
+   does not establish hosted service health.
+4. Do not merge a candidate while hosted CRUD lacks a supported Auth session,
+   or while required-check protection, deployment settings, secret scopes,
+   service-to-Neon mapping or test cleanup are unresolved.
+5. Render metadata was observed with auto-deploy off for production and staging,
+   while a production deploy record reported `new_commit`. Reconcile that
+   discrepancy in the control plane before relying on an automatic deploy.
+   Do not manually deploy production from this runbook; use only the separately
+   authorized release procedure after GO.
+6. The production observer is manual and read-only. A disabled-provider
+   observer pass establishes service state only, never inference, persistence
+   or product acceptance. Do not make paid calls or saved-report writes in
+   production.
+7. Record the exact source/deploy/package identities, run URL, statuses,
+   artifacts, recovery point and owner decisions. Keep unverified evidence open.
 
-The observer is manual and post-deploy so Render's **After CI Checks Pass** gate
-does not wait on a check that itself waits for the deployment. It never deploys
-or rolls back production.
-
-For database-dependent changes, also request /ready and expect HTTP 200 with
-{"status":"ready","database":"connected"}. Keep /health as the process
-health check. Readiness currently executes SELECT 1; it does not verify tables
-or records. Confirm DATABASE_URL's intended Neon branch privately in the host.
-The base URL / has no homepage and may correctly return 404.
+For database-dependent changes, verify `/ready` and exact `/version` on the
+candidate. Readiness currently checks database connectivity, not full table or
+record integrity. Confirm the private Render-to-Neon branch/database/role
+mapping without displaying connection strings or secrets. The API base URL may
+have no homepage and return 404.
 
 ## Deployment Failure
 
@@ -306,27 +354,28 @@ The base URL / has no homepage and may correctly return 404.
 
 Never paste secrets into issues or logs shared with teammates.
 
-## Rollback Plan
+## Current rollback position and procedure
+
+No current production app/config/schema combination is proven as a compatible
+rollback target. Stop promotion, declare the incident, preserve deploy and
+migration identities, and have the release lead and database owner select and
+review an exact compatible target. Do not select a target by recency or use the
+historical SHA records below as current approval.
+
+For an authorized application rollback: identify the exact Render deploy and
+matching non-secret configuration; check schema compatibility; use Render's
+rollback/deploy controls only under the approved incident procedure; verify
+deploy ID and `/version`; check `/health`, `/ready`, model/provider state and
+the affected user flow; retain logs and timestamps. Database restore/cutover is
+a separate decision and must use an isolated recovery branch first. Record
+actual service RTO and achieved recovery point; do not infer them from provider
+branch-ready timing.
+
+### Historical rollback observations — October 2026
 
 Rollback to 717334d was successful in 35.7 seconds. Restoration to 8a8634e
 succeeded on retry after an initial health-check/port-detection timeout.
 Full restoration duration remains unmeasured. This was a planned drill.
-
-After at least two successful deployments:
-1. Identify the last known-good deployment and its commit.
-2. Use Render's available rollback control.
-3. Verify /health and affected application behavior.
-4. Check the Auto-Deploy setting after rollback.
-5. Coordinate a reviewed correction before resuming normal deployment.
-6. Record the result and recovery time.
-
-Dashboard rollback automatically disables Auto-Deploy. Deploying a specific
-commit also disables it. Restore After CI Checks Pass only after verifying the
-intended version and reviewing any newer main changes.
-
-To restore a known-good version during a drill, use Manual Deploy > Deploy a
-specific commit and select its verified SHA. Confirm the Live SHA and /health,
-then restore Auto-Deploy. A health response alone cannot identify a version.
 
 If replacement deployment times out, inspect that deployment's own logs.
 General service logs can come from the still-running older instance. Preserve

@@ -612,7 +612,10 @@ def main():
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "failure", "description": "Deployment or verification failed", "auto_inactive": False})
         finally:
             auth_acceptance_pending = action == "action_required" and evidence.get("preflight_passed") is True
-            status_state = "success" if action == "success" else "failure"
+            # The required status records infrastructure preflight; the separate check run
+            # remains action_required until Auth acceptance is independently approved.
+            status_passed = action == "success" or auth_acceptance_pending
+            status_state = "success" if status_passed else "failure"
             if auth_acceptance_pending:
                 status_description = "Authenticated staging acceptance pending"
             else:
@@ -646,7 +649,7 @@ def main():
                 api, run["head_sha"], config, status_state,
                 status_description, log,
             )
-            if action in {"failure", "action_required"}:
+            if action == "failure" or (action == "action_required" and not auth_acceptance_pending):
                 print("Preview did not pass: " + message, file=sys.stderr)
                 raise SystemExit(1)
 

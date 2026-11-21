@@ -84,6 +84,24 @@ class PolicyTests(unittest.TestCase):
             preview_requested,
         )[0]
 
+    def test_test_only_changes_do_not_request_hosted_staging(self):
+        self.assertFalse(application_change([
+            {"filename": "backend/tests/test_health.py"},
+            {"filename": "extension/tests/api.test.mjs"},
+            {"filename": "scripts/tests/test_secretary.py"},
+        ]))
+
+    def test_runtime_changes_still_request_hosted_staging_with_test_changes(self):
+        self.assertTrue(application_change([
+            {"filename": "backend/tests/test_health.py"},
+            {"filename": "backend/app/main.py"},
+        ]))
+
+    def test_nested_test_directories_are_not_runtime_changes(self):
+        self.assertFalse(application_change([
+            {"filename": "backend/app/tests/test_router.py"},
+        ]))
+
     def test_passing_is_review_never_approval(self):
         self.assertEqual(self.decision(fixture()), "READY FOR KENDRA’S REVIEW")
 
@@ -325,7 +343,7 @@ class GitHubPaginationTests(unittest.TestCase):
 
 
 class PreviewTests(unittest.TestCase):
-    def test_neon_preflight_keeps_saved_report_verification_pending(self):
+    def test_neon_preflight_passes_required_status_and_keeps_auth_acceptance_pending(self):
         from scripts.secretary.preview import main
 
         data = fixture()
@@ -370,9 +388,7 @@ class PreviewTests(unittest.TestCase):
                   }) as smoke,
                   patch("scripts.secretary.preview.verify_saved_report") as crud,
                   patch("scripts.secretary.preview.package") as build):
-                with self.assertRaises(SystemExit) as error:
-                    main()
-                self.assertEqual(error.exception.code, 1)
+                main()
             evidence = json.loads((root / "output/secretary/preview-evidence.json").read_text())
             step_summary = summary_path.read_text(encoding="utf-8")
         smoke.assert_called_once_with(CONFIG["staging_origin"], SHA, report_auth_mode="neon")
@@ -380,7 +396,7 @@ class PreviewTests(unittest.TestCase):
         build.assert_not_called()
         self.assertEqual(evidence["result"], "action_required")
         self.assertTrue(evidence["preflight_passed"])
-        self.assertEqual(evidence["required_status"], "failure")
+        self.assertEqual(evidence["required_status"], "success")
         self.assertEqual(evidence["report_auth_mode"], "neon")
         self.assertEqual(evidence["smoke"]["history"], "authentication_required")
         self.assertEqual(evidence["smoke"]["seeded_history"], "not_checked")
@@ -391,7 +407,7 @@ class PreviewTests(unittest.TestCase):
                         if entry.args[0] == "statuses/" + SHA]
         deployment_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
                             if entry.args[0] == "deployments/2/statuses"]
-        self.assertEqual(status_calls, ["pending", "failure"])
+        self.assertEqual(status_calls, ["pending", "success"])
         self.assertEqual(deployment_calls, ["in_progress", "pending"])
         auth_gate = next(
             entry.args[1]
