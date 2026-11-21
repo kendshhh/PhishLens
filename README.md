@@ -19,13 +19,14 @@ remains dirty and was preserved. At the 07:31 UTC Render refresh, production
 served the earlier SHA `811980c2cbf70d9957146bf329627f0826a018f1` with analysis
 intentionally disabled; no later deploy was verified after main advanced.
 Staging serves a different SHA and requires Bearer authentication for
-saved-report history. `npm test` passed all 320 Node tests on the synchronized
+saved-report history. Latest code/test commit is
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. `npm test` passed all 321 Node tests on the synchronized
 branch, and a fresh GET-only smoke passed against live staging at about 08:35
 UTC, including the
 expected anonymous `401 Bearer` boundary. These local checks do not establish
 the deployed PR revision or authenticated CRUD. The latest GitHub checks before
-the mainline sync passed; CI for merge commit
-`14874d339bbb4042172df954f97596080aa303ee` must complete before review. Hosted
+the mainline sync passed; CI for code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555` must complete before review. Hosted
 staging is protected and remains untriggered pending the required
 `needs-hosted-staging` label and exact-head verification.
 

@@ -18,7 +18,7 @@ The review branch includes main's Bearer-aware history correction and adds
 bounded smoke retries, failure summaries, local server-exit monitoring and log
 retention. Hosted deployment requires
 successful staging, hosted preflight and backend results at both job and deploy
-step level. The synchronized candidate passed 320 local Node tests and the
+step level. The synchronized candidate passed 321 local Node tests and the
 GET-only smoke; GitHub CI for it is pending. Earlier PR #268 CI run
 [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
 passed local staging integration and guard tests. The hosted preflight and

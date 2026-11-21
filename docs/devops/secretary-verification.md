@@ -12,7 +12,8 @@ The supplied earlier smoke log omitted the HTTP status/body, so it does not
 prove that this was its response. Review branch merge commit `14874d339bbb4042172df954f97596080aa303ee` adds
 bounded transient-only retries, endpoint/status/error summaries, local
 server-exit monitoring and log retention, plus fail-closed hosted deployment
-conditions. `npm test` passed 320 Node tests and a fresh GET-only staging smoke
+conditions. Code/test commit `83a0df1af1d64048b3b5fa3158f6509e83d71555` passed
+321 Node tests and a fresh GET-only staging smoke
 passed at about 08:35 UTC. GitHub CI for this synchronized candidate is pending;
 pre-sync code and docs runs passed at [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
 and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992).

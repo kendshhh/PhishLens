@@ -44,9 +44,10 @@ explicit `401 Bearer` anonymous challenge, preserves seeded-history checks for
 writes endpoint/status/error details to the job summary. The branch also
 removes the hosted job's `always()` override, requires all three dependency
 results to be `success`, monitors local server startup, and retains its log
-artifact. The synchronized branch passed `npm test` (320 tests) and a fresh
-GET-only live staging smoke at about 08:35 UTC. CI for merge commit
-`14874d339bbb4042172df954f97596080aa303ee` is pending after the synchronization.
+artifact. The synchronized branch's latest code/test commit is
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`. It passed `npm test` (321 tests)
+and a fresh GET-only live staging smoke at about 08:35 UTC. GitHub CI for this
+commit is pending after the synchronization.
 Earlier CI passed the pre-sync code and docs commits.
 Hosted staging remains a separate protected check and is untriggered; the PR
 needs `needs-hosted-staging` and exact-head hosted verification. No Render

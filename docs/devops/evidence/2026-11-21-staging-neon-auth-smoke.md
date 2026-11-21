@@ -178,8 +178,8 @@ The linked workflow already had explicit dependency-success predicates alongside
 `always()`; removing the status override is defense in depth. Code/test SHA
 `d27eaa07a28173c485d19f44524a88e71515fc10` passed GitHub CI run
 [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782),
-including local staging integration and deployment guard tests. Current PR #268
-head is the documentation-only sync
+including local staging integration and deployment guard tests. In the 08:21
+UTC pre-sync snapshot, PR #268's then-current documentation-only head was
 `a2fb3f79e7857eeef20a2a2cf70f603906d86f31`; it passed CI run
 [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992),
 workflow lint [44884534973](https://github.com/kendshhh/PhishLens/actions/runs/44884534973),
@@ -203,7 +203,7 @@ Earlier local checks on Node.js v24.20.0 (pre-mainline-sync snapshot):
 | Markdown link and whitespace review | All 31 changed Markdown files checked; no missing local links. A broader scan of 141 repository Markdown files found 14 older local references to companion artifacts absent from three benchmark summaries (`english_real_v4_checkpoint_clean`, `real_email_v3`, and `real_readiness_v10`). `git diff --check` passed with CRLF-aware whitespace handling. | The 14 benchmark-artifact references are outside this DevOps change and remain an evidence-packaging gap; external URLs and GitHub-rendered layout were not validated. |
 | Live read-only smoke request to staging | Exit 1; repeated `/health` requests timed out after 10 seconds. | Workstation connectivity failure; does not establish that Render is unhealthy. |
 | `python -m unittest discover -s scripts/tests -v` | The earlier workstation attempt was incomplete under Python 3.10. On PR head `d27eaa0`, GitHub Staging integration ran all 226 deployment-guard tests successfully under Python 3.12. | The workstation failure is not a current CI failure; Hosted staging was skipped, so no hosted deployment is claimed. |
-| GitHub Actions workflow lint / hosted workflow | Pinned actionlint v1.7.9 passed locally. Workflow lint [44884534973](https://github.com/kendshhh/PhishLens/actions/runs/44884534973) and CI [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992) passed on current docs-only PR head `a2fb3f7`; application/test SHA `d27eaa0` passed CI [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782). | Hosted staging and its preflight were skipped; latest Secretary staging run [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725) requires the `needs-hosted-staging` label and exact-head hosted verification. |
+| GitHub Actions workflow lint / hosted workflow | Pinned actionlint v1.7.9 passed locally. Workflow lint [44884534973](https://github.com/kendshhh/PhishLens/actions/runs/44884534973) and CI [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992) passed on pre-sync docs-only PR commit `a2fb3f7`; application/test SHA `d27eaa0` passed CI [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782). | In that pre-sync snapshot, hosted staging and preflight were skipped and Secretary staging run [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725) required the `needs-hosted-staging` label and exact-head hosted verification. |
 | Direct live staging smoke | At 08:15 UTC, `node scripts/staging_smoke.mjs` passed health, database readiness and anonymous history authentication (`HTTP 401 Bearer`) against the configured staging URL. | GET-only workstation run; it does not verify the deployed PR SHA, migration table, Auth session, CRUD, or cleanup. |
 
 The review-branch result at that snapshot was **focused Node regression tests
@@ -216,20 +216,23 @@ Current `origin/main` was fetched at
 `06f89d7a0b5b9dec316dfa11f2846767a32086c5` (PR #263), which adds the tested
 `scripts/staging_history.mjs` helper and accepts anonymous history only for a
 Bearer challenge. PR #268 was synchronized with that main in merge commit
-`14874d339bbb4042172df954f97596080aa303ee`; its smoke uses that helper while adding bounded transient-only
-retries, endpoint/status/error summaries, and the seeded-history contract.
+`14874d339bbb4042172df954f97596080aa303ee`; latest code/test commit
+`83a0df1af1d64048b3b5fa3158f6509e83d71555` uses that helper while adding
+bounded transient-only retries, endpoint/status/error summaries, and the
+seeded-history contract. Permanent HTTP statuses fail without retry, even when
+the response text mentions a timeout or network failure.
 The CI workflow also monitors local API process exit, preserves its server log,
 and repeats successful dependency gates at the hosted deployment step.
 
 On 2026-11-21 at approximately 08:35 UTC, the synchronized worktree passed
-`npm test` (320 tests) and `node scripts/staging_smoke.mjs` against
+`npm test` (321 tests) and `node scripts/staging_smoke.mjs` against
 `https://phishlens-staging.onrender.com`. The smoke returned exit code 0 after
 health, database readiness, and the expected anonymous `401 Bearer` result. It
 performed GETs only. It does not prove the deployed PR revision, migration
 table, authenticated CRUD, persistence, isolation, or cleanup. The live staging
 service still reports the older deployed SHA in the environment map.
 
-The code-synchronization commit had not yet run GitHub CI when this snapshot was
+The latest code/test commit had not yet run GitHub CI when this snapshot was
 written. Prior code CI [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
 and documentation CI [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
 passed on pre-sync commits. The prior hosted-staging check

@@ -5,10 +5,12 @@
 > failure omitted HTTP status/body, so that observation remains a plausible,
 > unconfirmed cause. Main commit `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
 > added the Bearer-aware history correction. Review branch merge commit
-> `14874d339bbb4042172df954f97596080aa303ee` adds bounded transient retries and failure summaries; local CI
+> `14874d339bbb4042172df954f97596080aa303ee` adds bounded transient retries and failure summaries; code/test commit
+> `83a0df1af1d64048b3b5fa3158f6509e83d71555` also prevents retries for permanent
+> HTTP responses whose body contains transient-looking text. Local CI
 > monitors server exit and preserves logs, and hosted deployment requires
 > successful staging, hosted preflight and backend results. The synchronized
-> branch passed `npm test` (320 tests) and a GET-only live smoke at about 08:35
+> branch passed `npm test` (321 tests) and a GET-only live smoke at about 08:35
 > UTC. GitHub CI for this candidate is pending. Hosted staging has not run; the
 > last Secretary check [44884776725](https://github.com/kendshhh/PhishLens/actions/runs/44884776725)
 > required the `needs-hosted-staging` label and exact-head verification. No

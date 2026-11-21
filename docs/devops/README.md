@@ -10,9 +10,10 @@ The staging smoke and CI guard implementation is on review branch
 `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, which already includes the basic
 Bearer-aware history fix. The review branch synchronizes it with the bounded
 retry, diagnostics, server-liveness and fail-closed deployment changes in merge
-commit `14874d339bbb4042172df954f97596080aa303ee`. Local `npm test` passed 320
-tests and a GET-only live staging smoke passed at about 08:35 UTC. GitHub CI for
-the synchronized candidate is
+commit `14874d339bbb4042172df954f97596080aa303ee`. Latest code/test commit is
+`83a0df1af1d64048b3b5fa3158f6509e83d71555`; local `npm test` passed 321 tests
+and a GET-only live staging smoke passed at about 08:35 UTC. GitHub CI for the
+synchronized candidate is
 pending. Earlier CI runs [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
 and [44884534992](https://github.com/kendshhh/PhishLens/actions/runs/44884534992)
 passed on pre-sync source/docs commits. Hosted staging was not triggered; its
