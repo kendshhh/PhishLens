@@ -100,7 +100,8 @@ async function verifyPreflight() {
   assert.equal(required('STAGING_AUTH_TRUSTED_CHROME_ORIGIN'), extensionOrigin,
     'The staging Neon Auth trusted-origin setting must match this exact package ID');
   assert.equal(required('STAGING_NEON_BRANCH_KIND'), 'schema-only');
-  assert.equal(required('STAGING_NEON_PARENT_ID'), '', 'The staging Neon branch must be an independent root');
+  assert.equal(process.env.STAGING_NEON_PARENT_ID?.trim() || '', '',
+    'The staging Neon branch must be an independent root');
   const branchId = required('STAGING_NEON_BRANCH_ID');
   const stagingProjectId = required('STAGING_NEON_PROJECT_ID');
   const productionProjectId = required('PRODUCTION_NEON_PROJECT_ID');
@@ -618,9 +619,13 @@ async function run() {
       evidence.model_quality_blocked = true;
       evidence.failure_code = productAcceptanceMode ? null : 'ai_quality_approval_missing_or_rejected';
     }
-  } catch {
+  } catch (error) {
     evidence.status = 'blocked';
     evidence.failure_code = 'staging_acceptance_incomplete';
+    if (['preflight', 'account-a-auth', 'account-b-auth'].includes(evidence.phase)) {
+      const detail = error instanceof Error ? error.message : 'Unknown acceptance error';
+      console.error(`Staging acceptance failed during ${evidence.phase}: ${detail}`);
+    }
   } finally {
     await cleanupUnfinished();
     await context?.close().catch(() => {});
