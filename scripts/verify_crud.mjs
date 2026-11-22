@@ -127,7 +127,15 @@ export async function verifyTarget(baseUrl, options) {
 
 export async function verifyCrud(baseUrl, options = {}) {
     const target = await verifyTarget(baseUrl, options);
-    const client = createAnalysisClient(target.baseUrl, target.safeFetch);
+    const { accessToken } = options;
+    if (accessToken !== undefined &&
+        (typeof accessToken !== 'string' || accessToken.length > 16384 ||
+            !/^[A-Za-z0-9._~+/-]+=*$/.test(accessToken))) {
+        throw new Error('Authenticated CRUD requires a raw Bearer token in the supported format');
+    }
+    const client = createAnalysisClient(target.baseUrl, target.safeFetch, accessToken === undefined
+        ? {}
+        : { getAccessToken: async () => accessToken });
     const requireRealAI = options.requireRealAI === true;
     const subject = 'Synthetic CRUD check ' + crypto.randomUUID();
     const body = 'Synthetic test email. No real user data or credentials.';
