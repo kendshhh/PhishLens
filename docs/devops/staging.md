@@ -145,6 +145,8 @@ manifest contents. Never store secret values in source or evidence artifacts.
 
 Offline checks validate the workflow decision and evidence parsers; they do not
 prove hosted Auth, persistent CRUD, provider quality, or production promotion.
+The backend suite also checks that `/health` returns JSON with the expected
+success state; this protects the PR CI health contract.
 Use the latest exact-head Actions run and its sanitized artifact for hosted
 evidence. A previous PR's artifact or a different backend SHA cannot satisfy the
 current candidate.
