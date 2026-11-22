@@ -75,6 +75,7 @@ class HostedIdentityTests(unittest.TestCase):
                 "STAGING_BASE_URL": config["staging_origin"],
                 "STAGING_COMMIT": SHA,
                 "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
+                "STAGING_HISTORY_ACCESS_MODE": "anonymous",
                 "STAGING_PR_HEAD_SHA": SHA,
                 "STAGING_PR": "68",
             }
