@@ -83,8 +83,6 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
       return establish(() => sdk.signUp.email({ name, email, password }), email, true);
     },
     signIn: ({ email, password }) => establish(() => sdk.signIn.email({ email, password }), email),
-    verifyEmail: ({ email, code }) => establish(() => sdk.emailOtp.verifyEmail({ email, otp: code }), email, true),
-    async resend({ email }) { await call(() => sdk.emailOtp.sendVerificationOtp({ email, type: 'email-verification' })); },
     async signOut() {
       ++epoch;
       signedOut = true;

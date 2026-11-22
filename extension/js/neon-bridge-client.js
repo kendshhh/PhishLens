@@ -58,11 +58,7 @@ export function createNeonBridgeClient({ bridgeUrl, authUrl, documentImpl = glob
     getSession: () => request('getSession'),
     signIn: { email: input => request('signIn', input) },
     signUp: { email: input => request('signUp', input) },
-    emailOtp: {
-      verifyEmail: input => request('verifyEmail', input),
-      sendVerificationOtp: input => request('resend', input),
-      resetPassword: input => request('resetPassword', input)
-    },
+    emailOtp: { resetPassword: input => request('resetPassword', input) },
     forgetPassword: { emailOtp: input => request('recover', input) },
     signOut: () => request('signOut'),
     dispose

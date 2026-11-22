@@ -5,20 +5,18 @@ const sdk = createAuthClient(authUrl, { adapter: BetterAuthVanillaAdapter({ fetc
   credentials: 'include', redirect: 'error', timeout: 10000, retry: 0
 } }) });
 
-// Keep the RPC surface limited to the existing email/password and OTP flow.
+// Keep the RPC surface limited to signup, sign-in, password recovery and sessions.
 const actions = {
   getSession: () => sdk.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } }),
   signIn: input => sdk.signIn.email(input),
   signUp: input => sdk.signUp.email(input),
-  verifyEmail: input => sdk.emailOtp.verifyEmail(input),
-  resend: input => sdk.emailOtp.sendVerificationOtp(input),
   recover: input => sdk.forgetPassword.emailOtp(input),
   resetPassword: input => sdk.emailOtp.resetPassword(input),
   signOut: () => sdk.signOut()
 };
 const fields = {
   getSession: [], signOut: [], signIn: ['email', 'password'], signUp: ['name', 'email', 'password'],
-  verifyEmail: ['email', 'otp'], resend: ['email', 'type'], recover: ['email'],
+  recover: ['email'],
   resetPassword: ['email', 'otp', 'password']
 };
 let channel;
@@ -43,8 +41,7 @@ globalThis.addEventListener('message', async event => {
     const expected = fields[method];
     if (input && typeof input === 'object' && !Array.isArray(input) &&
         Object.keys(input).length === expected.length &&
-        expected.every(key => typeof input[key] === 'string' && input[key].length <= 320) &&
-        (method !== 'resend' || input.type === 'email-verification')) {
+        expected.every(key => typeof input[key] === 'string' && input[key].length <= 320)) {
       try {
         const response = await actions[method](input);
         // Provider error messages and an opaque session-cookie token must never

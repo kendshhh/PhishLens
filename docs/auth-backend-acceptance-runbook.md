@@ -196,8 +196,11 @@ IDs, expected history IDs, conflict code, owner PATCH fields and cross-account
 PATCH/DELETE denial. The
 operator compares the private before/after fields and records pass/fail. Do not
 repeat a blocked helper step by deleting its receipt. Extra requests must fit
-the agreed scope. Signup, real email/OTP, browser cookie/session restoration, renewal,
-expiry, sign-out and UI account switching remain Leyan's installed-Chrome checks.
+the agreed scope. Signup and password sign-in without a signup verification code,
+browser cookie/session restoration, renewal, expiry, sign-out and UI account
+switching remain Trixia's installed-Chrome checks. Email-verification OTP delivery
+and verification are out of scope while disabled; password-recovery code handling
+is a separate check.
 
 Anonymous/expired denial across all five CRUD operations, banned-account
 denial (403 where a JWT exists), and demo separation remain outside this helper's

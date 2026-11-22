@@ -57,11 +57,15 @@ with ZipFile(sys.argv[1]) as package:
   const manifest = JSON.parse(await readFile(path.join(extension, 'manifest.json'), 'utf8'));
   manifest.host_permissions = [apiOrigin + '/*', authOrigin + '/*'];
   await writeFile(path.join(extension, 'manifest.json'), JSON.stringify(manifest));
-  await writeFile(path.join(extension, 'js/config.js'), `export const API_BASE_URL = ${JSON.stringify(apiOrigin)};\n`);
-  await writeFile(path.join(extension, 'js/auth-config.js'), 'export const AUTH_CONFIG = ' + JSON.stringify({
+  await writeFile(path.join(extension, 'js/config.js'), `export const API_BASE_URL = ${JSON.stringify(apiOrigin)};\nexport const API_BASE_URLS = { production: ${JSON.stringify(apiOrigin)}, staging: ${JSON.stringify(apiOrigin)} };\n`);
+  const syntheticAuthConfig = {
     enabled: true, authUrl, database: 'neondb', apiOrigin, transport: 'https-bridge',
     bridgeUrl: apiOrigin + '/auth/bridge'
-  }) + ';\n');
+  };
+  await writeFile(path.join(extension, 'js/auth-config.js'),
+    'export const AUTH_CONFIGS = Object.freeze({ production: ' + JSON.stringify(syntheticAuthConfig) +
+    ', staging: ' + JSON.stringify(syntheticAuthConfig) + ' });\n' +
+    'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n');
   }
   // Supply only a generated test public key. Real JWT parsing, claims, owner
   // mapping, inference and SQL persistence all use the product implementation.
@@ -97,7 +101,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: extension });
   assert.equal(id, 'ceneonaedddlkdocdapimkfggbjcchlb');
   const users = new Map();
-  let failLogout = false, expiredCode = false;
+  let failLogout = false;
   let authRequests = 0, apiRequests = 0;
   const apiStatuses = [];
   const unknownOrigins = [], pageErrors = [];
@@ -152,17 +156,13 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     const method = url.pathname.slice('/neondb/auth/'.length);
     if (method === 'sign-up/email') {
       if (users.has(input.email)) return error(422, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL');
-      users.set(input.email, { id: runId + '-' + (users.size + 1), email: input.email,
-        name: input.name, password: input.password, emailVerified: false });
-    } else if (method === 'email-otp/verify-email') {
-      if (expiredCode) return error(400, 'OTP_EXPIRED');
-      const user = users.get(input.email);
-      if (!user || input.otp !== '123456') return error(400, 'INVALID_OTP');
-      user.emailVerified = true;
+      const user = { id: runId + '-' + (users.size + 1), email: input.email,
+        name: input.name, password: input.password, emailVerified: false };
+      users.set(input.email, user);
+      setCookie(user);
     } else if (method === 'sign-in/email') {
       const user = users.get(input.email);
       if (!user || user.password !== input.password) return error(401, 'INVALID_EMAIL_OR_PASSWORD');
-      if (!user.emailVerified) return error(403, 'EMAIL_NOT_VERIFIED');
       setCookie(user);
     } else if (method === 'get-session') {
       data = current ? session(current) : null;
@@ -174,7 +174,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
       const user = users.get(input.email);
       if (!user || input.otp !== '123456') return error(400, 'INVALID_OTP');
       user.password = input.password;
-    } else if (!['email-otp/send-verification-otp', 'forget-password/email-otp'].includes(method)) {
+    } else if (method !== 'forget-password/email-otp') {
       assert.fail('Unexpected Auth SDK endpoint ' + method);
     }
     return route.fulfill({ status: 200, headers, body: JSON.stringify(data) });
@@ -184,21 +184,26 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   page.on('pageerror', error => pageErrors.push(error.message));
   const popupUrl = `chrome-extension://${id}/popup.html`;
   await page.goto(popupUrl);
+  await page.locator('#show-account').waitFor({ state: 'visible' });
   await page.locator('#show-account').click();
+  try { await page.locator('#account-panel').waitFor({ state: 'visible', timeout: 5000 }); }
+  catch (error) {
+    console.error({ accountStatus: await page.locator('#account-status').innerText(), pageErrors,
+      popupUrl: page.url(), panelClass: await page.locator('#account-panel').getAttribute('class') });
+    throw error;
+  }
+  await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   const emailA = `bridge-a-${runId}@example.test`, emailB = `bridge-b-${runId}@example.test`;
   const password = 'Synthetic-password-123';
   async function register(email) {
+    await page.locator('#account-panel').waitFor({ state: 'visible' });
+    await page.locator('#account-sign-in').waitFor({ state: 'visible' });
     await page.locator('#open-sign-up').click();
     await page.locator('#signup-name').fill('Synthetic account');
     await page.locator('#signup-email').fill(email);
     await page.locator('#signup-password').fill(password);
     await page.locator('#account-sign-up button[type=submit]').click();
-    try { await page.locator('#account-verify').waitFor({ state: 'visible', timeout: 15000 }); }
-    catch (error) {
-      console.error({ accountStatus: await page.locator('#account-status').innerText(),
-        frames: page.frames().map(frame => frame.url()), authRequests, apiRequests, pageErrors });
-      throw error;
-    }
+    await page.locator('#account-sign-out').waitFor({ state: 'visible', timeout: 15000 });
   }
   async function signIn(email, secret = password) {
     await page.locator('#account-email').fill(email);
@@ -206,21 +211,13 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     await page.locator('#account-sign-in button[type=submit]').click();
   }
   await register(emailA);
-  expiredCode = true;
-  await page.locator('#verify-code').fill('123456');
-  await page.locator('#account-verify button[type=submit]').click();
-  await page.getByText('This code expired. Request a new code and try again.', { exact: true }).waitFor({ timeout: 5000 });
-  expiredCode = false;
-  await page.locator('#resend-code').click();
-  await page.getByText('If eligible, a new verification code has been sent.', { exact: true }).waitFor();
-  await page.locator('#verify-code').fill('123456');
-  await page.locator('#account-verify button[type=submit]').click();
+  await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
-  checks.push('signup, expired verification code, resend, verification without automatic login');
   await signIn(emailA, 'Wrong-password');
   await page.getByText('Email or password was not accepted. Sign in again.', { exact: true }).waitFor();
   await signIn(emailA);
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
+  checks.push('unverified signup and password sign-in succeed without an email code');
   const beforeProtocolChecks = authRequests;
   const protocol = await page.evaluate(async ({ apiOrigin, authUrl }) => {
     const frame = document.createElement('iframe');
@@ -245,13 +242,14 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     }
     const results = [await attempt(1, '$fetch', { url: 'https://attacker.example.test' }),
       await attempt(2, 'getSession', { arbitrary: 'not allowed' }),
-      await attempt(3, 'resend', { email: 'a@example.test', type: 'sign-in' })];
+      await attempt(3, 'verifyEmail', { email: 'a@example.test', otp: '123456' }),
+      await attempt(4, 'resend', { email: 'a@example.test', type: 'email-verification' })];
     frame.remove();
     return results;
   }, { apiOrigin, authUrl });
-  assert.deepEqual(protocol, [400, 400, 400]);
+  assert.deepEqual(protocol, [400, 400, 400, 400]);
   assert.equal(authRequests, beforeProtocolChecks);
-  checks.push('hosted bridge rejects arbitrary SDK calls, extra fields and unsupported OTP operations');
+  checks.push('bridge rejects arbitrary SDK calls, extra fields and removed signup-verification OTP operations');
   await page.reload();
   await page.locator('#show-account').click();
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
@@ -296,8 +294,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await register(emailB);
-  await page.locator('#verify-code').fill('123456');
-  await page.locator('#account-verify button[type=submit]').click();
+  await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await signIn(emailB);
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
@@ -333,7 +330,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#signup-email').fill(emailA);
   await page.locator('#signup-password').fill(password);
   await page.locator('#account-sign-up button[type=submit]').click();
-  await page.getByText(/Try signing in or verifying your email/).waitFor();
+  await page.getByText(/Try signing in instead/).waitFor();
   await page.locator('#open-sign-in').click();
   await page.locator('#open-recover').click();
   await page.locator('#recovery-email').fill(emailA);

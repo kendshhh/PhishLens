@@ -95,9 +95,7 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     ready, refresh, client: guarded, get state() { return current; },
     subscribe(listener) { listeners.add(listener); listener(current); return () => listeners.delete(listener); },
     signIn: input => authenticate('signIn', input),
-    verifyEmail: input => authenticate('verifyEmail', input),
     signUp: input => authenticate('signUp', input),
-    resend: input => adapter.resend(input),
     recover: input => adapter.recover(input),
     async resetPassword(input) {
       await adapter.resetPassword(input);
@@ -118,6 +116,6 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
 export const unavailableAccounts = {
   async restore() { return null; },
   async signOut() {},
-  ...Object.fromEntries(['signIn', 'signUp', 'verifyEmail', 'resend', 'recover', 'resetPassword'].map(name =>
+  ...Object.fromEntries(['signIn', 'signUp', 'recover', 'resetPassword'].map(name =>
     [name, async () => { throw new Error('Account sign-in is not connected yet. Local scanning is still available.'); }]))
 };

@@ -4,7 +4,6 @@ export function createMockAccounts(storage) {
     id: name, name: name === 'ada' ? 'Ada Demo' : 'Bea Demo', email: `${name}@example.test`,
     emailVerified: true, password: 'Demo-only-123!'
   }]));
-  let pending;
   const emailOf = input => {
     const email = input.email.trim().toLowerCase();
     if (!/^[^@\s]+@example\.test$/.test(email)) throw new Error('Use a fictional @example.test address in this demo.');
@@ -29,17 +28,10 @@ export function createMockAccounts(storage) {
       const email = emailOf(input);
       if (!input.name.trim() || input.password.length < 8) throw new Error('Enter a name and a password with at least 8 characters.');
       if (users.has(email)) throw new Error('This demo account already exists. Sign in instead.');
-      pending = { id: email, name: input.name.trim(), email, password: input.password, emailVerified: false };
-      users.set(email, pending);
-      return establish(pending);
+      const user = { id: email, name: input.name.trim(), email, password: input.password, emailVerified: false };
+      users.set(email, user);
+      return establish(user);
     },
-    async verifyEmail(input) {
-      if (!pending || pending.email !== emailOf(input) || input.code !== '123456') throw new Error('The demo verification code is incorrect.');
-      pending.emailVerified = true;
-      const session = establish(pending); pending = null;
-      return session;
-    },
-    async resend(input) { emailOf(input); },
     async recover(input) { emailOf(input); },
     async resetPassword(input) {
       const email = emailOf(input);
