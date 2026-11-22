@@ -1,18 +1,20 @@
 import assert from 'node:assert/strict';
 import { appendFile } from 'node:fs/promises';
-import { readStagingHistory } from './staging_history.mjs';
+import { readStagingHistory, writeHistoryAccessOutput } from './staging_history.mjs';
 
 const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const timeoutMs = Number(process.env.STAGING_SMOKE_TIMEOUT_MS || 120000);
 const maxAttempts = Number(process.env.STAGING_MAX_ATTEMPTS || 30);
 const retryDelayMs = Number(process.env.STAGING_RETRY_DELAY_MS || 3000);
-const retryableStatuses = new Set([408, 425, 429, 502, 503, 504]);
+const retryableStatuses = new Set([408, 425, 429]);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let currentStage = { name: 'startup readiness', endpoint: '/health', status: undefined };
 
 function transient(error) {
     // Once an HTTP response exists, classify its status before reading any error text.
-    if (Number.isInteger(error?.status)) return retryableStatuses.has(error.status);
+    if (Number.isInteger(error?.status)) {
+        return retryableStatuses.has(error.status) || (error.status >= 500 && error.status <= 599);
+    }
     const messages = [];
     const seen = new Set();
     let current = error;
@@ -94,7 +96,7 @@ async function retryStage(name, path, operation, deadline) {
 
             const remainingMs = deadline - Date.now();
             console.error(
-                `Staging ${name} attempt ${attempts}/${maxAttempts} failed; retrying in ${Math.min(retryDelayMs, remainingMs)} ms: ${error.message}`,
+                `Staging ${name} attempt ${attempts}/${maxAttempts} failed; retrying in ${Math.min(retryDelayMs, remainingMs)} ms: ${redact(error.message)}`,
             );
             await sleep(Math.min(retryDelayMs, remainingMs));
         }
@@ -103,6 +105,7 @@ async function retryStage(name, path, operation, deadline) {
     if (lastError) {
         lastError.endpoint ||= currentStage.endpoint;
         lastError.attempts = attempts;
+        lastError.maxAttempts = maxAttempts;
         throw lastError;
     }
     throw requestError(
@@ -114,7 +117,24 @@ async function retryStage(name, path, operation, deadline) {
 function redact(value) {
     return String(value)
         .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
-        .replace(/((?:password|token|secret|api[_-]?key)=)[^&\s]+/gi, '$1[redacted]');
+        .replace(/((?:password|token|secret|api[_-]?key)=)[^&\s]+/gi, '$1[redacted]')
+        .replace(/(["']?(?:password|token|secret|api[_-]?key|authorization)["']?\s*[:=]\s*["']?)[^"'&\s,;}]+/gi, '$1[redacted]');
+}
+
+function reportStagingFailure(error) {
+    const endpoint = error?.url || error?.endpoint || currentStage.endpoint;
+    const status = Number.isInteger(error?.status) ? error.status : 'unavailable';
+    const origin = error?.origin || 'assertion';
+    const category = error?.category || 'staging_contract';
+    const code = error?.code || 'staging_assertion_failed';
+    const attempts = Number.isInteger(error?.attempts) ? error.attempts : 1;
+    const max = Number.isInteger(error?.maxAttempts) ? error.maxAttempts : maxAttempts;
+    console.error(`Staging check failed: GET ${redact(endpoint)}`);
+    console.error(`status=${status} origin=${origin} category=${category} code=${code} attempts=${attempts}/${max}`);
+    if (error?.responseBody) {
+        console.error(`Response body (bounded): ${redact(error.responseBody)}`);
+    }
+    console.error(redact(error instanceof Error ? error.message : String(error)));
 }
 
 async function writeFailureSummary(error) {
@@ -157,10 +177,17 @@ async function main() {
     const result = await retryStage('saved-report history', '/api/analyses', async remainingMs => {
         const items = await readStagingHistory(
             baseUrl,
-            undefined,
-            { timeoutMs: Math.max(1, Math.min(10000, remainingMs)) },
+            fetch,
+            {
+                attempts: 1,
+                delayMs: 0,
+                timeoutMs: Math.max(1, Math.min(10000, remainingMs)),
+            },
         );
         currentStage.status = items === null ? 401 : 200;
+        if (process.argv.includes('--github-output')) {
+            await writeHistoryAccessOutput(items, process.env.GITHUB_OUTPUT);
+        }
         return items === null ? { kind: 'authentication-required' } : { kind: 'history', items };
     }, deadline);
 
@@ -187,6 +214,7 @@ main().catch(async error => {
     } catch (summaryError) {
         console.error(`Could not write GitHub step summary: ${summaryError instanceof Error ? summaryError.message : String(summaryError)}`);
     }
-    console.error(`Staging ${currentStage.name} failed: ${error instanceof Error ? error.message : String(error)}`);
+    reportStagingFailure(error);
+    console.error(`Staging ${currentStage.name} failed: ${redact(error instanceof Error ? error.message : String(error))}`);
     process.exitCode = 1;
 });

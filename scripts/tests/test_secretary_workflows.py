@@ -142,6 +142,8 @@ class SecretaryWorkflowTests(unittest.TestCase):
 
         self.assertIn("npm run test:browser", workflow)
         self.assertIn("Extension-Browser-Acceptance", workflow)
+        self.assertIn("Diagnose hosted history API with bounded retries", finalizer)
+        self.assertIn("node scripts/staging_smoke.mjs --github-output", finalizer)
         self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", hosted)
         self.assertIn("smoke(config['staging_origin'], deploy_sha, report_auth_mode='neon')", finalizer)
         self.assertIn("('/auth/bridge', 'text/html')", finalizer)

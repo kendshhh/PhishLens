@@ -42,6 +42,15 @@ Persistent acceptance uses the live staging API and Neon Auth; mock results do
 not satisfy it. The workflow captures sanitized evidence bound to the extension
 ZIP, backend SHA, project/branch, and service identity.
 
+Immediately before product acceptance, the exact-head workflow runs a read-only
+smoke against `/health`, `/ready`, and `/api/analyses` through the extension's
+validated history client. It records `history_access_mode` as `auth_required` or
+`anonymous` and reports the endpoint, status, transport origin, error category,
+error code, attempt count, and bounded response body on failure. Only transport
+failures and HTTP 408, 425, 429, or 5xx responses are retried. Permanent 4xx,
+invalid JSON, and schema mismatches fail without retry. This diagnostic does not
+replace the authenticated acceptance that follows.
+
 The model gate is reported separately. Product CRUD evidence may identify
 `model_quality=blocked`, but that cannot authorize release. Release staging and
 production promotion require an approved representative held-out evaluation,

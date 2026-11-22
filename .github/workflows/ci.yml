@@ -1123,6 +1123,14 @@ jobs:
               print(f'PR #{number} changed after read-only finalization; authenticated acceptance skipped.')
           PY
 
+      - name: Diagnose hosted history API with bounded retries
+        id: hosted-history-smoke
+        if: steps.staging-acceptance-preflight.outputs.current == 'true'
+        working-directory: pr-source
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: node scripts/staging_smoke.mjs --github-output
+
       - name: Run authenticated extension and persistent CRUD acceptance
         id: staging-product-acceptance
         if: steps.staging-acceptance-preflight.outputs.current == 'true'
