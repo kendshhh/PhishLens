@@ -20,12 +20,15 @@ flowchart TD
   C --> D{Application change, same repo, ready, CI passed?}
   D -->|Yes| E[Staging environment trust approval]
   E --> S[Serialized exact-SHA Render staging deploy]
-  S --> V[Health, DB readiness, SHA, seeded history]
-  V --> Z[Saved-report synthetic AI/CRUD, staging ZIP, and deployment evidence]
+  S --> V[Exact SHA, health/readiness, and demo history or Neon auth boundary]
+  V --> MODE{Staging auth mode}
+  MODE -->|Demo| DEMO[Saved-report synthetic CRUD, staging ZIP, and deployment evidence]
+  MODE -->|Neon| NEON[Preflight status passes; authenticated acceptance remains pending]
   D -->|Docs only| N[Secretary staging check: success, not applicable]
   D -->|Fork, draft or failure| B[Explicit blocked or failed result]
   C --> R
-  V --> R
+  DEMO --> R
+  NEON --> R
   N --> R
   B --> R
   R --> A[One bot report; optional bounded AI explanation]
@@ -55,7 +58,7 @@ status reconciliation, not continuous monitoring.
 | Deterministic CI | Install, lint, mock AI tests, migrations/seed in disposable PostgreSQL, package | Fix failures; inspect coverage |
 | Secretary | Read patches/evidence, flag bounded heuristics, update its own report | Assess concerns and uncovered code |
 | Optional Gemini | Explain sanitized metadata, validate JSON, fall back on failure | Enable a separate capped key and approve external data policy |
-| Preview | Deploy exact eligible SHA, run saved-report synthetic AI/CRUD, test packaged browser scenarios, build staging ZIP | Approve deployment trust; check production-specific behavior and submit formal review |
+| Preview | Deploy exact eligible SHA; in demo mode run synthetic CRUD and package browser scenarios; in Neon mode verify identity/readiness/auth boundary and leave authenticated acceptance pending | Approve deployment trust and Auth acceptance separately; check production-specific behavior and submit formal review |
 | Review | Provide checklist and evidence links | Record manual test and submit formal review |
 | Merge | Nothing | Authorized human merges after required checks/reviews |
 | Production | Existing Render deployment plus read-only observer | Decide and execute rollback if needed |
@@ -142,6 +145,17 @@ already known from `git remote`; the placeholder in the request did not block wo
    pause in-flight old jobs while moving the key. Complete the documented
    serialized bootstrap/cutover before retiring the old controller.
    The new workflow no longer executes a PR deployment script with a secret.
+   Also create the repository Actions secret `SECRETARY_PR_READ_TOKEN` as a
+   fine-grained read-only credential restricted to `kendshhh/PhishLens`, with
+   **Pull requests: read** permission only (GitHub's required Metadata read is
+   automatic). The trusted `workflow_run` controller uses this credential only
+   for live PR state/head GET requests; `GITHUB_TOKEN` remains responsible for
+   publishing checks, statuses and deployment records. The workflow passes the
+   associated PR number and head SHA from `workflow_run.pull_requests`; it never
+   treats `GITHUB_SHA` (the merge commit in PR workflows) as the staging head.
+   Immediately before creating a deployment, the controller confirms through the
+   read-only API that the PR is still open, eligible and at that same head. If
+   the head or eligibility changed while queued, it stops before deploying.
 3. In `staging` environment variables add:
    - `SECRETARY_PREVIEW_ENABLED` = `true`, **only after** steps 4–6 are verified.
    - `SECRETARY_STAGING_DB_HOST` = the exact Neon hostname mapped to branch
@@ -193,28 +207,32 @@ already known from `git remote`; the placeholder in the request did not block wo
     to reconcile existing open PRs. New PR events and CI completion events run
     automatically. Check the pinned SHA in the comment and deployment view.
 
-The new controller won't deploy unrelated documentation-only PRs; it writes
-`Secretary staging: success — not applicable`, avoiding a permanently pending
-gate after the legacy bootstrap has been retired. Application PRs also need the
-`needs-hosted-staging` label before either hosted controller will deploy. Add the
-label, then rerun CI for the current PR head to request shared staging; the
-existing `staging` environment approval still gates deployment. The repository
-variable `SECRETARY_PREVIEW_ENABLED` must also be `true`; when it is off, the
-check asks for that setting and does not deploy. Without the label,
-`Secretary staging` succeeds with the title **Hosted staging not requested**.
-That outcome means no hosted preview ran and does not count as live staging
-acceptance; the Secretary report states the same and does not wait on hosted
-evidence for an unlabelled PR. Removing the label opts the PR out of later hosted
-runs. Because staging is still shared, another opted-in deployment can replace
-a preview that is still under review; use the label only for the PR currently
-being tested.
+The controller won't deploy unrelated documentation-only PRs; it writes
+`Secretary staging: success — not applicable` for those changes. Application
+and runtime PRs must carry the `needs-hosted-staging` label. Without it, the
+required `Secretary staging` status fails closed and the controller does not
+deploy. Add the label, then rerun CI for the current PR head to request shared
+staging; the existing `staging` environment approval still gates deployment.
+The repository variable `SECRETARY_PREVIEW_ENABLED` must also be `true`; when
+it is off, the check fails and does not deploy. The label is not an approval to
+use production. Because staging is shared, another deployment can replace a
+preview that is still under review; keep one labeled PR active at a time.
+
+This release-gate change is pending review on its task branch. Until it is
+merged and a PR confirms the behavior, `main` still treats an unrequested hosted
+preview as not applicable for application changes.
 
 The required `Secretary staging` context is published as a commit status on the
 exact PR head SHA by the trusted `workflow_run` controller. A separate
 `Secretary staging verification` Check Run carries the detailed staging result.
-The controller uses only trusted default-branch code and posts success only after
-the required staging checks finish; failures and superseded shared previews stay
-non-green.
+The controller uses only trusted default-branch code. In demo mode, the required
+status turns green only after its full hosted checks finish. In Neon mode, that
+protected status means exact-head identity, health/readiness and the expected
+anonymous `401` Bearer challenge passed. The detailed Check Run stays
+`action_required` for authenticated saved-report acceptance, and no CRUD evidence
+or staging package is produced. The preflight status is not Auth or release
+acceptance; keep authenticated acceptance behind its separate approval. Failures
+and superseded shared previews stay non-green.
 The temporary legacy job skips drafts/forks before requesting environment
 access. That skip is not preview acceptance; the new controller records drafts
 and relevant forks as `action_required` on its separate check after installation.

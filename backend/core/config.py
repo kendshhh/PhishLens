@@ -40,3 +40,12 @@ def get_ai_config() -> tuple[str, str | None, str | None]:
         raise RuntimeError("GEMINI_MODEL is required when AI_MODE=gemini")
 
     return mode, api_key, model
+
+
+def ai_analysis_enabled() -> bool:
+    """Return the backend inference switch; explicit malformed values fail closed."""
+    load_dotenv(ENV_FILE, override=False)
+    configured = os.getenv("AI_ANALYSIS_ENABLED")
+    if configured is None:
+        return True
+    return configured.strip().lower() == "true"

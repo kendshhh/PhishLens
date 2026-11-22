@@ -1,6 +1,111 @@
 # Pipeline Metrics
 
-## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
+## Current service identity refresh — 2026-11-21
+
+This read-only refresh records service identity and endpoint behavior, not a
+performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
+from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
+and `/model-info` returned HTTP 200; analysis is disabled
+(`analysis_enabled=false`, `provider_mode=disabled`). GitHub `main` later
+advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; this record does not
+verify a later production deploy. Staging serves
+`ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
+`dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
+TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
+No inference, database write, or production smoke workflow run was made.
+An earlier workstation smoke attempt timed out on staging `/health`. GET-only
+smokes at 08:15 and about 08:35 UTC passed `/health`, `/ready`, and anonymous
+history authentication (`401 Bearer`) using review-branch code. The later run
+used the mainline-synchronized smoke helper. Neither run checked
+`/version`, deployed PR identity, or authenticated CRUD, and it is not a
+performance sample. Treat the deployment identity above as the 07:31 UTC
+control-plane observation.
+
+Render metadata reports auto-deploy disabled for both services. Production's
+latest deployment record nevertheless has trigger `new_commit`; this discrepancy
+is unresolved. See the [current environment map](environment-map-2026-11-21.md)
+and [release record](release-record-2026-11-21.md). The November 20
+delivery sample below remains the latest performance measurement; its service
+identity is historical.
+
+## Latest measured delivery sample — 2026-11-20 17:05 UTC
+
+The four latest successful `CI` push runs available at the 17:05 UTC cutoff
+covered successive `main` commits through
+`811980c2cbf70d9957146bf329627f0826a018f1`. Workflow wall time from run start
+to completion had median **1.30 minutes**, nearest-rank p90 **1.90 minutes**,
+and range **1.10–1.90 minutes** (`n=4`). The latest [CI run
+44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624)
+passed Backend and Extension checks. Associated [AI evaluation
+44779598647](https://github.com/kendshhh/PhishLens/actions/runs/44779598647),
+[workflow lint 44779598943](https://github.com/kendshhh/PhishLens/actions/runs/44779598943),
+[dependency security 44779598600](https://github.com/kendshhh/PhishLens/actions/runs/44779598600)
+and [CodeQL 44779598763](https://github.com/kendshhh/PhishLens/actions/runs/44779598763)
+also passed on that SHA. The scheduled [Production drift run
+44812619162](https://github.com/kendshhh/PhishLens/actions/runs/44812619162)
+passed source-SHA, health and readiness checks.
+
+This is a historical performance sample, not the current main check result.
+Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`. Its latest
+CI run [44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
+failed in packaged-extension Chromium browser acceptance; Backend passed.
+Workflow lint [44885148613](https://github.com/kendshhh/PhishLens/actions/runs/44885148613)
+and dependency security [44885148629](https://github.com/kendshhh/PhishLens/actions/runs/44885148629)
+passed. Those current statuses are not included in the timing sample above.
+
+Render's 20 most recent production deploy records through November 20 17:05 UTC
+showed one live deploy, 19 deactivated deploys and no failed statuses. Deployment
+duration median was **74.1525 seconds**, nearest-rank p90 **93.142 seconds**,
+and range **60.299–408.027 seconds** (`n=20`). At the November 21 07:31 UTC
+service refresh, production remained Live on `811980c`; staging was Live on
+`ba0b6c5`. Their deployment identities do not establish an accepted package or
+staging promotion.
+
+The timing sample is descriptive, not a before/after experiment. It excludes
+queue time before workflow start, PR protected-environment waits, merge-to-live,
+user-flow latency, inference cost and recovery. No speed improvement is
+established. Do not present these workflow or deploy durations as extension
+journey performance. No production inference or product data reads were part of
+this metric refresh.
+
+## Previous measured delivery sample — 2026-11-20 13:45 UTC
+
+The latest four completed `CI` push runs to `main`, through PR #256, all
+succeeded. Their workflow wall-time median was **66 seconds**, p90 **82
+seconds**, and range **64–82 seconds**, measured from `startedAt` to
+`updatedAt` (n=4). The latest run is
+[44745905952](https://github.com/kendshhh/PhishLens/actions/runs/44745905952)
+on main SHA `0c382dda175db3570e6bb7122841122254ba131d`; its backend and extension
+jobs passed. Associated [workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44745905840),
+[dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44745905799),
+[deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44745905844)
+and [CodeQL](https://github.com/kendshhh/PhishLens/actions/runs/44745905883)
+also succeeded. Staging integration and hosted staging were skipped.
+
+Render now has 23 completed deploy records in the November 15–20 window: one
+`live`, 22 `deactivated`, and no failed statuses. Their duration median was
+**74.379 seconds**, p90 **93.142 seconds**, and range **60.299–408.027 seconds**;
+the first deploy started at 08:21:34 UTC on November 15 and the latest finished
+at 13:44:56 UTC on November 20. The two newest deploys for `0c382dd` took
+**97.316 seconds** (`dep-dc04rb0473hc738839ug`) and **66.954 seconds**
+(`dep-dc04t5dg1s2s73e5pc00`, the environment update that set
+`AI_ANALYSIS_ENABLED=false`). The latest deploy is Live on the same SHA as
+main. Direct post-deploy endpoint GETs from this audit client returned HTTP
+403, so health/readiness and the effective disabled model state were not
+verified by this refresh.
+
+Sources: [GitHub main workflow runs](https://api.github.com/repos/kendshhh/PhishLens/actions/runs?branch=main&per_page=100)
+and the [Render production deploy inventory](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys).
+This small latest-sample refresh is not a comparable optimization experiment.
+It excludes PR pipeline time, queueing before workflow start, merge-to-live,
+user-flow latency, cost and recovery. It cannot establish improvement against
+the October 17–November 14 baseline below. The optimization criterion remains
+**not met** until a like-for-like before/after experiment measures the same
+workflow and check set over a sufficiently broad sample. No production
+inference was sent. Do not present health/readiness timing as extension journey
+latency or report AI cost without a verified inference path.
+
+## 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
 Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and
@@ -18,7 +123,7 @@ the Render production service deploy inventory. Run-level records are in
 | Merge-to-live | Mean **4.40 min**; median **3.42 min**; p90 **5.47 min** | 64 distinct merged PR SHAs matched to a Render deployment finish time. Of 95 merged PR SHAs, 31 had no matching deploy record; 5 deploy records had no unique merged-PR match. |
 | Failed production deploys | **0 observed** | 69 deploy records in this window; this is not a lifetime count. |
 | Time to recover | **Unknown** | No failed production deploy was observed, so recovery-time sample **n=0**; do not report zero minutes. |
-| Change made and measured effect | **No speed improvement established** | Current local work adds deterministic AI evaluation, spend controls, security gates, and deployment-smoke coverage. The 40-case TF-IDF development evaluation found 18.75% phishing recall; the model threshold is not approved. The work has not been merged/deployed and has no comparable after pipeline sample. |
+| Change made and measured effect | **No speed improvement established** | At this November 14 snapshot, local work added deterministic AI evaluation, spend controls, security gates, and deployment-smoke coverage. The 40-case TF-IDF development evaluation found 18.75% phishing recall; the model threshold was not approved. That work was not yet merged/deployed at the snapshot and had no comparable after-pipeline sample. |
 
 The PR pipeline mean is dominated by environment wait, not runner execution. The
 longest sampled run was 111.4 hours: its Backend, Extension, and Staging
