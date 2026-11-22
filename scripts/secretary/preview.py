@@ -114,20 +114,32 @@ def verify_service(service, config):
         raise RuntimeError("Unexpected staging startup command")
 
 
+def normalize_neon_host(host):
+    """Treat Neon pooled and direct endpoint names as the same branch host."""
+    host = str(host or "").strip().rstrip(".").lower()
+    return re.sub(r"-pooler(?=\.)", "", host)
+
+
 def verify_environment(rows, *, require_authenticated=False):
     values = {row["envVar"]["key"]: row["envVar"]["value"] for row in rows}
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
+    expected_host = normalize_neon_host(expected)
+    production_host = normalize_neon_host(production)
     database = urlsplit(values.get("DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     migration = urlsplit(values.get("STAGING_MIGRATION_DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     app_role = values.get("STAGING_APP_DATABASE_ROLE", "")
-    if not expected or not production or expected == production:
+    if not expected_host or not production_host or expected_host == production_host:
         raise RuntimeError("Declare distinct staging and production database hosts privately in environment variables")
-    if database.hostname != expected or database.path != "/phishlens_dev" or values.get("STAGING_DATABASE_HOST") != expected:
+    if (normalize_neon_host(database.hostname) != expected_host
+            or database.path != "/phishlens_dev"
+            or normalize_neon_host(values.get("STAGING_DATABASE_HOST")) != expected_host):
         raise RuntimeError("Staging database host/name does not match the isolated allowlist")
     if database.username != app_role or app_role != "phishlens_staging_app":
         raise RuntimeError("Staging runtime must use the phishlens_staging_app role")
-    if migration.hostname != expected or migration.path != "/phishlens_dev" or migration.username != "neondb_owner":
+    if (normalize_neon_host(migration.hostname) != expected_host
+            or migration.path != "/phishlens_dev"
+            or migration.username != "neondb_owner"):
         raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
     if migration.username == database.username:
         raise RuntimeError("Staging migration and runtime credentials must use separate roles")
