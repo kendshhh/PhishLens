@@ -1,10 +1,15 @@
-const AUTH_PATH = '/phishlens_dev/auth';
 const NEON_AUTH_SUFFIX = '.aws.neon.tech';
 
 export function validateStagingAuthConfig(environment = process.env) {
     const rawUrl = environment.STAGING_NEON_AUTH_URL;
+    const authDatabase = typeof environment.PHISHLENS_STAGING_AUTH_DATABASE === 'string'
+        ? environment.PHISHLENS_STAGING_AUTH_DATABASE.trim()
+        : '';
     const email = environment.STAGING_AUTH_TEST_EMAIL;
     const password = environment.STAGING_AUTH_TEST_PASSWORD;
+    if (!/^[a-z0-9_]+$/.test(authDatabase)) {
+        throw new Error('Hosted staging requires PHISHLENS_STAGING_AUTH_DATABASE to identify the Auth database.');
+    }
     let url;
     try {
         url = new URL(rawUrl);
@@ -12,7 +17,7 @@ export function validateStagingAuthConfig(environment = process.env) {
         throw new Error('Hosted staging requires a valid STAGING_NEON_AUTH_URL.');
     }
     if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash ||
-        url.pathname !== AUTH_PATH || !url.hostname.includes('.neonauth.') ||
+        url.pathname !== `/${authDatabase}/auth` || !url.hostname.includes('.neonauth.') ||
         !url.hostname.endsWith(NEON_AUTH_SUFFIX)) {
         throw new Error('STAGING_NEON_AUTH_URL must be the HTTPS Neon Auth URL for the staging database.');
     }
