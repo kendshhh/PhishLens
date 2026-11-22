@@ -1,53 +1,72 @@
+import { appendFile } from 'node:fs/promises';
+import { getAnalyses } from '../extension/js/api.js';
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+export function classifyHistoryAccess(items) {
+    if (items === null) return 'auth_required';
+    if (Array.isArray(items)) return 'anonymous';
+    throw new TypeError('Staging history result must be an array or null');
+}
+
+export async function writeHistoryAccessOutput(items, outputPath) {
+    if (typeof outputPath !== 'string' || !outputPath) {
+        throw new TypeError('A GitHub Actions output path is required');
+    }
+    await appendFile(outputPath, `history_access_mode=${classifyHistoryAccess(items)}\n`, 'utf8');
+}
+
 export function isRetryableStagingHistoryError(error) {
-    // An HTTP response is authoritative: retry only explicitly transient
-    // statuses, regardless of phrases in its diagnostic body.
+    // HTTP status wins over response text: permanent client/auth failures never
+    // become retryable because their bounded body contains a transient phrase.
     if (Number.isInteger(error?.status)) {
         return error.status === 408 || error.status === 425 || error.status === 429 ||
             (error.status >= 500 && error.status <= 599);
     }
 
-    // Text matching is reserved for failures that have no HTTP response.
-    return /network request|timed out|timeout|ECONNRESET|ECONNREFUSED|fetch failed|aborted/i.test(
+    return /network request|timed out|timeout|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENETUNREACH|fetch failed|aborted/i.test(
         String(error?.message || error)
     );
 }
 
-async function responseError(response, message) {
-    let body = '';
-    try {
-        body = (await response.text()).trim().slice(0, 500);
-    } catch {}
+export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch, {
+    attempts = 6,
+    delayMs = 1000,
+    timeoutMs = 5000,
+} = {}) {
+    if (!Number.isSafeInteger(attempts) || attempts < 1) {
+        throw new Error('History endpoint attempts must be a positive integer');
+    }
+    if (!Number.isSafeInteger(delayMs) || delayMs < 0) {
+        throw new Error('History retry delay must be a nonnegative integer');
+    }
 
-    const error = new Error(
-        `${message} (HTTP ${response.status})${body ? `: ${body}` : ''}`
-    );
-    error.status = response.status;
-    error.responseBody = body;
-    return error;
-}
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            return await getAnalyses(baseUrl, {
+                fetchImpl,
+                timeoutMs,
+                retries: 0,
+            });
+        } catch (error) {
+            error.attempt = attempt;
+            error.attempts = attempt;
+            error.maxAttempts = attempts;
 
-export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch) {
-    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
-    const response = await fetchImpl(`${cleanBaseUrl}/api/analyses`, {
-        signal: AbortSignal.timeout(10000),
-        redirect: 'error'
-    });
+            if (error.status === 401) {
+                const challenge = error.wwwAuthenticate || '';
+                if (!/^\s*Bearer(?:\s|$)/i.test(challenge)) {
+                    error.code = 'history_missing_bearer_challenge';
+                    error.message += '; anonymous history returned HTTP 401 without the expected Bearer-scheme challenge';
+                    throw error;
+                }
+                return null;
+            }
 
-    if (response.status === 401) {
-        const challenge = response.headers.get('www-authenticate') || '';
-        if (!/^\s*Bearer(?:\s|$)/i.test(challenge)) {
-            throw await responseError(response, 'Anonymous history returned without a Bearer challenge');
+            if (attempt === attempts || !isRetryableStagingHistoryError(error)) throw error;
+            await delay(delayMs);
         }
-        return null;
     }
 
-    if (!response.ok) {
-        throw await responseError(response, 'Failed to load staging history');
-    }
-
-    const data = await response.json();
-    if (!data || !Array.isArray(data.items)) {
-        throw new Error('Invalid staging history data');
-    }
-    return data.items;
+    throw new Error('History endpoint attempts exhausted');
 }

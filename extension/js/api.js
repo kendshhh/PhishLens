@@ -99,59 +99,217 @@ function isValidAnalysis(analysis) {
     return true;
 }
 
-async function readErrorBody(response) {
+const HISTORY_RESPONSE_BODY_LIMIT = 2048;
+const HISTORY_RESPONSE_BODY_PROBE_TIMEOUT_MS = 100;
+
+async function readBoundedResponseBody(response, limit = HISTORY_RESPONSE_BODY_LIMIT) {
     try {
-        const body = await response.text();
-        return body.trim().slice(0, 500);
+        if (typeof response?.body?.getReader === 'function') {
+            const reader = response.body.getReader();
+            const chunks = [];
+            let byteLength = 0;
+            let truncated = false;
+
+            while (byteLength < limit) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const remaining = limit - byteLength;
+                const chunk = value.subarray(0, remaining);
+                chunks.push(chunk);
+                byteLength += chunk.byteLength;
+
+                if (value.byteLength > remaining) {
+                    truncated = true;
+                    break;
+                }
+            }
+
+            if (byteLength === limit && !truncated) {
+                let probeTimeout;
+                try {
+                    truncated = await Promise.race([
+                        reader.read().then(({ done }) => !done),
+                        new Promise(resolve => {
+                            probeTimeout = setTimeout(
+                                () => resolve(true),
+                                HISTORY_RESPONSE_BODY_PROBE_TIMEOUT_MS
+                            );
+                        }),
+                    ]);
+                } finally {
+                    clearTimeout(probeTimeout);
+                }
+            }
+            if (truncated) await reader.cancel().catch(() => {});
+
+            const bytes = new Uint8Array(byteLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+                bytes.set(chunk, offset);
+                offset += chunk.byteLength;
+            }
+
+            return new TextDecoder().decode(bytes) + (truncated ? '… [truncated]' : '');
+        }
+
+        if (typeof response?.text === 'function') {
+            const text = await response.text();
+            return text.length > limit ? text.slice(0, limit) + '… [truncated]' : text;
+        }
     } catch {
-        return "";
+        // Diagnostics must not hide the original HTTP or contract failure.
     }
+
+    return '';
 }
 
-export async function getAnalyses(baseUrl) {
-    const cleanBaseUrl = baseUrl.replace(/\/+$/, "");
+function historyError(message, details, cause) {
+    const error = new Error(message);
+    Object.assign(error, details);
+    if (cause !== undefined) error.cause = cause;
+    return error;
+}
+
+function isRetryableHistoryError(error) {
+    return error?.origin === 'network' || error?.origin === 'timeout' ||
+        error?.status === 408 || error?.status === 425 || error?.status === 429 ||
+        (error?.status >= 500 && error.status <= 599);
+}
+
+function waitForHistoryRetry(delayMs) {
+    return new Promise(resolve => setTimeout(resolve, delayMs));
+}
+
+export async function getAnalyses(baseUrl, {
+    fetchImpl = globalThis.fetch,
+    timeoutMs = 10000,
+    retries = 2,
+    retryDelayMs = 250,
+} = {}) {
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2147483647) {
+        throw new Error('History timeout must be a positive integer in milliseconds');
+    }
+    if (!Number.isSafeInteger(retries) || retries < 0 || retries > 5) {
+        throw new Error('History retries must be an integer between 0 and 5');
+    }
+    if (!Number.isSafeInteger(retryDelayMs) || retryDelayMs < 0 || retryDelayMs > 5000) {
+        throw new Error('History retry delay must be an integer between 0 and 5000 milliseconds');
+    }
+
+    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const url = `${cleanBaseUrl}/api/analyses`;
+    const totalAttempts = retries + 1;
 
-    let response;
-    try {
-        response = await fetch(url, {
-            signal: AbortSignal.timeout(10000),
-            redirect: "error"
-        });
-    } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to load history: network request to ${url} failed (${reason})`);
-    }
+    for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+        try {
+            const response = await fetchImpl(url, {
+                signal: AbortSignal.timeout(timeoutMs),
+                redirect: 'error',
+                headers: { 'Cache-Control': 'no-cache' },
+            });
 
-    if (!response.ok) {
-        const detail = await readErrorBody(response);
-        const suffix = detail ? `: ${detail}` : "";
-        const error = new Error(
-            `Failed to load history: ${url} returned HTTP ${response.status}${suffix}`
-        );
-        error.status = response.status;
-        throw error;
-    }
+            if (!response.ok) {
+                const responseBody = await readBoundedResponseBody(response);
+                const status = response.status;
+                const isServerError = status >= 500 && status <= 599;
+                const isAuthError = status === 401 || status === 403;
+                const category = isServerError ? 'staging_api_outage' :
+                    isAuthError ? 'authentication_authorization' : 'http_client_error';
+                const code = status >= 400 && status <= 499 ? 'history_http_4xx' :
+                    isServerError ? 'history_http_5xx' : 'history_http_error';
+                const bodyDetail = responseBody ? `; response body: ${responseBody}` : '';
+                throw historyError(
+                    `History request failed (HTTP ${status}) at ${url}${bodyDetail}`,
+                    {
+                        code,
+                        category,
+                        origin: 'http',
+                        status,
+                        url,
+                        timeoutMs,
+                        responseBody,
+                        wwwAuthenticate: response.headers?.get?.('www-authenticate') || '',
+                    }
+                );
+            }
 
-    let data;
-    try {
-        data = await response.json();
-    } catch (error) {
-        if (error instanceof Error) throw error;
-        throw new Error("Invalid history response: response was not valid JSON");
-    }
+            const diagnosticResponse = typeof response.clone === 'function' ? response.clone() : null;
+            const responseBodyPromise = diagnosticResponse ?
+                readBoundedResponseBody(diagnosticResponse) : Promise.resolve('');
+            let data;
+            try {
+                data = await response.json();
+            } catch (cause) {
+                const responseBody = await responseBodyPromise;
+                throw historyError(
+                    `History response is not valid JSON at ${url}${responseBody ? `; response body: ${responseBody}` : ''}`,
+                    {
+                        code: 'history_invalid_json',
+                        category: 'backend_contract_mismatch',
+                        origin: 'contract',
+                        status: response.status,
+                        url,
+                        timeoutMs,
+                        responseBody,
+                    },
+                    cause
+                );
+            }
 
-    if (!data || !Array.isArray(data.items)) {
-        throw new Error("Invalid history data: response must contain an items array");
-    }
+            let invalidReason = '';
+            if (!data || !Array.isArray(data.items)) {
+                invalidReason = 'response must contain an items array';
+            } else if (data.items.some(analysis => !isValidAnalysis(analysis))) {
+                invalidReason = 'one or more history records do not match the expected schema';
+            }
 
-    for (const analysis of data.items) {
-        if (!isValidAnalysis(analysis)) {
-            throw new Error("Invalid history data: response contains an invalid analysis record");
+            if (invalidReason) {
+                const responseBody = await responseBodyPromise;
+                throw historyError(
+                    `Invalid history data at ${url}: ${invalidReason}${responseBody ? `; response body: ${responseBody}` : ''}`,
+                    {
+                        code: 'history_schema_mismatch',
+                        category: 'backend_contract_mismatch',
+                        origin: 'contract',
+                        status: response.status,
+                        url,
+                        timeoutMs,
+                        responseBody,
+                    }
+                );
+            }
+
+            return data.items;
+        } catch (cause) {
+            const error = cause?.category ? cause : historyError(
+                `${cause?.name === 'TimeoutError' || cause?.name === 'AbortError' ? 'History request timed out' : 'History network request failed'} at ${url}: ${cause?.message || 'unknown transport error'}`,
+                {
+                    code: cause?.name === 'TimeoutError' || cause?.name === 'AbortError' ?
+                        'history_timeout' : 'history_network_error',
+                    category: 'transport_failure',
+                    origin: cause?.name === 'TimeoutError' || cause?.name === 'AbortError' ?
+                        'timeout' : 'network',
+                    status: null,
+                    url,
+                    timeoutMs,
+                    responseBody: '',
+                },
+                cause
+            );
+
+            error.attempt = attempt;
+            error.attempts = attempt;
+            error.maxAttempts = totalAttempts;
+            if (attempt < totalAttempts && isRetryableHistoryError(error)) {
+                await waitForHistoryRetry(retryDelayMs * attempt);
+                continue;
+            }
+            throw error;
         }
     }
 
-    return data.items;
+    throw new Error('History request attempts exhausted');
 }
 
 export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { createTimeoutMs = 25000, requiredModel, getAccessToken } = {}) {
@@ -175,7 +333,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                 error.code = 'session_unavailable';
                 throw error;
             }
-            if (typeof token !== 'string' || !/^[-A-Za-z0-9._+\/]+=*$/.test(token)) {
+            if (typeof token !== 'string' || !/^[A-Za-z0-9._~+/-]+=*$/.test(token)) {
                 const error = new Error('Sign in to access saved analyses.');
                 error.status = 401;
                 error.code = 'authentication_required';
