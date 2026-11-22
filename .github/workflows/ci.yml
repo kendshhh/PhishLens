@@ -950,12 +950,8 @@ jobs:
               raise SystemExit('GitHub and Render Neon Auth targets do not match the owner-approved branch.')
           if os.environ.get('STAGING_BASE_URL', '').rstrip('/') != target_config['staging_origin']:
               raise SystemExit('Staging API origin does not match the owner-approved Auth origin.')
-          email_a = os.environ.get('STAGING_AUTH_USER_A_EMAIL', '').strip().lower()
-          email_b = os.environ.get('STAGING_AUTH_USER_B_EMAIL', '').strip().lower()
-          password_a = os.environ.get('STAGING_AUTH_USER_A_PASSWORD', '')
-          password_b = os.environ.get('STAGING_AUTH_USER_B_PASSWORD', '')
-          if not email_a or not email_b or email_a == email_b or not password_a or not password_b:
-              raise SystemExit('Hosted staging requires two distinct, pre-registered synthetic Auth accounts.')
+          # Test-account credentials are consumed by the post-deploy acceptance
+          # runner; keep this pre-deploy check focused on target safety.
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self, req, fp, code, msg, headers, newurl):
                   return None
