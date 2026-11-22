@@ -23,8 +23,8 @@ SEED_TIMEOUT_SECONDS = 180
 # Pin hosted staging to the verified `pr-58-staging` Neon endpoint. Updating this
 # pin requires a reviewed Neon project/branch mapping; Render variables alone
 # must not be able to redirect startup to production or another branch.
-STAGING_NEON_ENDPOINT_ID = "ep-soft-fog-b3orfa8a"
-STAGING_NEON_ENDPOINT_SUFFIX = ".c-4.ap-southeast-1.aws.neon.tech"
+STAGING_NEON_ENDPOINT_ID = "ep-winter-wind-a1y2r1db"
+STAGING_NEON_ENDPOINT_SUFFIX = ".ap-southeast-1.aws.neon.tech"
 STAGING_NEON_ENDPOINT_HOSTS = frozenset({
     f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
     f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
