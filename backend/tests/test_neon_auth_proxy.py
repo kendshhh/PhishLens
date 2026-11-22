@@ -1,4 +1,5 @@
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
@@ -89,3 +90,23 @@ def test_auth_proxy_answers_extension_preflight_without_contacting_neon():
     assert response.status_code == 204
     assert response.headers["Access-Control-Allow-Origin"] == EXTENSION_ORIGIN
     assert response.headers["Access-Control-Allow-Headers"] == "content-type"
+
+
+@pytest.mark.parametrize("auth_url", [
+    "", "https://[malformed-host", "https://ep-test.neonauth.aws.neon.tech:invalid/neondb/auth",
+    "https://ep-test.neonauth.aws.neon.tech:70000/neondb/auth",
+    "https://user:secret@ep-test.neonauth.aws.neon.tech/neondb/auth",
+    "https://untrusted.example.test/neondb/auth",
+])
+def test_invalid_proxy_configuration_returns_safe_503_before_network(monkeypatch, auth_url):
+    monkeypatch.setenv("NEON_AUTH_BASE_URL", auth_url)
+    def unexpected_client(**kwargs):
+        pytest.fail("Invalid configuration must not contact Auth")
+    monkeypatch.setattr(neon_auth.httpx, "AsyncClient", unexpected_client)
+    response = TestClient(app, base_url=STAGING_ORIGIN).post(
+        "/api/auth/sign-in/email", headers={"Origin": EXTENSION_ORIGIN}, json={},
+    )
+    assert response.status_code == 503
+    assert response.json() == {"message": "Authentication configuration unavailable"}
+    assert response.headers["Access-Control-Allow-Origin"] == EXTENSION_ORIGIN
+    assert response.headers["Access-Control-Allow-Credentials"] == "true"

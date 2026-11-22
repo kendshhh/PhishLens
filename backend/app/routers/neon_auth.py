@@ -27,11 +27,17 @@ def _auth_base_url() -> str:
     import os
 
     value = os.getenv("NEON_AUTH_BASE_URL", "").strip().rstrip("/")
-    parsed = urlsplit(value)
-    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
-            or parsed.port is not None or parsed.query or parsed.fragment
-            or ".neonauth." not in parsed.hostname or not parsed.hostname.endswith(".aws.neon.tech")
-            or not parsed.path.endswith("/auth")):
+    try:
+        parsed = urlsplit(value)
+        valid = (parsed.scheme == "https" and bool(parsed.hostname)
+                 and not parsed.username and not parsed.password
+                 and parsed.port is None and not parsed.query and not parsed.fragment
+                 and ".neonauth." in parsed.hostname
+                 and parsed.hostname.endswith(".aws.neon.tech")
+                 and parsed.path.endswith("/auth"))
+    except (TypeError, ValueError):
+        valid = False
+    if not valid:
         raise HTTPException(503, "Authentication configuration unavailable")
     return value
 
@@ -91,7 +97,10 @@ async def neon_auth_proxy(auth_path: str, request: Request) -> Response:
     if request.method not in METHODS:
         raise HTTPException(405, "Method not allowed")
 
-    upstream = _auth_base_url() + "/" + auth_path
+    try:
+        upstream = _auth_base_url() + "/" + auth_path
+    except HTTPException:
+        return _cors(JSONResponse({"message": "Authentication configuration unavailable"}, status_code=503), origin)
     raw_query = request.scope.get("query_string", b"").decode("latin-1")
     if raw_query:
         upstream += "?" + raw_query

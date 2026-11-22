@@ -72,13 +72,12 @@ Sources inspected November 8, 2026:
 
 ## Runtime behavior
 
-- Signup uses signUp.email. Provider-managed signup OTP must be enabled; there
-  is no automatic second OTP request. Resend explicitly calls
-  emailOtp.sendVerificationOtp with type email-verification.
-- Verification uses emailOtp.verifyEmail. If the provider does not establish a
-  session, the UI sends the verified user to email/password sign-in.
+- Signup uses signUp.email without a mandatory email-verification step. The
+  selected provider branch must allow signup and sign-in without verified email.
+  A returned session signs the user in; otherwise the UI offers email/password
+  sign-in. The signup verification screen and resend action are removed.
 - Sign-in uses signIn.email and confirms the provider session and expected email.
-- Restoration requires a verified provider identity and future session expiry.
+- Restoration requires a valid provider identity and future session expiry.
 - The API token supplier rechecks the session, original account ID, JWT shape,
   subject and expiry. It does not verify JWT signatures; FastAPI does that.
   Null tokens block requests. Existing model/idempotency headers remain intact.
@@ -93,7 +92,7 @@ Sources inspected November 8, 2026:
 - Sign-out blocks local token access before requesting remote sign-out. Failed
   remote logout leaves a boolean in extension storage, scoped to the Auth URL.
   It blocks automatic restoration of a surviving cookie across popup and browser
-  restarts until a successful explicit sign-in or verification confirms the
+  restarts until a successful explicit sign-in confirms the
   expected account. Password reset also blocks restoration of the previous
   session. Already-issued JWTs can survive to expiry.
 - Password recovery uses the documented forgetPassword.emailOtp and

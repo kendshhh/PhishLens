@@ -35,17 +35,30 @@ Set `window_start` and `window_end` to the approved ISO timestamps with `+08:00`
 The helper blocks execution outside that window. Cleanup that needs extra time
 requires an explicit extension of its approval; do not silently extend the plan.
 
-The proposed target is shared staging, not a PR-specific branch:
+The target must satisfy `docs/devops/staging.md`: a separate Neon project from
+production, an independent root branch initialized schema-only, and no copied
+production rows. The historical `patient-bird-25428852` / `pr-58-staging` target
+is not the current approved target. The configuration owner must confirm and
+record the canonical project, branch, endpoint and Auth database before testing;
+this runbook does not approve a replacement.
 
-| Component | Proposed identity; reverify before approval |
+| Component | Required identity; record exact values in the private plan |
 | --- | --- |
 | Backend | `https://phishlens-staging.onrender.com` |
-| Neon project | `patient-bird-25428852` |
-| Shared branch | `br-delicate-paper-b381z98i` (`pr-58-staging`) |
-| Application database | `phishlens_dev` |
-| Auth database | `neondb` |
-| Auth base URL | `https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth` |
+| Neon project / branch | Owner-confirmed isolated project and independent root branch |
+| Application / migration database | `phishlens_dev` |
+| Runtime / migration roles | `phishlens_staging_app` / `neondb_owner` |
+| Auth database / URL | Same branch; database must match URL path and package configuration |
 | Expected model | TF-IDF SHA in the example plan; reverify `/model-info` |
+
+Trixia coordinates and executes the two-account browser/API acceptance and
+approved synthetic-account cleanup. Kendra confirms infrastructure, migration
+readiness and rollback; protected staging approval must come from an authorized
+reviewer under the current environment rules. Record an explicit start and end
+with `+08:00`; a previous window is not a new authorization. Signup and sign-in
+use email/password without mandatory signup verification. Confirm this provider
+setting before signup. Password recovery still requires its recovery code;
+removing signup verification does not remove recovery security.
 
 Kendra must verify the Render credential hostname actually identifies that
 branch/database, separately from `/ready`. Record exact runtime auth mode,
@@ -63,7 +76,7 @@ confirmation references record the operator's prior checks, not automated proof.
 
 The normal production package remains unchanged and Auth stays disabled in the
 tracked source. After Kendra confirms the exact paired backend revision and
-Leyan supplies the confirmed Auth URL/database and the extension owner's public
+the configuration owner supplies the confirmed Auth URL/database and the extension owner's public
 manifest key, the staging packager can create an opt-in Auth-enabled ZIP as an
 overlay. The public key is required to make Chrome's extension ID deterministic
 and bind it to the package. Never request, store, or pass the private signing
@@ -97,7 +110,7 @@ unsupported key encodings. It embeds `phishlens-build-evidence.json` in the ZIP 
 the full source/backend SHA, packager SHA, Auth target, exact host permissions,
 public-key digest, and derived Chrome ID/origin. It also writes a sidecar with
 the ZIP and per-file hashes. Keep the ZIP and sidecar together; send both from
-the same build. Leyan should independently hash the received ZIP and run the
+the same build. Trixia should independently hash the received ZIP and run the
 verifier before installation. A hash mismatch means the received archive is
 not the verified candidate and must not be installed.
 
