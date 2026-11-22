@@ -51,7 +51,30 @@ provider/model/prompt identity, one analysis-request attempt count, observed
 provider-call count (or unknown if the service failed before returning mode),
 outcome and limitations. A successful response produces no database write.
 
-### Runtime spend guard and owner setup
+### TF-IDF smoke without external provider spend
+
+The primary TF-IDF path requires model `word_plus_char_wb_C1p0`, artifact SHA-256
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`, request
+cap `1` and external-provider cost cap exactly `0`. Hosting costs are outside
+that cap. The manual enable flags, protected staging approval, trusted origin,
+full source SHA and readiness guards still apply. No Gemini credential or rate
+setting is needed for this path; Gemini cannot use the zero-cost exception.
+
+After preflight, the controller makes one non-persisting request to
+`/analyses/revision/<expected_sha>` with `X-Require-Provider: tfidf`. The backend
+checks that revision and provider before inference. The controller verifies the
+returned revision header and the result's provider, model ID and model hash.
+Any mismatch, invalid response or transport failure stops without retry. No
+saved-report endpoint is used. A passing artifact records one local-model
+inference and zero external-provider calls, separately from database/browser
+acceptance and model quality.
+
+This addition changes no environment settings and does not dispatch the workflow.
+The user's existing target, preflight, idle-window and operator conditions must
+be satisfied before enabling it. Its 11 controller tests replace every HTTP
+response; they are not a hosted smoke result.
+
+### Gemini runtime spend guard and owner setup
 
 Gemini inference is blocked unless the service has valid values for
 `GEMINI_PER_REQUEST_COST_CAP_USD`, `GEMINI_INPUT_USD_PER_MILLION_TOKENS`,
@@ -88,10 +111,10 @@ only after that review:
 |---|---|
 | `STAGING_BASE_URL` | The exact origin in `.github/secretary.json` |
 | `AI_PROVIDER_SMOKE_ENABLED` | `true` only while the owner-approved smoke is allowed |
-| `AI_PROVIDER_SMOKE_PROVIDER` | `gemini` |
-| `AI_PROVIDER_SMOKE_MODEL` | The owner-approved configured model name |
+| `AI_PROVIDER_SMOKE_PROVIDER` | `gemini` or `tfidf`, explicitly owner-approved |
+| `AI_PROVIDER_SMOKE_MODEL` | The approved Gemini model name, or `word_plus_char_wb_C1p0` for TF-IDF |
 | `AI_PROVIDER_SMOKE_MAX_REQUESTS` | `1` |
-| `AI_PROVIDER_SMOKE_COST_CAP_USD` | Must equal the deployed `GEMINI_PER_REQUEST_COST_CAP_USD` |
+| `AI_PROVIDER_SMOKE_COST_CAP_USD` | Gemini: match the positive deployed per-request cap. TF-IDF: exactly `0` external-provider charge. |
 
 On the protected Render staging service, set the matching `GEMINI_MODEL`,
 `GEMINI_COST_MODEL_ID`, `GEMINI_PER_REQUEST_COST_CAP_USD`, and two model-specific rate variables. Keep

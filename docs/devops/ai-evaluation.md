@@ -1,18 +1,22 @@
 # AI evaluation workflow
 
-The deterministic AI workflow runs for pull requests and main pushes when
-backend/extension AI code, prompt/schema/model settings, evaluation scripts,
-AI tests, or pinned AI dependencies change. It tests provider contracts and
-verifies that Gemini request and per-run dollar caps block inference before the
-provider call. It also evaluates the bundled TF-IDF model over the 40 synthetic
-development cases. This check reports evaluation completion; it does not
-approve model quality until an AI owner has set and reviewed thresholds.
+The deterministic AI workflow runs on pull requests, main pushes, and manual
+dispatch. The `Detect AI evaluation changes` job decides whether the workload
+applies. The always-reported `Deterministic AI Evaluation` job runs provider-
+contract and spend-cap tests plus the 40-case TF-IDF development evaluation
+when AI-related paths change. For unrelated changes, it posts an explicit
+not-applicable result without running the workload. If change detection fails,
+the job fails closed instead of reporting N/A. N/A is not an evaluation pass or
+model-quality approval.
 
 Normal CI and this workflow make no paid provider request. The development
 cohort records model behavior and confusion metrics but is not a held-out test
-set. Current code reports those metrics without enforcing an accuracy threshold
-because the AI owner has not approved one. A held-out cohort stays separate and
-must follow the review protocol in
+set and has no numeric model-quality cutoff. Separately, the AI owner approved
+TF-IDF v12a for advisory screening on the frozen English source-pair cohort in
+[#92](https://github.com/kendshhh/PhishLens/issues/92), using thresholds of at
+least 90% phishing recall, at most 3% legitimate-only false positives, and 100%
+valid output. Broader contemporary-source evaluation remains open. Held-out
+cohorts must follow the review protocol in
 `docs/ai/tfidf-sprint-3-evaluation-protocol.md`.
 
 ## Latest local development evaluation

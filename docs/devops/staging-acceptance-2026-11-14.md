@@ -1,5 +1,9 @@
 # Staging acceptance — 2026-11-14
 
+> This record contains historical snapshots, including PR #61 branch evidence.
+> Current-main staging acceptance is recorded in
+> [the November 15 run](staging-acceptance-2026-11-15.md).
+
 ## Target identity
 
 - Render service: `phishlens-staging` (`srv-db92irlg1s2s739404i0`), linked to `main`.

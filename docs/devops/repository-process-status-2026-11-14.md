@@ -1,5 +1,8 @@
 # Repository visibility and process evidence — 2026-11-14
 
+> This is a November 14 snapshot. For current `main`, staging acceptance, and
+> production state, see the [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+
 ## Visibility
 
 GitHub's repository API reports `kendshhh/PhishLens` as public. The owner has
