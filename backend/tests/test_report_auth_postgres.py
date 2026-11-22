@@ -122,7 +122,7 @@ def test_two_user_crud_and_legacy_separation_survive_fresh_clients(auth_pg):
 
 def test_unverified_token_is_allowed_but_expired_or_missing_creates_no_mapping(auth_pg):
     c = auth_pg
-    for headers, status in [({}, 401), (c.headers("unverified", emailVerified=False), 200),
+    for headers, status in [({}, 401), (c.headers("unverified", emailVerified=False), 201),
                             (c.headers("bad", exp=1), 401)]:
         response = c.client.post("/api/analyses", headers=headers, json={"body": "Synthetic email"})
         assert response.status_code == status
