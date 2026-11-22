@@ -29,6 +29,7 @@ from scripts.secretary.preview import (
     package,
     preview_gate_enabled,
     publish_preview_status,
+    verify_auth_endpoint,
     verify_environment,
     verify_service,
 )
@@ -800,6 +801,69 @@ class PreviewTests(unittest.TestCase):
             ]
             with self.assertRaisesRegex(RuntimeError, "migration credential"):
                 verify_environment(rows, require_authenticated=True)
+
+    def test_authenticated_environment_is_pinned_to_the_owner_approved_branch(self):
+        approved = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
+        host = approved["staging_database_host"]
+        auth_url = f"https://{approved['staging_auth_host']}/phishlens_dev/auth"
+        rows = render_staging_environment_rows(
+            DATABASE_URL=f"postgresql://phishlens_staging_app:synthetic@{host}/phishlens_dev",
+            STAGING_MIGRATION_DATABASE_URL=f"postgresql://neondb_owner:synthetic@{host}/phishlens_dev",
+            STAGING_DATABASE_HOST=host,
+            STAGING_NEON_EXPECTED_HOST=host,
+            STAGING_NEON_PROJECT_ID=approved["staging_neon_project_id"],
+            STAGING_NEON_BRANCH_ID=approved["staging_neon_branch_id"],
+            NEON_AUTH_BASE_URL=auth_url,
+            REPORT_AUTH_MODE="neon",
+        )
+        with patch.dict(os.environ, {
+            "SECRETARY_STAGING_DB_HOST": host,
+            "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+            "STAGING_AUTH_URL": auth_url,
+            "STAGING_AUTH_DATABASE": "phishlens_dev",
+        }):
+            self.assertEqual(
+                verify_environment(rows, require_authenticated=True, approved_target=approved),
+                "neon",
+            )
+            set_render_environment_value(
+                rows, "NEON_AUTH_BASE_URL",
+                "https://ep-old-target.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            )
+            with self.assertRaisesRegex(RuntimeError, "does not match the isolated staging branch"):
+                verify_environment(rows, require_authenticated=True, approved_target=approved)
+
+    def test_auth_preflight_uses_non_mutating_cors_options_and_rejects_redirect_targets(self):
+        approved = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
+        auth_url = f"https://{approved['staging_auth_host']}/phishlens_dev/auth"
+        origin = approved["staging_origin"]
+
+        class Response:
+            def __init__(self):
+                self.status = 204
+                self.headers = {
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "content-type",
+                    "Access-Control-Allow-Credentials": "true",
+                }
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+        opener = Mock()
+        opener.open.return_value = Response()
+        with patch("scripts.secretary.preview.urllib.request.build_opener", return_value=opener):
+            self.assertEqual(verify_auth_endpoint(auth_url, origin)["status"], "passed")
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.get_method(), "OPTIONS")
+        self.assertEqual(request.headers["Access-control-request-method"], "POST")
+
+        with self.assertRaisesRegex(RuntimeError, "endpoint identity"):
+            verify_auth_endpoint("https://other.neonauth.aws.neon.tech/phishlens_dev/auth", origin)
 
     def test_hosted_staging_rejects_implicit_or_demo_auth_mode(self):
         for rows in (

@@ -41,7 +41,7 @@ checks an exact candidate SHA under the protected `staging` environment.
 | Environment | App / delivery | Database target | Status and boundary |
 | --- | --- | --- | --- |
 | Local development | Developer checkout; `.env` is ignored | Dedicated local/development target | `.env.example` documents app configuration without real values. Do not use hosted staging or production credentials locally. |
-| Staging | Render staging service; GitHub `staging` environment gates hosted workflow | Neon project `phishlens-staging`, branch `staging-root`, database `phishlens_dev` is the current source pin target | The Nov 21 hosted run found a stale source pin; code now targets the staging root. Privately verify the current Render-to-Neon project/branch mapping before hosted writes. Historical `/ready` success alone does not establish branch identity. |
+| Staging | Render staging service; GitHub `staging` environment gates hosted workflow | Neon project `hidden-shadow-38533062` (`phishlens-staging`), branch `br-broad-feather-b3261w7l` (`staging-root`), database `phishlens_dev`, endpoint pin `ep-winter-wind-a1y2r1db` | The selected #268 base updates the database endpoint pin. Privately verify that Render runtime/migration URLs and the configured Auth host still map to this project and branch before deployment or writes. |
 | Production | Render API; checked `main` auto-deploy | Neon `production` branch; production database name is `phishlens_dev` in the current read-only inventory | The live Render `DATABASE_URL` mapping was not freshly compared with Neon during this closeout. Verify target before writes or promotion. |
 
 The database name `phishlens_dev` is used on more than one branch. A database

@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import re
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -120,6 +121,15 @@ def main() -> int:
     parser.add_argument("--production-rows-present", default=os.getenv("STAGING_NEON_PRODUCTION_ROWS_PRESENT", ""))
     args = parser.parse_args()
     try:
+        config_path = Path(__file__).resolve().parents[1] / ".github/secretary.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        normalized = lambda host: re.sub(r"-pooler(?=\.)", "", host.strip().rstrip(".").lower())
+        if (
+            args.project_id != config.get("staging_neon_project_id")
+            or args.branch_id != config.get("staging_neon_branch_id")
+            or normalized(args.expected_host) != normalized(config.get("staging_database_host", ""))
+        ):
+            raise NeonReleaseError("Staging Neon target differs from the owner-approved release target")
         print(json.dumps(verify_branch(
             project_id=args.project_id, branch_id=args.branch_id,
             production_project_id=args.production_project_id,

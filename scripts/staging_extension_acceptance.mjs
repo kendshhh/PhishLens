@@ -35,6 +35,7 @@ let page;
 let activeAccount = null;
 let productionAuthOrigin = null;
 let stagingAuthOrigin = null;
+const authDiagnostics = { status: null, transport: null };
 const accessTokens = new Map();
 const createdIds = new Map();
 const createdAnalysisEvidence = new Map();
@@ -76,6 +77,7 @@ async function verifyPreflight() {
   const packageEvidencePath = path.resolve(required('RELEASE_EXTENSION_EVIDENCE'));
   const aiApprovalRaw = process.env.STAGING_AI_APPROVAL_JSON?.trim() || '';
   const packageEvidence = await readJson(packageEvidencePath);
+  const approvedTarget = await readJson(path.join(root, '.github/secretary.json'));
   const archiveDigest = sha256(await readFile(packagePath));
   assert.equal(packageEvidence.archive_sha256, archiveDigest);
   assert.equal(packageEvidence.source_commit, sourceSha);
@@ -93,8 +95,14 @@ async function verifyPreflight() {
     packageEvidence.auth_configs?.staging?.authUrl || '',
     'Staging Auth URL',
   );
-  assert.equal(required('STAGING_AUTH_URL'), packageEvidence.auth_configs?.staging?.authUrl);
-  assert.equal(required('STAGING_AUTH_DATABASE'), packageEvidence.auth_configs?.staging?.database);
+  const stagingAuthUrl = new URL(packageEvidence.auth_configs?.staging?.authUrl || '');
+  if (stagingAuthUrl.hostname !== approvedTarget.staging_auth_host
+      || stagingAuthUrl.pathname !== '/phishlens_dev/auth'
+      || required('STAGING_AUTH_URL') !== packageEvidence.auth_configs?.staging?.authUrl
+      || required('STAGING_AUTH_DATABASE') !== 'phishlens_dev'
+      || packageEvidence.auth_configs?.staging?.database !== 'phishlens_dev') {
+    throw new Error('Packaged and approved Neon Auth targets differ');
+  }
 
   const extensionOrigin = `chrome-extension://${packageEvidence.chrome_extension_id}`;
   assert.equal(required('STAGING_AUTH_TRUSTED_CHROME_ORIGIN'), extensionOrigin,
@@ -104,6 +112,11 @@ async function verifyPreflight() {
     'The staging Neon branch must be an independent root');
   const branchId = required('STAGING_NEON_BRANCH_ID');
   const stagingProjectId = required('STAGING_NEON_PROJECT_ID');
+  if (branchId !== approvedTarget.staging_neon_branch_id
+      || stagingProjectId !== approvedTarget.staging_neon_project_id
+      || process.env.STAGING_BASE_URL !== approvedTarget.staging_origin) {
+    throw new Error('Acceptance settings do not match the owner-approved staging target');
+  }
   const productionProjectId = required('PRODUCTION_NEON_PROJECT_ID');
   assert.match(stagingProjectId, /^[a-z0-9-]{8,64}$/);
   assert.match(productionProjectId, /^[a-z0-9-]{8,64}$/);
@@ -112,6 +125,19 @@ async function verifyPreflight() {
   assert.match(branchId, /^br-[a-z0-9-]+$/);
   assert.notEqual(branchId, required('PRODUCTION_NEON_BRANCH_ID'));
   assert.equal(required('STAGING_NEON_PRODUCTION_ROWS_PRESENT'), 'false');
+
+  const accountA = {
+    email: required('STAGING_AUTH_USER_A_EMAIL'),
+    password: required('STAGING_AUTH_USER_A_PASSWORD'),
+  };
+  const accountB = {
+    email: required('STAGING_AUTH_USER_B_EMAIL'),
+    password: required('STAGING_AUTH_USER_B_PASSWORD'),
+  };
+  if (accountA.email.trim().toLowerCase() === accountB.email.trim().toLowerCase()
+      || !accountA.password || !accountB.password) {
+    throw new Error('Acceptance requires two distinct, pre-registered synthetic Auth accounts');
+  }
 
   const policyBytes = await readFile(path.join(root, 'docs/devops/release-quality-policy.json'));
   const policy = JSON.parse(policyBytes.toString('utf8'));
@@ -155,7 +181,8 @@ async function verifyPreflight() {
   };
   assert.match(required('STAGING_MIGRATION_REVISION'), /^[A-Za-z0-9_]+$/);
   evidence.ai_acceptance = modelApproval || { status: 'blocked', reason_code: modelApprovalProblem };
-  return { packagePath, packageEvidence, sourceSha, backendSha, imageDigest, branchId, modelApproval, acceptanceMode };
+  return { packagePath, packageEvidence, sourceSha, backendSha, imageDigest, branchId,
+    modelApproval, acceptanceMode, accountA, accountB };
 }
 
 function validateModelApproval(report, policy, policySha) {
@@ -356,6 +383,21 @@ async function observePage(observedPage) {
       if (auth?.startsWith('Bearer ') && activeAccount) accessTokens.set(activeAccount, auth.slice(7));
     }
   });
+  observedPage.on('response', response => {
+    const requestUrl = new URL(response.url());
+    if (requestUrl.origin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/auth/')) {
+      authDiagnostics.status = response.status();
+    }
+  });
+  observedPage.on('requestfailed', request => {
+    const requestUrl = new URL(request.url());
+    if (requestUrl.origin !== STAGING_ORIGIN || !requestUrl.pathname.startsWith('/api/auth/')) return;
+    const errorText = request.failure()?.errorText || '';
+    if (/NAME_NOT_RESOLVED|DNS|ENOTFOUND/i.test(errorText)) authDiagnostics.transport = 'dns';
+    else if (/CERT|SSL|TLS/i.test(errorText)) authDiagnostics.transport = 'tls';
+    else if (/TIMED_OUT|timeout/i.test(errorText)) authDiagnostics.transport = 'timeout';
+    else authDiagnostics.transport = 'network';
+  });
   observedPage.on('request', request => { void getCreatedResponse(request); });
 }
 
@@ -390,7 +432,20 @@ async function waitForAccountToken(account) {
   for (let attempt = 0; attempt < 50 && !accessTokens.has(account); attempt++) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  assert.ok(accessTokens.has(account), 'Authenticated staging report request did not expose a session token in memory');
+  const token = accessTokens.get(account);
+  assert.ok(token, 'Authenticated staging report request did not expose a session token in memory');
+  const parts = token.split('.');
+  assert.equal(parts.length, 3, 'Authenticated account session did not produce a JWT');
+  let claims;
+  try { claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')); }
+  catch { throw new Error('Authenticated account session JWT claims were invalid'); }
+  if (typeof claims.sub !== 'string' || !claims.sub || !Number.isFinite(claims.exp)
+      || claims.exp * 1000 <= Date.now()) {
+    throw new Error('Authenticated account session JWT identity or expiry was invalid');
+  }
+  evidence.auth.verified_account_sessions ||= {};
+  evidence.auth.verified_account_sessions[account] = true;
+  return subjectHash(claims.sub);
 }
 
 async function createReport(subject, owner) {
@@ -517,6 +572,19 @@ async function cleanupUnfinished() {
   }
 }
 
+async function signOutDuringCleanup() {
+  try {
+    const signOut = page?.locator('#account-sign-out');
+    if (signOut && await signOut.isVisible()) {
+      await signOut.click();
+      await signOut.waitFor({ state: 'hidden', timeout: 5000 });
+      evidence.auth.cleanup_sign_out = true;
+    }
+  } catch {
+    evidence.auth.cleanup_sign_out = false;
+  }
+}
+
 async function run() {
   let profile;
   try {
@@ -533,13 +601,33 @@ async function run() {
     profile = await launchExtension(preflight.packagePath, preflight.packageEvidence.chrome_extension_id);
     await verifyAnonymousHistoryIsRejected();
     evidence.phase = 'account-a-auth';
-    const emailA = required('STAGING_AUTH_USER_A_EMAIL');
-    const passwordA = required('STAGING_AUTH_USER_A_PASSWORD');
-    const emailB = required('STAGING_AUTH_USER_B_EMAIL');
-    const passwordB = required('STAGING_AUTH_USER_B_PASSWORD');
+    const { email: emailA, password: passwordA } = preflight.accountA;
+    const { email: emailB, password: passwordB } = preflight.accountB;
     await signIn('a', emailA, `invalid-acceptance-${preflight.sourceSha}`, { invalid: true });
+    authDiagnostics.status = null;
+    authDiagnostics.transport = null;
     await signIn('a', emailA, passwordA);
-    evidence.account_subject_sha256 = { a: subjectHash(emailA.toLowerCase()) };
+    await enterReports();
+    const subjectA = await waitForAccountToken('a');
+    evidence.account_subject_sha256 = { a: subjectA };
+    await page.locator('#account-sign-out').click();
+    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
+
+    evidence.phase = 'account-b-auth';
+    authDiagnostics.status = null;
+    authDiagnostics.transport = null;
+    await signIn('b', emailB, passwordB);
+    await enterReports();
+    const subjectB = await waitForAccountToken('b');
+    evidence.account_subject_sha256.b = subjectB;
+    if (subjectA === subjectB) throw new Error('Synthetic staging accounts resolved to the same Auth identity');
+    await page.locator('#account-sign-out').click();
+    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
+
+    evidence.phase = 'account-a-crud';
+    authDiagnostics.status = null;
+    authDiagnostics.transport = null;
+    await signIn('a', emailA, passwordA);
     await enterReports();
     await waitForAccountToken('a');
     await page.locator('#empty').waitFor({ state: 'visible' });
@@ -581,8 +669,6 @@ async function run() {
     await page.locator('#account-sign-out').click();
     await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
     await signIn('b', emailB, passwordB);
-    evidence.account_subject_sha256.b = subjectHash(emailB.toLowerCase());
-    assert.notEqual(evidence.account_subject_sha256.a, evidence.account_subject_sha256.b);
     await enterReports();
     await waitForAccountToken('b');
     await page.locator('#empty').waitFor({ state: 'visible' });
@@ -622,13 +708,27 @@ async function run() {
     }
   } catch (error) {
     evidence.status = 'blocked';
-    evidence.failure_code = 'staging_acceptance_incomplete';
+    if (['account-a-auth', 'account-b-auth', 'account-a-crud'].includes(evidence.phase)) {
+      evidence.failure_code = authDiagnostics.transport
+        ? `staging_auth_${authDiagnostics.transport}_failure`
+        : authDiagnostics.status >= 500
+          ? 'staging_auth_service_rejected'
+          : authDiagnostics.status >= 400
+            ? 'staging_auth_http_rejected'
+            : 'staging_auth_session_or_verified_account_missing';
+      evidence.auth.failure_http_status = Number.isInteger(authDiagnostics.status) ? authDiagnostics.status : null;
+      evidence.auth.failure_transport_category = authDiagnostics.transport;
+    } else {
+      evidence.failure_code = evidence.phase === 'preflight'
+        ? 'staging_acceptance_preflight_failed'
+        : 'staging_product_acceptance_incomplete';
+    }
     if (['preflight', 'account-a-auth', 'account-b-auth'].includes(evidence.phase)) {
-      const detail = error instanceof Error ? error.message : 'Unknown acceptance error';
-      console.error(`Staging acceptance failed during ${evidence.phase}: ${detail}`);
+      console.error(`Staging acceptance failed: ${evidence.failure_code}; phase=${evidence.phase}.`);
     }
   } finally {
     await cleanupUnfinished();
+    await signOutDuringCleanup();
     await context?.close().catch(() => {});
     if (profile) await rm(profile, { recursive: true, force: true }).catch(() => {});
     const output = path.resolve(required('STAGING_ACCEPTANCE_OUTPUT'));

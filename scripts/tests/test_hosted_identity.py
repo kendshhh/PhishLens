@@ -380,6 +380,13 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", hosted)
         self.assertNotIn("RELEASE_SOURCE_SHA: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
+        self.assertIn("verified_account_sessions", acceptance)
+        self.assertIn("account_subject_sha256.b = subjectB", acceptance)
+        self.assertLess(
+            acceptance.index("const subjectB = await waitForAccountToken('b')"),
+            acceptance.index("const idA = await createReport("),
+        )
+        self.assertNotIn("subjectHash(emailA", acceptance)
 
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {

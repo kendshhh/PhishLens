@@ -6,6 +6,8 @@ import html
 import json
 import os
 import re
+import socket
+import ssl
 import subprocess
 import sys
 import time
@@ -120,7 +122,7 @@ def normalize_neon_host(host):
     return re.sub(r"-pooler(?=\.)", "", host)
 
 
-def verify_environment(rows, *, require_authenticated=False):
+def verify_environment(rows, *, require_authenticated=False, approved_target=None):
     values = {row["envVar"]["key"]: row["envVar"]["value"] for row in rows}
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
@@ -172,11 +174,101 @@ def verify_environment(rows, *, require_authenticated=False):
             or parsed_auth_url.path != f"/{expected_auth_database}/auth"
         ):
             raise RuntimeError("Hosted staging requires a valid isolated Neon Auth URL and database")
+        if expected_auth_database != "phishlens_dev":
+            raise RuntimeError("Hosted staging Auth target does not use the approved application database")
+        if approved_target:
+            if (
+                parsed_auth_url.hostname != approved_target.get("staging_auth_host")
+                or approved_target.get("staging_auth_database", "phishlens_dev") != expected_auth_database
+                or parsed_auth_url.path != f"/{expected_auth_database}/auth"
+            ):
+                raise RuntimeError("Hosted staging Auth target does not match the owner-approved Neon branch")
+            if (
+                values.get("STAGING_NEON_PROJECT_ID") != approved_target.get("staging_neon_project_id")
+                or values.get("STAGING_NEON_BRANCH_ID") != approved_target.get("staging_neon_branch_id")
+            ):
+                raise RuntimeError("Render staging project or branch does not match the owner-approved Neon target")
+            expected_host = approved_target.get("staging_database_host", "")
+            if (
+                not expected_host
+                or normalize_neon_host(values.get("STAGING_NEON_EXPECTED_HOST", ""))
+                != normalize_neon_host(expected_host)
+                or normalize_neon_host(values.get("STAGING_DATABASE_HOST", ""))
+                != normalize_neon_host(expected_host)
+            ):
+                raise RuntimeError("Render staging database host does not match the owner-approved Neon target")
+            if values.get("STAGING_BASE_URL", approved_target["staging_origin"]).rstrip("/") != approved_target["staging_origin"]:
+                raise RuntimeError("Render staging API origin does not match the approved Auth origin")
         if configured_auth_url != expected_auth_url:
             raise RuntimeError(
                 "Render staging Neon Auth URL does not match the isolated staging branch"
             )
+        if approved_target and urlsplit(configured_auth_url).hostname != approved_target["staging_auth_host"]:
+            raise RuntimeError("Render staging Auth URL host does not match the owner-approved Neon branch")
     return report_auth_mode
+
+
+class _RejectAuthRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def verify_auth_endpoint(auth_url, origin):
+    """Check Auth DNS/TLS/CORS with a non-mutating preflight before deployment."""
+    config = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
+    auth_url = (auth_url or "").strip().rstrip("/")
+    parsed = urlsplit(auth_url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != config.get("staging_auth_host")
+        or parsed.path != "/phishlens_dev/auth"
+        or parsed.username or parsed.password or parsed.port is not None
+        or parsed.query or parsed.fragment
+        or origin != config.get("staging_origin")
+    ):
+        raise RuntimeError("Neon Auth endpoint identity does not match the approved staging target")
+    request = urllib.request.Request(
+        auth_url + "/sign-in/email",
+        method="OPTIONS",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    opener = urllib.request.build_opener(_RejectAuthRedirects)
+    try:
+        with opener.open(request, timeout=10) as response:
+            status = response.status
+            headers = response.headers
+    except urllib.error.HTTPError as exc:
+        status, headers = exc.code, exc.headers
+    except urllib.error.URLError as exc:
+        reason = exc.reason
+        if isinstance(reason, socket.gaierror):
+            category = "DNS"
+        elif isinstance(reason, ssl.SSLError):
+            category = "TLS"
+        elif isinstance(reason, TimeoutError):
+            category = "timeout"
+        else:
+            category = "network"
+        raise RuntimeError(f"Neon Auth endpoint preflight failed ({category})") from None
+    except (TimeoutError, ssl.SSLError, OSError):
+        raise RuntimeError("Neon Auth endpoint preflight failed (network/TLS)") from None
+    if status not in (200, 204):
+        raise RuntimeError(f"Neon Auth CORS preflight returned HTTP {status}")
+    allowed_origin = headers.get("Access-Control-Allow-Origin", "")
+    allowed_methods = {part.strip().upper() for part in headers.get("Access-Control-Allow-Methods", "").split(",")}
+    allowed_headers = {part.strip().lower() for part in headers.get("Access-Control-Allow-Headers", "").split(",")}
+    if (
+        allowed_origin != origin
+        or "POST" not in allowed_methods
+        or "content-type" not in allowed_headers
+        or headers.get("Access-Control-Allow-Credentials", "").lower() != "true"
+    ):
+        raise RuntimeError("Neon Auth CORS preflight did not allow the approved staging origin")
+    return {"status": "passed", "method": "OPTIONS", "origin": "approved-staging"}
 
 
 def smoke(origin, sha, *, report_auth_mode="demo"):

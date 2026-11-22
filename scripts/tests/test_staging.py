@@ -38,9 +38,9 @@ class DeploymentTests(unittest.TestCase):
             "GITHUB_REPOSITORY": "kendshhh/PhishLens",
             "STAGING_BASE_URL": CONFIG["staging_origin"],
             "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
-            "SECRETARY_STAGING_DB_HOST": "staging.invalid",
+            "SECRETARY_STAGING_DB_HOST": CONFIG["staging_database_host"],
             "SECRETARY_PRODUCTION_DB_HOST": "production.invalid",
-            "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            "STAGING_AUTH_URL": f"https://{CONFIG['staging_auth_host']}/phishlens_dev/auth",
             "STAGING_AUTH_DATABASE": "phishlens_dev",
         }, clear=True)
         self.environment.start()
@@ -65,6 +65,11 @@ class DeploymentTests(unittest.TestCase):
         )
         self.github_client.start()
         self.addCleanup(self.github_client.stop)
+        self.auth_endpoint = patch.object(
+            deploy_staging, "verify_auth_endpoint", return_value={"status": "passed"}
+        )
+        self.auth_endpoint.start()
+        self.addCleanup(self.auth_endpoint.stop)
 
     def write_event(self, *, number=123, head_sha="a" * 40):
         event = {
@@ -93,7 +98,18 @@ class DeploymentTests(unittest.TestCase):
                 },
             },
         }
-        env_vars = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
+        host = CONFIG["staging_database_host"]
+        auth_url = f"https://{CONFIG['staging_auth_host']}/phishlens_dev/auth"
+        env_vars = render_staging_environment_rows(
+            DATABASE_URL=f"postgresql://phishlens_staging_app:synthetic@{host}/phishlens_dev",
+            STAGING_MIGRATION_DATABASE_URL=f"postgresql://neondb_owner:synthetic@{host}/phishlens_dev",
+            STAGING_DATABASE_HOST=host,
+            STAGING_NEON_EXPECTED_HOST=host,
+            STAGING_NEON_PROJECT_ID=CONFIG["staging_neon_project_id"],
+            STAGING_NEON_BRANCH_ID=CONFIG["staging_neon_branch_id"],
+            NEON_AUTH_BASE_URL=auth_url,
+            REPORT_AUTH_MODE="neon",
+        )
         return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):
@@ -107,6 +123,25 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(body, {"commitId": "a" * 40})
         self.assertEqual(request.call_count, 4)
         self.assertEqual(self.github.request.call_args_list, [call("pulls/123"), call("pulls/123")])
+
+    def test_neon_preflight_cli_rejects_retired_target_before_api_access(self):
+        from scripts.verify_neon_release_branch import main as verify_neon_main
+
+        with (
+            patch("sys.argv", [
+                "verify_neon_release_branch.py",
+                "--project-id", "patient-bird-25428852",
+                "--production-project-id", "patient-bird-86753091",
+                "--branch-id", "br-delicate-paper-b381z98i",
+                "--production-branch-id", "br-production-123456",
+                "--expected-host", "ep-old.ap-southeast-1.aws.neon.tech",
+                "--schema-only-attestation", "true",
+            ]),
+            patch.dict(os.environ, {}, clear=True),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            verify_neon_main()
+        self.assertEqual(raised.exception.code, 1)
 
     def test_rejects_missing_malformed_or_mismatched_pr_identity_before_render(self):
         cases = (

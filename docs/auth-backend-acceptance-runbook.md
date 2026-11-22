@@ -1,13 +1,23 @@
 # Backend Auth acceptance and cleanup procedure
 
-> Preparation only. The review branch accepts the anonymous
-> `401 Bearer` boundary and passed the local staging integration in GitHub CI
-> run [44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782).
-> Hosted staging was skipped, and authenticated CRUD is still open. A direct
-> GET-only workstation smoke passed at 08:15 UTC. Check the
-> [November 21 staging evidence](devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
-> and [environment map](devops/environment-map-2026-11-21.md) before proposing
-> any live run. This procedure is not authorization to write to shared staging.
+## Current staging target contract (2026-11-22)
+
+The release target is Neon project `hidden-shadow-38533062`, branch
+`br-broad-feather-b3261w7l` (`staging-root`), database `phishlens_dev`. The
+selected #268 base pins the database endpoint to
+`ep-winter-wind-a1y2r1db` in `ap-southeast-1`; `.github/secretary.json` carries
+the project, branch, endpoint, and Auth host identities. The startup guard
+requires these identities to match.
+
+Before any hosted run, privately verify that Render's runtime
+`DATABASE_URL`, `STAGING_DATABASE_HOST`, and separate
+`STAGING_MIGRATION_DATABASE_URL` all resolve to the pinned branch, and that the
+configured Auth host is enabled for the same branch. No live Auth/CRUD acceptance
+is claimed by this reconciliation. Keep the protected settings authoritative;
+never put credential values in this runbook.
+
+The earlier `patient-bird-25428852` / `pr-58-staging` target is historical and
+must not be copied into protected settings.
 
 Preparation only. This document and its examples are not authorization to run
 anything against staging. They do not select a deployment or change Auth config.
@@ -44,12 +54,10 @@ Set `window_start` and `window_end` to the approved ISO timestamps with `+08:00`
 The helper blocks execution outside that window. Cleanup that needs extra time
 requires an explicit extension of its approval; do not silently extend the plan.
 
-The target must satisfy `docs/devops/staging.md`: a separate Neon project from
-production, an independent root branch initialized schema-only, and no copied
-production rows. The historical `patient-bird-25428852` / `pr-58-staging` target
-is not the current approved target. The configuration owner must confirm and
-record the canonical project, branch, endpoint and Auth database before testing;
-this runbook does not approve a replacement.
+The target must satisfy [staging acceptance](devops/staging.md): a separate
+Neon project from production, an independent root branch initialized schema-only,
+and no copied production rows. The current mapping still requires private
+Render/Auth verification before hosted acceptance.
 
 | Component | Required identity; record exact values in the private plan |
 | --- | --- |

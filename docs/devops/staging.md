@@ -93,8 +93,9 @@ production deployment was triggered by this work.
 
 ## Verified Neon and Render mapping
 
-- Staging Neon project: `phishlens-staging`; root branch: `staging-root`;
-  database: `phishlens_dev`.
+- Staging Neon project ID: `hidden-shadow-38533062` (project name
+  `phishlens-staging`); root branch ID: `br-broad-feather-b3261w7l` (branch
+  name `staging-root`); database: `phishlens_dev`.
 - The startup pin is endpoint `ep-winter-wind-a1y2r1db` in
   `ap-southeast-1`; its direct and pooler hostnames are the accepted staging
   targets. `STAGING_DATABASE_HOST` and `STAGING_NEON_EXPECTED_HOST` must map

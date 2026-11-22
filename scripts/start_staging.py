@@ -1,4 +1,5 @@
 """Start only against the separately configured staging database."""
+import json
 import queue
 import re
 import socket
@@ -6,6 +7,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from sqlalchemy.dialects.postgresql.psycopg import PGDialect_psycopg
@@ -136,6 +138,29 @@ def _normalized_neon_host(host: str) -> str:
     return re.sub(r"-pooler(?=\.)", "", host.rstrip(".").lower())
 
 
+def validate_owner_approved_target(
+    expected_host: str, project_id: str, branch_id: str, auth_url: str
+) -> None:
+    """Keep Render startup pinned to the target approved for this release workflow."""
+    config_path = Path(__file__).resolve().parents[1] / ".github/secretary.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    if (
+        _normalized_neon_host(expected_host) != _normalized_neon_host(config.get("staging_database_host", ""))
+        or project_id != config.get("staging_neon_project_id")
+        or branch_id != config.get("staging_neon_branch_id")
+    ):
+        raise SystemExit("Hosted staging target differs from the owner-approved Neon project and branch.")
+    auth = urlsplit((auth_url or "").strip().rstrip("/"))
+    if (
+        auth.scheme != "https"
+        or auth.hostname != config.get("staging_auth_host")
+        or auth.path != "/phishlens_dev/auth"
+        or auth.username or auth.password or auth.port is not None
+        or auth.query or auth.fragment
+    ):
+        raise SystemExit("Hosted staging Auth URL differs from the owner-approved Neon branch.")
+
+
 def validate_hosted_database_urls(
     runtime: URL, migration: URL, expected_host: str, app_role: str,
     production_host: str, staging_project_id: str, production_project_id: str,
@@ -204,6 +229,14 @@ def main():
         production_branch_id = os.getenv("PRODUCTION_NEON_BRANCH_ID", "")
         if os.getenv("APP_ENV") != "staging":
             raise SystemExit("Hosted staging requires APP_ENV=staging before migrations.")
+        if os.getenv("REPORT_AUTH_MODE") != "neon":
+            raise SystemExit("Hosted staging requires REPORT_AUTH_MODE=neon before migrations.")
+        validate_owner_approved_target(
+            expected_host,
+            staging_project_id,
+            staging_branch_id,
+            os.getenv("NEON_AUTH_BASE_URL", ""),
+        )
         if _normalized_neon_host(expected_host) != _normalized_neon_host(
                 os.getenv("STAGING_NEON_EXPECTED_HOST", "")):
             raise SystemExit("STAGING_DATABASE_HOST does not match the verified staging Neon branch endpoint.")

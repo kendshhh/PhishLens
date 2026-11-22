@@ -1,5 +1,10 @@
 # Saved CRUD: CI gate and isolated staging verification
 
+> **Current-target note (2026-11-22):** The old `pr-58-staging` details and migration
+> evidence below are historical. The current owner-approved target is recorded in
+> [the release record](devops/release-record-2026-11-22.md). Do not use this historical
+> endpoint or migration evidence as authorization for a current deployment.
+
 ## Scope and current state
 
 Prepared from PR #58 source `c162740d5aa4e9c87a697b395822cb36135ce744`.
