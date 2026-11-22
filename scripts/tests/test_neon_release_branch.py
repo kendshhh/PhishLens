@@ -2,6 +2,8 @@
 
 import json
 import os
+from io import BytesIO
+from urllib.error import HTTPError
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -98,6 +100,30 @@ class NeonReleaseBranchTests(unittest.TestCase):
                 )
 
         urlopen.assert_not_called()
+
+    @patch.dict(os.environ, {"NEON_API_KEY": "test-token"})
+    @patch("scripts.verify_neon_release_branch.urlopen")
+    def test_branch_http_error_reports_status_without_response_body(self, urlopen):
+        urlopen.side_effect = HTTPError(
+            "https://console.neon.tech/private",
+            403,
+            "Forbidden",
+            hdrs=None,
+            fp=BytesIO(b"sensitive Neon error detail"),
+        )
+
+        with self.assertRaisesRegex(NeonReleaseError, "HTTP 403") as raised:
+            verify_branch(
+                project_id="staging-project-123",
+                branch_id="br-staging-12345678",
+                production_project_id="production-project-123",
+                production_branch_id="br-production-12345678",
+                schema_only_attestation="true",
+                production_rows_present="false",
+            )
+
+        self.assertNotIn("sensitive Neon error detail", str(raised.exception))
+        self.assertNotIn("test-token", str(raised.exception))
 
 
 if __name__ == "__main__":

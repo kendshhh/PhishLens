@@ -46,7 +46,11 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
     try:
         with urlopen(request, timeout=20) as response:
             payload = json.loads(response.read())
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+    except HTTPError as exc:
+        raise NeonReleaseError(
+            f"Neon branch metadata request failed (HTTP {exc.code})"
+        ) from None
+    except (URLError, TimeoutError, json.JSONDecodeError):
         raise NeonReleaseError("Neon branch metadata request failed; details were suppressed") from None
     branch = payload.get("branch") if isinstance(payload, dict) else None
     if not isinstance(branch, dict):
@@ -70,7 +74,11 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
         try:
             with urlopen(endpoints_request, timeout=20) as response:
                 endpoints_payload = json.loads(response.read())
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        except HTTPError as exc:
+            raise NeonReleaseError(
+                f"Neon endpoint metadata request failed (HTTP {exc.code})"
+            ) from None
+        except (URLError, TimeoutError, json.JSONDecodeError):
             raise NeonReleaseError("Neon endpoint metadata request failed; details were suppressed") from None
         endpoints = endpoints_payload.get("endpoints") if isinstance(endpoints_payload, dict) else None
         if not isinstance(endpoints, list):
