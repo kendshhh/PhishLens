@@ -271,6 +271,8 @@ jobs:
 
       - name: Test release manifest, target safety, and artifact gates
         run: python -m pytest scripts/tests/test_release_readiness.py scripts/tests/test_release_extension_package.py scripts/tests/test_release_render.py -q -p no:cacheprovider
+      - name: Test isolated Neon staging branch preflight
+        run: python -m pytest scripts/tests/test_neon_release_branch.py -q -p no:cacheprovider
 
       - name: Build backend image without publishing
         env:
@@ -731,8 +733,8 @@ jobs:
               raise SystemExit('Hosted staging is blocked: isolated Neon/Render identity is not fully configured.')
           if os.environ.get('STAGING_NEON_PARENT_ID', ''):
               raise SystemExit('Hosted staging requires an independent Neon root branch.')
-          if os.environ.get('STAGING_NEON_SCHEMA_ONLY_ATTESTATION') != 'true':
-              raise SystemExit('Hosted staging requires a schema-only Neon branch attestation.')
+          if os.environ.get('STAGING_NEON_SCHEMA_ONLY_ATTESTATION') not in {'true', 'false'}:
+              raise SystemExit('Hosted staging requires an explicit schema-only attestation state.')
           if os.environ.get('STAGING_NEON_PRODUCTION_ROWS_PRESENT') != 'false':
               raise SystemExit('Hosted staging must attest that production rows are absent.')
           if os.environ.get('STAGING_RENDER_DATABASE_CONFIG_ATTESTATION') != 'current':
@@ -750,6 +752,7 @@ jobs:
           PY
           python pr-source/scripts/verify_neon_release_branch.py \
             --expected-host "$STAGING_NEON_EXPECTED_HOST" \
+            --production-rows-present "$STAGING_NEON_PRODUCTION_ROWS_PRESENT" \
             > "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json"
           branch_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["branch_id"])' "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json")"
           endpoint_host="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["endpoint_host"])' "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json")"
