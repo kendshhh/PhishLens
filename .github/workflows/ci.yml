@@ -685,10 +685,10 @@ jobs:
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
           STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-          STAGING_NEON_AUTH_URL: ${{ vars.STAGING_NEON_AUTH_URL }}
+          STAGING_NEON_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
           PRODUCTION_NEON_AUTH_URL: ${{ vars.PHISHLENS_PRODUCTION_AUTH_URL }}
-          STAGING_AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_TEST_EMAIL }}
-          STAGING_AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_TEST_PASSWORD }}
+          STAGING_AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
+          STAGING_AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging
