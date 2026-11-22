@@ -945,7 +945,12 @@ jobs:
           PY
 
       - name: Deploy exact PR head using the trusted controller
-        if: steps.staging-deploy-preflight.outputs.current == 'true'
+        if: >-
+          success() &&
+          needs.staging.result == 'success' &&
+          needs.hosted-staging-preflight.result == 'success' &&
+          needs.backend.result == 'success' &&
+          steps.staging-deploy-preflight.outputs.current == 'true'
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}

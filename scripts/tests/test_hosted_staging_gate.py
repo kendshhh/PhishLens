@@ -39,11 +39,18 @@ class HostedStagingGateTests(unittest.TestCase):
         cls.workflow_text = WORKFLOW.read_text(encoding="utf-8")
         cls.hosted_job = named_job(cls.workflow_text, "hosted-staging")
 
-    def test_hosted_job_requires_every_dependency_success_without_always_override(self):
+    def test_hosted_job_keeps_a_required_status_and_fails_closed_on_bad_prerequisites(self):
         condition = job_condition(self.hosted_job)
-        self.assertNotIn("always()", condition)
+        self.assertIn("always()", condition)
+        prerequisite_guard = named_step(
+            self.hosted_job,
+            "Fail instead of skipping when an eligible staging prerequisite failed",
+        )
         for dependency in ("staging", "hosted-staging-preflight", "backend"):
-            self.assertIn(f"needs.{dependency}.result == 'success'", condition)
+            self.assertIn(f"needs.{dependency}.result", prerequisite_guard)
+        self.assertIn("PREFLIGHT_CURRENT", prerequisite_guard)
+        self.assertIn("if failures:", prerequisite_guard)
+        self.assertIn("Hosted staging prerequisites failed:", prerequisite_guard)
 
     def test_render_deploy_step_repeats_all_dependency_success_gates(self):
         step = named_step(
@@ -56,7 +63,10 @@ class HostedStagingGateTests(unittest.TestCase):
         self.assertIn("success()", condition)
         for dependency in ("staging", "hosted-staging-preflight", "backend"):
             self.assertIn(f"needs.{dependency}.result == 'success'", condition)
-        self.assertIn("steps.staging-final-preflight.outputs.current == 'true'", condition)
+        self.assertIn("needs.staging.result == 'success'", condition)
+        self.assertIn("needs.hosted-staging-preflight.result == 'success'", condition)
+        self.assertIn("needs.backend.result == 'success'", condition)
+        self.assertIn("steps.staging-deploy-preflight.outputs.current == 'true'", condition)
 
     def test_local_staging_monitors_process_and_uploads_log_even_after_failure(self):
         staging_job = named_job(self.workflow_text, "staging")

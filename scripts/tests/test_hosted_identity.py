@@ -368,6 +368,7 @@ class HostedIdentityTests(unittest.TestCase):
 
     def test_authenticated_hosted_acceptance_uses_the_exact_pr_head(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        acceptance = (ROOT / "scripts/staging_extension_acceptance.mjs").read_text(encoding="utf-8")
         hosted = workflow[workflow.index("  hosted-staging:\n"):]
         self.assertIn("node scripts/staging_extension_acceptance.mjs", hosted)
         self.assertIn("verify-pr-staging", hosted)
