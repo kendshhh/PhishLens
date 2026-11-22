@@ -40,10 +40,21 @@ function jwtClaims(token) {
     }
 }
 
-async function signIn(authUrl, email, password) {
+function validatedStagingOrigin(value) {
+    let url;
+    try { url = new URL(value); }
+    catch { throw new Error('Staging Auth origin is invalid'); }
+    if (url.origin !== 'https://phishlens-staging.onrender.com' ||
+        url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+        throw new Error('Staging Auth smoke must use the approved staging origin');
+    }
+    return url.origin;
+}
+
+async function signIn(authUrl, origin, email, password) {
     const response = await fetch(`${authUrl}/sign-in/email`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        headers: { 'content-type': 'application/json', accept: 'application/json', origin },
         body: JSON.stringify({ email, password }),
         redirect: 'error',
         signal: AbortSignal.timeout(15000)
@@ -65,8 +76,10 @@ async function main() {
     const authUrl = validatedAuthUrl(
         required('STAGING_NEON_AUTH_URL'), required('PRODUCTION_NEON_AUTH_URL')
     );
+    const origin = validatedStagingOrigin(required('STAGING_BASE_URL'));
     const token = await signIn(
         authUrl,
+        origin,
         required('STAGING_AUTH_TEST_EMAIL'),
         required('STAGING_AUTH_TEST_PASSWORD')
     );
