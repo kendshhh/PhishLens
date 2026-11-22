@@ -48,7 +48,7 @@ def render_summary(path: Path) -> str:
         f"- Phishing recall: `{summary.get('phishing_recall')}`; legitimate false-positive rate: `{summary.get('legitimate_false_positive_rate')}`",
         f"- Case set: `{summary.get('caseset')}` / `{summary.get('cases_sha256')}`",
         "- Gemini/provider requests: `0`; model downloads: `0`.",
-        "- This status means the evaluation completed; it is not a model-quality pass. These development-cohort results are not held-out or production accuracy, and no quality threshold is configured pending AI-owner approval.",
+        "- This status means the evaluation completed; it is not a model-quality pass. These development-cohort results are not held-out or production accuracy. The AI owner approved completion and contract checks, with no numeric quality cutoff for these development fixtures (issue #93).",
         "",
     ])
 
