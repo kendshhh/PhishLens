@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -70,10 +72,15 @@ def create_context(monkeypatch):
     ],
     ids=["omitted-subject", "empty-subject"],
 )
-def test_create_returns_201_saved_detail(create_context, payload):
+def test_create_returns_201_saved_detail(create_context, payload, caplog):
     context = create_context
+    caplog.set_level(logging.INFO, logger="phishlens.api")
 
-    response = context.client.post("/api/analyses", json=payload)
+    response = context.client.post(
+        "/api/analyses",
+        json=payload,
+        headers={"X-Request-ID": "caller-controlled"},
+    )
 
     assert response.status_code == 201
     body = response.json()
@@ -93,6 +100,38 @@ def test_create_returns_201_saved_detail(create_context, payload):
     assert call.kwargs["mode"] == "mock"
     assert isinstance(call.kwargs["deadline"], AnalysisDeadline)
     assert call.kwargs["idempotency_key"] is None
+    request_id = response.headers["X-Request-ID"]
+    assert request_id != "caller-controlled"
+    event = next(
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "phishlens.api" and '"event":"http_request"' in record.message
+    )
+    assert event["request_id"] == request_id
+    assert event["route"] == "/analyses"
+    assert event["operation"] == "create_analysis"
+    assert event["ai"]["provider_mode"] == "mock"
+    assert event["ai"]["outcome"] == "success"
+    assert "Synthetic email body" not in json.dumps(event)
+
+
+def test_saved_create_kill_switch_stops_before_database_or_inference(
+    create_context,
+    monkeypatch,
+):
+    context = create_context
+    monkeypatch.setenv("AI_ANALYSIS_ENABLED", "false")
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Synthetic email body"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "analysis_unavailable"
+    context.service.assert_not_awaited()
+    context.database_config.assert_not_called()
+    context.ai_config.assert_not_called()
 
 
 @pytest.mark.parametrize(

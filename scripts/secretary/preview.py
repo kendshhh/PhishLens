@@ -16,7 +16,7 @@ from urllib.parse import quote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .core import application_change
-from .github_api import APIError, GitHub
+from .github_api import GitHub, PinnedExtensionGitHub, ReadOnlyGitHub
 from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -113,20 +113,32 @@ def verify_service(service, config):
         raise RuntimeError("Unexpected staging startup command")
 
 
-def verify_environment(rows):
+def normalize_neon_host(host):
+    """Treat Neon pooled and direct endpoint names as the same branch host."""
+    host = str(host or "").strip().rstrip(".").lower()
+    return re.sub(r"-pooler(?=\.)", "", host)
+
+
+def verify_environment(rows, *, require_authenticated=False):
     values = {row["envVar"]["key"]: row["envVar"]["value"] for row in rows}
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
+    expected_host = normalize_neon_host(expected)
+    production_host = normalize_neon_host(production)
     database = urlsplit(values.get("DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     migration = urlsplit(values.get("STAGING_MIGRATION_DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     app_role = values.get("STAGING_APP_DATABASE_ROLE", "")
-    if not expected or not production or expected == production:
+    if not expected_host or not production_host or expected_host == production_host:
         raise RuntimeError("Declare distinct staging and production database hosts privately in environment variables")
-    if database.hostname != expected or database.path != "/phishlens_dev" or values.get("STAGING_DATABASE_HOST") != expected:
+    if (normalize_neon_host(database.hostname) != expected_host
+            or database.path != "/phishlens_dev"
+            or normalize_neon_host(values.get("STAGING_DATABASE_HOST")) != expected_host):
         raise RuntimeError("Staging database host/name does not match the isolated allowlist")
     if database.username != app_role or app_role != "phishlens_staging_app":
         raise RuntimeError("Staging runtime must use the phishlens_staging_app role")
-    if migration.hostname != expected or migration.path != "/phishlens_dev" or migration.username != "neondb_owner":
+    if (normalize_neon_host(migration.hostname) != expected_host
+            or migration.path != "/phishlens_dev"
+            or migration.username != "neondb_owner"):
         raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
     if migration.username == database.username:
         raise RuntimeError("Staging migration and runtime credentials must use separate roles")
@@ -135,6 +147,11 @@ def verify_environment(rows):
     report_auth_mode = values.get("REPORT_AUTH_MODE", "demo")
     if report_auth_mode not in {"demo", "neon"}:
         raise RuntimeError("Staging report authentication must use demo or neon mode")
+    if require_authenticated and report_auth_mode != "neon":
+        raise RuntimeError(
+            "Hosted staging requires explicit REPORT_AUTH_MODE=neon; demo mode "
+            "cannot satisfy authenticated acceptance"
+        )
     return report_auth_mode
 
 
@@ -224,6 +241,12 @@ def verify_saved_report(origin, sha):
 
 
 def package(api, sha, number, config, output):
+    if isinstance(api, ReadOnlyGitHub):
+        api = PinnedExtensionGitHub(
+            repo=api.repo, token=api.token, sha=sha,
+            asset_limits={asset: ASSET_SIZE_LIMITS.get(asset, 512_000)
+                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS},
+        )
     files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
     worker = files["background.js"].decode()
     local_scanner = bool(re.search(
@@ -324,39 +347,14 @@ def eligibility(pr, files, run, repo, opt_in_label=None):
         return "failure", "Hosted staging request label is not configured"
     labels = {label.get("name") for label in pr.get("labels", []) if isinstance(label, dict)}
     if opt_in_label not in labels:
-        return "success", (
-            "Hosted staging not requested. Add the `" + opt_in_label
-            + "` label and rerun CI on the current head to request a deployment."
+        return "failure", (
+            "Application/runtime changes require the `" + opt_in_label
+            + "` label and an exact-head hosted staging verification. Add the label "
+            "and rerun CI for this PR head."
         )
     if run["conclusion"] != "success":
         return "failure", "CI did not succeed; staging not deployed"
     return "deploy", "CI passed; exact-head staging requested"
-
-
-def associated_pr_numbers(api, run):
-    """Find every PR linked to this CI commit without scanning open PR pages."""
-    linked = run.get("pull_requests") or []
-    numbers = {
-        row.get("number")
-        for row in linked
-        if isinstance(row, dict)
-        and isinstance(row.get("number"), int)
-        and row["number"] > 0
-    }
-    try:
-        linked = api.pages(f"commits/{run['head_sha']}/pulls")
-    except APIError:
-        if not numbers:
-            raise
-    else:
-        numbers.update(
-            row["number"]
-            for row in linked
-            if isinstance(row, dict)
-            and isinstance(row.get("number"), int)
-            and row["number"] > 0
-        )
-    return sorted(numbers)
 
 
 def current_pr_head_matches(pr, expected_head_sha):
@@ -365,6 +363,38 @@ def current_pr_head_matches(pr, expected_head_sha):
         pr.get("state") == "open"
         and pr.get("head", {}).get("sha") == expected_head_sha
     )
+
+
+def workflow_pr_identity(run, requested_number, requested_head_sha):
+    """Bind controller inputs to the exact PR identity captured by workflow_run."""
+    if not isinstance(requested_number, str) or not re.fullmatch(r"[1-9][0-9]*", requested_number):
+        raise RuntimeError("Trusted workflow did not provide a valid PR number")
+    if not isinstance(requested_head_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", requested_head_sha):
+        raise RuntimeError("Trusted workflow did not provide a valid PR head SHA")
+    number = int(requested_number)
+    if run.get("head_sha") != requested_head_sha:
+        raise RuntimeError("Requested staging SHA differs from the completed PR CI head")
+    linked = run.get("pull_requests") or []
+    if not any(
+        isinstance(row, dict)
+        and row.get("number") == number
+        and isinstance(row.get("head"), dict)
+        and row["head"].get("sha") == requested_head_sha
+        for row in linked
+    ):
+        raise RuntimeError("Requested PR and head are not associated with this workflow run")
+    return number, requested_head_sha
+
+
+def require_live_pr_eligibility(api, number, sha, files, run, repo, opt_in_label):
+    """Fail closed unless the live PR still qualifies for this exact deployment."""
+    current = api.request(f"pulls/{number}")
+    if current.get("number") != number or not current_pr_head_matches(current, sha):
+        raise RuntimeError("Live PR state or head changed; staging deployment was not started")
+    action, _message = eligibility(current, files, run, repo, opt_in_label)
+    if action != "deploy":
+        raise RuntimeError("Live PR is no longer eligible for staging; deployment was not started")
+    return current
 
 
 def preview_check_run_name(config):
@@ -451,16 +481,22 @@ def main():
     if run.get("event") != "pull_request":
         print("Not a PR CI completion; ignored")
         return
-    candidates = associated_pr_numbers(api, run)
+    read_api = ReadOnlyGitHub(repo=api.repo)
+    pr_number, staging_sha = workflow_pr_identity(
+        run,
+        os.getenv("SECRETARY_PR_NUMBER", ""),
+        os.getenv("SECRETARY_PR_HEAD_SHA", ""),
+    )
     assess = "--assess" in sys.argv
     if assess:
         with open(os.environ["GITHUB_OUTPUT"], "a") as output:
             output.write("deploy=false\n")
-    for number in candidates:
-        pr = api.request(f"pulls/{number}")
-        if not current_pr_head_matches(pr, run["head_sha"]):
+    for number in (pr_number,):
+        pr = read_api.request(f"pulls/{number}")
+        if pr.get("number") != number or not current_pr_head_matches(pr, staging_sha):
+            print("Live PR is closed or has advanced; this CI completion is stale")
             continue
-        jobs, latest = latest_jobs(api, run["head_sha"])
+        jobs, latest = latest_jobs(api, staging_sha)
         if (
             not latest
             or latest["id"] != run["id"]
@@ -485,7 +521,7 @@ def main():
                 message = "Required CI jobs passed; exact-head staging requested"
                 if completed_event(api, config, run):
                     publish_preview_status(
-                        api, run["head_sha"], config, "success",
+                        api, staging_sha, config, "success",
                         "Staging verification passed", log,
                     )
                     print("Identical CI completion already has the current verified preview; no redeployment")
@@ -498,17 +534,17 @@ def main():
                     output.write("deploy=true\n")
             else:
                 state = "success" if action == "success" else "failure"
-                publish_preview_status(api, run["head_sha"], config, state, message, log)
+                publish_preview_status(api, staging_sha, config, state, message, log)
                 print(message)
             continue
         publish_preview_status(
-            api, run["head_sha"], config, "pending",
+            api, staging_sha, config, "pending",
             "Staging verification running", log,
         )
-        check = api.request("check-runs", {"name": preview_check_run_name(config), "head_sha": run["head_sha"], "status": "in_progress",
+        check = api.request("check-runs", {"name": preview_check_run_name(config), "head_sha": staging_sha, "status": "in_progress",
             "details_url": log})
         deployment = None
-        evidence = {"sha": run["head_sha"], "pr": pr["number"], "result": action}
+        evidence = {"sha": staging_sha, "pr": pr_number, "result": action}
         try:
             if action == "deploy":
                 if not preview_gate_enabled():
@@ -517,30 +553,41 @@ def main():
                 verify_service(render_request("services/" + config["staging_service"]), config)
                 # Read values only for validation. Never write environment values to logs/artifacts.
                 report_auth_mode = verify_environment(
-                    render_request("services/" + config["staging_service"] + "/env-vars?limit=100")
+                    render_request("services/" + config["staging_service"] + "/env-vars?limit=100"),
+                    require_authenticated=True,
                 )
                 evidence["report_auth_mode"] = report_auth_mode
-                deployment = api.request("deployments", {"ref": run["head_sha"], "environment": config["preview_environment"],
+                # The queue may have waited while the PR changed; re-read its live state
+                # immediately before creating the GitHub deployment or calling Render.
+                require_live_pr_eligibility(
+                    read_api, pr_number, staging_sha, files, run, api.repo,
+                    config.get("preview_opt_in_label"),
+                )
+                deployment = api.request("deployments", {"ref": staging_sha, "environment": config["preview_environment"],
                     "auto_merge": False, "required_contexts": [], "production_environment": False, "transient_environment": True,
-                    "description": f"PR #{pr['number']} exact-head staging", "payload": {"secretary": 1, "pr": pr["number"], "run_id": run["id"], "run_attempt": run.get("run_attempt", 1)}})
+                    "description": f"PR #{pr_number} exact-head staging", "payload": {"secretary": 1, "pr": pr_number, "run_id": run["id"], "run_attempt": run.get("run_attempt", 1)}})
                 log = f"https://github.com/{api.repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "in_progress", "log_url": log, "auto_inactive": False})
-                deployed = render_request(f"services/{config['staging_service']}/deploys", {"commitId": run["head_sha"]})
+                require_live_pr_eligibility(
+                    read_api, pr_number, staging_sha, files, run, api.repo,
+                    config.get("preview_opt_in_label"),
+                )
+                deployed = render_request(f"services/{config['staging_service']}/deploys", {"commitId": staging_sha})
                 evidence["render_deployment"] = deployed["id"]
                 deadline = time.monotonic() + 1200
                 while True:
                     live = render_request(f"services/{config['staging_service']}/deploys/{deployed['id']}")
                     if live["status"] == "live":
-                        confirm_live_deployment(api, config, live, run["head_sha"])
+                        confirm_live_deployment(api, config, live, staging_sha)
                         break
                     if live["status"] in {"build_failed", "update_failed", "pre_deploy_failed", "canceled", "deactivated"}:
                         raise RuntimeError("Render staging deployment failed: " + live["status"])
                     if time.monotonic() >= deadline:
                         raise RuntimeError("Render staging deployment timed out")
                     time.sleep(10)
-                evidence["smoke"] = smoke(config["staging_origin"], run["head_sha"], report_auth_mode=report_auth_mode)
-                current = api.request(f"pulls/{pr['number']}")
-                if not current_pr_head_matches(current, run["head_sha"]):
+                evidence["smoke"] = smoke(config["staging_origin"], staging_sha, report_auth_mode=report_auth_mode)
+                current = read_api.request(f"pulls/{pr_number}")
+                if current.get("number") != pr_number or not current_pr_head_matches(current, staging_sha):
                     # The deployment worked, but it is no longer evidence for the current PR head.
                     action = "action_required"
                     message = "PR head advanced during staging; this run was superseded. The latest CI run must own staging."
@@ -563,23 +610,23 @@ def main():
                         "description": "Staging infrastructure verified; authenticated acceptance pending",
                         "log_url": log, "auto_inactive": False})
                 else:
-                    crud = verify_saved_report(config["staging_origin"], run["head_sha"])
+                    crud = verify_saved_report(config["staging_origin"], staging_sha)
                     evidence["saved_report_ai_crud"] = crud
                     evidence["packaged_browser_acceptance"] = {
                         "result": "passed",
                         "ci_run_id": run["id"],
-                        "source_commit": run["head_sha"],
+                        "source_commit": staging_sha,
                         "artifact": "Extension-Browser-Acceptance",
                     }
-                    current = api.request(f"pulls/{pr['number']}")
-                    if not current_pr_head_matches(current, run["head_sha"]):
+                    current = read_api.request(f"pulls/{pr_number}")
+                    if current.get("number") != pr_number or not current_pr_head_matches(current, staging_sha):
                         action = "action_required"
                         message = "PR head advanced during staging verification; the latest CI run must own staging."
                         api.request(f"deployments/{deployment['id']}/statuses", {"state": "success",
                             "description": "Verification passed; PR head advanced, so this preview is superseded",
                             "log_url": log, "auto_inactive": False})
                     else:
-                        package(api, run["head_sha"], pr["number"], config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
+                        package(api, staging_sha, pr_number, config, ROOT / "output/secretary/Veriqo-Staging-Extension.zip")
                         description = (
                             f"secretary-crud=passed;analysis={crud['analysisMode']};"
                             f"provider={crud['analysisProvenance']['providerMode']};cleanup=confirmed"
@@ -603,10 +650,13 @@ def main():
             if deployment:
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "failure", "description": "Deployment or verification failed", "auto_inactive": False})
         finally:
-            preflight_only_passed = action == "action_required" and evidence.get("preflight_passed") is True
-            status_state = "success" if action == "success" or preflight_only_passed else "failure"
-            if preflight_only_passed:
-                status_description = "Staging preflight passed; Auth acceptance pending"
+            auth_acceptance_pending = action == "action_required" and evidence.get("preflight_passed") is True
+            # The required status records infrastructure preflight; the separate check run
+            # remains action_required until Auth acceptance is independently approved.
+            status_passed = action == "success" or auth_acceptance_pending
+            status_state = "success" if status_passed else "failure"
+            if auth_acceptance_pending:
+                status_description = "Authenticated staging acceptance pending"
             else:
                 status_description = (
                     "Staging verification passed"
@@ -622,7 +672,7 @@ def main():
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
-            if preflight_only_passed:
+            if auth_acceptance_pending:
                 title = "Preflight passed; Auth acceptance pending"
             else:
                 title = (
@@ -633,13 +683,13 @@ def main():
             api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": action,
                 "output": {"title": title, "summary": message}}, "PATCH")
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
-                out.write(f"## Preview PR #{pr['number']}\n\nSHA `{run['head_sha']}`\n\n{message}\n")
+                out.write(f"## Preview PR #{pr_number}\n\nSHA `{staging_sha}`\n\n{message}\n")
             publish_preview_status(
-                api, run["head_sha"], config, status_state,
+                api, staging_sha, config, status_state,
                 status_description, log,
             )
-            if action == "failure":
-                print("Preview failed: " + message, file=sys.stderr)
+            if action == "failure" or (action == "action_required" and not auth_acceptance_pending):
+                print("Preview did not pass: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
 
