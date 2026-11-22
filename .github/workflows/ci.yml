@@ -716,7 +716,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/phishlens-hosted-staging"
           python - <<'PY'
-          import os, re
+          import json, os, re
+          config = json.load(open('pr-source/.github/secretary.json', encoding='utf-8'))
           def normalized(host):
               return re.sub(r'-pooler(?=\.)', '', host.strip().rstrip('.').lower())
           required = (
@@ -736,6 +737,10 @@ jobs:
               raise SystemExit('Hosted staging must attest that production rows are absent.')
           if os.environ.get('STAGING_RENDER_DATABASE_CONFIG_ATTESTATION') != 'current':
               raise SystemExit('Hosted staging Render-to-Neon mapping has not been privately verified.')
+          if (os.environ['STAGING_NEON_PROJECT_ID'] != config['staging_neon_project_id']
+                  or os.environ['STAGING_NEON_BRANCH_ID'] != config['staging_neon_branch_id']
+                  or normalized(os.environ['STAGING_NEON_EXPECTED_HOST']) != normalized(config['staging_database_host'])):
+              raise SystemExit('Hosted staging protected variables differ from the owner-approved Neon target.')
           staging = normalized(os.environ['STAGING_NEON_EXPECTED_HOST'])
           render_staging = normalized(os.environ['SECRETARY_STAGING_DB_HOST'])
           production = normalized(os.environ['PRODUCTION_NEON_EXPECTED_HOST'])
@@ -830,6 +835,10 @@ jobs:
           SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
           STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
           STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+          STAGING_AUTH_USER_A_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
+          STAGING_AUTH_USER_A_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
+          STAGING_AUTH_USER_B_EMAIL: ${{ secrets.STAGING_AUTH_USER_B_EMAIL }}
+          STAGING_AUTH_USER_B_PASSWORD: ${{ secrets.STAGING_AUTH_USER_B_PASSWORD }}
           STAGING_NEON_BRANCH_ID: ${{ steps.neon-preflight.outputs.branch_id }}
           STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
           STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
@@ -838,19 +847,74 @@ jobs:
           PRODUCTION_NEON_EXPECTED_HOST: ${{ vars.PRODUCTION_NEON_EXPECTED_HOST }}
         run: |
           python - <<'PY'
-          import json, os, re
+          import json, os, re, urllib.error, urllib.request
+          from urllib.parse import urlsplit
           from scripts.secretary.preview import render_request, verify_environment, verify_service
-          config = json.loads(open('.github/secretary.json', encoding='utf-8').read())
+          trusted_config = json.loads(open('.github/secretary.json', encoding='utf-8').read())
+          target_config = json.loads(open('pr-source/.github/secretary.json', encoding='utf-8').read())
           service_id = os.environ['RENDER_STAGING_SERVICE_ID']
-          if service_id != config['staging_service'] or service_id == config['production_service']:
+          if service_id != trusted_config['staging_service'] or service_id == trusted_config['production_service']:
               raise SystemExit('Hosted staging is not the allowlisted Render staging service.')
           service = render_request(f'services/{service_id}')
-          verify_service(service, config)
+          verify_service(service, trusted_config)
           rows = render_request(f'services/{service_id}/env-vars?limit=100')
           report_auth_mode = verify_environment(rows, require_authenticated=True)
           values = {row['envVar']['key']: row['envVar']['value'] for row in rows}
           def normalized(host):
               return re.sub(r'-pooler(?=\.)', '', host.strip().rstrip('.').lower())
+          if (os.environ['STAGING_NEON_PROJECT_ID'] != target_config['staging_neon_project_id']
+                  or os.environ['STAGING_NEON_BRANCH_ID'] != target_config['staging_neon_branch_id']):
+              raise SystemExit('Hosted staging branch variables differ from the owner-approved target.')
+          expected_host = target_config['staging_database_host']
+          if (normalized(os.environ['STAGING_NEON_EXPECTED_HOST']) != normalized(expected_host)
+                  or normalized(values.get('STAGING_NEON_EXPECTED_HOST', '')) != normalized(expected_host)
+                  or normalized(values.get('STAGING_DATABASE_HOST', '')) != normalized(expected_host)):
+              raise SystemExit('Render staging database host differs from the owner-approved Neon target.')
+          for name in ('DATABASE_URL', 'STAGING_MIGRATION_DATABASE_URL'):
+              if normalized(urlsplit(values.get(name, '')).hostname or '') != normalized(expected_host):
+                  raise SystemExit(f'Render {name} does not target the owner-approved Neon branch.')
+          if (values.get('STAGING_NEON_PROJECT_ID') != target_config['staging_neon_project_id']
+                  or values.get('STAGING_NEON_BRANCH_ID') != target_config['staging_neon_branch_id']):
+              raise SystemExit('Render project/branch variables do not match the owner-approved Neon target.')
+          auth_url = os.environ['STAGING_AUTH_URL'].strip().rstrip('/')
+          auth_parts = urlsplit(auth_url)
+          if (auth_parts.scheme != 'https' or auth_parts.hostname != target_config['staging_auth_host']
+                  or auth_parts.path != '/phishlens_dev/auth' or auth_parts.username or auth_parts.password
+                  or auth_parts.port is not None or auth_parts.query or auth_parts.fragment
+                  or os.environ['STAGING_AUTH_DATABASE'] != 'phishlens_dev'
+                  or values.get('NEON_AUTH_BASE_URL', '').strip().rstrip('/') != auth_url):
+              raise SystemExit('GitHub and Render Neon Auth targets do not match the owner-approved branch.')
+          if os.environ.get('STAGING_BASE_URL', '').rstrip('/') != target_config['staging_origin']:
+              raise SystemExit('Staging API origin does not match the owner-approved Auth origin.')
+          email_a = os.environ.get('STAGING_AUTH_USER_A_EMAIL', '').strip().lower()
+          email_b = os.environ.get('STAGING_AUTH_USER_B_EMAIL', '').strip().lower()
+          password_a = os.environ.get('STAGING_AUTH_USER_A_PASSWORD', '')
+          password_b = os.environ.get('STAGING_AUTH_USER_B_PASSWORD', '')
+          if not email_a or not email_b or email_a == email_b or not password_a or not password_b:
+              raise SystemExit('Hosted staging requires two distinct, pre-registered synthetic Auth accounts.')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          request = urllib.request.Request(
+              auth_url + '/sign-in/email', method='OPTIONS',
+              headers={'Origin': target_config['staging_origin'],
+                       'Access-Control-Request-Method': 'POST',
+                       'Access-Control-Request-Headers': 'content-type'},
+          )
+          try:
+              with urllib.request.build_opener(NoRedirect).open(request, timeout=10) as response:
+                  status, headers = response.status, response.headers
+          except urllib.error.HTTPError as error:
+              status, headers = error.code, error.headers
+          except (urllib.error.URLError, TimeoutError, OSError):
+              raise SystemExit('Neon Auth endpoint preflight failed (DNS/TLS/network/timeout).') from None
+          allowed_methods = {part.strip().upper() for part in headers.get('Access-Control-Allow-Methods', '').split(',')}
+          allowed_headers = {part.strip().lower() for part in headers.get('Access-Control-Allow-Headers', '').split(',')}
+          if (status not in (200, 204)
+                  or headers.get('Access-Control-Allow-Origin') != target_config['staging_origin']
+                  or 'POST' not in allowed_methods or 'content-type' not in allowed_headers
+                  or headers.get('Access-Control-Allow-Credentials', '').lower() != 'true'):
+              raise SystemExit('Neon Auth CORS preflight did not allow the owner-approved staging origin.')
           expected = {
               'STAGING_NEON_BRANCH_ID': os.environ['STAGING_NEON_BRANCH_ID'],
               'STAGING_NEON_PROJECT_ID': os.environ['STAGING_NEON_PROJECT_ID'],

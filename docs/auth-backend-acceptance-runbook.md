@@ -1,5 +1,20 @@
 # Backend Auth acceptance and cleanup procedure
 
+## Current owner-approved release target (2026-11-22)
+
+The authorized staging owner selected Neon project `hidden-shadow-38533062`,
+branch `br-broad-feather-b3261w7l` (`staging-root`), and application/Auth database
+`phishlens_dev`. The Auth host and database path are pinned in
+`.github/secretary.json`. Read-only Neon metadata confirmed that the branch is
+ready, an independent root, and has the matching Auth database. This does not
+confirm Render's current runtime or migration `current_database()` / `current_user`
+identities, schema-only initialization, or absence of production rows. Those gates
+remain open; no staging deployment or Auth CRUD is authorized by this note.
+
+See [the current release record](devops/release-record-2026-11-22.md) for the
+masked variable contract, two-account requirement, candidate identity, and owner
+checklist. The older proposal below is retained as historical context only.
+
 Preparation only. This document and its examples are not authorization to run
 anything against staging. They do not select a deployment or change Auth config.
 The two-account Auth run is separate from #48's one-report TF-IDF lifecycle.
@@ -35,7 +50,11 @@ Set `window_start` and `window_end` to the approved ISO timestamps with `+08:00`
 The helper blocks execution outside that window. Cleanup that needs extra time
 requires an explicit extension of its approval; do not silently extend the plan.
 
-The proposed target is shared staging, not a PR-specific branch:
+## Historical target from the prior plan (superseded)
+
+The earlier `patient-bird-25428852` / `pr-58-staging` / `neondb` target below is
+not current and must not be copied into protected settings. Use the current target
+and owner checklist above.
 
 | Component | Proposed identity; reverify before approval |
 | --- | --- |

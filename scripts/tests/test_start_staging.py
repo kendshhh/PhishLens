@@ -1,6 +1,8 @@
+import json
 import os
 import socket
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from sqlalchemy import create_engine
@@ -10,17 +12,22 @@ from scripts.start_staging import (
     main,
     pin_ipv4_addresses,
     validate_hosted_database_urls,
+    validate_owner_approved_target,
 )
 
-DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-DATABASE_HOST = "ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech"
-DIRECT_DATABASE_HOST = "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech"
+DATABASE_HOST = "ep-long-fire-b31uvz7u-pooler.c-4.ap-southeast-1.aws.neon.tech"
+DIRECT_DATABASE_HOST = "ep-long-fire-b31uvz7u.c-4.ap-southeast-1.aws.neon.tech"
+DATABASE_URL = f"postgresql+psycopg://phishlens_staging_app:example-password@{DATABASE_HOST}/phishlens_dev?sslmode=require"
+MIGRATION_URL = f"postgresql+psycopg://neondb_owner:owner-example-password@{DATABASE_HOST}/phishlens_dev?sslmode=require"
 PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
-STAGING_BRANCH_ID = "br-staging-123456"
+STAGING_BRANCH_ID = "br-broad-feather-b3261w7l"
 PRODUCTION_BRANCH_ID = "br-production-123456"
-STAGING_PROJECT_ID = "patient-bird-654321"
+STAGING_PROJECT_ID = "hidden-shadow-38533062"
 PRODUCTION_PROJECT_ID = "patient-bird-123456"
+TARGET_CONFIG = json.loads(
+    (Path(__file__).resolve().parents[2] / ".github/secretary.json").read_text(encoding="utf-8")
+)
+STAGING_AUTH_URL = f"https://{TARGET_CONFIG['staging_auth_host']}/phishlens_dev/auth"
 
 
 def validate_hosted_urls(runtime, migration, expected_host, app_role):
@@ -39,6 +46,20 @@ def ipv4_records(*addresses):
 
 
 class HostedStagingIpv4Tests(unittest.TestCase):
+    def test_startup_target_pin_rejects_a_different_branch(self):
+        validate_owner_approved_target(
+            DIRECT_DATABASE_HOST, STAGING_PROJECT_ID, STAGING_BRANCH_ID, STAGING_AUTH_URL
+        )
+        with self.assertRaisesRegex(SystemExit, "owner-approved Neon project and branch"):
+            validate_owner_approved_target(
+                DIRECT_DATABASE_HOST, STAGING_PROJECT_ID, "br-delicate-paper-b381z98i", STAGING_AUTH_URL
+            )
+        with self.assertRaisesRegex(SystemExit, "Auth URL differs"):
+            validate_owner_approved_target(
+                DIRECT_DATABASE_HOST, STAGING_PROJECT_ID, STAGING_BRANCH_ID,
+                "https://old.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            )
+
     def test_pins_ipv4_addresses_and_preserves_hostname_and_tls_options(self):
         resolved = ipv4_records("192.0.2.11", "192.0.2.12", "192.0.2.11")
         with patch("scripts.start_staging.socket.getaddrinfo", return_value=resolved) as lookup:
@@ -205,6 +226,8 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                         {
                             "RENDER": "true",
                             "APP_ENV": "staging",
+                            "REPORT_AUTH_MODE": "neon",
+                            "NEON_AUTH_BASE_URL": STAGING_AUTH_URL,
                             "STAGING_DATABASE_HOST": DATABASE_HOST,
                             "STAGING_NEON_EXPECTED_HOST": DIRECT_DATABASE_HOST,
                             "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
@@ -269,6 +292,8 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 {
                     "RENDER": "true",
                     "APP_ENV": "staging",
+                    "REPORT_AUTH_MODE": "neon",
+                    "NEON_AUTH_BASE_URL": STAGING_AUTH_URL,
                     "STAGING_DATABASE_HOST": DATABASE_HOST,
                     "STAGING_NEON_EXPECTED_HOST": DIRECT_DATABASE_HOST,
                     "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",

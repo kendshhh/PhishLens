@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 from scripts.secretary.github_api import APIError, ReadOnlyGitHub
 from scripts.secretary.preview import (
     render_request,
+    verify_auth_endpoint,
     verify_environment,
     verify_service,
 )
@@ -141,7 +142,8 @@ def main() -> None:
     service = render_request(f"services/{service_id}")
     verify_service(service, config)
     variables = render_request(f"services/{service_id}/env-vars?limit=100")
-    verify_environment(variables, require_authenticated=True)
+    verify_environment(variables, require_authenticated=True, approved_target=config)
+    verify_auth_endpoint(os.environ.get("STAGING_AUTH_URL", ""), config["staging_origin"])
     print(
         "Staging preflight passed: exact current PR head, migration head, service, "
         "authenticated report mode, and private database target are validated.",

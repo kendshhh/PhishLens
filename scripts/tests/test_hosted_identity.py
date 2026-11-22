@@ -294,6 +294,7 @@ class HostedIdentityTests(unittest.TestCase):
         first = hosted_job[first_start:first_end]
         second = hosted_job[second_start:second_end]
         deployment = hosted_job[deploy_start:deploy_end]
+        auth_gate = hosted_job[hosted_job.index(auth_preflight):deploy_start]
 
         self.assertIn("live_pr_matches(", first)
         self.assertIn("ReadOnlyGitHub", first)
@@ -306,6 +307,11 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("STAGING_PR: ${{ github.event.pull_request.number }}", deployment)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", deployment)
         self.assertNotIn("github.sha", deployment)
+        self.assertIn("owner-approved target", auth_gate)
+        self.assertIn("NEON_AUTH_BASE_URL", auth_gate)
+        self.assertIn("method='OPTIONS'", auth_gate)
+        self.assertIn("STAGING_AUTH_USER_A_EMAIL", auth_gate)
+        self.assertIn("STAGING_AUTH_USER_B_EMAIL", auth_gate)
 
         controller = (ROOT / "scripts/deploy_staging.py").read_text(encoding="utf-8")
         self.assertIn("def requested_pr_identity()", controller)
@@ -332,6 +338,7 @@ class HostedIdentityTests(unittest.TestCase):
     def test_authenticated_hosted_acceptance_uses_the_exact_pr_head(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         hosted = workflow[workflow.index("  hosted-staging:\n"):]
+        acceptance = (ROOT / "scripts/staging_extension_acceptance.mjs").read_text(encoding="utf-8")
         self.assertIn("node scripts/staging_extension_acceptance.mjs", hosted)
         self.assertIn("verify-pr-staging", hosted)
         self.assertIn("--expected-sha \"$EXPECTED_SHA\"", hosted)
@@ -343,6 +350,13 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", hosted)
         self.assertNotIn("RELEASE_SOURCE_SHA: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
+        self.assertIn("verified_account_sessions", acceptance)
+        self.assertIn("account_subject_sha256.b = subjectB", acceptance)
+        self.assertLess(
+            acceptance.index("const subjectB = await waitForAccountToken('b')"),
+            acceptance.index("const idA = await createReport("),
+        )
+        self.assertNotIn("subjectHash(emailA", acceptance)
 
     def test_stale_pr_head_withholds_authenticated_acceptance_evidence(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
