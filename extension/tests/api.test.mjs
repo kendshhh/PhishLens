@@ -210,6 +210,16 @@ test("bounds the captured HTTP response body", async () => {
     );
 });
 
+test("does not mark a response body truncated when it ends exactly at the limit", async () => {
+    const body = "x".repeat(2048);
+    globalThis.fetch = async () => new Response(body, { status: 503 });
+
+    await assert.rejects(
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.responseBody === body && !error.responseBody.endsWith("… [truncated]")
+    );
+});
+
 test("retries a transient history outage and returns the recovered response", async () => {
     let calls = 0;
     globalThis.fetch = async () => {
