@@ -15,8 +15,8 @@ function authConfiguration() {
     const expectedAuthHost = expectedNeonHost.replace(/^([^.]+)\./, '$1.neonauth.');
     if (authUrl.protocol !== 'https:' || authUrl.username || authUrl.password || authUrl.search || authUrl.hash ||
         authUrl.pathname !== `/${encodeURIComponent(database)}/auth` ||
-        !/^ep-[a-z0-9-]+\.[a-z0-9-]+\.[a-z0-9-]+\.aws\.neon\.tech$/.test(expectedNeonHost) ||
-        authUrl.hostname !== expectedAuthHost) {
+        !/^ep-[a-z0-9-]+\.(?:[a-z0-9-]+\.)?[a-z0-9-]+\.aws\.neon\.tech$/.test(expectedNeonHost) ||
+        authUrl.port || authUrl.hostname !== expectedAuthHost) {
         throw new Error('Staging Auth URL, database, and expected Neon host do not match');
     }
     return { authUrl };
