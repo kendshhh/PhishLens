@@ -2,8 +2,8 @@
 function failure(status, code) {
   const messages = { 400: 'The details or code were not accepted. Check them and try again.',
     401: 'Email or password was not accepted. Sign in again.',
-    409: 'The account could not be created. Try signing in or verifying your email.',
-    403: 'Verify your email before accessing saved reports.', 429: 'Too many attempts. Please wait before trying again.' };
+    409: 'The account could not be created. Try signing in instead.',
+    403: 'This account is not allowed to sign in.', 429: 'Too many attempts. Please wait before trying again.' };
   const message = status === 400 && code === 'OTP_EXPIRED'
     ? 'This code expired. Request a new code and try again.'
     : messages[status] || 'The account service is temporarily unavailable. Please try again.';
@@ -41,10 +41,10 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
     const data = await call(() => sdk.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } }));
     if (!data?.session || !data?.user) return null;
     const { user, session } = data;
-    if (!user.id || !user.email || user.emailVerified !== true) throw failure(403);
+    if (!user.id || !user.email || user.banned === true) throw failure(403);
     const expiresAt = new Date(session.expiresAt).getTime();
     if (!Number.isFinite(expiresAt) || expiresAt <= now()) return null;
-    return { user: { id: user.id, email: user.email, name: user.name || '', emailVerified: true }, expiresAt,
+    return { user: { id: user.id, email: user.email, name: user.name || '', emailVerified: user.emailVerified === true }, expiresAt,
       token: session.token };
   }
   async function read() {
@@ -80,9 +80,7 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
       email = email.trim();
       if (!name || name.length > 100 || email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(email) ||
           password.length < 8 || password.length > 128) throw failure(400);
-      await call(() => sdk.signUp.email({ name, email, password }));
-      // Signup verification must be configured at the provider; no second OTP is
-      // sent automatically here, to avoid invalidating the first delivered code.
+      return establish(() => sdk.signUp.email({ name, email, password }), email, true);
     },
     signIn: ({ email, password }) => establish(() => sdk.signIn.email({ email, password }), email),
     verifyEmail: ({ email, code }) => establish(() => sdk.emailOtp.verifyEmail({ email, otp: code }), email, true),

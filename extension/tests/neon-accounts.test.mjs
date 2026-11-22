@@ -83,6 +83,22 @@ test('rejects opaque, expired, or mismatched tokens without returning them', asy
   }
 });
 
+test('signup and sign-in establish sessions without an email verification code', async () => {
+  let active = false;
+  const unverifiedUser = { ...user, emailVerified: false };
+  const sdk = {
+    signUp: { email: async () => { active = true; return { data: { user: unverifiedUser } }; } },
+    signIn: { email: async () => { active = true; return { data: { user: unverifiedUser } }; } },
+    getSession: async () => ({ data: active ? { user: unverifiedUser,
+      session: { expiresAt: new Date(Date.now() + 60000).toISOString(), token: jwt(user.id) } } : null }),
+    signOut: async () => { active = false; return { data: { success: true } }; }
+  };
+  const adapter = createNeonAccounts(sdk);
+  const created = await adapter.signUp({ name: user.name, email: user.email, password: 'synthetic-password' });
+  assert.equal(created.user.emailVerified, false);
+  assert.equal((await adapter.signIn({ email: user.email, password: 'synthetic-password' })).user.id, user.id);
+});
+
 test('actual SDK HTTP failures preserve safe invalid-credentials, duplicate and expired-code errors', async () => {
   const original = globalThis.fetch;
   const errors = [

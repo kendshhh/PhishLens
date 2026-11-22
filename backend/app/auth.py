@@ -61,8 +61,8 @@ def verify_identity(token):
         raise HTTPException(401, "Sign in to access saved reports", headers={"WWW-Authenticate": "Bearer"})
     # Require an explicit active value so missing or malformed status claims
     # cannot silently pass verification.
-    if claims.get("emailVerified") is not True or claims.get("banned") is not False:
-        raise HTTPException(403, "A verified, active account is required")
+    if claims.get("banned") is not False:
+        raise HTTPException(403, "An active account is required")
     if not isinstance(email, str) or not 3 <= len(email) <= 320 or "@" not in email:
         raise HTTPException(401, "Sign in to access saved reports", headers={"WWW-Authenticate": "Bearer"})
     return subject, email

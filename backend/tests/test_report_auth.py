@@ -53,11 +53,13 @@ def signed(monkeypatch):
 def test_valid_signed_identity(signed):
     assert auth.verify_identity(signed()) == ("subject-a", "a@example.test")
 
+def test_unverified_signed_identity_is_accepted_when_verification_is_not_required(signed):
+    assert auth.verify_identity(signed(emailVerified=False)) == ("subject-a", "a@example.test")
+
 @pytest.mark.parametrize("changes,status", [
     ({"exp": 1}, 401), ({"iat": 9999999999}, 401),
     ({"iss": "https://other.test"}, 401), ({"aud": "other"}, 401),
     ({"sub": ""}, 401), ({"email": None}, 401),
-    ({"emailVerified": False}, 403), ({"emailVerified": "true"}, 403),
     ({"banned": True}, 403), ({"banned": None}, 403), ({"banned": "false"}, 403),
 ])
 def test_rejected_claims(signed, changes, status):
@@ -175,14 +177,13 @@ def test_all_crud_requires_authentication(signed, method, path, body):
     ("DELETE", "/api/analyses/00000000-0000-0000-0000-000000000001", None),
 ])
 @pytest.mark.parametrize("kind,status", [
-    ("malformed", 401), ("expired", 401), ("unverified", 403), ("banned", 403),
+    ("malformed", 401), ("expired", 401), ("banned", 403),
     ("missing_banned", 403), ("malformed_banned", 403),
 ])
 def test_rejected_bearers_block_all_crud_before_mapping(signed, monkeypatch, method, path, body, kind, status):
     tokens = {
         "malformed": "not-a-signed-token",
         "expired": signed(exp=1),
-        "unverified": signed(emailVerified=False),
         "banned": signed(banned=True),
         "missing_banned": signed(without=("banned",)),
         "malformed_banned": signed(banned="false"),

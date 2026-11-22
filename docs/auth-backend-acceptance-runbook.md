@@ -199,7 +199,7 @@ repeat a blocked helper step by deleting its receipt. Extra requests must fit
 the agreed scope. Signup, real email/OTP, browser cookie/session restoration, renewal,
 expiry, sign-out and UI account switching remain Leyan's installed-Chrome checks.
 
-Anonymous/expired denial across all five CRUD operations, unverified-account
+Anonymous/expired denial across all five CRUD operations, banned-account
 denial (403 where a JWT exists), and demo separation remain outside this helper's
 live two-report sequence. Agree on their exact requests separately, using only
 this run's recorded IDs; never test destructive denial against seed or unrelated

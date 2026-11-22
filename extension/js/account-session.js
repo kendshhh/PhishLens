@@ -2,7 +2,7 @@ export function sessionError(message = 'Sign in to view your saved reports.') {
   return Object.assign(new Error(message), { code: 'session_required', status: 401 });
 }
 
-// The adapter owns credentials and refresh. This boundary only holds a verified session in memory.
+// The adapter owns credentials and refresh. This boundary only holds a valid provider session in memory.
 export function createAccountSession({ adapter, createClient, onChange = () => {}, now = Date.now,
   schedule = setTimeout, cancel = clearTimeout }) {
   let session = null, client = null, revision = 0, timer, disposed = false;
@@ -23,7 +23,7 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
   async function accept(next, version) {
     if (disposed || version !== revision) return false;
     if (!next) { publish('signed-out'); return false; }
-    if (!next.user?.id || !next.user.email || next.user.emailVerified !== true ||
+    if (!next.user?.id || !next.user.email ||
         !Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
       publish('expired', 'Your session expired. Sign in again.');
       return false;
@@ -55,7 +55,7 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
         await clear('expired', 'Your account changed or signed out. Sign in again.');
         return;
       }
-      if (next.user.emailVerified !== true || !Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
+      if (!Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
         await clear('expired', 'Your session expired. Sign in again.'); return;
       }
       session = next;
@@ -96,7 +96,7 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     subscribe(listener) { listeners.add(listener); listener(current); return () => listeners.delete(listener); },
     signIn: input => authenticate('signIn', input),
     verifyEmail: input => authenticate('verifyEmail', input),
-    signUp: input => adapter.signUp(input),
+    signUp: input => authenticate('signUp', input),
     resend: input => adapter.resend(input),
     recover: input => adapter.recover(input),
     async resetPassword(input) {
