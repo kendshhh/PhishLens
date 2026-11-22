@@ -40,8 +40,8 @@ class DeploymentTests(unittest.TestCase):
             "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
             "SECRETARY_STAGING_DB_HOST": CONFIG["staging_database_host"],
             "SECRETARY_PRODUCTION_DB_HOST": "production.invalid",
-            "STAGING_AUTH_URL": f"https://{CONFIG['staging_auth_host']}/phishlens_dev/auth",
-            "STAGING_AUTH_DATABASE": "phishlens_dev",
+            "STAGING_AUTH_URL": f"https://{CONFIG['staging_auth_host']}/{CONFIG['staging_auth_database']}/auth",
+            "STAGING_AUTH_DATABASE": CONFIG["staging_auth_database"],
         }, clear=True)
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -99,7 +99,7 @@ class DeploymentTests(unittest.TestCase):
             },
         }
         host = CONFIG["staging_database_host"]
-        auth_url = f"https://{CONFIG['staging_auth_host']}/phishlens_dev/auth"
+        auth_url = f"https://{CONFIG['staging_auth_host']}/{CONFIG['staging_auth_database']}/auth"
         env_vars = render_staging_environment_rows(
             DATABASE_URL=f"postgresql://phishlens_staging_app:synthetic@{host}/phishlens_dev",
             STAGING_MIGRATION_DATABASE_URL=f"postgresql://neondb_owner:synthetic@{host}/phishlens_dev",

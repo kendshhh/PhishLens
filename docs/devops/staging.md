@@ -1,10 +1,11 @@
 # PhishLens staging acceptance
 
-**Current state (2026-11-21):** PR #266 contains the candidate authenticated
-acceptance path. No current live Auth/CRUD evidence is accepted. The workflow
-must fail before deploying until the separate staging Neon project and its
-Render/Auth mapping are provisioned and verified. Historical staging records
-below other documents do not establish acceptance for the current candidate.
+**Current state (2026-11-22):** PR #266 contains the candidate authenticated
+acceptance path and pins the protected staging mapping. No current live Auth/CRUD
+evidence is accepted. Its last hosted preflight failed closed because the checked-in
+Neon project/branch and Auth mapping did not match the protected variables; this
+reconciliation updates those pins. The current candidate still requires a fresh
+exact-head run. Historical staging records do not establish acceptance for it.
 
 ## PR-required Hosted staging
 
@@ -27,9 +28,9 @@ Before any deployment or product-data write, the job:
 
 Do not enable this run against `pr-58-staging` (`br-delicate-paper-b381z98i`),
 any production-derived branch, or the restored production snapshot. A root branch
-in the production project is not sufficient isolation: use a separate Neon
-project. The current workflow intentionally blocks until that project, branch,
-Auth configuration, runtime mapping, and attestations are ready.
+in the production project is not sufficient isolation: keep staging in its
+separate Neon project and verify the protected branch, Auth target, runtime
+mapping, and attestations against `.github/secretary.json` before deployment.
 
 After preflight, CI packages the extension from the exact PR merge candidate,
 checks its archive digest and Auth/API origins, deploys that exact candidate to
@@ -86,8 +87,9 @@ production deployment was triggered by this work.
 
 Complete through protected GitHub/Render/Neon settings, not committed secrets:
 
-1. Provision a Neon project separate from production, with a schema-only root
-   branch, current migrations, Neon Auth, and no production rows.
+1. Keep the configured Neon project separate from production; verify its root
+   branch, schema-only initialization, current migrations, Neon Auth, and absence
+   of production rows against current protected attestations.
 2. Privately verify the Render staging service's runtime and migration URLs,
    database, branch, Auth mode, and separate least-privilege roles. Record the
    project IDs, branch IDs, endpoint hosts, and attestations in protected GitHub

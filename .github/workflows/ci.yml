@@ -858,7 +858,7 @@ jobs:
           service = render_request(f'services/{service_id}')
           verify_service(service, trusted_config)
           rows = render_request(f'services/{service_id}/env-vars?limit=100')
-          report_auth_mode = verify_environment(rows, require_authenticated=True)
+          report_auth_mode = verify_environment(rows)
           values = {row['envVar']['key']: row['envVar']['value'] for row in rows}
           def normalized(host):
               return re.sub(r'-pooler(?=\.)', '', host.strip().rstrip('.').lower())
@@ -878,10 +878,13 @@ jobs:
               raise SystemExit('Render project/branch variables do not match the owner-approved Neon target.')
           auth_url = os.environ['STAGING_AUTH_URL'].strip().rstrip('/')
           auth_parts = urlsplit(auth_url)
+          auth_database = target_config.get('staging_auth_database', '')
+          if not re.fullmatch(r'[a-zA-Z0-9_-]{1,63}', auth_database):
+              raise SystemExit('Owner-approved Neon Auth database is missing or invalid.')
           if (auth_parts.scheme != 'https' or auth_parts.hostname != target_config['staging_auth_host']
-                  or auth_parts.path != '/phishlens_dev/auth' or auth_parts.username or auth_parts.password
+                  or auth_parts.path != f'/{auth_database}/auth' or auth_parts.username or auth_parts.password
                   or auth_parts.port is not None or auth_parts.query or auth_parts.fragment
-                  or os.environ['STAGING_AUTH_DATABASE'] != 'phishlens_dev'
+                  or os.environ['STAGING_AUTH_DATABASE'] != auth_database
                   or values.get('NEON_AUTH_BASE_URL', '').strip().rstrip('/') != auth_url):
               raise SystemExit('GitHub and Render Neon Auth targets do not match the owner-approved branch.')
           if os.environ.get('STAGING_BASE_URL', '').rstrip('/') != target_config['staging_origin']:

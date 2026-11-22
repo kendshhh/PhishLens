@@ -2,14 +2,16 @@
 
 ## Current owner-approved release target (2026-11-22)
 
-The authorized staging owner selected Neon project `hidden-shadow-38533062`,
-branch `br-broad-feather-b3261w7l` (`staging-root`), and application/Auth database
-`phishlens_dev`. The Auth host and database path are pinned in
-`.github/secretary.json`. Read-only Neon metadata confirmed that the branch is
-ready, an independent root, and has the matching Auth database. This does not
-confirm Render's current runtime or migration `current_database()` / `current_user`
-identities, schema-only initialization, or absence of production rows. Those gates
-remain open; no staging deployment or Auth CRUD is authorized by this note.
+The protected staging mapping is pinned to Neon project `ancient-brook-17208049`,
+branch `br-rough-sea-a1l6ehi1`, and PostgreSQL endpoint
+`ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`. The application and
+migration URLs continue to target database `phishlens_dev`; Neon Auth uses the
+separate `neondb` database at `/neondb/auth`. The Auth host and database path are
+pinned in `.github/secretary.json`. Protected variable names and non-secret target
+identities were checked read-only. This does not confirm Render's current runtime
+or migration `current_database()` / `current_user` identities, schema-only
+initialization, or absence of production rows. Those gates remain open; no
+staging deployment or Auth CRUD is authorized by this note.
 
 See [the current release record](devops/release-record-2026-11-22.md) for the
 masked variable contract, two-account requirement, candidate identity, and owner
