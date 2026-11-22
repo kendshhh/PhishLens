@@ -48,7 +48,7 @@ class HostedStagingGateTests(unittest.TestCase):
     def test_render_deploy_step_repeats_all_dependency_success_gates(self):
         step = named_step(
             self.hosted_job,
-            "Deploy PR merge commit using the trusted legacy script",
+            "Deploy exact PR head using the trusted controller",
         )
         match = re.search(r"(?ms)^        if:\s*(.*?)(?=^        env:)", step)
         self.assertIsNotNone(match, "deployment step must have its own if condition")

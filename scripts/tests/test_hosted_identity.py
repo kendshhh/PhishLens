@@ -40,12 +40,6 @@ class HostedIdentityTests(unittest.TestCase):
             config_dir.mkdir()
             config = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
             (config_dir / "secretary.json").write_text(json.dumps(config), encoding="utf-8")
-            helper_path = root / "pr-source/scripts/secretary/github_api.py"
-            helper_path.parent.mkdir(parents=True)
-            helper_path.write_text(
-                "from scripts.secretary.github_api import APIError, GitHub\n",
-                encoding="utf-8",
-            )
             output_dir = root / "output/hosted-staging"
             output_dir.mkdir(parents=True)
             evidence = crud_result or {
@@ -59,14 +53,27 @@ class HostedIdentityTests(unittest.TestCase):
             output_file = root / "github-output.txt"
             summary_file = root / "github-summary.md"
             script_file = root / "workflow-step.py"
+            event_file = root / "event.json"
+            event_file.write_text(json.dumps({
+                "number": 68,
+                "repository": {"full_name": "kendshhh/PhishLens"},
+                "pull_request": {
+                    "number": 68,
+                    "head": {
+                        "sha": SHA,
+                        "repo": {"full_name": "kendshhh/PhishLens"},
+                    },
+                },
+            }), encoding="utf-8")
             script_file.write_text(script, encoding="utf-8")
             environment = {
                 "GITHUB_TOKEN": "test-token",
                 "GITHUB_REPOSITORY": "kendshhh/PhishLens",
+                "GITHUB_EVENT_PATH": str(event_file),
                 "GITHUB_OUTPUT": str(output_file),
                 "GITHUB_STEP_SUMMARY": str(summary_file),
                 "STAGING_BASE_URL": config["staging_origin"],
-                "STAGING_COMMIT": "b" * 40,
+                "STAGING_COMMIT": SHA,
                 "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
                 "STAGING_PR_HEAD_SHA": SHA,
                 "STAGING_PR": "68",
@@ -228,8 +235,9 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("pull-requests: read", preflight_job)
         self.assertIn("outputs:\n      current: ${{ steps.staging-preflight.outputs.current }}", preflight_job)
         self.assertNotIn("environment: staging", preflight_job)
-        self.assertIn("current['head']['sha'] == expected", preflight_job)
-        self.assertIn("not current.get('draft', False)", preflight_job)
+        self.assertIn("live_pr_matches(", preflight_job)
+        self.assertIn("ReadOnlyGitHub", preflight_job)
+        self.assertIn("requested_pr_identity()", preflight_job)
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", preflight_job)
         hosted_header = hosted_job.split("    steps:\n", 1)[0]
         needs_line = next(
@@ -253,30 +261,46 @@ class HostedIdentityTests(unittest.TestCase):
 
     def test_hosted_staging_rechecks_current_head_before_deployment(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        extension_start = workflow.index("  extension:\n")
+        extension_end = workflow.index("  migration-source-preflight:\n", extension_start)
+        extension_job = workflow[extension_start:extension_end]
+        browser_test_start = extension_job.index("      - name: Test packaged extension in isolated Chromium")
+        browser_upload_start = extension_job.index("      - name: Upload browser acceptance evidence", browser_test_start)
+        browser_upload_end = extension_job.index("      - name: Upload extension package", browser_upload_start)
+        browser_upload = extension_job[browser_upload_start:browser_upload_end]
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", extension_job)
+        self.assertEqual(
+            extension_job.count("SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}"),
+            3,
+        )
+        self.assertIn("Require browser acceptance report and evidence", extension_job)
+        self.assertIn("if-no-files-found: error", browser_upload)
+
         hosted_start = workflow.index("  hosted-staging:\n")
         hosted_job = workflow[hosted_start:]
         preflight_marker = "      - name: Recheck PR head immediately before deployment"
         preflight_start = hosted_job.index(preflight_marker)
-        deploy_start = hosted_job.index("      - name: Deploy PR merge commit using the trusted legacy script", preflight_start)
+        deploy_start = hosted_job.index("      - name: Deploy exact PR head using the trusted controller", preflight_start)
         preflight = hosted_job[preflight_start:deploy_start]
-        marker = "      - name: Verify deployed merge identity and package staging assets"
+        marker = "      - name: Verify deployed PR-head identity and package staging assets"
         start = hosted_job.index(marker)
         end = hosted_job.index("      - name: Preserve hosted staging evidence and extension", start)
         step = hosted_job[start:end]
 
-        self.assertIn("current['head']['sha'] == expected", preflight)
+        self.assertIn("live_pr_matches(", preflight)
+        self.assertIn("ReadOnlyGitHub", preflight)
         self.assertIn("steps.staging-final-preflight.outputs.current == 'true'", hosted_job[deploy_start:start])
-        self.assertIn("STAGING_COMMIT: ${{ github.sha }}", step)
+        self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", step)
+        self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", step)
         self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", step)
         self.assertIn("deploy_sha = os.environ['STAGING_COMMIT']", step)
-        self.assertIn("pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']", step)
-        self.assertIn("current['state'] == 'open' and current['head']['sha'] == pr_head_sha", step)
+        self.assertIn("number, pr_head_sha = requested_pr_identity()", step)
+        self.assertIn("if deploy_sha != pr_head_sha", step)
+        self.assertIn("live_pr_matches(", step)
+        self.assertIn("ReadOnlyGitHub", step)
         self.assertIn("No extension artifact was published.", step)
         self.assertNotIn("current['head']['sha'] != deploy_sha", step)
         self.assertIn("def superseded():", step)
-        self.assertIn("current['state'] == 'open'", step)
-        self.assertIn("current['head']['sha'] == pr_head_sha", step)
-        self.assertIn("not current.get('draft', False)", step)
         self.assertEqual(step.count("if superseded():"), 3)
         self.assertIn("'automated_checklist'", step)
         self.assertIn("'packaged_extension_browser'", step)
@@ -295,8 +319,14 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("no deployment was started", result["summary"])
 
     def test_api_errors_during_hosted_verification_never_publish_success(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
-        current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
+        marker = "      - name: Verify deployed PR-head identity and package staging assets"
+        current_pr = {
+            "number": 68,
+            "state": "open",
+            "head": {"sha": SHA, "repo": {"full_name": "kendshhh/PhishLens"}},
+            "draft": False,
+            "labels": [{"name": "needs-hosted-staging"}],
+        }
         cases = (
             ("head lookup", APIError("GitHub HTTP 403 for pulls/68"), None),
             (
@@ -317,8 +347,14 @@ class HostedIdentityTests(unittest.TestCase):
                 self.assertFalse(result["package_exists"])
 
     def test_hosted_finalizer_checks_mock_crud_but_not_ai_acceptance(self):
-        marker = "      - name: Verify deployed merge identity and package staging assets"
-        current_pr = {"state": "open", "head": {"sha": SHA}, "draft": False}
+        marker = "      - name: Verify deployed PR-head identity and package staging assets"
+        current_pr = {
+            "number": 68,
+            "state": "open",
+            "head": {"sha": SHA, "repo": {"full_name": "kendshhh/PhishLens"}},
+            "draft": False,
+            "labels": [{"name": "needs-hosted-staging"}],
+        }
         mock_result = {
             "result": "passed", "cleanedUp": True, "analysisMode": "mock",
             "analysisProvenance": {
@@ -342,13 +378,19 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertTrue(result["package_exists"])
 
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
-        current_draft = {"state": "open", "head": {"sha": SHA}, "draft": True}
+        current_draft = {
+            "number": 68,
+            "state": "open",
+            "head": {"sha": SHA, "repo": {"full_name": "kendshhh/PhishLens"}},
+            "draft": True,
+            "labels": [{"name": "needs-hosted-staging"}],
+        }
         preflight = self.run_workflow_python(
             "      - name: Check PR head before entering staging queue",
             [current_draft],
         )
         hosted = self.run_workflow_python(
-            "      - name: Verify deployed merge identity and package staging assets",
+            "      - name: Verify deployed PR-head identity and package staging assets",
             [current_draft],
         )
 
