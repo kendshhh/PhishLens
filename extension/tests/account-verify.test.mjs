@@ -49,7 +49,7 @@ test('the sign-in screen does not offer email verification before credentials ar
 });
 
 test('submitting credentials for an unverified email opens verification with that email', async () => {
-  const unverified = Object.assign(new Error('Verify your email before accessing saved reports.'), { status: 403 });
+  const unverified = Object.assign(new Error('Verify your email before signing in.'), { status: 403, code: 'EMAIL_NOT_VERIFIED' });
   const ui = await render(async () => { throw unverified; });
   await ui.submitSignIn(' casey@example.test ', 'Demo-only-123!');
   assert.deepEqual(ui.shown(), ['verify']);
@@ -63,6 +63,13 @@ test('other sign-in failures stay on sign-in and never ask for verification', as
   await ui.submitSignIn('casey@example.test', 'wrong-password');
   assert.deepEqual(ui.shown(), ['sign-in']);
   assert.equal(ui.$('account-status').textContent, 'Email or password was not accepted. Sign in again.');
+});
+
+test('generic forbidden responses do not get misreported as email verification', async () => {
+  const ui = await render(async () => { throw Object.assign(new Error('This account is not allowed to sign in.'), { status: 403 }); });
+  await ui.submitSignIn('casey@example.test', 'password');
+  assert.deepEqual(ui.shown(), ['sign-in']);
+  assert.equal(ui.$('account-status').textContent, 'This account is not allowed to sign in.');
 });
 
 for (const [label, providerSignsIn] of [['without a session', false], ['even when the provider starts a session', true]]) {

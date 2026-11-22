@@ -37,7 +37,7 @@ test('unverified and expired sessions cannot load reports', async () => {
   for (const session of [unverified, { ...user('ada'), expiresAt: 0 }]) {
     const { accounts, calls } = setup({ adapter: { async restore() { return session; } } });
     await accounts.ready;
-    assert.equal(accounts.state.status, 'expired');
+    assert.equal(accounts.state.status, session === unverified ? 'verification-required' : 'expired');
     assert.equal(accounts.state.user, null);
     await assert.rejects(accounts.client.listAnalyses(), { status: 401 });
     assert.deepEqual(calls, []); accounts.dispose();

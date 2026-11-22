@@ -23,9 +23,13 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
   async function accept(next, version) {
     if (disposed || version !== revision) return false;
     if (!next) { publish('signed-out'); return false; }
-    if (!next.user?.id || !next.user.email || next.user.emailVerified !== true ||
+    if (!next.user?.id || !next.user.email ||
         !Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
       publish('expired', 'Your session expired. Sign in again.');
+      return false;
+    }
+    if (next.user.emailVerified !== true) {
+      publish('verification-required', 'Verify your email before signing in to saved reports.');
       return false;
     }
     // Clear old account state before allowing a request for the next account.
@@ -55,7 +59,10 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
         await clear('expired', 'Your account changed or signed out. Sign in again.');
         return;
       }
-      if (next.user.emailVerified !== true || !Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
+      if (next.user.emailVerified !== true) {
+        await clear('verification-required', 'Verify your email before signing in to saved reports.'); return;
+      }
+      if (!Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
         await clear('expired', 'Your session expired. Sign in again.'); return;
       }
       session = next;
@@ -95,7 +102,8 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     ready, refresh, client: guarded, get state() { return current; },
     subscribe(listener) { listeners.add(listener); listener(current); return () => listeners.delete(listener); },
     signIn: input => authenticate('signIn', input),
-    verifyEmail: input => authenticate('verifyEmail', input),
+    // Email verification confirms ownership only; it never installs an account session.
+    verifyEmail: input => adapter.verifyEmail(input),
     signUp: input => adapter.signUp(input),
     resend: input => adapter.resend(input),
     recover: input => adapter.recover(input),

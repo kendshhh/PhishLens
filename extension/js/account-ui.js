@@ -55,13 +55,13 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     try {
       signedIn = await accounts.signIn({ email, password: $('account-password').value });
     } catch (error) {
-      // Verification is asked for only after real credentials were submitted and the
-      // account service said the email is not verified yet (HTTP 403).
-      if (error?.status !== 403) throw error;
+      // Never interpret a generic access-denied response as an email-verification
+      // prompt; the adapter uses this explicit code only for unverified accounts.
+      if (error?.code !== 'EMAIL_NOT_VERIFIED') throw error;
       $('verify-email').value = email;
       screen('verify');
       message(preview ? 'Verify your email to finish signing in. Demo code: 123456. No email was sent.'
-        : 'Verify your email to finish signing in. Enter the code sent to your email, or resend it.');
+        : 'Verify your email to finish signing in. Enter the code sent to your email, or request a new code.');
       return;
     }
     if (signedIn) {
@@ -113,8 +113,10 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     visible('account-sign-out', signedIn);
     visible('reports-account-gate', !signedIn);
     visible('personal-reports', signedIn);
-    message(state.message, state.status === 'expired');
-    if (state.status === 'expired') { visible('account-panel', true); screen('sign-in'); }
+    message(state.message, state.status === 'expired' || state.status === 'verification-required');
+    if (state.status === 'expired' || state.status === 'verification-required') {
+      visible('account-panel', true); screen('sign-in');
+    }
     if (signedIn) screen(null, false);
   });
   visible('account-preview-notice', preview);
