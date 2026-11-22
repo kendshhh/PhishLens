@@ -12,6 +12,7 @@ DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-w
 MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-winter-wind-a1y2r1db-pooler.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
 DATABASE_HOST = "ep-winter-wind-a1y2r1db-pooler.ap-southeast-1.aws.neon.tech"
 DIRECT_DATABASE_HOST = "ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech"
+PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
 
 
 def ipv4_records(*addresses):
