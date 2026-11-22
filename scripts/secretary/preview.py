@@ -18,7 +18,7 @@ from urllib.parse import quote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .core import application_change
-from .github_api import GitHub, ReadOnlyGitHub
+from .github_api import GitHub, PinnedExtensionGitHub, ReadOnlyGitHub
 from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -356,6 +356,12 @@ def verify_saved_report(origin, sha):
 
 
 def package(api, sha, number, config, output):
+    if isinstance(api, ReadOnlyGitHub):
+        api = PinnedExtensionGitHub(
+            repo=api.repo, token=api.token, sha=sha,
+            asset_limits={asset: ASSET_SIZE_LIMITS.get(asset, 512_000)
+                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS},
+        )
     files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
     worker = files["background.js"].decode()
     local_scanner = bool(re.search(
