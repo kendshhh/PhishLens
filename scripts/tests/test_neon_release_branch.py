@@ -3,14 +3,14 @@
 import json
 import os
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 from scripts.verify_neon_release_branch import NeonReleaseError, verify_branch
 
 
 class NeonReleaseBranchTests(unittest.TestCase):
     def response(self, payload):
-        response = Mock()
+        response = MagicMock()
         response.__enter__.return_value.read.return_value = json.dumps(payload).encode()
         return response
 
@@ -58,6 +58,46 @@ class NeonReleaseBranchTests(unittest.TestCase):
                 schema_only_attestation="false",
                 production_rows_present="true",
             )
+
+    @patch.dict(os.environ, {"NEON_API_KEY": "test-token"})
+    @patch("scripts.verify_neon_release_branch.urlopen")
+    def test_schema_only_root_keeps_its_attestation(self, urlopen):
+        branch_id = "br-staging-12345678"
+        urlopen.return_value = self.response({
+            "branch": {
+                "id": branch_id,
+                "name": "main",
+                "parent_id": None,
+                "current_state": "ready",
+            }
+        })
+
+        result = verify_branch(
+            project_id="staging-project-123",
+            branch_id=branch_id,
+            production_project_id="production-project-123",
+            production_branch_id="br-production-12345678",
+            schema_only_attestation="true",
+            production_rows_present="false",
+        )
+
+        self.assertEqual(result["branch_kind"], "schema-only")
+        self.assertTrue(result["schema_only_attested"])
+        urlopen.assert_called_once()
+
+    def test_schema_only_attestation_state_must_be_explicit(self):
+        with patch("scripts.verify_neon_release_branch.urlopen") as urlopen:
+            with self.assertRaisesRegex(NeonReleaseError, "explicitly record"):
+                verify_branch(
+                    project_id="staging-project-123",
+                    branch_id="br-staging-12345678",
+                    production_project_id="production-project-123",
+                    production_branch_id="br-production-12345678",
+                    schema_only_attestation="unset",
+                    production_rows_present="false",
+                )
+
+        urlopen.assert_not_called()
 
 
 if __name__ == "__main__":
