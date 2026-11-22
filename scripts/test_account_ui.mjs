@@ -62,17 +62,57 @@ try {
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill('casey@example.test');
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill('Demo-only-123!');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
-  await page.getByText('Signed in to the demo account. No live account was used.', { exact: true }).waitFor();
-  assert.equal(await page.locator('#account-verify').count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Verify email', exact: true }).count(), 0);
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.getByRole('heading', { name: 'Verify your email', exact: true }).waitFor();
+  await assertAccountHeadingVisible('account-verify-heading');
+  await page.getByRole('button', { name: 'Close account', exact: true }).click();
+  await page.locator('#show-account').click();
   await assertAccountHeadingVisible('account-sign-in-heading');
-  await page.locator('#account-email').fill('casey@example.test');
+  // Verification is never offered before credentials are submitted.
+  assert.equal(await page.locator('#open-verify').count(), 0);
+  assert.equal(await page.locator('#account-verify').isVisible(), false);
+  async function signInUnverified() {
+    await page.locator('#account-email').fill('casey@example.test');
+    await page.locator('#account-password').fill('Demo-only-123!');
+    await page.locator('#account-sign-in').getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.getByText('Verify your email to finish signing in.', { exact: false }).waitFor();
+    await assertAccountHeadingVisible('account-verify-heading');
+    assert.equal(await page.locator('#verify-email').inputValue(), 'casey@example.test');
+    assert.equal(await page.locator('#account-password').inputValue(), '');
+  }
+  await signInUnverified();
+  await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
+  await assertAccountHeadingVisible('account-sign-in-heading');
+  await signInUnverified();
+  const resendStatus = await page.locator('#account-status').textContent();
+  for (const invalidEmail of ['', 'not-an-email']) {
+    await page.locator('#verify-email').fill(invalidEmail);
+    await page.getByRole('button', { name: 'Resend code', exact: true }).click();
+    assert.equal(await page.locator('#account-status').textContent(), resendStatus);
+    assert.equal(await page.locator('#verify-email').evaluate(input => input.validity.valid), false);
+  }
+  await page.locator('#verify-email').fill('casey@example.test');
+  await page.getByRole('button', { name: 'Resend code', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
+  await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
+  assert.equal(await page.locator('#verify-code').inputValue(), '');
+  await signInUnverified();
+  await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
+  await page.getByRole('button', { name: 'Verify email', exact: true }).click();
+  await page.getByRole('alert').getByText('The demo verification code is incorrect.').waitFor();
+  await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('123456');
+  await page.getByRole('button', { name: 'Verify email', exact: true }).click();
+  // Agreed flow: a successful verification confirms it and returns to Sign In; it never signs in by itself.
+  await page.getByText('Email verified successfully. Sign in with your email and password.', { exact: true }).waitFor();
+  await assertAccountHeadingVisible('account-sign-in-heading');
+  assert.equal(await page.locator('#account-email').inputValue(), 'casey@example.test');
+  assert.equal(await page.locator('#account-sign-out').isVisible(), false);
+  assert.equal(await page.locator('#signup-password').inputValue(), '');
   await page.locator('#account-password').fill('Demo-only-123!');
   await page.locator('#account-sign-in').getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByText('Signed in to the demo account. No live account was used.', { exact: true }).waitFor();
-  assert.equal(await page.locator('#signup-password').inputValue(), '');
-  checks.push('signup and sign-in work without email verification or a code; password fields are cleared');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).waitFor();
+  checks.push('no verify prompt before credentials; signup, unverified login opens verification with the email filled, OTP resend/retry and cleared password fields');
+  checks.push('successful verification shows a confirmation and returns to sign-in; signing in afterwards grants access');
+  checks.push('resend rejects missing/malformed email before calling the account adapter');
   await page.getByRole('button', { name: 'Saved reports', exact: true }).click();
   await page.locator('#history-list li').waitFor();
   assert.match(await page.locator('#history-list').textContent(), /<img src=x> Demo/);

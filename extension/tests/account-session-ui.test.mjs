@@ -98,7 +98,8 @@ test('server 401 expires the session while 403 does not pretend the user is sign
 
 test('failed remote sign-out still removes local access and shows the limitation', async () => {
   const { accounts } = setup({ adapter: { async signOut() { throw Error('Offline'); } } });
-  await accounts.ready; await accounts.signIn({ email: 'ada@example.test' }); await accounts.signOut();
+  await accounts.ready; await accounts.signIn({ email: 'ada@example.test' });
+  assert.equal(await accounts.signOut(), false, 'reports that the provider did not confirm sign-out');
   assert.equal(accounts.state.user, null); assert.match(accounts.state.message, /could not confirm/); accounts.dispose();
 });
 
@@ -116,4 +117,11 @@ test('demo signup and sign-in need no verification; credentials remain local and
   await adapter.resetPassword({ email: 'new@example.test', code: '123456', password: 'Different-demo-123!' });
   await assert.rejects(adapter.signIn({ email: 'new@example.test', password: 'Demo-only-123!' }), /incorrect/);
   assert.ok(await adapter.signIn({ email: 'new@example.test', password: 'Different-demo-123!' }));
+});
+
+test('sign-out reports true only when the account service confirms it', async () => {
+  const { accounts } = setup();
+  await accounts.ready; await accounts.signIn({ email: 'ada@example.test' });
+  assert.equal(await accounts.signOut(), true);
+  assert.equal(accounts.state.status, 'signed-out'); accounts.dispose();
 });

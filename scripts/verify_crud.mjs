@@ -127,7 +127,17 @@ export async function verifyTarget(baseUrl, options) {
 
 export async function verifyCrud(baseUrl, options = {}) {
     const target = await verifyTarget(baseUrl, options);
-    const client = createAnalysisClient(target.baseUrl, target.safeFetch);
+    const { getAccessToken } = options;
+    if (getAccessToken !== undefined && typeof getAccessToken !== 'function') {
+        throw new TypeError('getAccessToken must be a function');
+    }
+    if (getAccessToken !== undefined) {
+        const response = await target.safeFetch(target.baseUrl + '/api/analyses', {
+            cache: 'no-store', signal: AbortSignal.timeout(10000)
+        });
+        assert.equal(response.status, 401, 'Target must reject unauthenticated report access');
+    }
+    const client = createAnalysisClient(target.baseUrl, target.safeFetch, { getAccessToken });
     const requireRealAI = options.requireRealAI === true;
     const subject = 'Synthetic CRUD check ' + crypto.randomUUID();
     const body = 'Synthetic test email. No real user data or credentials.';
