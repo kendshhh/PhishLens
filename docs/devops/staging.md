@@ -8,6 +8,12 @@ and Neon Auth database `neondb`. No live Hosted Auth or CRUD acceptance is claim
 for this integrated candidate; issue #153 remains **NO-GO** until exact-head
 checks and protected acceptance pass.
 
+The latest protected run (`45040106942`) passed mapping preflight and deployed the
+candidate, but authenticated acceptance stopped at account A with HTTP 401 before
+CRUD. The sanitized evidence records zero production requests or writes. Confirm
+both synthetic accounts and their protected secrets against the current Auth
+branch before rerunning acceptance.
+
 ## PR-required Hosted staging
 
 The stable `Hosted staging` job runs for a same-repository, non-draft runtime PR

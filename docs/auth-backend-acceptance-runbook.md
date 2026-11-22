@@ -11,7 +11,15 @@ PostgreSQL endpoint is preserved; `.github/secretary.json` pins the current
 protected project, branch, endpoint, and Auth mapping. The startup guard requires
 these identities to match.
 
-Before any hosted run, privately verify that Render's runtime
+The latest protected acceptance run (`45040106942`) passed mapping preflight,
+deployed the exact candidate, and reached a healthy staging service. Sign-in for
+synthetic account A returned HTTP 401 at phase `account-a-auth`, before saved-report
+CRUD. Its sanitized evidence records no production requests or writes. Before the
+next run, verify that accounts A and B exist and are email-verified on this exact
+Neon Auth branch, and that the protected GitHub secrets match those accounts. Do
+not put their credentials in chat, source, or evidence.
+
+Before the next hosted run, privately verify that Render's runtime
 `DATABASE_URL`, `STAGING_DATABASE_HOST`, and separate
 `STAGING_MIGRATION_DATABASE_URL` resolve to the pinned branch and report the
 expected database and separate roles, and that the configured Auth host is enabled

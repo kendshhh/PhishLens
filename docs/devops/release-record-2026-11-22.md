@@ -11,12 +11,16 @@ identities are recorded in `.github/secretary.json`; connection strings and
 credentials are intentionally omitted. The integrated base is PR #268 commit
 `d31a76b`, followed by #251 → #276 → #270 → #267 → #266 → #258.
 
-**Release status: NO-GO.** These checks identify the target but do not prove that
-Render currently connects to it. No Render secret values were inspected in this
-work session. No staging deployment, migration, account creation, or Auth/CRUD
-write was run. The Render runtime and migration server-side identities remain
-unverified, as do the protected schema-only and no-production-rows attestations,
-and the registration/verification state of both synthetic Auth accounts.
+**Release status: NO-GO.** Hosted run `45040106942` passed the protected Neon,
+Render, and Auth mapping preflights and deployed candidate
+`4e4481d6279a7404d35b21d4a32ef5d0c280311b`. The staging service reported healthy
+and ready at migration revision `0004_neon_auth_subject`. Acceptance stopped
+during account A sign-in with HTTP 401, before report CRUD; the sanitized evidence
+records zero production requests and writes. No Render secret values were
+inspected and CI did not create Auth accounts. Confirm that both synthetic
+accounts exist and are verified on the protected `neondb` Auth target, and that
+the protected secret pair matches, before another hosted acceptance run. Schema
+and production-row attestations remain separate release gates.
 
 ## Evidence currently available
 
@@ -26,8 +30,8 @@ and the registration/verification state of both synthetic Auth accounts.
 | Neon/Auth readiness | Auth path `/neondb/auth`; staging API origin configured | No current Auth/CRUD acceptance; schema-only initialization and row isolation still need attestation |
 | Render runtime | Expected DB `phishlens_dev`, role `phishlens_staging_app`, approved branch host | Current `DATABASE_URL` server identity not verified |
 | Render migration | Expected DB `phishlens_dev`, role `neondb_owner`, same approved branch host | Current migration server identity not verified |
-| Auth accounts | Two synthetic accounts are required; CI does not create accounts | A/B existence, distinct subjects, and verified-email state remain unverified |
-| Candidate | PR #266 was based on head `85ddf64661530c88b103df8dcabaabd482198439`; this reliability patch is to be reviewed on the updated PR head | Do not reuse a run or approval from the earlier head |
+| Auth accounts | CI does not create accounts; hosted run `45040106942` received HTTP 401 for account A | Verify A/B registration, verified-email state, and protected secret mapping on the current Auth target |
+| Candidate | PR #266 candidate `4e4481d6279a7404d35b21d4a32ef5d0c280311b`; PR #281 carries the merge-order integration | Rerun acceptance after the account state is confirmed; do not reuse an earlier head's result |
 | Prior staging attempts | Run #449301 reached Auth sign-in and timed out for account A; run #449337 stopped on staging host/name mismatch | Historical failure evidence only; neither establishes current mapping |
 | Release approval | Issue #153 remains NO-GO; independent reviewer approval and complete release scorecard evidence are outstanding | Do not merge around required protection or mark release ready |
 
