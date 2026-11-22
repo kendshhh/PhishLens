@@ -2,10 +2,10 @@
 
 import json
 import os
-from io import BytesIO
-from urllib.error import HTTPError
 import unittest
+from io import BytesIO
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 from scripts.verify_neon_release_branch import NeonReleaseError, verify_branch
 
@@ -89,16 +89,17 @@ class NeonReleaseBranchTests(unittest.TestCase):
 
     def test_schema_only_attestation_must_be_explicit_before_neon_request(self):
         for attestation in ("", "unset"):
-            with patch("scripts.verify_neon_release_branch.urlopen") as urlopen:
-                with self.assertRaisesRegex(NeonReleaseError, "schema-only"):
-                    verify_branch(
-                        project_id="staging-project-123",
-                        branch_id="br-staging-12345678",
-                        production_project_id="production-project-123",
-                        production_branch_id="br-production-12345678",
-                        schema_only_attestation=attestation,
-                        production_rows_present="false",
-                    )
+            with patch("scripts.verify_neon_release_branch.urlopen") as urlopen, self.assertRaisesRegex(
+                NeonReleaseError, "schema-only"
+            ):
+                verify_branch(
+                    project_id="staging-project-123",
+                    branch_id="br-staging-12345678",
+                    production_project_id="production-project-123",
+                    production_branch_id="br-production-12345678",
+                    schema_only_attestation=attestation,
+                    production_rows_present="false",
+                )
 
             urlopen.assert_not_called()
 
