@@ -1,20 +1,21 @@
 import assert from 'node:assert/strict';
 import { appendFile } from 'node:fs/promises';
-import { readStagingHistory, writeHistoryAccessOutput } from './staging_history.mjs';
+import {
+    isRetryableStagingHistoryError,
+    readStagingHistory,
+    writeHistoryAccessOutput,
+} from './staging_history.mjs';
 
 const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const timeoutMs = Number(process.env.STAGING_SMOKE_TIMEOUT_MS || 120000);
 const maxAttempts = Number(process.env.STAGING_MAX_ATTEMPTS || 30);
 const retryDelayMs = Number(process.env.STAGING_RETRY_DELAY_MS || 3000);
-const retryableStatuses = new Set([408, 425, 429]);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let currentStage = { name: 'startup readiness', endpoint: '/health', status: undefined };
 
 function transient(error) {
     // Once an HTTP response exists, classify its status before reading any error text.
-    if (Number.isInteger(error?.status)) {
-        return retryableStatuses.has(error.status) || (error.status >= 500 && error.status <= 599);
-    }
+    if (Number.isInteger(error?.status)) return isRetryableStagingHistoryError(error);
     const messages = [];
     const seen = new Set();
     let current = error;
@@ -28,8 +29,7 @@ function transient(error) {
     if (/redirect|invalid url|unsupported protocol|certificate|self[- ]signed|ERR_TLS/i.test(detail)) {
         return false;
     }
-    return /aborterror|econnreset|econnrefused|fetch failed|network request|timed? ?out|timeout|EAI_AGAIN|ENETUNREACH/i
-        .test(detail);
+    return isRetryableStagingHistoryError(new Error(detail));
 }
 
 function requestError(message, { endpoint, status, retryable = false, cause } = {}) {

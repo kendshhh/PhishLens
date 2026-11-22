@@ -5,7 +5,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { classifyHistoryAccess, readStagingHistory, writeHistoryAccessOutput } from '../staging_history.mjs';
+import {
+    classifyHistoryAccess,
+    isRetryableStagingHistoryError,
+    readStagingHistory,
+    writeHistoryAccessOutput,
+} from '../staging_history.mjs';
 
 const validAnalysis = {
     id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c',
@@ -62,6 +67,37 @@ test('reports other staging history HTTP failures with status and response body'
             error.url === 'https://staging.example.test/api/analyses' &&
             /database unavailable/.test(error.responseBody)
     );
+});
+
+for (const [status, body] of [
+    [400, 'request timeout'],
+    [401, 'fetch failed'],
+    [403, 'timeout while checking authorization'],
+]) {
+    test(`does not retry permanent HTTP ${status} when the body looks transient`, async () => {
+        let calls = 0;
+        await assert.rejects(
+            readStagingHistory('https://staging.example.test', async () => {
+                calls++;
+                return new Response(body, { status });
+            }, { attempts: 3, delayMs: 0 }),
+            error => error.status === status && /timeout|fetch failed/i.test(error.message),
+        );
+
+        assert.equal(calls, 1);
+        assert.equal(isRetryableStagingHistoryError({ status }), false);
+    });
+}
+
+test('retries only explicit transient HTTP statuses and network text without a response', () => {
+    for (const status of [408, 425, 429, 500, 502, 503, 504, 599]) {
+        assert.equal(isRetryableStagingHistoryError({ status }), true, `HTTP ${status}`);
+    }
+    for (const status of [400, 401, 403, 404]) {
+        assert.equal(isRetryableStagingHistoryError({ status, message: 'request timeout' }), false, `HTTP ${status}`);
+    }
+    assert.equal(isRetryableStagingHistoryError(new TypeError('fetch failed')), true);
+    assert.equal(isRetryableStagingHistoryError(new Error('request timed out')), true);
 });
 
 test('returns schema-valid seeded history items in demo mode', async () => {

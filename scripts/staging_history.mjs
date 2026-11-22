@@ -16,10 +16,17 @@ export async function writeHistoryAccessOutput(items, outputPath) {
     await appendFile(outputPath, `history_access_mode=${classifyHistoryAccess(items)}\n`, 'utf8');
 }
 
-function isTransientHistoryFailure(error) {
-    return error?.origin === 'network' || error?.origin === 'timeout' ||
-        error?.status === 408 || error?.status === 425 || error?.status === 429 ||
-        (error?.status >= 500 && error.status <= 599);
+export function isRetryableStagingHistoryError(error) {
+    // HTTP status wins over response text: permanent client/auth failures never
+    // become retryable because their bounded body contains a transient phrase.
+    if (Number.isInteger(error?.status)) {
+        return error.status === 408 || error.status === 425 || error.status === 429 ||
+            (error.status >= 500 && error.status <= 599);
+    }
+
+    return /network request|timed out|timeout|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENETUNREACH|fetch failed|aborted/i.test(
+        String(error?.message || error)
+    );
 }
 
 export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch, {
@@ -56,7 +63,7 @@ export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch, 
                 return null;
             }
 
-            if (attempt === attempts || !isTransientHistoryFailure(error)) throw error;
+            if (attempt === attempts || !isRetryableStagingHistoryError(error)) throw error;
             await delay(delayMs);
         }
     }
