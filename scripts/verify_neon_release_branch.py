@@ -31,8 +31,8 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
         raise NeonReleaseError("Staging cannot target the production Neon branch")
     if expected_parent_id:
         raise NeonReleaseError("Staging branch must be an independent root")
-    if schema_only_attestation not in {"true", "false"}:
-        raise NeonReleaseError("Protected environment must explicitly record the schema-only attestation state")
+    if schema_only_attestation != "true":
+        raise NeonReleaseError("Protected environment must attest this branch was initialized schema-only")
     if production_rows_present != "false":
         raise NeonReleaseError("Protected environment must attest that production rows are absent")
 
