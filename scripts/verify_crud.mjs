@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { createAnalysisClient } from '../extension/js/api.js';
+import { withStagingAuth } from './staging_auth.mjs';
 
 const ANALYSIS_MODES = new Set(['mock', 'real']);
 const PROVIDER_MODES = new Set(['mock', 'gemini', 'local', 'tfidf']);
@@ -125,9 +126,9 @@ export async function verifyTarget(baseUrl, options) {
     return { baseUrl: url.origin, safeFetch };
 }
 
-export async function verifyCrud(baseUrl, options = {}) {
-    const target = await verifyTarget(baseUrl, options);
-    const client = createAnalysisClient(target.baseUrl, target.safeFetch);
+async function verifyCrudWithClient(target, options, getAccessToken) {
+    const client = createAnalysisClient(target.baseUrl, target.safeFetch,
+        getAccessToken ? { getAccessToken } : {});
     const requireRealAI = options.requireRealAI === true;
     const subject = 'Synthetic CRUD check ' + crypto.randomUUID();
     const body = 'Synthetic test email. No real user data or credentials.';
@@ -181,22 +182,49 @@ export async function verifyCrud(baseUrl, options = {}) {
     }
 }
 
+export async function verifyCrud(baseUrl, options = {}) {
+    const target = await verifyTarget(baseUrl, options);
+    if (options.authenticate !== true) {
+        return verifyCrudWithClient(target, options, null);
+    }
+
+    const anonymous = await target.safeFetch(target.baseUrl + '/api/analyses', {
+        cache: 'no-store', signal: AbortSignal.timeout(10000)
+    });
+    assert.equal(anonymous.status, 401,
+        'Authenticated staging must reject anonymous saved-report access');
+    assert.match(anonymous.headers.get('www-authenticate') || '', /^Bearer(?:\s|$)/i,
+        'Anonymous rejection must include a Bearer challenge');
+
+    return withStagingAuth(getAccessToken =>
+        verifyCrudWithClient(target, options, getAccessToken), options.authEnvironment ?? process.env);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const args = process.argv.slice(2);
     function value(flag) {
         const index = args.indexOf(flag);
         return index === -1 ? undefined : args[index + 1];
     }
+    const authenticated = args.includes('--authenticate');
     try {
         const result = await verifyCrud(value('--base-url'), {
             environment: value('--environment'),
             expectedSha: value('--expected-sha'),
             allowWrites: args.includes('--allow-writes'),
+            authenticate: authenticated,
             requireRealAI: args.includes('--require-real-ai')
         });
         console.log(JSON.stringify(result, null, 2));
     } catch (error) {
-        console.error(error.message);
+        console.error(authenticated
+            ? JSON.stringify({
+                result: 'failed',
+                message: error.message || 'Authenticated staging verification failed.',
+                status: error.status ?? null,
+                recordId: error.recordId ?? null
+            }, null, 2)
+            : error.message);
         process.exitCode = 1;
     }
 }

@@ -767,6 +767,8 @@ jobs:
             package.json
             extension/js/api.js
             scripts/verify_crud.mjs
+            scripts/staging_auth.mjs
+            extension/vendor/neon/sdk.mjs
           sparse-checkout-cone-mode: false
       - name: Verify saved report synthetic AI and CRUD checklist
         id: staging-crud
@@ -774,12 +776,16 @@ jobs:
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
           STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_NEON_AUTH_URL: ${{ vars.STAGING_NEON_AUTH_URL }}
+          PHISHLENS_STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+          STAGING_AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_TEST_EMAIL }}
+          STAGING_AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_TEST_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging
           node pr-source/scripts/verify_crud.mjs \
             --base-url "$STAGING_BASE_URL" --environment staging \
-            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
+            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes --authenticate \
             | tee output/hosted-staging/saved-report-crud.json
       - name: Verify deployed PR-head identity and package staging assets
         id: staging-finalize
