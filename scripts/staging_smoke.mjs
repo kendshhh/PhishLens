@@ -65,7 +65,11 @@ async function readJson(path, remainingMs) {
         } catch {}
         throw requestError(
             `GET ${endpoint} returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`,
-            { endpoint, status: response.status, retryable: retryableStatuses.has(response.status) },
+            {
+                endpoint,
+                status: response.status,
+                retryable: isRetryableStagingHistoryError({ status: response.status }),
+            },
         );
     }
 
