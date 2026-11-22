@@ -151,10 +151,12 @@ def validate_owner_approved_target(
     ):
         raise SystemExit("Hosted staging target differs from the owner-approved Neon project and branch.")
     auth = urlsplit((auth_url or "").strip().rstrip("/"))
+    auth_database = config.get("staging_auth_database", "")
     if (
         auth.scheme != "https"
         or auth.hostname != config.get("staging_auth_host")
-        or auth.path != "/phishlens_dev/auth"
+        or not re.fullmatch(r"[a-zA-Z0-9_-]{1,63}", auth_database)
+        or auth.path != f"/{auth_database}/auth"
         or auth.username or auth.password or auth.port is not None
         or auth.query or auth.fragment
     ):

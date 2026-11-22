@@ -162,6 +162,7 @@ def verify_environment(rows, *, require_authenticated=False, approved_target=Non
         parsed_auth_url = urlsplit(expected_auth_url)
         if (
             not expected_auth_database
+            or not re.fullmatch(r"[a-zA-Z0-9_-]{1,63}", expected_auth_database)
             or parsed_auth_url.scheme != "https"
             or not parsed_auth_url.hostname
             or parsed_auth_url.username
@@ -174,12 +175,11 @@ def verify_environment(rows, *, require_authenticated=False, approved_target=Non
             or parsed_auth_url.path != f"/{expected_auth_database}/auth"
         ):
             raise RuntimeError("Hosted staging requires a valid isolated Neon Auth URL and database")
-        if expected_auth_database != "phishlens_dev":
-            raise RuntimeError("Hosted staging Auth target does not use the approved application database")
         if approved_target:
+            approved_auth_database = approved_target.get("staging_auth_database", "")
             if (
                 parsed_auth_url.hostname != approved_target.get("staging_auth_host")
-                or approved_target.get("staging_auth_database", "phishlens_dev") != expected_auth_database
+                or approved_auth_database != expected_auth_database
                 or parsed_auth_url.path != f"/{expected_auth_database}/auth"
             ):
                 raise RuntimeError("Hosted staging Auth target does not match the owner-approved Neon branch")
@@ -216,12 +216,14 @@ class _RejectAuthRedirects(urllib.request.HTTPRedirectHandler):
 def verify_auth_endpoint(auth_url, origin):
     """Check Auth DNS/TLS/CORS with a non-mutating preflight before deployment."""
     config = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
+    auth_database = config.get("staging_auth_database", "")
     auth_url = (auth_url or "").strip().rstrip("/")
     parsed = urlsplit(auth_url)
     if (
         parsed.scheme != "https"
         or parsed.hostname != config.get("staging_auth_host")
-        or parsed.path != "/phishlens_dev/auth"
+        or not re.fullmatch(r"[a-zA-Z0-9_-]{1,63}", auth_database)
+        or parsed.path != f"/{auth_database}/auth"
         or parsed.username or parsed.password or parsed.port is not None
         or parsed.query or parsed.fragment
         or origin != config.get("staging_origin")
@@ -671,6 +673,7 @@ def main():
                 report_auth_mode = verify_environment(
                     render_request("services/" + config["staging_service"] + "/env-vars?limit=100"),
                     require_authenticated=True,
+                    approved_target=config,
                 )
                 evidence["report_auth_mode"] = report_auth_mode
                 # The queue may have waited while the PR changed; re-read its live state

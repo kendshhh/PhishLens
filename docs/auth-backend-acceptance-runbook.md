@@ -2,19 +2,23 @@
 
 ## Current staging target contract (2026-11-22)
 
-The release target is Neon project `hidden-shadow-38533062`, branch
-`br-broad-feather-b3261w7l` (`staging-root`), database `phishlens_dev`. The
-selected #268 base pins the database endpoint to
-`ep-winter-wind-a1y2r1db` in `ap-southeast-1`; `.github/secretary.json` carries
-the project, branch, endpoint, and Auth host identities. The startup guard
-requires these identities to match.
+The protected staging target is Neon project `ancient-brook-17208049`, branch
+`br-rough-sea-a1l6ehi1`, and PostgreSQL endpoint
+`ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`. Runtime and migration
+URLs continue to target `phishlens_dev` with separate app and owner roles. Neon
+Auth uses its separate `neondb` database at `/neondb/auth`. The #268 base's
+PostgreSQL endpoint is preserved; `.github/secretary.json` pins the current
+protected project, branch, endpoint, and Auth mapping. The startup guard requires
+these identities to match.
 
 Before any hosted run, privately verify that Render's runtime
 `DATABASE_URL`, `STAGING_DATABASE_HOST`, and separate
-`STAGING_MIGRATION_DATABASE_URL` all resolve to the pinned branch, and that the
-configured Auth host is enabled for the same branch. No live Auth/CRUD acceptance
-is claimed by this reconciliation. Keep the protected settings authoritative;
-never put credential values in this runbook.
+`STAGING_MIGRATION_DATABASE_URL` resolve to the pinned branch and report the
+expected database and separate roles, and that the configured Auth host is enabled
+for the same branch. The protected non-secret target identities were checked
+read-only; Render's current URL identities still require private verification. No
+live Auth/CRUD acceptance is claimed by this reconciliation. Keep the protected
+settings authoritative; never put credential values in this runbook.
 
 The earlier `patient-bird-25428852` / `pr-58-staging` target is historical and
 must not be copied into protected settings.

@@ -96,11 +96,14 @@ async function verifyPreflight() {
     'Staging Auth URL',
   );
   const stagingAuthUrl = new URL(packageEvidence.auth_configs?.staging?.authUrl || '');
+  const stagingAuthDatabase = approvedTarget.staging_auth_database;
+  assert.ok(typeof stagingAuthDatabase === 'string' && /^[a-zA-Z0-9_-]{1,63}$/.test(stagingAuthDatabase),
+    'Approved staging Auth database is missing or invalid');
   if (stagingAuthUrl.hostname !== approvedTarget.staging_auth_host
-      || stagingAuthUrl.pathname !== '/phishlens_dev/auth'
+      || stagingAuthUrl.pathname !== `/${stagingAuthDatabase}/auth`
       || required('STAGING_AUTH_URL') !== packageEvidence.auth_configs?.staging?.authUrl
-      || required('STAGING_AUTH_DATABASE') !== 'phishlens_dev'
-      || packageEvidence.auth_configs?.staging?.database !== 'phishlens_dev') {
+      || required('STAGING_AUTH_DATABASE') !== stagingAuthDatabase
+      || packageEvidence.auth_configs?.staging?.database !== stagingAuthDatabase) {
     throw new Error('Packaged and approved Neon Auth targets differ');
   }
 

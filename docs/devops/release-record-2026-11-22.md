@@ -2,26 +2,14 @@
 
 ## Decision and current state
 
-The authorized staging owner selected Neon project `hidden-shadow-38533062`
-(`phishlens-staging`), branch `br-broad-feather-b3261w7l` (`staging-root`),
-application database `phishlens_dev`, and Auth database `phishlens_dev` on
-2026-11-22 (Asia/Manila) in this Codex conversation. The selection is recorded in
-`.github/secretary.json` and pinned by the staging release guards.
-
-The selected #268 base at `d31a76b` changes the database endpoint pin to
-`ep-winter-wind-a1y2r1db`, superseding the earlier database host recorded from
-the metadata check. The Auth host remains the host from that owner mapping.
-Privately verify both still resolve to this project/branch and that Render's
-runtime and migration URLs use the updated database endpoint before any hosted
-run. Until that check is complete, the target mapping is code-pinned but not
-accepted for deployment or writes.
-
-Read-only Neon metadata identified one ready compute endpoint on that branch and
-the branch Auth endpoint at `/phishlens_dev/auth`. The branch is an independent
-root and was marked default in the metadata read. Its PG and Auth hostnames are
-pinned in `.github/secretary.json`; this record intentionally does not reproduce
-connection strings or credential values. Neon Auth's trusted-origin settings
-included `https://phishlens-staging.onrender.com` during the metadata read.
+The protected staging mapping uses Neon project `ancient-brook-17208049`, branch
+`br-rough-sea-a1l6ehi1`, PostgreSQL endpoint
+`ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`, and separate Auth database
+`neondb` at `/neondb/auth`. Application and migration URLs remain pinned to
+`phishlens_dev` and their separate runtime/owner roles. The non-secret target
+identities are recorded in `.github/secretary.json`; connection strings and
+credentials are intentionally omitted. The integrated base is PR #268 commit
+`d31a76b`, followed by #251 → #276 → #270 → #267 → #266 → #258.
 
 **Release status: NO-GO.** These checks identify the target but do not prove that
 Render currently connects to it. No Render secret values were inspected in this
@@ -34,8 +22,8 @@ and the registration/verification state of both synthetic Auth accounts.
 
 | Area | Recorded evidence | Status |
 | --- | --- | --- |
-| Owner target selection | Authorized owner selected `hidden-shadow-38533062` / `br-broad-feather-b3261w7l`, `phishlens_dev` for app and Auth | Confirmed in conversation; record the signed/owned change reference if the team's release system requires one |
-| Neon metadata | Branch ready/root; one compute endpoint; database `phishlens_dev` owned by `neondb_owner`; Auth path `/phishlens_dev/auth`; staging API origin trusted | Read-only metadata checked; schema-only initialization and row isolation still need attestation |
+| Protected target mapping | Project `ancient-brook-17208049` / branch `br-rough-sea-a1l6ehi1`; PostgreSQL endpoint `ep-winter-wind-a1y2r1db`; app/migration DB `phishlens_dev`; Auth DB `neondb` | Non-secret protected identities checked read-only; Render URL identities and data isolation still require private verification/attestation |
+| Neon/Auth readiness | Auth path `/neondb/auth`; staging API origin configured | No current Auth/CRUD acceptance; schema-only initialization and row isolation still need attestation |
 | Render runtime | Expected DB `phishlens_dev`, role `phishlens_staging_app`, approved branch host | Current `DATABASE_URL` server identity not verified |
 | Render migration | Expected DB `phishlens_dev`, role `neondb_owner`, same approved branch host | Current migration server identity not verified |
 | Auth accounts | Two synthetic accounts are required; CI does not create accounts | A/B existence, distinct subjects, and verified-email state remain unverified |
@@ -52,7 +40,7 @@ and the registration/verification state of both synthetic Auth accounts.
   project, branch, database host, Auth host/path, or non-Neon report mode. This
   guard does not change or relax its allowlist.
 - Require GitHub's packaged Auth URL and Render's `NEON_AUTH_BASE_URL` to match the
-  approved host and `/phishlens_dev/auth` path before the deploy controller runs.
+  approved Auth host and `/neondb/auth` path before the deploy controller runs.
 - Add a non-mutating `OPTIONS` CORS preflight to the email sign-in route. It checks
   DNS/TLS reachability and that the staging API origin, POST method, content type,
   and credentialed browser flow are allowed. Redirects fail closed.
@@ -80,7 +68,7 @@ exact candidate SHA before any protected environment approval.
    `STAGING_MIGRATION_DATABASE_URL` maps to the same approved host/database and
    reports `current_user = neondb_owner`; keep it separate from the runtime role.
 3. **Confirm current Auth mapping privately.** Render `NEON_AUTH_BASE_URL` must
-   match the approved Neon Auth host and `/phishlens_dev/auth` path, and GitHub
+   match the approved Neon Auth host and `/neondb/auth` path, and GitHub
    `PHISHLENS_STAGING_AUTH_URL` plus `PHISHLENS_STAGING_AUTH_DATABASE` must match
    the same branch/database. Keep the staging origin at
    `https://phishlens-staging.onrender.com`.

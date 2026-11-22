@@ -2,9 +2,11 @@
 
 **Selected base:** PR #268 commit `d31a76b`, descended from `main@0338ad1`.
 The staging merge sequence is #268 → #251 → #276 → #270 → #267 → #266 → #258.
-This branch preserves the staging endpoint pin and mapping. No live Hosted Auth or
-CRUD acceptance is claimed for this integrated candidate; issue #153 remains
-**NO-GO** until exact-head checks and protected acceptance pass.
+This branch preserves #268's `ep-winter-wind-a1y2r1db` PostgreSQL endpoint and
+pins the protected project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`,
+and Neon Auth database `neondb`. No live Hosted Auth or CRUD acceptance is claimed
+for this integrated candidate; issue #153 remains **NO-GO** until exact-head
+checks and protected acceptance pass.
 
 ## PR-required Hosted staging
 
@@ -93,13 +95,15 @@ production deployment was triggered by this work.
 
 ## Verified Neon and Render mapping
 
-- Staging Neon project ID: `hidden-shadow-38533062` (project name
-  `phishlens-staging`); root branch ID: `br-broad-feather-b3261w7l` (branch
-  name `staging-root`); database: `phishlens_dev`.
+- Protected staging Neon project ID: `ancient-brook-17208049`; branch ID:
+  `br-rough-sea-a1l6ehi1`; application/migration database: `phishlens_dev`;
+  Neon Auth database: `neondb`.
 - The startup pin is endpoint `ep-winter-wind-a1y2r1db` in
   `ap-southeast-1`; its direct and pooler hostnames are the accepted staging
   targets. `STAGING_DATABASE_HOST` and `STAGING_NEON_EXPECTED_HOST` must map
   to this endpoint.
+- The Auth endpoint host is pinned in `.github/secretary.json` and its URL path
+  is `/neondb/auth`; this remains separate from the PostgreSQL application DB.
 - Render runtime `DATABASE_URL` uses the `phishlens_staging_app` role.
   `STAGING_MIGRATION_DATABASE_URL` uses a separate owner credential against
   the same staging database and endpoint. Keep both values in protected Render
@@ -117,8 +121,9 @@ production deployment was triggered by this work.
 
 Complete through protected GitHub/Render/Neon settings, not committed secrets:
 
-1. Provision a Neon project separate from production, with a schema-only root
-   branch, current migrations, Neon Auth, and no production rows.
+1. Keep the configured Neon project separate from production; verify its root
+   branch, schema-only initialization, current migrations, Neon Auth, and absence
+   of production rows against current protected attestations.
 2. Privately verify the Render staging service's runtime and migration URLs,
    database, branch, Auth mode, and separate least-privilege roles. Record the
    project IDs, branch IDs, endpoint hosts, and attestations in protected GitHub

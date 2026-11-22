@@ -379,7 +379,20 @@ class PreviewTests(unittest.TestCase):
         service = CONFIG["staging_service"]
         render = {
             f"services/{service}": {},
-            f"services/{service}/env-vars?limit=100": render_staging_environment_rows(REPORT_AUTH_MODE="neon"),
+            f"services/{service}/env-vars?limit=100": render_staging_environment_rows(
+                DATABASE_URL=f"postgresql://phishlens_staging_app:synthetic@{CONFIG['staging_database_host']}/phishlens_dev",
+                STAGING_MIGRATION_DATABASE_URL=f"postgresql://neondb_owner:synthetic@{CONFIG['staging_database_host']}/phishlens_dev",
+                STAGING_DATABASE_HOST=CONFIG["staging_database_host"],
+                STAGING_NEON_EXPECTED_HOST=CONFIG["staging_database_host"],
+                STAGING_NEON_PROJECT_ID=CONFIG["staging_neon_project_id"],
+                STAGING_NEON_BRANCH_ID=CONFIG["staging_neon_branch_id"],
+                STAGING_BASE_URL=CONFIG["staging_origin"],
+                NEON_AUTH_BASE_URL=(
+                    f"https://{CONFIG['staging_auth_host']}/"
+                    f"{CONFIG['staging_auth_database']}/auth"
+                ),
+                REPORT_AUTH_MODE="neon",
+            ),
             f"services/{service}/deploys": {"id": "fixture"},
             f"services/{service}/deploys/fixture": {"status": "live", "commit": {"id": SHA}},
         }
@@ -394,10 +407,14 @@ class PreviewTests(unittest.TestCase):
                         "SECRETARY_PR_NUMBER": "123", "SECRETARY_PR_HEAD_SHA": SHA,
                         "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                         "GITHUB_STEP_SUMMARY": str(summary_path),
-                        "SECRETARY_PREVIEW_ENABLED": "true", "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
+                        "SECRETARY_PREVIEW_ENABLED": "true",
+                        "SECRETARY_STAGING_DB_HOST": CONFIG["staging_database_host"],
                         "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
-                        "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
-                        "STAGING_AUTH_DATABASE": "phishlens_dev"}
+                        "STAGING_AUTH_URL": (
+                            f"https://{CONFIG['staging_auth_host']}/"
+                            f"{CONFIG['staging_auth_database']}/auth"
+                        ),
+                        "STAGING_AUTH_DATABASE": CONFIG["staging_auth_database"]}
             with (patch.dict(os.environ, settings, clear=True),
                   patch("scripts.secretary.preview.ROOT", root),
                   patch("scripts.secretary.preview.GitHub", return_value=api),
@@ -805,7 +822,8 @@ class PreviewTests(unittest.TestCase):
     def test_authenticated_environment_is_pinned_to_the_owner_approved_branch(self):
         approved = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
         host = approved["staging_database_host"]
-        auth_url = f"https://{approved['staging_auth_host']}/phishlens_dev/auth"
+        auth_database = approved["staging_auth_database"]
+        auth_url = f"https://{approved['staging_auth_host']}/{auth_database}/auth"
         rows = render_staging_environment_rows(
             DATABASE_URL=f"postgresql://phishlens_staging_app:synthetic@{host}/phishlens_dev",
             STAGING_MIGRATION_DATABASE_URL=f"postgresql://neondb_owner:synthetic@{host}/phishlens_dev",
@@ -820,7 +838,7 @@ class PreviewTests(unittest.TestCase):
             "SECRETARY_STAGING_DB_HOST": host,
             "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
             "STAGING_AUTH_URL": auth_url,
-            "STAGING_AUTH_DATABASE": "phishlens_dev",
+            "STAGING_AUTH_DATABASE": auth_database,
         }):
             self.assertEqual(
                 verify_environment(rows, require_authenticated=True, approved_target=approved),
@@ -828,14 +846,14 @@ class PreviewTests(unittest.TestCase):
             )
             set_render_environment_value(
                 rows, "NEON_AUTH_BASE_URL",
-                "https://ep-old-target.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+                f"https://ep-old-target.neonauth.c-4.ap-southeast-1.aws.neon.tech/{auth_database}/auth",
             )
             with self.assertRaisesRegex(RuntimeError, "does not match the isolated staging branch"):
                 verify_environment(rows, require_authenticated=True, approved_target=approved)
 
     def test_auth_preflight_uses_non_mutating_cors_options_and_rejects_redirect_targets(self):
         approved = json.loads((ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
-        auth_url = f"https://{approved['staging_auth_host']}/phishlens_dev/auth"
+        auth_url = f"https://{approved['staging_auth_host']}/{approved['staging_auth_database']}/auth"
         origin = approved["staging_origin"]
 
         class Response:
@@ -863,7 +881,9 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(request.headers["Access-control-request-method"], "POST")
 
         with self.assertRaisesRegex(RuntimeError, "endpoint identity"):
-            verify_auth_endpoint("https://other.neonauth.aws.neon.tech/phishlens_dev/auth", origin)
+            verify_auth_endpoint(
+                f"https://other.neonauth.aws.neon.tech/{approved['staging_auth_database']}/auth", origin
+            )
 
     def test_hosted_staging_rejects_implicit_or_demo_auth_mode(self):
         for rows in (

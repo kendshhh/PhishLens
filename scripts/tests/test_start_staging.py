@@ -18,8 +18,10 @@ from scripts.start_staging import (
 TARGET_CONFIG = json.loads(
     (Path(__file__).resolve().parents[2] / ".github/secretary.json").read_text(encoding="utf-8")
 )
+DATABASE_HOST = TARGET_CONFIG["staging_database_host"].replace(
+    ".ap-southeast-1", "-pooler.ap-southeast-1"
+)
 DIRECT_DATABASE_HOST = TARGET_CONFIG["staging_database_host"]
-DATABASE_HOST = DIRECT_DATABASE_HOST.replace(".ap-southeast-1.aws.neon.tech", "-pooler.ap-southeast-1.aws.neon.tech")
 DATABASE_URL = f"postgresql+psycopg://phishlens_staging_app:example-password@{DATABASE_HOST}/phishlens_dev?sslmode=require"
 MIGRATION_URL = f"postgresql+psycopg://neondb_owner:owner-example-password@{DATABASE_HOST}/phishlens_dev?sslmode=require"
 PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
@@ -27,7 +29,10 @@ STAGING_BRANCH_ID = TARGET_CONFIG["staging_neon_branch_id"]
 PRODUCTION_BRANCH_ID = "br-production-123456"
 STAGING_PROJECT_ID = TARGET_CONFIG["staging_neon_project_id"]
 PRODUCTION_PROJECT_ID = "patient-bird-123456"
-STAGING_AUTH_URL = f"https://{TARGET_CONFIG['staging_auth_host']}/phishlens_dev/auth"
+STAGING_AUTH_URL = (
+    f"https://{TARGET_CONFIG['staging_auth_host']}/"
+    f"{TARGET_CONFIG['staging_auth_database']}/auth"
+)
 
 
 def validate_hosted_urls(runtime, migration, expected_host, app_role):
@@ -57,7 +62,7 @@ class HostedStagingIpv4Tests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "Auth URL differs"):
             validate_owner_approved_target(
                 DIRECT_DATABASE_HOST, STAGING_PROJECT_ID, STAGING_BRANCH_ID,
-                "https://old.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+                f"https://old.neonauth.c-4.ap-southeast-1.aws.neon.tech/{TARGET_CONFIG['staging_auth_database']}/auth",
             )
 
     def test_pins_ipv4_addresses_and_preserves_hostname_and_tls_options(self):
