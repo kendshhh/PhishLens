@@ -28,6 +28,8 @@ test.afterEach(() => {
 function mockResponse(data) {
     globalThis.fetch = async () => ({
         ok: true,
+        status: 200,
+        clone: () => new Response(JSON.stringify(data)),
         json: async () => data
     });
 }
@@ -51,12 +53,39 @@ test("returns empty history", async () => {
 test("rejects an HTTP 503 response", async () => {
     globalThis.fetch = async () => ({
         ok: false,
-        status: 503
+        status: 503,
+        text: async () => "database unavailable"
     });
 
     await assert.rejects(
-        getAnalyses("https://example.test"),
-        /Failed to load history/
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.status === 503 &&
+            error.url === "https://example.test/api/analyses" &&
+            error.origin === "http" &&
+            error.category === "staging_api_outage" &&
+            error.code === "history_http_5xx" &&
+            error.responseBody === "" &&
+            !error.message.includes("database unavailable") &&
+            /HTTP 503/.test(error.message)
+    );
+});
+
+test("classifies HTTP 4xx responses as authentication or authorization failures", async () => {
+    globalThis.fetch = async () => new Response("sign in required", {
+        status: 401,
+        headers: { "WWW-Authenticate": "Bearer" }
+    });
+
+    await assert.rejects(
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.status === 401 &&
+            error.url === "https://example.test/api/analyses" &&
+            error.origin === "http" &&
+            error.category === "authentication_authorization" &&
+            error.code === "history_http_4xx" &&
+            error.wwwAuthenticate === "Bearer" &&
+            error.responseBody === "" &&
+            !error.message.includes("sign in required")
     );
 });
 
@@ -64,8 +93,12 @@ test("rejects an invalid response wrapper", async () => {
     mockResponse({ wrong_field: [] });
 
     await assert.rejects(
-        getAnalyses("https://example.test"),
-        /Invalid history data/
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.category === "backend_contract_mismatch" &&
+            error.code === "history_schema_mismatch" &&
+            error.origin === "contract" &&
+            error.status === 200 &&
+            /Invalid history data/.test(error.message)
     );
 });
 
@@ -125,14 +158,18 @@ test("accepts nullable result fields", async () => {
 test("rejects invalid JSON", async () => {
     globalThis.fetch = async () => ({
         ok: true,
-        json: async () => {
-            throw new SyntaxError("Invalid JSON");
-        }
+        status: 200,
+        clone: () => new Response("{not-json"),
+        json: async () => { throw new SyntaxError("Invalid JSON"); }
     });
 
     await assert.rejects(
-        getAnalyses("https://example.test"),
-        SyntaxError
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.category === "backend_contract_mismatch" &&
+            error.code === "history_invalid_json" &&
+            error.origin === "contract" &&
+            error.responseBody === "" &&
+            !error.message.includes("{not-json")
     );
 });
 
@@ -142,10 +179,81 @@ test("handles a network failure", async () => {
     };
 
     await assert.rejects(
-        getAnalyses("https://example.test"),
-        /Network unavailable/
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.category === "transport_failure" &&
+            error.code === "history_network_error" &&
+            error.origin === "network" &&
+            error.url === "https://example.test/api/analyses" &&
+            /Network unavailable/.test(error.message)
     );
 });
+
+test("handles a request timeout as a distinct transport failure", async () => {
+    globalThis.fetch = async () => { throw new DOMException("The request timed out", "TimeoutError"); };
+
+    await assert.rejects(
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.category === "transport_failure" &&
+            error.code === "history_timeout" &&
+            error.origin === "timeout" &&
+            error.status === null &&
+            error.timeoutMs === 10000 &&
+            /timed out/.test(error.message)
+    );
+});
+
+test("does not expose HTTP response body contents in diagnostics", async () => {
+    const privateMarker = "private-report-content-should-not-be-logged";
+    globalThis.fetch = async () => new Response(privateMarker.repeat(500), { status: 503 });
+
+    await assert.rejects(
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.status === 503 &&
+            error.responseBody === "" &&
+            !error.message.includes(privateMarker)
+    );
+});
+
+test("retries a transient history outage and returns the recovered response", async () => {
+    let calls = 0;
+    globalThis.fetch = async () => {
+        calls++;
+        if (calls === 1) return new Response("database starting", { status: 503 });
+        return new Response(JSON.stringify({ items: [validAnalysis] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+        });
+    };
+
+    assert.deepEqual(
+        await getAnalyses("https://example.test", { retries: 1, retryDelayMs: 0 }),
+        [validAnalysis]
+    );
+    assert.equal(calls, 2);
+});
+
+for (const [failure, error] of [
+    ["network failure", new TypeError("Network unavailable")],
+    ["timeout", new DOMException("The request timed out", "TimeoutError")]
+]) {
+    test(`retries a transient ${failure} and returns the recovered response`, async () => {
+        let calls = 0;
+        globalThis.fetch = async () => {
+            calls++;
+            if (calls === 1) throw error;
+            return new Response(JSON.stringify({ items: [validAnalysis] }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            });
+        };
+
+        assert.deepEqual(
+            await getAnalyses("https://example.test", { retries: 1, retryDelayMs: 0 }),
+            [validAnalysis]
+        );
+        assert.equal(calls, 2);
+    });
+}
 test("rejects an ID that is not a UUID", async () => {
     mockResponse({
         items: [{ ...validAnalysis, id: "not-a-uuid" }]

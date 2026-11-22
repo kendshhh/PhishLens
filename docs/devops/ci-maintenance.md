@@ -3,12 +3,25 @@
 > This page includes historical October maintenance notes. Current deployment
 > and security state is summarized in the [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
 
-## Current pinned Actions — 2026-11-15
+## Current pinned tools — 2026-11-21
 
-The checked-in workflows currently pin `actions/checkout` v7 to
-`3d3c42e5aac5ba805825da76410c181273ba90b1` and `actions/setup-python` v7 to
-`6d4fd22b20465ccc0f7354476588e8df7c9ca0e0`. The older setup-python hash in the
-historical note below is no longer used.
+The checked-in workflows pin Actions to full commit SHAs and record the
+corresponding release beside each pin. Current versions include:
+
+| Tool | Pinned version | Full commit / runtime pin |
+|---|---|---|
+| `actions/checkout` | v7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
+| `actions/setup-node` | v7.1.0 | `949feb2413d6458794dcd2491c4babbbce0c15c1` |
+| `actions/setup-python` | v7.1.0 | `6d4fd22b20465ccc0f7354476588e8df7c9ca0e0` |
+| `actions/upload-artifact` | v7.0.2 | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
+| `actions/dependency-review-action` | v5.0.1 | `bbc44d14a204704ccc493733616cd1e93a0321ec` |
+| `astral-sh/setup-uv` | v10.4.0 | `1db35dd8eee11c5894872e0b383ae6c406cf738d` |
+| uv | 0.13.9 | Verified checksum required by the setup action |
+
+The Node.js 24 and Python 3.12 runtime pins are shared across workflows and
+match the repository's current package and Python lock configuration.
+Dependabot checks GitHub Actions, npm, and pip weekly; review its PRs and rerun
+the affected required checks before updating this table.
 
 ## Historical October 14 action update
 

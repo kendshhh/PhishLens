@@ -113,20 +113,32 @@ def verify_service(service, config):
         raise RuntimeError("Unexpected staging startup command")
 
 
+def normalize_neon_host(host):
+    """Treat Neon pooled and direct endpoint names as the same branch host."""
+    host = str(host or "").strip().rstrip(".").lower()
+    return re.sub(r"-pooler(?=\.)", "", host)
+
+
 def verify_environment(rows):
     values = {row["envVar"]["key"]: row["envVar"]["value"] for row in rows}
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
+    expected_host = normalize_neon_host(expected)
+    production_host = normalize_neon_host(production)
     database = urlsplit(values.get("DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     migration = urlsplit(values.get("STAGING_MIGRATION_DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     app_role = values.get("STAGING_APP_DATABASE_ROLE", "")
-    if not expected or not production or expected == production:
+    if not expected_host or not production_host or expected_host == production_host:
         raise RuntimeError("Declare distinct staging and production database hosts privately in environment variables")
-    if database.hostname != expected or database.path != "/phishlens_dev" or values.get("STAGING_DATABASE_HOST") != expected:
+    if (normalize_neon_host(database.hostname) != expected_host
+            or database.path != "/phishlens_dev"
+            or normalize_neon_host(values.get("STAGING_DATABASE_HOST")) != expected_host):
         raise RuntimeError("Staging database host/name does not match the isolated allowlist")
     if database.username != app_role or app_role != "phishlens_staging_app":
         raise RuntimeError("Staging runtime must use the phishlens_staging_app role")
-    if migration.hostname != expected or migration.path != "/phishlens_dev" or migration.username != "neondb_owner":
+    if (normalize_neon_host(migration.hostname) != expected_host
+            or migration.path != "/phishlens_dev"
+            or migration.username != "neondb_owner"):
         raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
     if migration.username == database.username:
         raise RuntimeError("Staging migration and runtime credentials must use separate roles")
@@ -311,13 +323,15 @@ def package(api, sha, number, config, output):
     )
 
 
-def eligibility(pr, files, run, repo, opt_in_label=None):
+def eligibility(pr, files, run, repo, opt_in_label=None, base_branch=None):
     if not current_pr_head_matches(pr, run["head_sha"]):
         return "stale", "PR closed or newer head exists; old event ignored"
     if pr["draft"]:
         return "action_required", "Draft: mark ready for review to request staging"
     if pr["head"]["repo"]["full_name"] != repo:
         return "action_required", "Fork: reviewed work must be brought into a trusted branch; no preview secrets granted"
+    if base_branch and pr.get("base", {}).get("ref") != base_branch:
+        return "action_required", "Staging is restricted to pull requests targeting the configured base branch"
     if not application_change(files):
         return "success", "Preview not applicable: no application/runtime files changed"
     if not opt_in_label:
@@ -366,6 +380,35 @@ def current_pr_head_matches(pr, expected_head_sha):
         pr.get("state") == "open"
         and pr.get("head", {}).get("sha") == expected_head_sha
     )
+
+
+def require_current_staging_candidate(api, number, run, files, config):
+    """Revalidate the approved PR and its CI attempt immediately before deploy."""
+    pr = api.request(f"pulls/{number}")
+    if not current_pr_head_matches(pr, run["head_sha"]):
+        raise RuntimeError("PR head changed or closed while staging was waiting; rerun CI for the current head")
+
+    action, _ = eligibility(
+        pr, files, run, api.repo, config.get("preview_opt_in_label"),
+        config.get("base_branch"),
+    )
+    if action != "deploy":
+        raise RuntimeError("PR is no longer eligible for hosted staging")
+
+    jobs, latest = latest_jobs(api, run["head_sha"])
+    if (
+        not latest
+        or latest.get("id") != run.get("id")
+        or latest.get("run_attempt", 1) != run.get("run_attempt", 1)
+        or latest.get("head_sha") != run["head_sha"]
+        or latest.get("status") != "completed"
+        or latest.get("conclusion") != "success"
+    ):
+        raise RuntimeError("A newer CI run or attempt superseded this staging candidate")
+    if any(jobs.get(name, {}).get("conclusion") != "success"
+           for name in config["required_ci_jobs"]):
+        raise RuntimeError("Required CI jobs are missing, pending or unsuccessful")
+    return pr
 
 
 def preview_check_run_name(config):
@@ -471,7 +514,8 @@ def main():
             continue
         files = api.pull_request_files(pr["number"])
         action, message = eligibility(
-            pr, files, run, api.repo, config.get("preview_opt_in_label")
+                pr, files, run, api.repo, config.get("preview_opt_in_label"),
+                config.get("base_branch"),
         )
         log = f"https://github.com/{api.repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
         if action == "deploy":
@@ -521,6 +565,11 @@ def main():
                     render_request("services/" + config["staging_service"] + "/env-vars?limit=100")
                 )
                 evidence["report_auth_mode"] = report_auth_mode
+                # Environment approval and concurrency can leave a candidate queued.
+                # Recheck its live PR head, label, and latest CI attempt before deploy.
+                require_current_staging_candidate(
+                    api, pr["number"], run, files, config
+                )
                 deployment = api.request("deployments", {"ref": run["head_sha"], "environment": config["preview_environment"],
                     "auto_merge": False, "required_contexts": [], "production_environment": False, "transient_environment": True,
                     "description": f"PR #{pr['number']} exact-head staging", "payload": {"secretary": 1, "pr": pr["number"], "run_id": run["id"], "run_attempt": run.get("run_attempt", 1)}})
@@ -604,9 +653,11 @@ def main():
             if deployment:
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "failure", "description": "Deployment or verification failed", "auto_inactive": False})
         finally:
-            preflight_only_passed = action == "action_required" and evidence.get("preflight_passed") is True
-            status_state = "success" if action == "success" or preflight_only_passed else "failure"
-            if preflight_only_passed:
+            auth_acceptance_pending = action == "action_required" and evidence.get("preflight_passed") is True
+            # A healthy service and anonymous 401 prove only preflight. They do not
+            # satisfy the required authenticated product-acceptance status.
+            status_state = "success" if action == "success" else "failure"
+            if auth_acceptance_pending:
                 status_description = "Staging preflight passed; Auth acceptance pending"
             else:
                 status_description = (
@@ -623,7 +674,7 @@ def main():
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
-            if preflight_only_passed:
+            if auth_acceptance_pending:
                 title = "Preflight passed; Auth acceptance pending"
             else:
                 title = (

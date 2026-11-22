@@ -29,6 +29,7 @@ from scripts.secretary.preview import (
     package,
     preview_gate_enabled,
     publish_preview_status,
+    require_current_staging_candidate,
     verify_environment,
     verify_service,
 )
@@ -141,6 +142,68 @@ class PolicyTests(unittest.TestCase):
         s["pr"]["head"]["sha"] = "c" * 40
         self.assertEqual(self.decision(s), "WAITING FOR CHECKS")
 
+    def test_staging_rechecks_live_pr_and_exact_latest_ci_attempt(self):
+        s = fixture()
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        api.request.return_value = s["pr"]
+        run = {"id": 7, "run_attempt": 2, "head_sha": SHA, "conclusion": "success"}
+        latest = {
+            "id": 7, "run_attempt": 2, "head_sha": SHA,
+            "status": "completed", "conclusion": "success",
+        }
+
+        with patch("scripts.secretary.preview.latest_jobs", return_value=(s["jobs"], latest)) as latest_lookup:
+            result = require_current_staging_candidate(
+                api, 123, run, s["files"], CONFIG
+            )
+
+        self.assertEqual(result, s["pr"])
+        api.request.assert_called_once_with("pulls/123")
+        latest_lookup.assert_called_once_with(api, SHA)
+
+    def test_staging_recheck_fails_if_head_or_latest_attempt_changed(self):
+        s = fixture()
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        run = {"id": 7, "run_attempt": 2, "head_sha": SHA, "conclusion": "success"}
+
+        changed_pr = copy.deepcopy(s["pr"])
+        changed_pr["head"]["sha"] = "c" * 40
+        api.request.return_value = changed_pr
+        with self.assertRaisesRegex(RuntimeError, "head changed or closed"):
+            require_current_staging_candidate(api, 123, run, s["files"], CONFIG)
+
+        api.request.return_value = s["pr"]
+        with patch("scripts.secretary.preview.latest_jobs", return_value=(
+            s["jobs"], {
+                "id": 8, "run_attempt": 1, "head_sha": SHA,
+                "status": "completed", "conclusion": "success",
+            }
+        )):
+            with self.assertRaisesRegex(RuntimeError, "superseded"):
+                require_current_staging_candidate(api, 123, run, s["files"], CONFIG)
+
+    def test_staging_recheck_fails_if_required_job_is_not_successful(self):
+        s = fixture()
+        api = Mock()
+        api.repo = "kendshhh/PhishLens"
+        api.request.return_value = s["pr"]
+        jobs = copy.deepcopy(s["jobs"])
+        jobs[CONFIG["required_ci_jobs"][0]]["conclusion"] = "skipped"
+        latest = {
+            "id": 7, "run_attempt": 2, "head_sha": SHA,
+            "status": "completed", "conclusion": "success",
+        }
+
+        with patch("scripts.secretary.preview.latest_jobs", return_value=(jobs, latest)):
+            with self.assertRaisesRegex(RuntimeError, "Required CI jobs"):
+                require_current_staging_candidate(
+                    api, 123,
+                    {"id": 7, "run_attempt": 2, "head_sha": SHA, "conclusion": "success"},
+                    s["files"], CONFIG,
+                )
+
     def test_preview_failure_and_shared_conflict(self):
         s = fixture()
         s["preview"]["state"] = "failure"
@@ -152,6 +215,17 @@ class PolicyTests(unittest.TestCase):
         s = fixture()
         s["pr"]["head"]["repo"]["full_name"] = "outside/fork"
         self.assertEqual(self.decision(s), "BLOCKED")
+
+    def test_staging_is_restricted_to_the_configured_target_branch(self):
+        s = fixture()
+        s["pr"]["base"]["ref"] = "release-candidate"
+        action, _ = eligibility(
+            s["pr"], s["files"],
+            {"head_sha": SHA, "conclusion": "success"},
+            "kendshhh/PhishLens", CONFIG["preview_opt_in_label"],
+            CONFIG["base_branch"],
+        )
+        self.assertEqual(action, "action_required")
 
     def test_oversized_and_missing_patch(self):
         s = fixture()
@@ -357,7 +431,10 @@ class PreviewTests(unittest.TestCase):
             with (patch.dict(os.environ, settings, clear=True),
                   patch("scripts.secretary.preview.ROOT", root),
                   patch("scripts.secretary.preview.GitHub", return_value=api),
-                  patch("scripts.secretary.preview.latest_jobs", return_value=(data["jobs"], {"id": 7})),
+                  patch("scripts.secretary.preview.latest_jobs", return_value=(data["jobs"], {
+                      "id": 7, "run_attempt": 1, "head_sha": SHA,
+                      "status": "completed", "conclusion": "success",
+                  })),
                   patch("scripts.secretary.preview.verify_service"),
                   patch("scripts.secretary.preview.render_request", side_effect=lambda path, *args: render[path]),
                   patch("scripts.secretary.preview.smoke", return_value={
@@ -378,7 +455,7 @@ class PreviewTests(unittest.TestCase):
         build.assert_not_called()
         self.assertEqual(evidence["result"], "action_required")
         self.assertTrue(evidence["preflight_passed"])
-        self.assertEqual(evidence["required_status"], "success")
+        self.assertEqual(evidence["required_status"], "failure")
         self.assertEqual(evidence["report_auth_mode"], "neon")
         self.assertEqual(evidence["smoke"]["history"], "authentication_required")
         self.assertEqual(evidence["smoke"]["seeded_history"], "not_checked")
@@ -389,7 +466,7 @@ class PreviewTests(unittest.TestCase):
                         if entry.args[0] == "statuses/" + SHA]
         deployment_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
                             if entry.args[0] == "deployments/2/statuses"]
-        self.assertEqual(status_calls, ["pending", "success"])
+        self.assertEqual(status_calls, ["pending", "failure"])
         self.assertEqual(deployment_calls, ["in_progress", "pending"])
         auth_gate = next(
             entry.args[1]

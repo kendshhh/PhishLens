@@ -1,6 +1,40 @@
 # Secretary verification and rollout log
 
-## Local checks actually performed
+## Current workflow audit — 2026-11-22
+
+The verified remote `main` is `561c19da40165d7994d86232af63059a288b4ac2`.
+Its CI workflow still has a PR-triggered `Hosted staging` job that can expose
+`RENDER_STAGING_API_KEY` to PR-selected workflow code. Do not treat that path as
+a safe deploy boundary. The dirty local checkout removes that job and leaves
+staging deployment to the trusted `workflow_run` controller, but the change is
+not merged and therefore does not change remote behavior.
+
+The local controller now fails the required `Secretary staging` commit status
+when authenticated acceptance remains pending. Remote `main` still reports a
+green infrastructure-preflight status in Neon Auth mode while its detailed
+check remains `action_required`; neither state proves Auth/CRUD acceptance.
+The remote staging controller does not yet execute the A/B authenticated CRUD
+journey. The current local tests cover the failing-status decision, not a live
+staging run. No authenticated CRUD, extension/Auth journey, approved model
+quality result, or release candidate is accepted. Release remains **NO-GO**.
+
+## Prior hosted-controller status — 2026-11-21
+
+The latest observed staging route is the legacy hosted-staging workflow in
+`origin/main`'s `.github/workflows/ci.yml`: it deploys via the trusted default
+branch controller, runs `scripts/staging_smoke.mjs`, then invokes the exact-PR
+head `scripts/verify_crud.mjs --allow-writes`. The supplied smoke log fails at
+the anonymous history call because Neon Auth responds with `401 Bearer`; the
+separate CRUD step has no authenticated session and remains a distinct blocker.
+The local smoke fix passed a read-only staging preflight but is not on `main`
+yet. The last recorded Secretary preview
+variables, from November 20, were `SECRETARY_PREVIEW_ENABLED=false` and
+`SECRETARY_REPLACES_LEGACY_STAGING=false`; live values were not re-read in this
+audit. No current Secretary exact-head authenticated CRUD acceptance is
+verified. The legacy workflow result and the Secretary preview must not be
+reported as interchangeable evidence.
+
+## Previously recorded local checks (not rerun in this audit)
 
 Final offline suite: **36 tests passed**, comprising 31 secretary tests and
 five existing deployment-guard tests. Backend suite: **70 passed, 2 skipped**;
@@ -58,11 +92,13 @@ screenshots, automatic approvals, or production rollback claims in this log.
 - [ ] Download metrics before artifact expiry, record the reporting period and sources.
 - [ ] Perform an authorized rollback drill later, checking database compatibility first.
 
-The production observer is deliberately `workflow_dispatch`-only. A `workflow_run`
-trigger would create a separate GitHub check on the same main commit while the
-observer waits for Render to deploy it. With Render set to **After CI Checks Pass**,
-that check can prevent the deployment it is waiting to verify. Run the observer only
-after the expected commit is live; it is evidence collection, not a deployment gate.
+The production observer is deliberately `workflow_dispatch`-only. Keep it
+post-deploy and use it for evidence collection, not as a deployment gate. A
+`workflow_run` trigger could create a separate check on the same main commit
+while the observer waits for Render to deploy it. That cycle is relevant if the
+service uses **After CI Checks Pass**; current Render metadata instead reports
+auto-deploy off, while the latest production deploy event says `new_commit`.
+Resolve that discrepancy before relying on either trigger behavior.
 
 ## Consultation demonstration (about 3 minutes of DevOps segment)
 

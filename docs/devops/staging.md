@@ -1,5 +1,18 @@
 # Pre-merge staging
 
+> Current status — November 21, 2026: saved-report history requires a Bearer-authenticated session.
+> The protected GitHub staging environment currently targets Neon project
+> `hidden-shadow-38533062`, branch `br-broad-feather-b3261w7l` (`staging-root`),
+> with Auth database `phishlens_dev`. The workflow reads the existing
+> `PHISHLENS_STAGING_AUTH_DATABASE` variable and requires two distinct synthetic
+> Auth accounts. The local startup guard still allows the older `patient-bird`
+> project, and Render's actual app/migration URLs and roles remain unverified.
+> The selected Auth configuration allows localhost and does not require email
+> verification. Do not run authenticated CRUD or create accounts until an
+> authorized staging owner resolves the target, role, and Auth-policy mismatches.
+> The earlier anonymous-auth boundary failure is recorded in the
+> [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md). No hosted
+> Auth write acceptance or browser acceptance is claimed.
 > The November 15 point-in-time staging deployment and CRUD acceptance are recorded in
 > [the staging acceptance record](staging-acceptance-2026-11-15.md). That run predates
 > PR #226's URL identity fix and does not establish that current `main` is deployed
@@ -9,52 +22,53 @@ Delivery order: task branch → PR component checks → isolated staging integra
 → hosted staging → Chrome verification and teammate approval → merge to main
 → main CI → production Render deployment → production verification.
 
-## Automated checks
+## Automated checks — November 22, 2026
 
-`Staging integration` waits for `Backend checks` and `Extension checks`. It starts
-an isolated PostgreSQL 17 database and the real FastAPI process, applies migrations,
-seeds synthetic records, then requests health, readiness, and seeded history using
-the extension's actual `getAnalyses` client over HTTP. No Neon or Render secrets
-are used in this job. Its database is discarded after the job.
+`Staging integration` waits for `Backend checks` and `Extension checks`. It
+starts an isolated PostgreSQL database, runs the FastAPI service and migration
+chain, and exercises the API through the extension client. It uses no Render or
+Neon credential and is not evidence of hosted Auth or persistence.
 
-`Hosted staging` runs on PRs after isolated staging succeeds. It deploys the
-GitHub pull-request merge-ref SHA (`github.sha`) through the Render API, records
-the PR head SHA separately, verifies the deployed SHA through `/version`, and
-repeats the HTTP/client smoke checks. Missing configuration fails the job. A
-shared concurrency group prevents two workflow jobs from deploying or testing
-the staging service at once. GitHub can replace older pending jobs when several
-PRs queue; rerun the intended PR if necessary.
+The remote `main` CI workflow still contains a PR-triggered `Hosted staging`
+job with the Render deploy key in its protected environment. That job can run
+PR-selected workflow/scripts with the credential and is not a safe trust
+boundary. The local uncommitted change removes the PR-triggered deploy job.
+Staging deployment is left to the separate `Secretary preview` `workflow_run`
+controller, which checks out the default branch before using the protected
+Render credential. This local correction is not active on GitHub until reviewed
+and merged.
 
-Backend checks verify the Alembic graph on the exact merge commit and export its
-head as deployment evidence. Before deployment, the trusted controller checks
-the Render service, verifies that its connected source branch is `main`, confirms
-auto-deploy is off, and privately validates the configured Neon host/database
-against the staging allowlist. The merge SHA and verified migration head are
-passed into the protected deployment step; failed preflight stops before Render
-is called.
+The trusted controller deploys an eligible PR source SHA after CI and staging
+preflight. In Neon Auth mode, its current check verifies service identity,
+health, readiness, version, and anonymous saved-report rejection only. It does
+not perform A/B sign-in, authenticated create/list/read/update/delete, reload
+persistence, cross-user denial, cleanup, or authenticated extension UX. No such
+acceptance passed in this audit. Remote `main` can still report the required
+`Secretary staging` status green while its detailed check says Auth acceptance
+is pending. The local controller change fails the required status in that case;
+it needs merge and a subsequent PR run to verify the installed workflow.
 
-The PR merge candidate is tested by component and isolated integration jobs.
-Hosted staging deploys that merge-ref SHA. Require an up-to-date branch before
-merging. New commits require fresh checks and review. Another PR may later
-replace the shared staging deployment; confirm the live SHA before manual Chrome
-testing.
+### Required gate and evidence
 
-### Required gate and deployment evidence
+A green infrastructure preflight is not authenticated product acceptance. The
+required status must remain failing until the exact candidate passes the
+approved Auth/CRUD and extension journey, or the release record must keep that
+criterion explicitly blocked. Do not promote or publish a release from health
+checks, mock CRUD, seeded history, or browser-only evidence alone.
 
-Every eligible same-repository, non-draft PR runs the real `Hosted staging` job
-after isolated integration. Tooling-only changes are not an exemption. A green
-check requires Render to report the requested merge-ref SHA live, the real
-extension client smoke to pass, and `/version` to report that same SHA in
-`staging`.
-Missing synthetic history, unhealthy/unready responses, changed PR heads, and
-failed deployments fail acceptance.
+When implementing authenticated acceptance, use a confirmed isolated Neon
+branch and synthetic identities. Keep credentials out of PR-controlled CI,
+logs, artifacts, and extension packages. The trusted controller must validate
+the current PR head, required CI attempt, service/database/Auth target, exact
+migration revision, package identity, and cleanup before publishing evidence.
+Until the authorized owner confirms the target and roles, do not run hosted
+writes or create accounts.
 
-The trusted default-branch controller packages extension assets from that exact
-deployed merge-ref SHA. The `PhishLens-Staging-Extension` artifact contains a
-staging-only ZIP with a visible PR/SHA banner, `preview-info.json`, and
-`evidence.json`; the evidence records both PR head and deployed commit. This
-binds the automated client package to the backend SHA. The artifact does not
-claim installed-Chrome acceptance; that remains a separate human test.
+> The remaining service, configuration, and dated verification sections below
+> are historical runbook evidence and may describe older targets, check names,
+> or workflow behavior. Use the November 22 audit section above for the current
+> repository/workflow distinction; do not treat old checks or runtime results
+> as current acceptance.
 
 ## Hosted service
 
@@ -73,24 +87,36 @@ claim installed-Chrome acceptance; that remains a separate human test.
   The change updates the service source setting; it does not deploy a new commit.
   The hosted workflow uses the Render API to deploy the selected PR merge SHA.
 
-The selected staging target is Neon branch `pr-58-staging`, database
-`phishlens_dev`. Keep development on the `development` branch and production on
-`production`; never point staging at either one.
+The current startup source allowlists Neon project `patient-bird-25428852`,
+branch `pr-58-staging` (`br-delicate-paper-b381z98i`), application database
+`phishlens_dev`, with the separate Auth database `neondb`. The protected
+GitHub staging environment now names the different `hidden-shadow-38533062`
+project and `staging-root` branch, with Auth database `phishlens_dev`.
+Neither declaration proves which branch Render actually uses.
 
-The hosted startup guard pins `STAGING_DATABASE_HOST` and both database URLs to
-the verified Neon endpoint `ep-soft-fog-b3orfa8a` (direct or pooler hostname),
-which maps to project `patient-bird-25428852`, branch `br-delicate-paper-b381z98i`
-(`pr-58-staging`). If Neon replaces that endpoint or branch, verify the new
-project/branch mapping through Neon and update the code pin with review; changing
-Render variables alone cannot authorize a different database target.
+Read-only inspection on November 21 also found a second project,
+`hidden-shadow-38533062`, branch `staging-root`
+(`br-broad-feather-b3261w7l`), with only `phishlens_dev` and Auth configured
+there. Its current Auth settings allow localhost and do not require email
+verification. The older project's settings disable localhost and require
+email verification. Neither project's connection mapping to Render has been
+proven by the service read tool.
 
-On 2026-10-28, the Render Environment page was privately checked:
-`DATABASE_URL` resolves to the host and
-database for `pr-58-staging/phishlens_dev`, and `STAGING_DATABASE_HOST` matches
-that host; `APP_ENV=staging` and `AI_MODE=mock`. Only the branch/database result
-is recorded here. Do not copy the connection string into this runbook, a PR
-comment, or an extension package. A current `main` deployment is now live as
-commit `2ce4051…`.
+An authorized staging owner must privately verify which project/branch Render's
+app and migration URLs use, confirm the application and owner roles, and confirm
+the Auth URL/database and security settings. Resolve the GitHub target versus
+startup allowlist discrepancy with one reviewed source/environment change. Keep
+the migration guard fail-closed until the same isolated candidate is verified.
+The selected GitHub Auth configuration currently allows localhost and does not
+require email verification; correct those settings or obtain a recorded staging
+policy exception before authenticated acceptance.
+
+Historical snapshot — October 28, 2026: the Render Environment page was privately
+checked and `DATABASE_URL` mapped to `pr-58-staging/phishlens_dev`;
+`STAGING_DATABASE_HOST` matched, with `APP_ENV=staging` and `AI_MODE=mock`.
+This point-in-time check predates the second Neon project and does not verify
+the current Render mapping. Do not copy any connection string into this runbook,
+a PR comment, or an extension package.
 
 On 2026-10-28, Save and Deploy retried stale commit `35b68ba…` and failed with
 the missing-revision error. Render then used **Manual Deploy → Deploy latest
@@ -127,18 +153,16 @@ Configure two credentials in this service's Render environment:
   branch and is consumed only by the startup migration subprocess. The startup
   process removes it before seeding or launching Uvicorn.
 
-Both URLs must target Neon branch `pr-58-staging`, database `phishlens_dev`, and
-the same exact host in `STAGING_DATABASE_HOST`. Keep `development` for local and
-shared development; `pr-58-staging` is a separate branch created from a
-development snapshot. The startup script checks database names and exact hosts,
-but cannot resolve a Neon branch name from the URL. Before migrations, seeding,
-or manual writes, privately confirm that Render's connection hostname maps to
-`pr-58-staging` in Neon. Set
-`STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging`.
-Startup rejects mismatched hosts, database names, or role identities before
-migrations or seed run. The trusted hosted-staging controller checks the
-environment variables without logging their values. The name check cannot
-distinguish Neon branches, so verify the host and branch privately in Neon.
+The current startup source accepts only the legacy `pr-58-staging/phishlens_dev`
+endpoint and checks the application and migration roles before migrations or
+seeding. A URL's database name and host do not prove its Neon branch. Before any
+hosted write, migrations, or seed operation, an authorized owner must privately
+verify the Render host-to-branch mapping and role identities in Neon. If the
+new project is selected, first revise the source allowlist and tests in a
+reviewed change; changing Render variables alone is insufficient. Keep
+`STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging` aligned
+with the approved candidate, and keep connection values out of logs and docs.
+
 Hosted staging accepts only the `sslmode` and `channel_binding` query keys from
 the configured URLs. Before DNS or migration, startup also checks the effective
 psycopg/libpq role, database, host, and port, and rejects `hostaddr`, `options`,
@@ -174,6 +198,15 @@ preflight:
 |---|---|
 | `SECRETARY_STAGING_DB_HOST` | Exact hostname for Neon `pr-58-staging` |
 | `SECRETARY_PRODUCTION_DB_HOST` | Production Neon hostname, distinct from staging |
+
+Hosted Auth acceptance additionally requires two protected staging environment variables:
+
+- `STAGING_NEON_AUTH_URL` points to the owner-verified Auth endpoint; its path must be `/<database>/auth`.
+- `PHISHLENS_STAGING_AUTH_DATABASE` names the same Auth database as the URL path.
+- Secrets: `STAGING_AUTH_USER_A_EMAIL`/`PASSWORD` and `STAGING_AUTH_USER_B_EMAIL`/`PASSWORD`.
+
+Keep both accounts synthetic, staging-only, distinct, and email-verified. The workflow
+validates the URL shape and account distinctness; it cannot prove the selected Neon branch.
 
 Keep host values private to the GitHub environment configuration. Do not put
 them in workflow logs or evidence. `SECRETARY_PREVIEW_ENABLED` and

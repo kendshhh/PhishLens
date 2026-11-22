@@ -1,5 +1,11 @@
 # Backend Auth acceptance and cleanup procedure
 
+> Preparation only. The current staging smoke accepts the anonymous
+> `401 Bearer` boundary, but hosted authenticated CRUD is still open. Check the
+> [November 21 staging evidence](devops/evidence/2026-11-21-staging-neon-auth-smoke.md)
+> and [environment map](devops/environment-map-2026-11-21.md) before proposing
+> any live run. This procedure is not authorization to write to shared staging.
+
 Preparation only. This document and its examples are not authorization to run
 anything against staging. They do not select a deployment or change Auth config.
 The two-account Auth run is separate from #48's one-report TF-IDF lifecycle.

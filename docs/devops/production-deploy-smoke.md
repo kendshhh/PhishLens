@@ -1,28 +1,35 @@
 # Production deployment smoke
 
-> Current state — November 20, 2026: production is live on
-> `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`; `/health` and `/ready` pass, but
-> `/model-info` reports `provider_mode=unavailable`. The smoke below remains
-> manual-only. See [PIPELINE.md](../../PIPELINE.md) for the current release
-> decision and exact service identities. The November 14 result below is
-> historical evidence, not current acceptance.
+> Current state — November 21, 2026: production deploy
+> `dep-dc07rs67bikc73fjgjq0` serves SHA
+> `811980c2cbf70d9957146bf329627f0826a018f1`. Read-only `/version`, `/health`,
+> `/ready` and `/model-info` return 200; model information reports
+> `analysis_enabled=false` and `provider_mode=disabled`. The disabled-aware
+> smoke code on `main` reports identity/health/readiness/disablement with zero
+> inference, paid calls and database writes, but no workflow run was performed
+> in this audit. That status is not product acceptance. The workflow remains
+> manual-only. See [PIPELINE.md](../../PIPELINE.md) and the
+> [current evidence index](README.md). The November 14 result below is historical.
 
 ## What the check verifies
 
 [`production-deploy-smoke.yml`](../../.github/workflows/production-deploy-smoke.yml)
 and `scripts/production_deploy_smoke.py` take a full deployment SHA, wait for
 production `/version` to report that exact SHA, then check `/health`, `/ready`,
-the configured provider/model identity, and two fixed synthetic analysis cases.
-The preflight also requires `/model-info` to advertise
-`supports_required_provider=true`. Each analysis request sends
-`X-Require-Provider: tfidf` to `/analyses/revision/{expected_sha}`. The API
-checks its own source revision and active provider before inference, then echoes
-the serving revision in `X-PhishLens-Revision`. An older instance without the
-revision-scoped route returns before inference; a mismatched revision is
-rejected before provider lookup. The smoke verifies the response revision for
-every analysis request. The behavior checks run only when the live provider is
-TF-IDF. They make no saved-report/database write and no paid provider request.
-A failed identity or provider preflight stops before analysis.
+the configured provider/model identity, and (when enabled) two fixed synthetic
+analysis cases. On the current `main` implementation, an intentionally disabled
+analysis state is accepted only when `analysis_enabled=false`,
+`provider_mode=disabled` and required-provider support is false; this observer
+path exits with zero inference requests, paid calls and database writes. When
+analysis is enabled, each analysis request sends `X-Require-Provider: tfidf` to
+`/analyses/revision/{expected_sha}`. The API checks its own source revision and
+active provider before inference, then echoes the serving revision in
+`X-PhishLens-Revision`. An older instance without the revision-scoped route
+returns before inference; a mismatched revision is rejected before provider
+lookup. The smoke verifies the response revision for every analysis request.
+The enabled behavior checks require TF-IDF. Neither path makes a saved-report
+database write or paid provider request. A failed identity or provider
+preflight stops before analysis.
 
 ## Workflow trust boundary
 
@@ -35,16 +42,18 @@ upload is the only retained output.
 
 The workflow is currently manual. Run it from Actions after a production
 deployment and supply the full SHA reported by Render. It uploads a redacted
-summary artifact. Do not treat a successful `/ready` response alone as feature
-acceptance. The current SHA has not passed this smoke: provider preflight would
-fail before analysis because production reports `provider_mode=unavailable`.
+summary artifact. Do not treat a successful `/ready` response or the
+disabled-provider observer result as feature acceptance. The current observed
+production state has analysis intentionally disabled. No workflow run for SHA
+`811980c2cbf70d9957146bf329627f0826a018f1` was performed in this audit.
 
 ## Why it is not automatically deploy-triggered yet
 
-The production Render service is configured with `autoDeploy=checksPass` on
-`main`. Render currently reports production deploy
-`dep-dbvt8r0u01pc73b4siig` live on `60641f32353c61a5b1f0dcfca1e0f5912afb76b3`.
-No deploy-ended webhook or automatic smoke trigger is configured or verified.
+Render service metadata currently reports production auto-deploy off, while its
+latest deployment record is triggered by `new_commit`. Treat this as an
+unresolved configuration/evidence discrepancy and verify the service settings
+in the Render dashboard before relying on automatic deployment. No deploy-ended
+webhook or automatic smoke trigger is configured or verified.
 Render documents workspace webhooks, which can emit a `deploy_ended` event, as a Pro-or-higher feature
 ([Render Webhooks](https://render.com/docs/webhooks)). The connected read-only
 workspace metadata does not expose the current workspace plan. A
@@ -59,8 +68,8 @@ automatically after every production deployment**. To close the gap, either:
    signed event, and dispatch this workflow with the exact deployed SHA; or
 2. move production deployment into a GitHub-controlled release workflow that
    deploys after CI, waits for the exact SHA to become live, then runs the
-   smoke. That changes the current `checksPass` auto-deploy path and needs an
-   owner-approved Render API credential and deployment configuration.
+   smoke. This requires an owner-approved Render deployment configuration and
+   must be reconciled with the currently reported auto-deploy-off setting.
 
 Until one of those paths is configured and verified, the manual run is a
 runbook action, not automatic deployment evidence.

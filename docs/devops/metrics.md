@@ -1,6 +1,27 @@
 # Pipeline Metrics
 
-## Current delivery sample — 2026-11-20
+## Current service identity refresh — 2026-11-21
+
+This read-only refresh records deployment and endpoint identity only; it is not
+a performance sample and does not revise the historical measurements below.
+Production serves `811980c2cbf70d9957146bf329627f0826a018f1` from Render deploy
+`dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready` and `/model-info`
+returned HTTP 200. Production analysis is disabled
+(`analysis_enabled=false`, `provider_mode=disabled`). Staging serves
+`ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
+`dep-dc0im3h7lnhs738pncng`; the same four read-only endpoints returned HTTP
+200, with TF-IDF provider mode. An anonymous `/api/analyses` request returned
+HTTP 401 with a Bearer challenge. No inference, database write, or production
+smoke workflow run was made during these probes.
+
+Render metadata reports auto-deploy disabled for both services. Production's
+latest deployment record nevertheless has trigger `new_commit`; this metadata
+conflict is unresolved. See the [November 21 evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md)
+for the staging smoke failure and the [environment map](environment-map-2026-11-21.md)
+for configuration boundaries. The November 20 performance sample remains the
+latest measured delivery sample, but its live-deploy identity is historical.
+
+## Latest measured delivery sample — 2026-11-20
 
 Read-only refresh from GitHub Actions and Render on November 20. GitHub's first
 100 `main` workflow runs contained four completed `CI` push runs created
@@ -25,7 +46,7 @@ October 17–November 14 baseline below. The optimization criterion remains
 **not met** until a like-for-like before/after experiment measures the same
 workflow and check set over a sufficiently broad sample.
 
-## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
+## 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
 Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and
@@ -62,7 +83,7 @@ optimization pair. No timing win is claimed.
 
 ## Historical observations
 
-## Current main deployment observation — October 28, 2026
+## Main deployment observation — October 28, 2026 snapshot
 
 At 2026-10-28 15:39 UTC, main was `6414914dfa8eb8322839597c4cd6912145a442a0`.
 [Main CI run 40715810349](https://github.com/kendshhh/PhishLens/actions/runs/40715810349)
@@ -117,7 +138,7 @@ and a second read-only check before exact-SHA staging CRUD acceptance. Productio
 persistence after refresh/redeploy, installed-Chrome behavior, recovery
 duration, and a comparable whole-pipeline gain remain unmeasured.
 
-## Current post-merge staging acceptance — October 29, 2026 00:31 UTC
+## Post-merge staging acceptance — October 29, 2026 00:31 UTC snapshot
 
 PR #86 merged at 00:11 UTC. Production is Live on merge commit
 `1344fcb061272bac93ced5911f1ab8fbb3b6785d`; staging is Live on candidate SHA

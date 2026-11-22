@@ -62,6 +62,7 @@ class HostedStagingIpv4Tests(unittest.TestCase):
                 DATABASE_HOST,
                 "phishlens_staging_app",
             )
+
         with self.assertRaisesRegex(SystemExit, "owner credential"):
             validate_hosted_database_urls(
                 make_url(DATABASE_URL),

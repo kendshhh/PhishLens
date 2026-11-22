@@ -1,4 +1,4 @@
-name: Deterministic AI evaluation
+name: Deterministic AI Evaluation
 
 on:
   pull_request:

@@ -1,4 +1,4 @@
-"""Deploy the exact PR merge commit after validating source and Render targets."""
+"""Deploy the exact captured source commit after validating Render targets."""
 
 import json
 import os
@@ -22,7 +22,13 @@ def main() -> None:
     key = os.environ.get("RENDER_STAGING_API_KEY")
     service_id = os.environ.get("RENDER_STAGING_SERVICE_ID")
     commit = os.environ.get("STAGING_COMMIT", "").strip()
-    expected_commit = os.environ.get("GITHUB_SHA", "").strip()
+    # For pull_request deployments the reviewed PR head is the deploy target,
+    # while GITHUB_SHA identifies GitHub's synthetic merge commit. Keep the
+    # workflow SHA as the fallback for push and legacy deployment workflows.
+    expected_commit = (
+        os.environ.get("STAGING_PR_HEAD_SHA", "").strip()
+        or os.environ.get("GITHUB_SHA", "").strip()
+    )
     migration_revision = os.environ.get("STAGING_MIGRATION_REVISION", "").strip()
 
     if not key or not service_id:
@@ -31,8 +37,10 @@ def main() -> None:
         )
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise SystemExit("Refusing deployment without a full Git commit SHA.")
-    if expected_commit and commit != expected_commit:
-        raise SystemExit("Refusing deployment: requested SHA differs from this workflow run.")
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
+        raise SystemExit("Refusing deployment without a captured PR head or workflow SHA.")
+    if commit != expected_commit:
+        raise SystemExit("Refusing deployment: requested SHA differs from the captured source SHA.")
     if not migration_revision:
         raise SystemExit(
             "Refusing deployment: migration lineage was not verified for this source."
@@ -69,7 +77,7 @@ def main() -> None:
         if status["status"] == "live":
             if status.get("commit", {}).get("id") != commit:
                 raise SystemExit("Render live commit does not match the requested PR SHA.")
-            print("Exact PR merge commit is live on staging.")
+            print("Exact requested source commit is live on staging.")
             return
         if status["status"] in {
             "build_failed",

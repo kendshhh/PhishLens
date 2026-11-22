@@ -1,109 +1,134 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 20, 2026
+## Current release update — November 23, 2026
 
-This section supersedes the dated snapshots below. The current release decision
-is **NO-GO**; a live backend is not equivalent to an accepted product release.
+**Release remains NO-GO.** The current evidence and ordered blockers are in
+[`docs/devops/release-record-2026-11-23.md`](docs/devops/release-record-2026-11-23.md).
+This update supersedes the November 22 snapshot below; that dated detail is kept
+for history and must not be read as current staging or production evidence.
 
-GitHub `main` is [`60641f32353c61a5b1f0dcfca1e0f5912afb76b3`](https://github.com/kendshhh/PhishLens/commit/60641f32353c61a5b1f0dcfca1e0f5912afb76b3),
-merged through PR #254 on November 20. Production Render deploy
-`dep-dbvt8r0u01pc73b4siig` is live on that SHA. Read-only `/health` and `/ready`
-return HTTP 200 and report the database connected, but `/model-info` reports
-`provider_mode=unavailable` and `accepts_tfidf_reports=false`. Production
-feature acceptance therefore fails. Current [`release issue #153`](https://github.com/kendshhh/PhishLens/issues/153)
-records an explicit [NO-GO sign-off](https://github.com/kendshhh/PhishLens/issues/153#issuecomment-7031345485).
-It identifies the release target as a Chrome
-extension with a Render API and Neon database; an older web-app scope note in the
-same issue remains to be reconciled. The Vercel URL is the CSP221A course guide,
-not the PhishLens application. The [current release record](docs/devops/release-record-2026-11-20.md)
-sets that scope and records the exact identities and remaining acceptance proof.
-The [environment and secret map](docs/devops/environment-map-2026-11-20.md)
-records non-secret configuration scope and explicitly marks live mappings and
-secret access controls that remain unverified.
+## Historical repository and workflow audit — November 22, 2026
 
-Staging is live on backend SHA
-`d6612c258f289b3a45d8229e4a4803cac75a91ee`; its read-only endpoints report
-staging, a connected database and TF-IDF mode. This is a different SHA and does
-not establish a matching accepted extension package or production behavior.
-Authenticated saved-report history/CRUD and live Auth acceptance remain open.
+**Release: NO-GO.** This status separates the current remote repository from
+local, uncommitted work. `origin/main` was verified at
+[`f957cd3d22651ac3b6721a4d16dffba27fb6ee40`](https://github.com/kendshhh/PhishLens/commit/f957cd3d22651ac3b6721a4d16dffba27fb6ee40)
+(PR #278, Neon pooler-host normalization).
+The local branch is `codex/ai-evaluation-spend-20261114` at
+`16f955321caf5dc368181be7ce5c00643750545d`, twelve commits behind `main`, with
+many pre-existing modified and untracked files. No local changes were staged,
+committed, pushed, or deployed during this audit.
 
-### Current checks and enforcement
+### Workflow as checked
 
-The November 20 [main CI run](https://github.com/kendshhh/PhishLens/actions/runs/44678059062)
-passed backend and extension checks; separate [dependency security](https://github.com/kendshhh/PhishLens/actions/runs/44678059035),
-[workflow lint](https://github.com/kendshhh/PhishLens/actions/runs/44678059114)
-and [deterministic AI evaluation](https://github.com/kendshhh/PhishLens/actions/runs/44678059130)
-runs also passed, as did CodeQL. `Staging integration` and hosted staging were
-skipped on the main push. On PR #254, `Staging integration` passed but hosted staging and
-hosted-staging preflight were skipped. A successful status alone is not evidence
-that those skipped deployment checks ran.
+The remote `main` CI workflow still contains a PR-triggered `Hosted staging`
+job that exposes `RENDER_STAGING_API_KEY` to workflow code selected by a PR.
+That trust boundary is unsafe: a PR change to a script or workflow step could
+expose the deploy credential. The local `ci.yml` change removes that job and
+leaves staging deployment to `Secretary preview`, a `workflow_run` controller
+that checks out the default branch before using protected staging credentials.
+This correction is only in the dirty workspace; it does not protect `main` until
+reviewed and merged.
 
-The `main` branch is reported as protected. The earlier branch-check query
-listed five contexts (`Backend checks`, `Extension checks`, `Staging
-integration`, `CodeQL`, and `Secretary staging`), but the November 20
-branch-protection read returned GitHub 403 `Resource not accessible by
-integration`. The active ruleset #26782191 currently exposes one approval plus
-deletion/non-fast-forward protection and no required-status rules. The
-November 15 description below said six contexts. Because this connection cannot
-read classic branch-protection settings, the effective required-check list is
-**NOT VERIFIED**; reconcile it in GitHub settings and prove it with a test PR.
-The current controller publishes `Secretary staging` on the exact PR head and
-keeps detailed results in the separate `Secretary staging verification`
-check-run. For an unrequested hosted preview it reports an explicit
-not-applicable success; that is not hosted staging acceptance. Thus the current
-required status does not require a hosted preview on every application PR.
-Treat the effective required-check contract as incomplete until the intended
-release policy is confirmed in GitHub settings and a test PR. AI evaluation,
-workflow lint and dependency checks are not present in the branch endpoint's
-five contexts. PR #254's approval is by the PR author's own account and does not
-demonstrate independent review.
+The trusted preview currently checks the exact PR source deployment and, in
+Neon Auth mode, proves health, readiness, version, and anonymous saved-report
+rejection. It does not prove authenticated CRUD or the authenticated extension
+journey. Remote `main` can publish a green `Secretary staging` commit status
+while its detailed check says Auth acceptance is pending. The local controller
+change makes that required status fail until authenticated acceptance passes.
+That status correction also remains unmerged and needs a subsequent PR run to
+verify the installed default-branch controller.
 
-This task branch changes the controller so an application/runtime PR without
-`needs-hosted-staging` fails the required status; documentation-only PRs remain
-explicitly not applicable. The change is not effective on `main` until reviewed
-and merged, and the hosted check still cannot prove authenticated Auth until
-that path is accepted in staging.
+The current `main` commit's backend, extension, workflow-lint, dependency,
+CodeQL, and deterministic AI checks passed. Its Secretary `preview` job was
+skipped on the main push. The scheduled [production SHA/health check](https://github.com/kendshhh/PhishLens/actions/runs/45001981909)
+failed at 2026-11-22 08:15 UTC while comparing production endpoints with `main`;
+production is still on `811980c`, not `f957cd3`. PR #266's latest hosted
+staging run failed the exact database/Auth mapping preflight before deployment,
+so authenticated acceptance was skipped. PR #251, based on `f957cd3`, also
+failed that mapping preflight; its deploy and authenticated CRUD steps were
+skipped. Neither PR demonstrates product acceptance.
 
-### Current quality, deployment and recovery limits
+`Staging integration` exercises the real API against disposable PostgreSQL; it
+is not hosted Neon acceptance. Browser package checks use CI artifacts; they do
+not establish that the installed extension, hosted backend, Auth, and approved
+model passed together. Wilber's November 22 report confirms the already
+documented approved historical English TF-IDF v12a evaluation: 190/200 phishing
+messages detected (95% recall), one false alert among 1,000 legitimate messages
+(0.1%), and 1,200/1,200 valid results. The [frozen study record](docs/ai/sprint-4-release-evidence.md)
+limits this pass to advisory use on its historical source-pair cohort. It does
+not establish contemporary-source performance, separate spam quality, human
+explanation quality, production provider acceptance, or acceptance of the
+current extension/backend release candidate. The 40-case synthetic development
+results are weak and are not a held-out release-quality evaluation; the
+historical cohort's numeric thresholds do not generalize into a broad current
+release-quality decision.
 
-The deterministic AI workflow runs on PRs, main pushes and manual dispatch. Its
-40-case synthetic development cohort is not held out and has no numeric quality
-cutoff. The recorded result is 65% binary accuracy, 18.75% phishing recall
-(3/16), and 6.25% legitimate false positives (1/16); all eight spam cases were
-classified as legitimate. The result is not a release-quality pass. The
-separate frozen English source-pair result is advisory-only for that cohort.
+### Live service and controls
 
-Render production is configured for `main` auto-deploy when checks pass; staging
-auto-deploy is off. The production deployment smoke remains
-`workflow_dispatch`-only and requires a full SHA. Do not declare a release from
-health/readiness alone. The [current smoke runbook](docs/devops/production-deploy-smoke.md)
-documents its exact behavior and current limitation. No GitHub Release or remote
-tag was found during this audit.
+Render metadata reports production Auto-Deploy off and live SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`, behind current `main` at
+`f957cd3d22651ac3b6721a4d16dffba27fb6ee40`. A previous GET-only probe found
+health/readiness ready and analysis disabled; after the latest service update,
+no new production endpoint probe was made. Staging service
+`srv-db92irlg1s2s739404i0` also has Auto-Deploy off and is Git-backed to `main`.
+Render deploy metadata reports its latest live deploy as
+`6b6b83d5ef261e10e4312a78b5e2f3953b0e36ec`; later attempts at its parent
+`561c19d` failed or were canceled, and no deploy of newer `f957cd3` is evidenced.
+A subsequent `/version` request timed out. Thus the
+current staging runtime and Auth/CRUD path are **not verified**.
 
-The [November 20 metric refresh](docs/devops/metrics.md#current-delivery-sample--2026-11-20)
-adds four main-push CI runs and 20 production deploy records; it still cannot
-establish a like-for-like end-to-end speed improvement. The 28-day comparative
-snapshot below it ends November 14. The earlier staging
-rollback rehearsal covers a different app SHA and environment; it does not
-prove current production rollback. Neon metadata showed no scheduled or manual
-snapshots in the connected account; history retention is six hours, but no
-restore rehearsal or measured RTO/RPO is established. Current known-good
-production app/config/schema compatibility is not recorded.
+The supplied read-only GitHub environment review reports staging mapped to Neon
+project `hidden-shadow-38533062` / branch `br-broad-feather-b3261w7l` and
+production mapped to project `patient-bird-25428852`. Render does not expose
+the relevant variable values, so this mapping has not been tied to the running
+service's runtime, migration, and Auth connections. The separate PR251 project
+`ancient-brook-17208049` / branch `br-rough-sea-a1l6ehi1` exists and is ready,
+but is not selected; its catalog review reports no public application tables
+or Alembic history. Its project metadata permits public connections and has no
+IP allowlist. No migration or data change was made.
 
-### Release stop conditions
+There is source drift to resolve before changing staging: this local checkout
+and current `main` [`start_staging.py`](scripts/start_staging.py) pin the older
+`ep-soft-fog` endpoint, while the supplied deployed-source review says live SHA
+`6b6b83d` reads an environment-provided mapping. PR #278 changed
+`scripts/secretary/preview.py` host normalization, not the startup pin. Do not
+alter the pin until the authorized owner confirms the intended project/branch
+and complete host/database/role/Auth mapping. The current workflow still does
+not build or promote one immutable backend image digest; a checked extension
+ZIP is not backend image provenance.
 
-Keep the release at NO-GO until one exact extension/backend/model candidate
-passes authenticated staging acceptance, the approved model-quality threshold,
-and post-deployment exact-SHA verification; GitHub required checks are
-unambiguous; and compatible application rollback plus separate isolated data
-restore rehearsals have recorded outcomes. Update this section only when those
-proofs exist. Do not replace missing evidence with a planned action or a green
-check whose relevant job was skipped.
+The supplied GitHub settings review reports staging self-review is allowed and
+its deploy refs include stale `refs/pull/33/merge`. Production blocks
+self-review but admin bypass is enabled, with one configured reviewer. The
+active main ruleset requires one approval and `Backend checks`, `Extension
+checks`, `Staging integration`, and `Secretary staging`; deployment approval
+is not yet demonstrably independent and non-bypassable. No release tag or
+approved versioned production promotion is recorded.
 
+No automatic Neon snapshot schedule is reported. The current manual snapshot
+and isolated restored branch expire November 27, 2026; service RTO/RPO remain
+unmeasured. Render `notifyOnFail=default` does not prove a tested alert route.
+
+The active `main` ruleset requires `Backend checks`, `Extension checks`,
+`Staging integration`, and `Secretary staging`; a separate active ruleset
+requires one approval. Classic branch-protection details were unavailable to
+the connected GitHub integration. The current hosted staging job and the
+required-status behavior must be reconciled on `main` before treating this as a
+safe release gate.
+
+Keep the release at **NO-GO**. The historical English TF-IDF v12a evaluation
+has an approved advisory pass for that cohort (95% phishing recall, 0.1%
+legitimate false-positive rate, 1,200/1,200 valid outputs); broad contemporary
+model quality and production provider acceptance remain open. The release also
+needs authenticated staging CRUD and extension acceptance on one exact
+candidate, safe required-status and environment approval enforcement,
+same-digest versioned promotion, exact-SHA post-deploy acceptance, and current
+rollback/recovery proof. See
+[`docs/devops/README.md`](docs/devops/README.md) for the evidence index.
 ## Historical delivery and acceptance snapshot — November 15, 2026
 
 > The following November 15 snapshot is preserved for history and is superseded
-> by the November 20 status above.
+> by the November 22 status above.
 
 The [November 15 Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
 and [November 15 staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
@@ -298,8 +323,10 @@ acceptance remains pending.
 PR CI installs locked dependencies, runs backend and extension quality gates,
 requires disposable PostgreSQL CRUD tests, performs isolated API/client integration,
 and verifies the exact hosted staging target. Main CI runs backend and extension
-checks before Render's `checksPass` auto-deploy. Chrome acceptance and production
-CRUD persistence remain separate evidence items.
+checks before an observed Render deployment. The current Render setting says
+auto-deploy off while the latest production deployment says `new_commit`; do not
+assume automatic deployment. Chrome acceptance and production CRUD persistence
+remain separate evidence items.
 
 ```mermaid
 flowchart LR
@@ -378,9 +405,15 @@ provider-side budget and cost cap. The smoke uses the non-persisting `/analyses`
 route, so a successful run creates no database record. No provider request was
 made while preparing this change.
 
-## Status
+## Implementation status and historical notes
 
-## Current checks and evidence
+The live configuration summary is the November 22 audit at the top of this
+file and the [November 22 release record](docs/devops/release-record-2026-11-22.md).
+This lower implementation reference contains older settings and examples; do
+not treat old branch names, deployment modes, or protection snapshots below as
+current unless they are restated in the dated record.
+
+### Workflow checks and evidence
 
 The DevOps Secretary workflows in `.github/workflows/secretary-*.yml` separate
 trusted evidence reporting, exact-SHA staging deployment, and read-only production
@@ -389,11 +422,15 @@ See [the operator guide](docs/devops/secretary.md),
 [course mapping](docs/devops/secretary-course.md), and
 [verification guide](docs/devops/secretary-verification.md).
 
-`Hosted staging` requires the protected `staging` environment and the isolated
-Neon `pr-58-staging` target. The controller checks target identities without
-logging credentials. The environment owner must still verify the database branch
-mapping and app-role privileges in Render/Neon. Chrome and real-provider acceptance
-remain manual evidence items. See [staging.md](docs/devops/staging.md).
+`Hosted staging` uses the protected `staging` environment, but its effective
+Render-to-Neon target is not verified. The latest supplied GitHub environment
+review names `hidden-shadow-38533062` / `br-broad-feather-b3261w7l`; PR251's
+separate `ancient-brook-17208049` / `br-rough-sea-a1l6ehi1` project is not
+selected and has no app tables or Alembic history. Older references to
+`pr-58-staging` are historical only. Verify runtime, migration, Auth, project,
+branch and role identities before any migration or write. Chrome and
+real-provider acceptance remain separate evidence items. See
+[staging.md](docs/devops/staging.md).
 
 The [October 28 backlog audit](docs/devops/backlog-audit-2026-10-28.md) maps the
 open assigned issues to implementation, evidence, and team-owned acceptance gates.
@@ -402,12 +439,13 @@ The historical snapshots below predate these changes. In current source,
 extension packaging and mocked AI/provider tests already exist; statements below
 that call them pending are historical, not a claim about current CI coverage.
 
-Pre-merge staging is added in `.github/workflows/ci.yml`: component checks,
-isolated API/database/extension-client integration, then exact-commit Render
-staging verification. Hosted staging requires credentials for the dedicated
-Neon `pr-58-staging` branch and database `phishlens_dev`, plus a GitHub deployment
-secret. Privately verify Render's Neon branch mapping before migrations or writes.
-See
+The remote `main` workflow currently contains a PR-triggered hosted staging job;
+the top audit records the credential trust-boundary concern and the local
+candidate correction. Render staging is Git-backed to `main` with Auto-Deploy
+off, and the latest successful live deployment is `6b6b83d`; subsequent attempts
+at `561c19d` did not become live. This is not exact-candidate Auth/CRUD
+acceptance. Verify the protected environment target and roles before migrations
+or writes. See
 [staging setup and verification](docs/devops/staging.md) for configuration,
 required checks, Chrome verification, and current rollout status. Historical
 observations below do not establish that the new hosted staging gate has passed.
@@ -429,11 +467,12 @@ the current CI status.
 Compilation is basic validation, not the
 complete application build stage.
 
-## Delivery Flow
+## Delivery workflow structure — deployment trigger unresolved
 
-Task branch → Pull request → Automated checks → Staging integration and hosted verification → Chrome verification and teammate approval
-→ Merge to main → Automated checks → Automatic deployment
-→ Deployed verification
+Task branch → Pull request → Automated checks → Staging integration and hosted
+verification → Chrome verification and teammate approval → Merge to main →
+Automated checks → Render deployment (current trigger not verified) → Deployed
+verification
 
 ## Workflow Triggers
 
@@ -443,18 +482,24 @@ flowchart LR
     CI --> Review[Required check and teammate approval]
     Review --> Main[Merge to main]
     Main --> MainCI[Main CI]
-    MainCI --> Render[Render: After CI Checks Pass]
+    MainCI --> Render[Render Auto-Deploy off; manual API/service update observed]
     Render --> Verify[Confirm Live SHA, health and readiness]
 ```
 
-The diagram describes current delivery. CI validates and packages the extension;
-installed Chrome behavior and real-provider AI remain separate acceptance checks.
+The diagram describes workflow structure, not a controlled release promotion.
+Render metadata reports Auto-Deploy off for production and staging. The latest
+production live deployment was recorded with trigger `service_updated`; the
+latest successful staging deployment was triggered by API. CI can validate and
+package the extension; installed Chrome behavior and real-provider AI remain
+separate acceptance gates.
 
 Workflow file: .github/workflows/ci.yml
 
 - Every pull request triggers backend checks.
 - Every push to main, including a merged PR, triggers backend checks.
-- Render deploys changes to main after CI checks pass.
+- Render metadata currently says Auto-Deploy is off on both services. Latest
+  production and staging deploys were service/API initiated; no same-digest
+  staging-to-production promotion is evidenced.
 
 The workflow uses Python 3.12 on an Ubuntu runner.
 Render is configured to use Python 3.12.10.
@@ -499,9 +544,19 @@ Successful actual-model calls must be recorded separately.
 - Deployment branch: main.
 - Root directory: repository root; the field is blank.
 - Python version: 3.12.10.
-- Auto-Deploy: After CI Checks Pass.
+- Auto-Deploy: off in the November 22 Render metadata. Latest live production
+  deployment `dep-dc1716etlv9c73b8nl0g` is SHA
+  `811980c2cbf70d9957146bf329627f0826a018f1` with trigger `service_updated`.
 - Public URL: https://phishlens-api-ocvt.onrender.com
 - Health check path: /health.
+
+Staging is a separate native Python Render service, `phishlens-staging`
+(`srv-db92irlg1s2s739404i0`), on branch `main`, with Auto-Deploy off and start
+command `python scripts/start_staging.py`. Its latest live deploy is
+`dep-dc14umnf3r2c73bl1c20`, SHA
+`6b6b83d5ef261e10e4312a78b5e2f3953b0e36ec`, triggered by API. Later attempts at
+`561c19d` failed or were canceled. The service's runtime and migration
+environment values are not exposed by Render metadata.
 
 Build command:
 
@@ -525,14 +580,14 @@ It does not establish database, frontend, or AI integration.
 
 ## Merge Protections
 
-Current `main` rule was read in the repository UI on 2026-10-31. It requires a
-pull request, one approval, dismissal of stale approvals, passing Backend checks,
-Extension checks, Hosted staging, and Staging integration, up-to-date branches,
-and resolved conversations. “Do not allow bypassing” is enabled; force pushes
-and branch deletion are disabled. Code-owner review, approval of the latest
-reviewable push, signed commits, linear history, successful deployment, and
-branch lock are disabled. The dated read-only record is
-[here](docs/devops/evidence/2026-10-31-main-branch-protection.md).
+The supplied November 22 review reports the active `main` ruleset requires one
+approval and four checks: `Backend checks`, `Extension checks`, `Staging
+integration`, and `Secretary staging`. The connected GitHub integration could
+not read classic branch-protection details. The same supplied review reports
+staging allows self-review and has stale `refs/pull/33/merge`; production blocks
+self-review but allows admin bypass and has one reviewer. Treat environment
+approval as incomplete until those settings are corrected and independently
+verified. The October 31 record below is historical only.
 
 Historical setup evidence showed main requiring:
 
@@ -552,17 +607,23 @@ records the current rule separately from that historical evidence.
 
 The selected database is PostgreSQL hosted on Neon.
 
-- Production branch: production.
-- Development branch: development.
-- Hosted staging branch: `pr-58-staging`.
+- Production project: `patient-bird-25428852`; exact branch is not confirmed in
+  this record.
+- Staging project reported by current GitHub environment values:
+  `hidden-shadow-38533062`, branch `br-broad-feather-b3261w7l`.
+- PR251 candidate project: `ancient-brook-17208049`, branch
+  `br-rough-sea-a1l6ehi1` (`staging-root`), separate and ready but not selected;
+  the supplied catalog review found no public app tables or Alembic history.
 - Region: AWS Asia Pacific 1 (Singapore).
 - Databases observed: neondb and phishlens_dev. The migrated demo database is
   phishlens_dev; confirm the Neon branch rather than infer it from the name.
 - Local `DATABASE_URL`: read by the application, Alembic and seed. Use only the
   development target for local work.
-- Hosted staging `DATABASE_URL`: restricted app role for API requests and seed.
-- Hosted staging `STAGING_MIGRATION_DATABASE_URL`: separate migration role used
-  only for startup migrations; see [staging.md](docs/devops/staging.md).
+- Staging runtime and `STAGING_MIGRATION_DATABASE_URL` host/database/role
+  identities are not verified against the running Render service. The supplied
+  catalog review reports app-role access on existing staging includes CRUD on
+  `users`, plus read access to `alembic_version`; review least privilege with
+  the database owner before relying on the role.
 
 Use the intended branch and database for every operation. `.env.example` omits
 hosted secrets and contains no unused `MIGRATION_DATABASE_URL` placeholder. Driver:

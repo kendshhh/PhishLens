@@ -1,36 +1,33 @@
-import textwrap
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-class HostedStagingSupersededTests(unittest.TestCase):
-    def test_changed_pr_head_skips_stale_evidence_without_failing_ci(self):
+class HostedStagingTrustBoundaryTests(unittest.TestCase):
+    def test_pr_ci_has_no_render_or_synthetic_auth_credentials(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        start = workflow.index("      - name: Verify deployed merge identity and package staging assets")
-        end = workflow.index("      - name: Preserve hosted staging evidence and extension", start)
-        finalize = workflow[start:end]
-        artifact = workflow[end:]
 
-        self.assertIn("id: staging-finalize", finalize)
-        self.assertIn("def superseded():", finalize)
-        self.assertIn("not current.get('draft', False)", finalize)
-        self.assertEqual(finalize.count("if superseded():"), 3)
-        self.assertIn("raise SystemExit(0)", finalize)
-        self.assertIn("result.write('current=false\\n')", finalize)
-        self.assertIn("result.write('current=true\\n')", finalize)
-        self.assertNotIn("PR changed during deployment; rerun CI", finalize)
-        self.assertIn("if: steps.staging-finalize.outputs.current == 'true'", artifact)
+        for secret_name in (
+            "RENDER_STAGING_API_KEY",
+            "STAGING_AUTH_USER_A_EMAIL",
+            "STAGING_AUTH_USER_A_PASSWORD",
+            "STAGING_AUTH_USER_B_EMAIL",
+            "STAGING_AUTH_USER_B_PASSWORD",
+        ):
+            with self.subTest(secret_name=secret_name):
+                self.assertNotIn(secret_name, workflow)
+        self.assertNotIn("environment: staging", workflow)
+        self.assertNotIn("node pr-source/", workflow)
 
-        marker = "          python - <<'PY'\n"
-        script_start = finalize.index(marker) + len(marker)
-        script_end = finalize.index("\n          PY", script_start)
-        compile(
-            textwrap.dedent(finalize[script_start:script_end]),
-            ".github/workflows/ci.yml hosted-staging-finalize",
-            "exec",
-        )
+    def test_staging_deployment_uses_only_the_trusted_default_branch_controller(self):
+        workflow = (ROOT / ".github/workflows/secretary-preview.yml").read_text(encoding="utf-8")
+
+        self.assertIn("workflow_run:", workflow)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", workflow)
+        self.assertIn("environment: staging", workflow)
+        self.assertIn("RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}", workflow)
+        self.assertNotIn("github.event.workflow_run.head_sha }}\n          path:", workflow)
 
 
 if __name__ == "__main__":
