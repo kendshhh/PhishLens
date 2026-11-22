@@ -91,7 +91,7 @@ test('fails a permanent 401 without Bearer and reports endpoint and status', asy
     assert.equal(historyRequests, 1, 'a permanent authentication contract error must not be retried');
     assert.match(result.summary, /Endpoint: .*\/api\/analyses/);
     assert.match(result.summary, /Final result: HTTP 401/);
-    assert.match(result.summary, /Anonymous history .*HTTP 401 without a Bearer/);
+    assert.match(result.summary, /anonymous history .*HTTP 401 without the expected Bearer-scheme challenge/i);
 });
 
 test('does not retry permanent HTTP errors whose response text resembles a transient network failure', async t => {

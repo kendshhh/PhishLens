@@ -52,7 +52,7 @@ test('rejects an unauthorized response without a Bearer challenge with diagnosti
         error => error.status === 401 &&
             error.url === 'https://staging.example.test/api/analyses' &&
             error.code === 'history_missing_bearer_challenge' &&
-            /without a Bearer challenge/.test(error.message)
+            /without the expected Bearer-scheme challenge/.test(error.message)
     );
 });
 

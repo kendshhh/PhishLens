@@ -57,7 +57,7 @@ export async function readStagingHistory(baseUrl, fetchImpl = globalThis.fetch, 
                 const challenge = error.wwwAuthenticate || '';
                 if (!/^\s*Bearer(?:\s|$)/i.test(challenge)) {
                     error.code = 'history_missing_bearer_challenge';
-                    error.message += '; anonymous history returned HTTP 401 without a Bearer challenge';
+                    error.message += '; anonymous history returned HTTP 401 without the expected Bearer-scheme challenge';
                     throw error;
                 }
                 return null;
