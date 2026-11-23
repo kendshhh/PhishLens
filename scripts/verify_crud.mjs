@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { createAnalysisClient } from '../extension/js/api.js';
+import { createNeonAccounts } from '../extension/js/neon-accounts.js';
+import { BetterAuthVanillaAdapter, createAuthClient } from '../extension/vendor/neon/sdk.mjs';
 
 const ANALYSIS_MODES = new Set(['mock', 'real']);
 const PROVIDER_MODES = new Set(['mock', 'gemini', 'local', 'tfidf']);
@@ -8,6 +10,115 @@ const PROVENANCE_FIELDS = [
     'provider_mode', 'model', 'model_revision', 'prompt_version',
     'explanation_source', 'input_truncated', 'windows_processed'
 ];
+const STAGING_NEON_AUTH_HOST = 'ep-winter-wind-a1y2r1db.neonauth.ap-southeast-1.aws.neon.tech';
+const STAGING_NEON_AUTH_DATABASE = 'neondb';
+const STAGING_CHROME_ORIGIN = /^chrome-extension:\/\/[a-p]{32}$/;
+
+function cookiePathMatches(pathname, cookiePath) {
+    if (!cookiePath.startsWith('/')) return false;
+    return pathname === cookiePath || pathname.startsWith(cookiePath.endsWith('/') ? cookiePath : cookiePath + '/');
+}
+
+export function validateStagingAuthConfig({ authUrl, database, trustedOrigin }) {
+    let target;
+    try { target = new URL(authUrl); }
+    catch { throw new Error('Staging Auth configuration is missing or invalid.'); }
+    if (target.protocol !== 'https:' || target.username || target.password || target.search || target.hash ||
+        target.host !== STAGING_NEON_AUTH_HOST || database !== STAGING_NEON_AUTH_DATABASE ||
+        target.pathname !== `/${STAGING_NEON_AUTH_DATABASE}/auth` || !STAGING_CHROME_ORIGIN.test(trustedOrigin || '')) {
+        throw new Error('Staging Auth must target the reviewed isolated Neon Auth endpoint and extension origin.');
+    }
+    return target;
+}
+
+export function createAuthCookieFetch({ authOrigin, trustedOrigin, fetchImpl = globalThis.fetch }) {
+    const cookies = new Map();
+    const target = new URL(authOrigin);
+    if (target.protocol !== 'https:' || target.origin !== authOrigin || !STAGING_CHROME_ORIGIN.test(trustedOrigin || '')) {
+        throw new Error('Staging Auth transport configuration is invalid.');
+    }
+    const wrapped = async (input, init = {}) => {
+        const requestUrl = new URL(typeof input === 'string' || input instanceof URL ? input.toString() : input.url);
+        if (requestUrl.origin !== target.origin) throw new Error('Staging Auth attempted an unexpected origin.');
+        const headers = new Headers(input instanceof Request ? input.headers : undefined);
+        new Headers(init.headers || {}).forEach((value, name) => headers.set(name, value));
+        headers.set('Origin', trustedOrigin);
+        const cookie = [...cookies.values()]
+            .filter(entry => cookiePathMatches(requestUrl.pathname, entry.path))
+            .map(entry => `${entry.name}=${entry.value}`)
+            .join('; ');
+        if (cookie) headers.set('Cookie', cookie);
+        else headers.delete('Cookie');
+        const response = await fetchImpl(input, { ...init, headers });
+        if (typeof response.headers.getSetCookie !== 'function') {
+            throw new Error('Staging Auth transport cannot safely retain session cookies.');
+        }
+        for (const value of response.headers.getSetCookie()) {
+            const [pair = '', ...attributes] = value.split(';');
+            const separator = pair.indexOf('=');
+            if (separator < 1) continue;
+            const name = pair.slice(0, separator).trim();
+            const cookieValue = pair.slice(separator + 1).trim();
+            const pathAttribute = attributes.find(attribute => /^\s*path=/i.test(attribute));
+            const path = pathAttribute ? pathAttribute.slice(pathAttribute.indexOf('=') + 1).trim() : '/';
+            const maxAgeAttribute = attributes.find(attribute => /^\s*max-age=/i.test(attribute));
+            const maxAge = maxAgeAttribute ? Number(maxAgeAttribute.slice(maxAgeAttribute.indexOf('=') + 1)) : null;
+            const expiresAttribute = attributes.find(attribute => /^\s*expires=/i.test(attribute));
+            const expired = expiresAttribute && Date.parse(expiresAttribute.slice(expiresAttribute.indexOf('=') + 1)) <= Date.now();
+            if (!cookieValue || maxAge !== null && Number.isFinite(maxAge) && maxAge <= 0 || expired) cookies.delete(name);
+            else cookies.set(name, { name, value: cookieValue, path });
+        }
+        return response;
+    };
+    wrapped.clearCookies = () => cookies.clear();
+    return wrapped;
+}
+
+async function stagingAccessToken({ label, email, password, authUrl, database, trustedOrigin }) {
+    const target = validateStagingAuthConfig({ authUrl, database, trustedOrigin });
+    if (!email || !password) throw new Error(`Staging synthetic account ${label} credentials are not configured.`);
+    const originalFetch = globalThis.fetch;
+    const authFetch = createAuthCookieFetch({ authOrigin: target.origin, trustedOrigin });
+    globalThis.fetch = authFetch;
+    let succeeded = false;
+    let accounts;
+    try {
+        const auth = createAuthClient(target.href, {
+            adapter: BetterAuthVanillaAdapter({ fetchOptions: {
+                credentials: 'include', redirect: 'error', timeout: 10000, retry: 0
+            } })
+        });
+        accounts = createNeonAccounts(auth, { timeoutMs: 15000 });
+        const session = await accounts.signIn({ email, password });
+        if (!session?.user?.id || session.user.emailVerified !== true) {
+            throw new Error('Verified account session unavailable.');
+        }
+        const token = await accounts.getAccessToken(session.user.id);
+        if (typeof token !== 'string' || !token) throw new Error('Verified access token unavailable.');
+        succeeded = true;
+        return {
+            token,
+            signOut: async () => {
+                const activeFetch = globalThis.fetch;
+                globalThis.fetch = authFetch;
+                try {
+                    await accounts.signOut();
+                } catch {
+                    throw new Error(`Staging synthetic account ${label} could not close its test session.`);
+                } finally {
+                    globalThis.fetch = activeFetch;
+                    authFetch.clearCookies();
+                }
+            }
+        };
+    } catch {
+        authFetch.clearCookies();
+        throw new Error(`Staging synthetic account ${label} could not sign in with a verified session.`);
+    } finally {
+        globalThis.fetch = originalFetch;
+        if (!succeeded) authFetch.clearCookies();
+    }
+}
 
 function assertReportProvenance(report) {
     assert.ok(ANALYSIS_MODES.has(report.analysis_mode), 'Invalid analysis_mode');
@@ -181,6 +292,102 @@ export async function verifyCrud(baseUrl, options = {}) {
     }
 }
 
+export async function verifyAuthenticatedCrud(baseUrl, options = {}) {
+    const target = await verifyTarget(baseUrl, options);
+    const authConfig = {
+        authUrl: options.authUrl || process.env.STAGING_NEON_AUTH_URL,
+        database: options.authDatabase || process.env.STAGING_NEON_AUTH_DATABASE,
+        trustedOrigin: options.trustedOrigin || process.env.STAGING_AUTH_TRUSTED_CHROME_ORIGIN
+    };
+    let accountA, accountB, clientA, clientB;
+    const runId = crypto.randomUUID();
+    const inputA = { subject: `Synthetic hosted staging CRUD ${runId} A`, body: 'Synthetic verification message; no personal content or credentials.' };
+    const inputB = { subject: `Synthetic hosted staging CRUD ${runId} B`, body: 'Synthetic verification message; no personal content or credentials.' };
+    const keyA = `hosted-staging-${runId}-a`, keyB = `hosted-staging-${runId}-b`;
+    let createdA, createdB, cleanedUp = false;
+    try {
+        accountA = await stagingAccessToken({
+            ...authConfig, label: 'A',
+            email: options.accountAEmail || process.env.STAGING_AUTH_USER_A_EMAIL,
+            password: options.accountAPassword || process.env.STAGING_AUTH_USER_A_PASSWORD
+        });
+        accountB = await stagingAccessToken({
+            ...authConfig, label: 'B',
+            email: options.accountBEmail || process.env.STAGING_AUTH_USER_B_EMAIL,
+            password: options.accountBPassword || process.env.STAGING_AUTH_USER_B_PASSWORD
+        });
+        clientA = createAnalysisClient(target.baseUrl, target.safeFetch, { getAccessToken: async () => accountA.token });
+        clientB = createAnalysisClient(target.baseUrl, target.safeFetch, { getAccessToken: async () => accountB.token });
+        createdA = await clientA.createAnalysis(inputA, { idempotencyKey: keyA });
+        assertReportProvenance(createdA);
+        assert.equal(createdA.subject, inputA.subject);
+        const replayA = await clientA.createAnalysis(inputA, { idempotencyKey: keyA });
+        assert.equal(replayA.id, createdA.id, 'An identical create must replay the original report');
+        await assert.rejects(
+            clientA.createAnalysis({ ...inputA, body: inputA.body + ' changed' }, { idempotencyKey: keyA }),
+            error => error.status === 409,
+            'A changed create with the same key must conflict'
+        );
+        createdB = await clientB.createAnalysis(inputB, { idempotencyKey: keyB });
+        assertReportProvenance(createdB);
+        assert.equal(createdB.subject, inputB.subject);
+
+        const [listA, listB] = await Promise.all([clientA.listAnalyses(), clientB.listAnalyses()]);
+        assert.ok(listA.some(report => report.id === createdA.id), 'Account A must list its report');
+        assert.ok(!listA.some(report => report.id === createdB.id), 'Account A must not list account B reports');
+        assert.ok(listB.some(report => report.id === createdB.id), 'Account B must list its report');
+        assert.ok(!listB.some(report => report.id === createdA.id), 'Account B must not list account A reports');
+
+        await assert.rejects(clientB.getAnalysis(createdA.id), error => error.status === 404);
+        await assert.rejects(clientB.updateAnalysis(createdA.id, { notes: 'cross-account write probe' }), error => error.status === 404);
+        await assert.rejects(clientB.deleteAnalysis(createdA.id), error => error.status === 404);
+        await assert.rejects(clientA.getAnalysis(createdB.id), error => error.status === 404);
+        await assert.rejects(clientA.updateAnalysis(createdB.id, { notes: 'cross-account write probe' }), error => error.status === 404);
+        await assert.rejects(clientA.deleteAnalysis(createdB.id), error => error.status === 404);
+
+        const beforeEditA = await clientA.getAnalysis(createdA.id);
+        assertReportProvenance(beforeEditA);
+        assert.equal(beforeEditA.body, inputA.body);
+        await clientA.updateAnalysis(createdA.id, { notes: 'CRUD verification', feedback: 'false_positive' });
+        const editedA = await clientA.getAnalysis(createdA.id);
+        assert.equal(editedA.notes, 'CRUD verification');
+        assert.equal(editedA.feedback, 'false_positive');
+        await clientA.updateAnalysis(createdA.id, { notes: null });
+        const clearedA = await clientA.getAnalysis(createdA.id);
+        assert.equal(clearedA.notes, null);
+        assert.equal(clearedA.feedback, 'false_positive');
+        assert.equal((await clientB.getAnalysis(createdB.id)).id, createdB.id);
+
+        await clientA.deleteAnalysis(createdA.id);
+        await clientB.deleteAnalysis(createdB.id);
+        createdA = null; createdB = null; cleanedUp = true;
+        return {
+            result: 'passed', baseUrl: target.baseUrl, authMode: 'neon',
+            analysisMode: beforeEditA.analysis_mode,
+            analysisProvenance: {
+                providerMode: beforeEditA.analysis_provenance.provider_mode,
+                model: beforeEditA.analysis_provenance.model,
+                modelRevision: beforeEditA.analysis_provenance.model_revision,
+                promptVersion: beforeEditA.analysis_provenance.prompt_version
+            },
+            checks: ['verified sign-in for two synthetic accounts', 'create/replay/conflict',
+                'per-account list isolation', 'cross-account read/patch/delete return 404',
+                'owner read/edit/clear/delete', 'synthetic report provenance'],
+            cleanedUp
+        };
+    } finally {
+        let cleanupFailed = false;
+        if (createdA && clientA) await clientA.deleteAnalysis(createdA.id).catch(error => { if (error.status !== 404) cleanupFailed = true; });
+        if (createdB && clientB) await clientB.deleteAnalysis(createdB.id).catch(error => { if (error.status !== 404) cleanupFailed = true; });
+        for (const account of [accountA, accountB]) {
+            if (!account) continue;
+            try { await account.signOut(); }
+            catch { cleanupFailed = true; }
+        }
+        if (cleanupFailed) throw new Error('Hosted staging synthetic records or account sessions could not be cleaned up.');
+    }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const args = process.argv.slice(2);
     function value(flag) {
@@ -188,12 +395,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         return index === -1 ? undefined : args[index + 1];
     }
     try {
-        const result = await verifyCrud(value('--base-url'), {
+        const options = {
             environment: value('--environment'),
             expectedSha: value('--expected-sha'),
             allowWrites: args.includes('--allow-writes'),
             requireRealAI: args.includes('--require-real-ai')
-        });
+        };
+        const result = options.environment === 'staging'
+            ? await verifyAuthenticatedCrud(value('--base-url'), options)
+            : await verifyCrud(value('--base-url'), options);
         console.log(JSON.stringify(result, null, 2));
     } catch (error) {
         console.error(error.message);

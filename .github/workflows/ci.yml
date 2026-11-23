@@ -512,7 +512,7 @@ jobs:
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt
       - name: Test hosted history authentication smoke
-        run: node --test scripts/tests/staging_history.test.mjs
+        run: node --test scripts/tests/staging_history.test.mjs scripts/tests/verify_crud.test.mjs
       - name: Start staging and test extension API integration
         shell: bash
         run: |
@@ -686,6 +686,8 @@ jobs:
           sparse-checkout: |
             package.json
             extension/js/api.js
+            extension/js/neon-accounts.js
+            extension/vendor/neon/sdk.mjs
             scripts/verify_crud.mjs
           sparse-checkout-cone-mode: false
       - name: Verify saved report synthetic AI and CRUD checklist
@@ -693,6 +695,13 @@ jobs:
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
           STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_NEON_AUTH_URL: ${{ vars.STAGING_NEON_AUTH_URL }}
+          STAGING_NEON_AUTH_DATABASE: ${{ vars.STAGING_NEON_AUTH_DATABASE }}
+          STAGING_AUTH_TRUSTED_CHROME_ORIGIN: ${{ vars.STAGING_AUTH_TRUSTED_CHROME_ORIGIN }}
+          STAGING_AUTH_USER_A_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
+          STAGING_AUTH_USER_A_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
+          STAGING_AUTH_USER_B_EMAIL: ${{ secrets.STAGING_AUTH_USER_B_EMAIL }}
+          STAGING_AUTH_USER_B_PASSWORD: ${{ secrets.STAGING_AUTH_USER_B_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging

@@ -364,7 +364,7 @@ class GitHubPaginationTests(unittest.TestCase):
 
 
 class PreviewTests(unittest.TestCase):
-    def test_neon_preflight_passes_required_status_and_keeps_auth_acceptance_pending(self):
+    def test_neon_preview_runs_authenticated_saved_report_acceptance(self):
         from scripts.secretary.preview import main
 
         data = fixture()
@@ -410,47 +410,47 @@ class PreviewTests(unittest.TestCase):
                           "challenge": "Bearer", "redirected": False,
                       },
                   }) as smoke,
-                  patch("scripts.secretary.preview.verify_saved_report") as crud,
+                  patch("scripts.secretary.preview.verify_saved_report", return_value={
+                      "result": "passed", "cleanedUp": True, "analysisMode": "real",
+                      "analysisProvenance": {"providerMode": "tfidf", "model": "staging-model",
+                                              "modelRevision": "verified-model-sha", "promptVersion": "1"},
+                  }) as crud,
                   patch("scripts.secretary.preview.package") as build):
                 main()
             evidence = json.loads((root / "output/secretary/preview-evidence.json").read_text())
             step_summary = summary_path.read_text(encoding="utf-8")
         smoke.assert_called_once_with(CONFIG["staging_origin"], SHA, report_auth_mode="neon")
-        crud.assert_not_called()
-        build.assert_not_called()
-        self.assertEqual(evidence["result"], "action_required")
-        self.assertTrue(evidence["preflight_passed"])
+        crud.assert_called_once_with(CONFIG["staging_origin"], SHA)
+        build.assert_called_once()
+        self.assertEqual(evidence["result"], "success")
         self.assertEqual(evidence["required_status"], "success")
         self.assertEqual(evidence["report_auth_mode"], "neon")
         self.assertEqual(evidence["smoke"]["history"], "authentication_required")
         self.assertEqual(evidence["smoke"]["seeded_history"], "not_checked")
         self.assertEqual(evidence["smoke"]["anonymous_saved_report"]["status_code"], 401)
-        self.assertEqual(evidence["authenticated_saved_report"], "pending")
-        self.assertEqual(evidence["live_auth_acceptance"], "pending")
+        self.assertEqual(evidence["saved_report_ai_crud"]["result"], "passed")
         status_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
                         if entry.args[0] == "statuses/" + SHA]
         deployment_calls = [entry.args[1]["state"] for entry in api.request.call_args_list
                             if entry.args[0] == "deployments/2/statuses"]
         self.assertEqual(status_calls, ["pending", "success"])
-        self.assertEqual(deployment_calls, ["in_progress", "pending"])
+        self.assertEqual(deployment_calls, ["in_progress", "success"])
         self.assertEqual(
             sum(call.args[0] == "pulls/123" for call in api.request.call_args_list),
-            4,
-            "PR state is checked initially, before deployment, before Render, and after smoke",
+            5,
+            "PR state is checked initially, before deployment, before Render, after smoke, and after CRUD",
         )
         auth_gate = next(
             entry.args[1]
             for entry in api.request.call_args_list
             if entry.args[0] == "check-runs/1" and len(entry.args) > 2 and entry.args[2] == "PATCH"
         )
-        self.assertEqual(auth_gate["conclusion"], "action_required")
-        self.assertEqual(auth_gate["output"]["title"], "Preflight passed; Auth acceptance pending")
+        self.assertEqual(auth_gate["conclusion"], "success")
+        self.assertEqual(auth_gate["output"]["title"], "Staging: success")
         self.assertEqual(auth_gate["output"]["summary"], evidence["message"])
         self.assertIn(evidence["message"], step_summary)
-        self.assertIn("Seeded history was not checked in Neon mode.", evidence["message"])
-        self.assertIn("Authenticated saved-report history and CRUD remain pending.", evidence["message"])
-        self.assertIn("No CRUD or staging package", evidence["message"])
-        self.assertIn("Live Auth acceptance remains pending", evidence["message"])
+        self.assertIn("two synthetic accounts passed the authenticated checks.", evidence["message"])
+        self.assertIn("Synthetic saved-report provenance and CRUD lifecycle passed", evidence["message"])
 
     def test_duplicate_verified_deployment_republishes_required_context(self):
         from scripts.secretary.preview import main

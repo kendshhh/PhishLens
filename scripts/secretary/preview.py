@@ -595,20 +595,6 @@ def main():
                     api.request(f"deployments/{deployment['id']}/statuses", {"state": state,
                         "description": "Deployment passed; PR head advanced, so this preview is superseded",
                         "log_url": log, "auto_inactive": False})
-                elif report_auth_mode == "neon":
-                    action = "action_required"
-                    evidence["preflight_passed"] = True
-                    evidence["authenticated_saved_report"] = "pending"
-                    evidence["live_auth_acceptance"] = "pending"
-                    message = (
-                        "- [x] Exact-head staging preflight verified health, readiness, version, and the anonymous saved-report `401` Bearer challenge.\n"
-                        "- Seeded history was not checked in Neon mode.\n"
-                        "- [ ] Authenticated saved-report history and CRUD remain pending. No CRUD or staging package was produced.\n"
-                        "- [ ] Live Auth acceptance remains pending and requires a separately approved run."
-                    )
-                    api.request(f"deployments/{deployment['id']}/statuses", {"state": "pending",
-                        "description": "Staging infrastructure verified; authenticated acceptance pending",
-                        "log_url": log, "auto_inactive": False})
                 else:
                     crud = verify_saved_report(config["staging_origin"], staging_sha)
                     evidence["saved_report_ai_crud"] = crud
@@ -636,7 +622,11 @@ def main():
                         provider_mode = crud["analysisProvenance"]["providerMode"]
                         analysis_mode = crud["analysisMode"]
                         action = "success"
-                        message = "- [x] Exact PR SHA live; health, readiness, version, and seeded history passed.\n"
+                        message = "- [x] Exact PR SHA live; health, readiness, and version passed.\n"
+                        if report_auth_mode == "neon":
+                            message += "- [x] Anonymous history requires authentication; two synthetic accounts passed the authenticated checks.\n"
+                        else:
+                            message += "- [x] Seeded demo history passed.\n"
                         message += f"- [x] Synthetic saved-report provenance and CRUD lifecycle passed (`{provider_mode}` provider); record cleaned up.\n"
                         if analysis_mode == "real":
                             message += f"- [x] Non-mock AI acceptance passed with `{provider_mode}`.\n"
@@ -650,19 +640,13 @@ def main():
             if deployment:
                 api.request(f"deployments/{deployment['id']}/statuses", {"state": "failure", "description": "Deployment or verification failed", "auto_inactive": False})
         finally:
-            auth_acceptance_pending = action == "action_required" and evidence.get("preflight_passed") is True
-            # The required status records infrastructure preflight; the separate check run
-            # remains action_required until Auth acceptance is independently approved.
-            status_passed = action == "success" or auth_acceptance_pending
+            status_passed = action == "success"
             status_state = "success" if status_passed else "failure"
-            if auth_acceptance_pending:
-                status_description = "Authenticated staging acceptance pending"
-            else:
-                status_description = (
-                    "Staging verification passed"
-                    if status_state == "success"
-                    else "Staging verification did not pass"
-                )
+            status_description = (
+                "Staging verification passed"
+                if status_state == "success"
+                else "Staging verification did not pass"
+            )
             evidence.update({
                 "result": action,
                 "required_status": status_state,
@@ -672,14 +656,11 @@ def main():
             output = ROOT / "output/secretary"
             output.mkdir(parents=True, exist_ok=True)
             (output / "preview-evidence.json").write_text(json.dumps(evidence, indent=2))
-            if auth_acceptance_pending:
-                title = "Preflight passed; Auth acceptance pending"
-            else:
-                title = (
-                    "Hosted staging not requested"
-                    if action == "success" and message.startswith("Hosted staging not requested.")
-                    else "Staging: " + action
-                )
+            title = (
+                "Hosted staging not requested"
+                if action == "success" and message.startswith("Hosted staging not requested.")
+                else "Staging: " + action
+            )
             api.request(f"check-runs/{check['id']}", {"status": "completed", "conclusion": action,
                 "output": {"title": title, "summary": message}}, "PATCH")
             with open(os.environ.get("GITHUB_STEP_SUMMARY", os.devnull), "a", encoding="utf-8") as out:
@@ -688,7 +669,7 @@ def main():
                 api, staging_sha, config, status_state,
                 status_description, log,
             )
-            if action == "failure" or (action == "action_required" and not auth_acceptance_pending):
+            if action == "failure" or action == "action_required":
                 print("Preview did not pass: " + message, file=sys.stderr)
                 raise SystemExit(1)
 
