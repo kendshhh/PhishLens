@@ -649,6 +649,21 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Check out exact-head staging smoke and synthetic acceptance scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
+          sparse-checkout: |
+            extension/js/api.js
+            package.json
+            scripts/staging_history.mjs
+            scripts/staging_smoke.mjs
+            scripts/verify_crud.mjs
+            scripts/secretary/github_api.py
+          sparse-checkout-cone-mode: false
+
       - name: Recheck PR head immediately before deployment
         id: staging-final-preflight
         env:

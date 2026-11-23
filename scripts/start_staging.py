@@ -22,6 +22,15 @@ DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
 
+# Pin hosted staging to the verified `pr-58-staging` Neon endpoint. Updating this
+# pin requires a reviewed Neon project/branch mapping; Render variables alone
+# must not be able to redirect startup to production or another branch.
+STAGING_NEON_ENDPOINT_ID = "ep-winter-wind-a1y2r1db"
+STAGING_NEON_ENDPOINT_SUFFIX = ".ap-southeast-1.aws.neon.tech"
+STAGING_NEON_ENDPOINT_HOSTS = frozenset({
+    f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
+    f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
+})
 ALLOWED_HOSTED_CONNECTION_QUERY_PARAMETERS = frozenset({"sslmode", "channel_binding"})
 
 
@@ -164,6 +173,9 @@ def validate_hosted_database_urls(
         _validate_hosted_connection_query(database, name)
 
     normalized_host = _normalized_neon_host(expected_host)
+    pinned_staging_hosts = {_normalized_neon_host(host) for host in STAGING_NEON_ENDPOINT_HOSTS}
+    if normalized_host not in pinned_staging_hosts:
+        raise SystemExit("Hosted staging must use the pinned Neon staging endpoint.")
     normalized_production_host = _normalized_neon_host(production_host)
     if (not normalized_host.startswith("ep-") or not normalized_host.endswith(".aws.neon.tech")
             or not normalized_production_host.startswith("ep-")
