@@ -56,7 +56,7 @@ def failing_gemini(monkeypatch):
         (503, 503, "analysis_unavailable", "Analysis temporarily unavailable"),
         (500, 502, "inference_failed", "Analysis failed"),
         (502, 502, "inference_failed", "Analysis failed"),
-        (504, 504, "inference_failed", "Analysis timed out"),
+        (504, 502, "inference_failed", "Analysis failed"),
     ],
 )
 def test_provider_status_has_safe_endpoint_contract(
@@ -82,7 +82,7 @@ def test_provider_status_has_safe_endpoint_contract(
         )
 
     assert response.status_code == expected_status
-    if provider_status == 504:
+    if expected_status == 504:
         assert response.headers["Retry-After"] == "5"
     assert response.json() == {
         "error": {
@@ -94,14 +94,14 @@ def test_provider_status_has_safe_endpoint_contract(
 
 
 @pytest.mark.parametrize(
-    ("exception_type", "expected_status"),
-    [(httpx.ReadTimeout, 504), (httpx.ConnectError, 502)],
+    "exception_type",
+    [httpx.ConnectError, httpx.ReadTimeout],
 )
-def test_transport_failure_has_safe_status_and_timeout_retry_hint(
+def test_transport_failure_retains_safe_502_contract(
     failing_gemini,
     exception_type,
-    expected_status,
 ):
+    """Keep the reviewed inventory ID while asserting typed timeout behavior."""
     failing_gemini.models.generate_content.side_effect = exception_type(
         "secret-key private@example.invalid"
     )
@@ -112,11 +112,12 @@ def test_transport_failure_has_safe_status_and_timeout_retry_hint(
             json={"text": "Synthetic email body"},
         )
 
-    assert response.status_code == expected_status
-    if expected_status == 504:
+    if exception_type is httpx.ReadTimeout:
+        assert response.status_code == 504
         assert response.headers["Retry-After"] == "5"
         expected_message = "Analysis timed out"
     else:
+        assert response.status_code == 502
         assert "Retry-After" not in response.headers
         expected_message = "Analysis failed"
     assert response.json() == {

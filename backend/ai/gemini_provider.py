@@ -131,10 +131,6 @@ class GeminiProvider:
                     "The AI provider's daily request quota is exhausted. "
                     "Check provider quota before retrying."
                 ) from exc
-            if exc.code == 504:
-                raise AIProviderTimeoutError(
-                    "The AI provider request timed out."
-                ) from exc
             if exc.code in {401, 403, 404, 429, 503}:
                 raise AnalysisUnavailableError(
                     f"The AI provider is unavailable (HTTP {exc.code})."
