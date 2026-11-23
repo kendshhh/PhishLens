@@ -43,10 +43,13 @@ with ZipFile(sys.argv[1]) as package:
     package.extractall(target)
 `, archive, extension]);
     const configSource = await readFile(path.join(extension, 'js/auth-config.js'), 'utf8');
-    const config = JSON.parse(configSource.replace(/^export const AUTH_CONFIG = /, '').replace(/;\s*$/, ''));
+    const config = configSource.startsWith('export const AUTH_CONFIGS = Object.freeze(')
+      ? JSON.parse(configSource.split('\n')[0].slice('export const AUTH_CONFIGS = Object.freeze('.length, -2)).staging
+      : JSON.parse(configSource.replace(/^export const AUTH_CONFIG = /, '').replace(/;\s*$/, ''));
     assert.equal(config.transport, 'https-bridge');
     apiOrigin = config.apiOrigin;
     assert.equal(apiOrigin, 'https://phishlens-staging.onrender.com');
+    assert.equal(config.bridgeUrl, apiOrigin + '/auth/bridge');
     authUrl = config.authUrl;
     authOrigin = new URL(authUrl).origin;
     archiveHash = createHash('sha256').update(await readFile(archive)).digest('hex');
@@ -182,7 +185,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   page = await context.newPage();
   page.on('requestfailed', request => console.error('Failed request:', new URL(request.url()).pathname, request.failure()?.errorText));
   page.on('pageerror', error => pageErrors.push(error.message));
-  const popupUrl = `chrome-extension://${id}/popup.html`;
+  const popupUrl = `chrome-extension://${id}/popup.html?environment=staging`;
   await page.goto(popupUrl);
   await page.locator('#show-account').waitFor({ state: 'visible' });
   await page.locator('#show-account').click();
@@ -283,8 +286,8 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#detail-panel').waitFor({ state: 'visible', timeout: 30000 });
   const reportId = await page.evaluate(async ({ apiOrigin }) => {
     const { createNeonIntegration } = await import('./js/neon-integration.js');
-    const { AUTH_CONFIG } = await import('./js/auth-config.js');
-    const integration = createNeonIntegration({ config: AUTH_CONFIG, apiOrigin });
+    const { AUTH_CONFIG, AUTH_CONFIGS } = await import('./js/auth-config.js');
+    const integration = createNeonIntegration({ config: AUTH_CONFIGS?.staging ?? AUTH_CONFIG, apiOrigin });
     const session = await integration.adapter.restore();
     const reports = await integration.createClient(session).listAnalyses();
     return reports[0].id;
@@ -300,8 +303,8 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
   const isolation = await page.evaluate(async ({ apiOrigin, reportId }) => {
     const { createNeonIntegration } = await import('./js/neon-integration.js');
-    const { AUTH_CONFIG } = await import('./js/auth-config.js');
-    const integration = createNeonIntegration({ config: AUTH_CONFIG, apiOrigin });
+    const { AUTH_CONFIG, AUTH_CONFIGS } = await import('./js/auth-config.js');
+    const integration = createNeonIntegration({ config: AUTH_CONFIGS?.staging ?? AUTH_CONFIG, apiOrigin });
     const session = await integration.adapter.restore();
     const client = integration.createClient(session);
     const statuses = [];

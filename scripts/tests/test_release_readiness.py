@@ -186,7 +186,8 @@ class ReleaseReadinessTests(unittest.TestCase):
             "production": {"enabled": True, "authUrl": "https://ep-production.neonauth.aws.neon.tech/phishlens/auth",
                            "database": "phishlens"},
             "staging": {"enabled": True, "authUrl": "https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",
-                        "database": "phishlens"},
+                        "database": "phishlens", "transport": "https-bridge",
+                        "bridgeUrl": "https://phishlens-staging.onrender.com/auth/bridge"},
         }
         hosts = [
             "https://phishlens-api-ocvt.onrender.com/*",
@@ -223,7 +224,8 @@ class ReleaseReadinessTests(unittest.TestCase):
                 b'"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
                 b'"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
-                b'"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
+                b'"origin":"https://ep-staging.neonauth.aws.neon.tech","transport":"https-bridge",'
+                b'"bridgeUrl":"https://phishlens-staging.onrender.com/auth/bridge"}});\n'
                 b'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
             ),
         }
