@@ -96,9 +96,15 @@ def run_analysis_worker(
                     sender=None,
                     body=body,
                 )
+                serialized_result = result.model_dump(mode="json")
+                # Pydantic excludes these internal-only fields by default; pass
+                # them explicitly over this private IPC channel for access logs.
+                serialized_result["input_tokens"] = result.input_tokens
+                serialized_result["output_tokens"] = result.output_tokens
+                serialized_result["estimated_cost_usd"] = result.estimated_cost_usd
                 message = {
                     "status": "ok",
-                    "result": result.model_dump(mode="json"),
+                    "result": serialized_result,
                 }
             except Exception as exception:  # noqa: BLE001
                 # Unexpected inference failures must not expose exception text.

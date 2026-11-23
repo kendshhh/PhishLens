@@ -1,3 +1,52 @@
+## Current audit and metric reconciliation — 2026-11-23
+
+This is a read-only evidence refresh plus local repository changes on the
+isolated DevOps branch. It does **not** replace the complete 28-day source
+exports below. Current GitHub `main` is `0338ad163a4892987a6a682aed29b95c22c322da`;
+its latest recorded CI run `45019688558` passed. Main protection currently
+requires eight checks and one approval, dismisses stale approvals, requires
+latest-push approval, enforces rules for administrators, and blocks force-pushes
+and branch deletion. Open PR #281 is not releasable: it has changes requested,
+merge state blocked, and the required Hosted staging and Secretary staging
+checks are failing. Other ordinary PR checks passed.
+
+Read-only public GET probes on 2026-11-23 found production `/version`,
+`/health`, `/ready`, and `/model-info` returning HTTP 200. Production serves
+`811980c2cbf70d9957146bf329627f0826a018f1`, behind current main; model info
+reports analysis disabled. Staging serves PR #281 SHA
+`b8feb7b472018da981e945717ff80d1278f34219` and returned HTTP 200 for the same
+GET endpoints. Those endpoint checks do not override the failed hosted checks or
+prove authenticated product acceptance. No inference, mutation, deployment, or
+secret value was used for this refresh.
+
+GitHub currently reports zero open secret-scanning alerts, zero open
+code-scanning alerts, and **15 open Dependabot alerts**. The required branch
+check list does not include a secret-scanning check; zero alerts is not evidence
+that secret scanning is a required gate. Reconcile and disposition the 15
+Dependabot alerts and confirm the effective environment mappings/scopes.
+
+### DORA measures: latest defensible status
+
+No new reconciled 28-day deployment-to-merge-and-incident sample was assembled
+on November 23. The latest complete window remains **2026-10-17 00:00 UTC to
+2026-11-14 03:12 UTC**, with raw source exports below. Do not present these
+figures as current November 23 DORA values.
+
+| DORA measure | Evidence | Audit status |
+|---|---|---|
+| Deployment frequency | 69 Render production deploy records in the 28-day window (2.46 records/day as a raw inventory ratio). | **Partial.** Records are not reconciled to unique successful releases/change SHAs and user delivery; 2.46 is not an accepted DORA frequency. |
+| Lead time for changes | 64 matched merged PR SHAs: mean 4.40 min, median 3.42 min, p90 5.47 min. 31/95 merged PR SHAs had no deploy match; 5 deploy records lacked a unique PR match. | **Partial.** Incomplete coverage and old window. |
+| Change failure rate | 0 failed Render deploy statuses out of 69 records. | **Gap / unknown.** Deployment status is not incident, rollback, or hotfix linkage. Do not report CFR as zero. |
+| Time to restore service | No production restoration-duration sample; n=0. | **Gap / unknown.** Do not report zero minutes. |
+
+The 2026-11-20 cache experiment remains small: cached uv Backend median 50.92 s
+versus 61.52 s baseline, n=2 per side. That is a 17.2% job-median difference,
+not a reliable end-to-end pipeline improvement. The separate staging cache
+trial increased the whole job median by 3.5 s. The optimization criterion remains
+**not met**. Next refresh should reconcile each production release to merge SHA,
+incident/rollback/hotfix, and recovery start/restore timestamps, then report a
+clearly defined rolling window and sample coverage.
+
 # Pipeline Metrics
 
 ## Current service identity refresh — 2026-11-21

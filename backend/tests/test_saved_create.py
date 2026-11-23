@@ -115,6 +115,62 @@ def test_create_returns_201_saved_detail(create_context, payload, caplog):
     assert "Synthetic email body" not in json.dumps(event)
 
 
+def test_gemini_saved_create_logs_tokens_without_exposing_them(
+    create_context,
+    monkeypatch,
+    caplog,
+):
+    from decimal import Decimal
+
+    from backend.ai.spend_limit import GeminiRequestEstimate
+    from backend.app.ai_request_quota import AIQuotaReservation
+
+    context = create_context
+    context.ai_config.return_value = ("gemini", "synthetic-key", "synthetic-model")
+    estimate = GeminiRequestEstimate(100, 128, Decimal("0.001"))
+    reservation = AIQuotaReservation(
+        input_token_upper_bound=100,
+        output_token_upper_bound=128,
+        cost_upper_bound_usd=Decimal("0.001"),
+        daily_cost_reserved_usd=Decimal("0.001"),
+        daily_spend_cap_usd=Decimal(1),
+        daily_budget_fraction=Decimal("0.001"),
+        alert_threshold_crossed=False,
+    )
+    monkeypatch.setattr(saved_create, "estimate_gemini_request_cost", lambda *_args: estimate)
+    monkeypatch.setattr(saved_create, "reserve_ai_request_quota", lambda *_args, **_kwargs: reservation)
+
+    async def complete_with_usage(*_args, provider_usage=None, **_kwargs):
+        assert provider_usage is not None
+        provider_usage.update({
+            "input_tokens": 17,
+            "output_tokens": 9,
+            "estimated_cost_usd": "0.000280",
+        })
+        return context.saved
+
+    context.service.side_effect = complete_with_usage
+    caplog.set_level(logging.INFO, logger="phishlens.api")
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Synthetic email body"},
+    )
+
+    assert response.status_code == 201
+    assert "input_tokens" not in response.json()
+    assert "output_tokens" not in response.json()
+    event = next(
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "phishlens.api" and '"event":"http_request"' in record.message
+    )
+    assert event["ai"]["input_tokens"] == 17
+    assert event["ai"]["output_tokens"] == 9
+    assert event["ai"]["estimated_cost_usd"] == "0.000280"
+    assert "estimated_cost_usd" not in response.json()
+
+
 def test_saved_create_kill_switch_stops_before_database_or_inference(
     create_context,
     monkeypatch,

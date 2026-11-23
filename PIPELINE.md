@@ -1,6 +1,22 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 21, 2026
+## Current DevOps evidence snapshot — November 23, 2026
+
+The full requirement-by-requirement audit and actions are in
+[DevOps compliance audit](docs/devops/compliance-audit-2026-11-23.md). Current
+`main` is `0338ad163a4892987a6a682aed29b95c22c322da`; its latest recorded CI run
+passed. Branch protection is verified, including required review/checks and
+force-push/deletion blocks. Production remains on `811980c2cbf70d9957146bf329627f0826a018f1`,
+with analysis disabled, while current main has advanced. PR #281 remains blocked
+by review changes and failing required hosted staging checks. The live public
+GET health/readiness probes are not a substitute for exact-candidate acceptance.
+The latest DORA source window is still October 17–November 14; change failure
+rate and time to restore are unknown, not zero. Release status remains **NO-GO**.
+
+> This top-level snapshot records the latest evidence and supersedes older
+> current-status summaries below; their historical observations are retained.
+
+## Previous delivery and acceptance snapshot — November 21, 2026
 
 This section supersedes the dated snapshots below. Release remains **NO-GO**.
 See the current [release record](docs/devops/release-record-2026-11-21.md),

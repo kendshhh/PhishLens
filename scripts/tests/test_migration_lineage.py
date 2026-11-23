@@ -17,7 +17,7 @@ class MigrationLineageTests(unittest.TestCase):
     def test_current_render_revision_chain_is_valid(self):
         self.assertEqual(
             verify_migration_lineage(ROOT),
-            "0004_neon_auth_subject",
+            "0005_ai_request_quota",
         )
 
     def test_missing_historically_stamped_revision_is_rejected(self):

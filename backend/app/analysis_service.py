@@ -24,6 +24,7 @@ async def create_saved_analysis(
     deadline: AnalysisDeadline,
     idempotency_key: str | None = None,
     owner_id=None,
+    provider_usage: dict[str, int | str] | None = None,
 ) -> SavedAnalysisDetail:
     """Run timely inference, then commit one validated saved analysis."""
     try:
@@ -38,6 +39,14 @@ async def create_saved_analysis(
                     model=model,
                     deadline=deadline,
                 )
+
+            if provider_usage is not None:
+                for name in ("input_tokens", "output_tokens"):
+                    value = getattr(result, name, None)
+                    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                        provider_usage[name] = value
+                if isinstance(result.estimated_cost_usd, str):
+                    provider_usage["estimated_cost_usd"] = result.estimated_cost_usd
 
             deadline.inference_remaining()
             return await persist_saved_analysis(

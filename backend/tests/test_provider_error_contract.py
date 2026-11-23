@@ -37,6 +37,9 @@ def failing_gemini(monkeypatch):
         "get_ai_service",
         lambda: (service, "gemini"),
     )
+    # Keep provider error contracts isolated from the shared quota database.
+    monkeypatch.setattr(main, "reserve_ai_request_quota", lambda *_a, **_k: None)
+    monkeypatch.setattr(main, "attach_ai_quota_observation", lambda *_a, **_k: None)
 
     yield sdk_client
 

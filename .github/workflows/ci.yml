@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# Keep one ordinary run per PR/ref. Protected hosted-staging candidates are
+# allowed to finish their serialized deploy/review path; newer queued commits
+# replace superseded pending runs.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') }}
+
 jobs:
   extension:
     name: Extension checks
@@ -28,6 +35,8 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
           package-manager-cache: false
 
       - name: Set up Python

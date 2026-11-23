@@ -13,6 +13,7 @@ REQUIRED_REVISIONS = (
     ("0002_analysis_provenance", "0001_initial_schema"),
     ("0003_saved_analysis_idempotency", "0002_analysis_provenance"),
     ("0004_neon_auth_subject", "0003_saved_analysis_idempotency"),
+    ("0005_ai_request_quota", "0004_neon_auth_subject"),
 )
 
 
@@ -72,7 +73,8 @@ def main() -> int:
     print(
         "Migration preflight passed: "
         "0001_initial_schema -> 0002_analysis_provenance -> "
-        "0003_saved_analysis_idempotency -> 0004_neon_auth_subject; "
+        "0003_saved_analysis_idempotency -> 0004_neon_auth_subject -> "
+        "0005_ai_request_quota; "
         f"Alembic head is {head}."
     )
     github_output = os.getenv("GITHUB_OUTPUT")

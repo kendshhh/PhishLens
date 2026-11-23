@@ -41,6 +41,25 @@ def test_mock_worker_returns_valid_result(channel):
     assert result.confidence is None
 
 
+def test_worker_preserves_internal_token_counts_for_parent_logging(channel, monkeypatch):
+    result = AIAnalysisResult(
+        classification="legitimate",
+        input_tokens=17,
+        output_tokens=9,
+        estimated_cost_usd="0.000280",
+    )
+    provider = Mock()
+    provider.analyze.return_value = result
+    monkeypatch.setattr(analysis_worker, "_build_provider", Mock(return_value=provider))
+
+    message = _run_worker(channel)
+
+    assert message["result"]["input_tokens"] == 17
+    assert message["result"]["output_tokens"] == 9
+    assert message["result"]["estimated_cost_usd"] == "0.000280"
+    assert AIAnalysisResult.model_validate(message["result"]).input_tokens == 17
+
+
 def test_local_worker_is_unavailable(channel):
     message = _run_worker(channel, mode="local")
 

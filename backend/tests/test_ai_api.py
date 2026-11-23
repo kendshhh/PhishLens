@@ -1,12 +1,35 @@
 import json
 import logging
+from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.ai.schemas import AIAnalysisResult
+from backend.ai.spend_limit import GeminiRequestEstimate
 from backend.app import main
 from backend.core import config
+
+
+def allow_fake_gemini_quota(monkeypatch, service):
+    service.estimate_request = lambda **_kwargs: GeminiRequestEstimate(
+        input_token_upper_bound=100,
+        output_token_upper_bound=128,
+        cost_upper_bound_usd=Decimal("0.001"),
+    )
+    monkeypatch.setattr(
+        main,
+        "reserve_ai_request_quota",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            input_token_upper_bound=100,
+            output_token_upper_bound=128,
+            cost_upper_bound_usd=Decimal("0.001"),
+            daily_cost_reserved_usd=Decimal("0.001"),
+            daily_spend_cap_usd=Decimal(1),
+            daily_budget_fraction=Decimal("0.001"),
+        ),
+    )
 
 
 @pytest.mark.parametrize(
@@ -43,10 +66,13 @@ def test_analysis_endpoint_uses_ai_service(monkeypatch):
                 recommendations=["Verify through a trusted channel."],
             )
 
+    service = FakeService()
+    allow_fake_gemini_quota(monkeypatch, service)
+
     monkeypatch.setattr(
         main,
         "get_ai_service",
-        lambda: (FakeService(), "gemini"),
+        lambda: (service, "gemini"),
     )
 
     with TestClient(main.app) as client:
@@ -77,9 +103,14 @@ def test_analysis_adds_server_request_id_and_redacted_ai_log(monkeypatch, caplog
                 model="synthetic-model-v1",
                 model_revision="synthetic-revision",
                 prompt_version="synthetic-prompt-v1",
+                input_tokens=17,
+                output_tokens=9,
+                estimated_cost_usd="0.000280",
             )
 
-    monkeypatch.setattr(main, "get_ai_service", lambda: (FakeService(), "gemini"))
+    service = FakeService()
+    allow_fake_gemini_quota(monkeypatch, service)
+    monkeypatch.setattr(main, "get_ai_service", lambda: (service, "gemini"))
     monkeypatch.setenv("AI_ANALYSIS_ENABLED", "true")
     caplog.set_level(logging.INFO, logger="phishlens.api")
 
@@ -104,7 +135,13 @@ def test_analysis_adds_server_request_id_and_redacted_ai_log(monkeypatch, caplog
     assert event["ai"]["model_id"] == "synthetic-model-v1"
     assert event["ai"]["model_revision"] == "synthetic-revision"
     assert event["ai"]["prompt_version"] == "synthetic-prompt-v1"
+    assert event["ai"]["input_tokens"] == 17
+    assert event["ai"]["output_tokens"] == 9
+    assert event["ai"]["estimated_cost_usd"] == "0.000280"
     assert event["ai"]["outcome"] == "success"
+    assert "input_tokens" not in response.json()
+    assert "output_tokens" not in response.json()
+    assert "estimated_cost_usd" not in response.json()
     assert private_text not in json.dumps(event)
 
 
@@ -265,11 +302,9 @@ def test_analysis_endpoint_reports_provider_failure(monkeypatch):
                 "Gemini is temporarily unavailable (HTTP 503). Please try again."
             )
 
-    monkeypatch.setattr(
-        main,
-        "get_ai_service",
-        lambda: (FailingService(), "gemini"),
-    )
+    service = FailingService()
+    allow_fake_gemini_quota(monkeypatch, service)
+    monkeypatch.setattr(main, "get_ai_service", lambda: (service, "gemini"))
 
     with TestClient(main.app) as client:
         response = client.post("/analyses", json={"text": "Test email"})
@@ -348,11 +383,9 @@ def test_daily_quota_returns_service_unavailable(monkeypatch):
                 "The AI provider's daily request quota is exhausted."
             )
 
-    monkeypatch.setattr(
-        main,
-        "get_ai_service",
-        lambda: (ExhaustedService(), "gemini"),
-    )
+    service = ExhaustedService()
+    allow_fake_gemini_quota(monkeypatch, service)
+    monkeypatch.setattr(main, "get_ai_service", lambda: (service, "gemini"))
 
     with TestClient(main.app) as client:
         response = client.post("/analyses", json={"text": "Synthetic mail"})
@@ -365,3 +398,36 @@ def test_daily_quota_returns_service_unavailable(monkeypatch):
         }
     }
     assert "daily request quota" not in response.text
+
+
+def test_ai_request_quota_rejection_stops_before_inference(monkeypatch):
+    from backend.app.ai_request_quota import AIQuotaExceeded
+
+    calls = []
+
+    class FakeService:
+        def estimate_request(self, **_kwargs):
+            return GeminiRequestEstimate(
+                input_token_upper_bound=100,
+                output_token_upper_bound=128,
+                cost_upper_bound_usd=Decimal("0.001"),
+            )
+
+        def analyze_email(self, **_kwargs):
+            calls.append("inference")
+            raise AssertionError("Limited requests must not call the provider")
+
+    service = FakeService()
+    monkeypatch.setattr(main, "get_ai_service", lambda: (service, "gemini"))
+
+    def reject_quota(*_args, **_kwargs):
+        raise AIQuotaExceeded("ip_minute", 23)
+
+    monkeypatch.setattr(main, "reserve_ai_request_quota", reject_quota)
+
+    with TestClient(main.app) as client:
+        response = client.post("/analyses", json={"text": "Synthetic mail"})
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "23"
+    assert calls == []
