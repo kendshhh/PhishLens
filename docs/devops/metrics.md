@@ -1,8 +1,8 @@
 ## Current audit and metric reconciliation — 2026-11-23
 
-This is a read-only evidence refresh plus local repository changes on the
-isolated DevOps branch. It does **not** replace the complete 28-day source
-exports below. Current GitHub `main` is `0338ad163a4892987a6a682aed29b95c22c322da`;
+This dated evidence refresh combines read-only GitHub/Render observations with
+repository changes on the isolated DevOps branch. It does **not** replace the
+complete 28-day source exports below. Current GitHub `main` is `0338ad163a4892987a6a682aed29b95c22c322da`;
 its latest recorded CI run `45019688558` passed. Main protection currently
 requires eight checks and one approval, dismisses stale approvals, requires
 latest-push approval, enforces rules for administrators, and blocks force-pushes
@@ -15,15 +15,22 @@ Read-only public GET probes on 2026-11-23 found production `/version`,
 `811980c2cbf70d9957146bf329627f0826a018f1`, behind current main; model info
 reports analysis disabled. Staging serves PR #281 SHA
 `b8feb7b472018da981e945717ff80d1278f34219` and returned HTTP 200 for the same
-GET endpoints. Those endpoint checks do not override the failed hosted checks or
-prove authenticated product acceptance. No inference, mutation, deployment, or
-secret value was used for this refresh.
+GET endpoints. These do not prove authenticated product acceptance. A later
+Render dashboard view showed production Auto-Deploy enabled on `main`; the live
+SHA is still behind main, so merge-to-live behavior remains unverified. A staging
+request label was applied to PR #282, but no deployment had started at this cutoff.
+No secret values were viewed or changed.
 
-GitHub currently reports zero open secret-scanning alerts, zero open
-code-scanning alerts, and **15 open Dependabot alerts**. The required branch
-check list does not include a secret-scanning check; zero alerts is not evidence
-that secret scanning is a required gate. Reconcile and disposition the 15
-Dependabot alerts and confirm the effective environment mappings/scopes.
+GitHub Secret Protection and push protection are enabled; the Secret scanning
+page reported zero open and zero closed secret alerts, and CodeQL reported zero
+open alerts. This is an active push-time secret control, but there is no
+secret-scanning required PR status context, so the PDF required CI gate is not
+fully evidenced. GitHub lists **15 open Dependabot alerts**; current manifests pin
+`pyasn1==0.6.5` and `opentelemetry-api==1.45.2`, the patched versions shown
+on their advisories, but the dependency alert inventory says it was last checked
+Nov 21. Dependency Security passed on the current PR head; the alerts still need
+a fresh scan and explicit reconciliation. Environment variable values were not
+exposed; private target and least-privilege scopes remain unverified.
 
 ### DORA measures: refreshed rolling window — 2026-11-23
 
@@ -106,9 +113,10 @@ used the mainline-synchronized smoke helper. Neither run checked
 performance sample. Treat the deployment identity above as the 07:31 UTC
 control-plane observation.
 
-Render metadata reports auto-deploy disabled for both services. Production's
-latest deployment record nevertheless has trigger `new_commit`; this discrepancy
-is unresolved. See the [current environment map](environment-map-2026-11-21.md)
+A later November 23 Render dashboard view showed production Auto-Deploy enabled
+on `main`; production still serves `811980c...`, behind current main. This
+supersedes the November 21 metadata observation that reported it disabled.
+Configured auto-deploy is not proof of exact merge-to-live behavior. See the [current environment map](environment-map-2026-11-21.md)
 and [release record](release-record-2026-11-21.md). The November 20
 delivery sample below remains the latest performance measurement; its service
 identity is historical.

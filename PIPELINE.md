@@ -10,8 +10,12 @@ force-push/deletion blocks. Production remains on `811980c2cbf70d9957146bf329627
 with analysis disabled, while current main has advanced. PR #281 remains blocked
 by review changes and failing required hosted staging checks. The live public
 GET health/readiness probes are not a substitute for exact-candidate acceptance.
-The latest DORA source window is still October 17–November 14; change failure
-rate and time to restore are unknown, not zero. Release status remains **NO-GO**.
+The refreshed DORA window is October 26-November 23: 91 observed live deploy
+records and 85 matched merge-to-live samples, both still partial because of a
+24h 23m source gap and incomplete cohort reconciliation. Change failure rate
+and time to restore remain unknown, not zero. PR #282 CI is green, but hosted
+staging and one required Secretary check are pending a fresh synchronize event;
+one review is still required. Release status remains **NO-GO**.
 
 > This top-level snapshot records the latest evidence and supersedes older
 > current-status summaries below; their historical observations are retained.
@@ -74,9 +78,10 @@ cleanup remain open.
 
 ### Controls and release gates
 
-Render metadata reports auto-deploy off for both services. Production's latest
-deployment record says trigger `new_commit`; staging's says `api`. This
-production setting/event discrepancy is unresolved. The latest repository
+At the November 21 snapshot, Render metadata reported auto-deploy off for both
+services. A November 23 dashboard refresh shows production Auto-Deploy enabled
+on `main`, while production still serves `811980c...`, behind main; exact
+merge-to-live behavior remains unproven. The latest repository
 record lists eight classic required checks as of November 20, but their effective
 current configuration was not rechecked in this audit. The staging Neon branch
 and migration revision `0004_neon_auth_subject` were inspected read-only; the
