@@ -85,30 +85,6 @@ def test_gemini_uses_raw_json_schema_with_bounded_single_attempt(google_client):
     client.close.assert_called_once()
 
 
-def test_gemini_logs_configured_rate_cost_estimate_from_provider_usage(google_client):
-    client, _ = google_client
-    client.models.generate_content.return_value.usage_metadata = SimpleNamespace(
-        prompt_token_count=100,
-        candidates_token_count=20,
-    )
-    policy = GeminiSpendPolicy(
-        cap_usd=Decimal(1),
-        input_usd_per_million_tokens=Decimal(2),
-        output_usd_per_million_tokens=Decimal(4),
-        model_id="gemini-test",
-    )
-    provider = gemini_provider.GeminiProvider(
-        api_key="synthetic-key", model="gemini-test", spend_policy=policy,
-    )
-
-    result = provider.analyze('{"body":"Synthetic"}')
-
-    assert result.input_tokens == 100
-    assert result.output_tokens == 20
-    assert result.estimated_cost_usd == "0.000280"
-    assert "estimated_cost_usd" not in result.model_dump()
-
-
 def test_gemma_uses_explicit_prompt_schema_instead_of_unsupported_json_mode(google_client):
     client, _ = google_client
     provider = gemini_provider.GeminiProvider(

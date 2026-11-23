@@ -1,10 +1,16 @@
 from datetime import UTC, datetime
 from decimal import Decimal
+from multiprocessing.connection import Connection
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
-from backend.ai.spend_limit import GeminiRequestEstimate
+from backend.ai import gemini_provider
+from backend.ai.schemas import AIAnalysisResult
+from backend.ai.spend_limit import GeminiRequestEstimate, GeminiSpendPolicy
 from backend.app import ai_request_quota as quota
+from backend.app import analysis_worker
 
 
 def configure_limits(monkeypatch, **overrides):
@@ -213,3 +219,66 @@ def test_quota_storage_error_is_redacted_and_fails_closed(monkeypatch):
 
     assert str(caught.value) == "Shared AI quota storage is unavailable"
     assert "private-host-and-password" not in str(caught.value)
+
+
+
+def test_gemini_logs_configured_rate_cost_estimate_from_provider_usage(monkeypatch):
+    client = Mock()
+    client.models.generate_content.return_value = SimpleNamespace(
+        text=(
+            '{"classification":"legitimate","tactics":[],"evidence":[],'
+            '"recommendations":[]}'
+        ),
+        usage_metadata=SimpleNamespace(
+            prompt_token_count=100,
+            candidates_token_count=20,
+        ),
+    )
+    monkeypatch.setattr(gemini_provider.genai, "Client", Mock(return_value=client))
+    policy = GeminiSpendPolicy(
+        cap_usd=Decimal(1),
+        input_usd_per_million_tokens=Decimal(2),
+        output_usd_per_million_tokens=Decimal(4),
+        model_id="gemini-test",
+    )
+    provider = gemini_provider.GeminiProvider(
+        api_key="synthetic-key", model="gemini-test", spend_policy=policy,
+    )
+
+    result = provider.analyze('{"body":"Synthetic"}')
+
+    assert result.input_tokens == 100
+    assert result.output_tokens == 20
+    assert result.estimated_cost_usd == "0.000280"
+    assert "estimated_cost_usd" not in result.model_dump()
+    provider.close()
+    client.close.assert_called_once()
+
+
+
+def test_worker_preserves_internal_token_counts_for_parent_logging(monkeypatch):
+    channel = Mock(spec=Connection)
+    result = AIAnalysisResult(
+        classification="legitimate",
+        input_tokens=17,
+        output_tokens=9,
+        estimated_cost_usd="0.000280",
+    )
+    provider = Mock()
+    provider.analyze.return_value = result
+    monkeypatch.setattr(analysis_worker, "_build_provider", Mock(return_value=provider))
+
+    analysis_worker.run_analysis_worker(
+        channel,
+        mode="mock",
+        api_key="synthetic-key",
+        model="synthetic-model",
+        subject="",
+        body="Synthetic email body",
+    )
+    message = channel.send.call_args.args[0]
+
+    assert message["result"]["input_tokens"] == 17
+    assert message["result"]["output_tokens"] == 9
+    assert message["result"]["estimated_cost_usd"] == "0.000280"
+    assert AIAnalysisResult.model_validate(message["result"]).input_tokens == 17
