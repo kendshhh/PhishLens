@@ -6,7 +6,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
-from backend.ai.errors import AnalysisUnavailableError
+from backend.ai.errors import AIProviderTimeoutError, AnalysisUnavailableError
 from backend.ai.prompts import PROMPT_VERSION, SYSTEM_INSTRUCTION
 from backend.ai.schemas import AIAnalysisPayload, AIAnalysisResult
 from backend.ai.spend_limit import (
@@ -131,6 +131,10 @@ class GeminiProvider:
                     "The AI provider's daily request quota is exhausted. "
                     "Check provider quota before retrying."
                 ) from exc
+            if exc.code == 504:
+                raise AIProviderTimeoutError(
+                    "The AI provider request timed out."
+                ) from exc
             if exc.code in {401, 403, 404, 429, 503}:
                 raise AnalysisUnavailableError(
                     f"The AI provider is unavailable (HTTP {exc.code})."
@@ -153,8 +157,12 @@ class GeminiProvider:
             else:
                 message = f"Gemini request failed (HTTP {exc.code})."
             raise RuntimeError(message) from exc
+        except httpx.TimeoutException as exc:
+            raise AIProviderTimeoutError(
+                "The AI provider connection timed out."
+            ) from exc
         except httpx.RequestError as exc:
-            raise RuntimeError("The AI provider connection failed or timed out.") from exc
+            raise RuntimeError("The AI provider connection failed.") from exc
 
         if not response.text:
             raise RuntimeError(

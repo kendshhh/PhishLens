@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from backend.ai import gemini_provider
+from backend.ai.errors import AIProviderTimeoutError
 from backend.ai.gemini_provider import DailyQuotaExceeded
 from backend.ai.schemas import AIAnalysisResult
 from backend.app import analysis_worker
@@ -161,11 +162,15 @@ def test_saved_gemini_worker_fails_closed_before_sdk_call(
             "timeout",
         ),
         (
+            AIProviderTimeoutError("private provider timeout"),
+            "timeout",
+        ),
+        (
             DailyQuotaExceeded("private quota details"),
             "unavailable",
         ),
     ],
-    ids=["unexpected-failure", "timeout", "quota"],
+    ids=["unexpected-failure", "timeout", "provider-timeout", "quota"],
 )
 def test_provider_errors_return_only_safe_status(
     channel,

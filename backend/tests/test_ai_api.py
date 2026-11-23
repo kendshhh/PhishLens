@@ -362,6 +362,7 @@ def test_oversized_and_malformed_requests_never_invoke_ai(monkeypatch):
     monkeypatch.setattr(main, "get_ai_service", unexpected_call)
 
     requests = (
+        {"text": ""},
         {"text": "a" * 30_001},
         {"text": "Test", "subject": "a" * 321},
         {"text": "Test", "extra": True},

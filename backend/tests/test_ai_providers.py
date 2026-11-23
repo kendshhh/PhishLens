@@ -217,7 +217,7 @@ def test_network_timeout_is_a_controlled_failure(google_client):
     provider = gemini_provider.GeminiProvider(
         api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
     )
-    with pytest.raises(RuntimeError, match="connection failed or timed out"):
+    with pytest.raises(RuntimeError, match="connection timed out"):
         provider.analyze("Test")
 
 

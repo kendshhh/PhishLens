@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.ai.errors import AnalysisUnavailableError
+from backend.ai.errors import AIProviderTimeoutError, AnalysisUnavailableError
 from backend.ai.gemini_provider import DailyQuotaExceeded, GeminiProvider
 from backend.ai.mock_provider import MockProvider
 from backend.ai.schemas import (
@@ -332,6 +332,21 @@ def analyze_email(
             sender=request.sender,
             body=request.text,
         )
+    except AIProviderTimeoutError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="provider_timeout",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
+        timed_out = analysis_error(
+            504,
+            "inference_failed",
+            "Analysis timed out",
+        )
+        timed_out.headers["Retry-After"] = "5"
+        return timed_out
     except AnalysisUnavailableError:
         set_ai_observation(
             http_request,
