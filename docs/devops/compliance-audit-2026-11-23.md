@@ -64,15 +64,18 @@ method and calculations in [metrics.md](metrics.md).
 | DORA measure | Refreshed evidence | Status and limitation |
 |---|---|---|
 | Deployment frequency | 91 observed successful/live deploy records; raw full-window ratio at least 3.25 records/day (3.37/day over covered time); 86 unique SHAs, including repeated same-SHA deploys and one SHA already deployed before the window. | **Partial.** The gap and mixed data sources mean the exact 28-day deployment count is unknown. Qualifying release semantics need to be documented. |
-| Lead time for changes | 85 first production deployments matched to distinct merged PR SHAs; mean 5.09 min, median 3.78 min, nearest-rank p90 8.61 min. | **Partial.** Newer estimate, with the same source-coverage gap; dashboard finish times are derived from timestamp plus displayed duration. |
-| Change failure rate | Zero failed deployment statuses in the 91 observed rows; no complete incident/rollback/hotfix linkage for the window. | **Unknown / Gap.** Deployment status does not establish that the production change caused no incident or needed no remediation. CFR cannot be called zero. |
-| Time to restore service | No in-window incident with exact start/detection and verified restoration timestamps; n=0. | **Unknown / Gap.** The Oct 14 planned rollback drill is outside this window and did not establish a customer outage or exact restoration duration. |
+| Lead time for changes | 85 first production deployments matched to distinct merged PR SHAs; mean 5.09 min, median 3.78 min, nearest-rank p90 8.61 min. | **Partial.** Newer estimate, with the same source-coverage gap; dashboard finish times are derived from timestamp plus displayed duration. The complete merged-change cohort and unmatched count remain unreconciled. |
+| Change failure rate | The 91 observed records had no failed deploy status. Project history records repeated exact-SHA production AI-smoke failures on Nov 14–15 because provider mode was unavailable across several deployed revisions. | **Unknown / Gap, not zero.** The production feature gap is confirmed, but impact and attribution to any specific change are not. On Nov 20, analysis was intentionally disabled as a safety kill switch. No numerator or reconciled denominator can be calculated. See the [incident log](incidents.md#2026-11-14-onward-production-ai-feature-acceptance-gap) and [event reconciliation](metrics.md#project-history-event-reconciliation-for-cfr-and-restore-time). |
+| Time to restore service | The feature gap was observed Nov 14–15; production analysis was deliberately disabled Nov 20 and remained disabled Nov 21 and Nov 23. No enabled-feature restoration or completed service-restoration duration is recorded (**n=0 measured durations**). | **Unknown / Gap, not zero.** The intentional disabled state did not restore production AI behavior; onset, impact start, and verified restoration time remain missing. The Oct 14 production drill, Nov 8 staging rehearsal, and Nov 20 isolated database restore do not provide an MTTR sample. |
 
-Close this area by retaining a complete deployment export with merge SHA and
-actual finish time, defining which production releases count, and recording an
-incident/rollback/hotfix outcome for every deployment. Capture incident start
-and verified service-restoration times; then calculate CFR and restore time from
-those linked events. Until then, DORA remains **partial**, not complete.
+Close this area by recovering the complete deployment and merged-change cohorts,
+then link each production outcome to its deployment and classify the Nov 14
+acceptance failure. Record actual incident start/detection, mitigation, and
+verified service-restoration times for any confirmed impact. Use the project
+history reconciliation in [metrics.md](metrics.md#project-history-event-reconciliation-for-cfr-and-restore-time)
+for the already documented drills and recovery events. Until attribution,
+coverage, and timestamps are complete, DORA remains **partial** and CFR/MTTR
+remain unknown.
 
 The 28-day CI sample records 682 PR workflow attempts (515 pass, 112 fail,
 55 cancelled), and 86 completed main-push runs (all passed). These are pipeline
