@@ -20,11 +20,11 @@ DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
 
-# Pin hosted staging to the verified `pr-58-staging` Neon endpoint. Updating this
+# Pin hosted staging to the current isolated Neon project/branch. Updating this
 # pin requires a reviewed Neon project/branch mapping; Render variables alone
 # must not be able to redirect startup to production or another branch.
-STAGING_NEON_ENDPOINT_ID = "ep-soft-fog-b3orfa8a"
-STAGING_NEON_ENDPOINT_SUFFIX = ".c-4.ap-southeast-1.aws.neon.tech"
+STAGING_NEON_ENDPOINT_ID = "ep-winter-wind-a1y2r1db"
+STAGING_NEON_ENDPOINT_SUFFIX = ".ap-southeast-1.aws.neon.tech"
 STAGING_NEON_ENDPOINT_HOSTS = frozenset({
     f"{STAGING_NEON_ENDPOINT_ID}{STAGING_NEON_ENDPOINT_SUFFIX}",
     f"{STAGING_NEON_ENDPOINT_ID}-pooler{STAGING_NEON_ENDPOINT_SUFFIX}",
@@ -132,20 +132,29 @@ def _validate_effective_connection_identity(database: URL, name: str) -> None:
         )
 
 
+def normalize_neon_endpoint_host(host: str) -> str:
+    """Normalize the Neon pooler alias without changing the pinned endpoint."""
+    normalized = str(host or "").strip().rstrip(".").lower()
+    return re.sub(r"-pooler(?=\.)", "", normalized)
+
+
 def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: str, app_role: str) -> None:
     """Reject production, owner-runtime, or mixed-branch staging credentials."""
     for name, database in (("runtime", runtime), ("migration", migration)):
         _validate_hosted_connection_query(database, name)
 
-    normalized_host = expected_host.rstrip(".").lower()
+    normalized_host = normalize_neon_endpoint_host(expected_host)
     if normalized_host not in STAGING_NEON_ENDPOINT_HOSTS:
         raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
     if app_role != "phishlens_staging_app":
         raise SystemExit("Hosted staging requires an isolated host and the phishlens_staging_app role.")
     if runtime.database != "phishlens_dev" or migration.database != "phishlens_dev":
         raise SystemExit("Staging requires both database URLs to target phishlens_dev.")
-    if runtime.host != expected_host or migration.host != expected_host:
-        raise SystemExit("Staging app and migration URLs must match the isolated STAGING_DATABASE_HOST.")
+    if (
+        normalize_neon_endpoint_host(runtime.host) != normalized_host
+        or normalize_neon_endpoint_host(migration.host) != normalized_host
+    ):
+        raise SystemExit("Staging app and migration URLs must match the isolated STAGING_DATABASE_HOST endpoint.")
     if runtime.username != app_role or runtime.username in {"neondb_owner", "cloud_admin"}:
         raise SystemExit("Staging DATABASE_URL must use the configured non-owner app role.")
     if migration.username != "neondb_owner" or migration.username == runtime.username:

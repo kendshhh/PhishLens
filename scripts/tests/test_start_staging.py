@@ -8,10 +8,10 @@ from sqlalchemy.engine import make_url
 
 from scripts.start_staging import main, pin_ipv4_addresses
 
-DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
-DATABASE_HOST = "ep-soft-fog-b3orfa8a-pooler.c-4.ap-southeast-1.aws.neon.tech"
-DIRECT_DATABASE_HOST = "ep-soft-fog-b3orfa8a.c-4.ap-southeast-1.aws.neon.tech"
+DATABASE_URL = "postgresql+psycopg://phishlens_staging_app:example-password@ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+MIGRATION_URL = "postgresql+psycopg://neondb_owner:owner-example-password@ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech/phishlens_dev?sslmode=require"
+DATABASE_HOST = "ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech"
+POOLER_DATABASE_HOST = "ep-winter-wind-a1y2r1db-pooler.ap-southeast-1.aws.neon.tech"
 PRODUCTION_DATABASE_HOST = "ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech"
 
 
@@ -212,10 +212,14 @@ class HostedStagingIpv4Tests(unittest.TestCase):
     def test_direct_and_pooled_hosts_for_verified_staging_endpoint_are_allowed(self):
         from scripts.start_staging import validate_hosted_database_urls
 
-        direct_runtime = DATABASE_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
-        direct_migration = MIGRATION_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST)
+        pooled_runtime = DATABASE_URL.replace(DATABASE_HOST, POOLER_DATABASE_HOST)
+        pooled_migration = MIGRATION_URL.replace(DATABASE_HOST, POOLER_DATABASE_HOST)
         validate_hosted_database_urls(
-            make_url(direct_runtime), make_url(direct_migration), DIRECT_DATABASE_HOST,
+            make_url(pooled_runtime), make_url(pooled_migration), DATABASE_HOST,
+            "phishlens_staging_app",
+        )
+        validate_hosted_database_urls(
+            make_url(DATABASE_URL), make_url(MIGRATION_URL), POOLER_DATABASE_HOST,
             "phishlens_staging_app",
         )
 

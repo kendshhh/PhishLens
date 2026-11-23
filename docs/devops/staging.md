@@ -73,24 +73,34 @@ claim installed-Chrome acceptance; that remains a separate human test.
   The change updates the service source setting; it does not deploy a new commit.
   The hosted workflow uses the Render API to deploy the selected PR merge SHA.
 
-The selected staging target is Neon branch `pr-58-staging`, database
-`phishlens_dev`. Keep development on the `development` branch and production on
-`production`; never point staging at either one.
+Current staging uses Neon project `phishlens-staging-pr251-isolated`
+(`ancient-brook-17208049`), branch `staging-root`
+(`br-rough-sea-a1l6ehi1`), and database `phishlens_dev`. Neon Console read-only
+inspection on 2026-11-23 confirmed that the Render staging host maps to this
+isolated project and branch; the hosted staging preflight independently
+confirmed that the Render database variables match the protected expected
+staging host and role/database contract. This target is separate from production.
 
-The hosted startup guard pins `STAGING_DATABASE_HOST` and both database URLs to
-the verified Neon endpoint `ep-soft-fog-b3orfa8a` (direct or pooler hostname),
-which maps to project `patient-bird-25428852`, branch `br-delicate-paper-b381z98i`
-(`pr-58-staging`). If Neon replaces that endpoint or branch, verify the new
-project/branch mapping through Neon and update the code pin with review; changing
-Render variables alone cannot authorize a different database target.
+The previous startup code still pinned the older `phishlens` project branch
+`pr-58-staging` (`br-delicate-paper-b381z98i`). The resulting 2026-11-23 Render
+deploy built successfully but exited during startup with
+`Hosted staging must use the verified Neon staging endpoint.` The startup code
+now pins that endpoint ID and normalizes its direct and pooler host forms to the
+same endpoint. The project and branch association remains read-only Neon Console
+evidence; changing Render variables alone cannot authorize a new database
+target. The corrected code still needs a fresh protected staging run before this
+fix counts as hosted evidence.
 
-On 2026-10-28, the Render Environment page was privately checked:
-`DATABASE_URL` resolves to the host and
-database for `pr-58-staging/phishlens_dev`, and `STAGING_DATABASE_HOST` matches
-that host; `APP_ENV=staging` and `AI_MODE=mock`. Only the branch/database result
-is recorded here. Do not copy the connection string into this runbook, a PR
-comment, or an extension package. A current `main` deployment is now live as
-commit `2ce4051…`.
+Keep development on its separate branch and production on the production
+project; never point staging at either one. Do not copy any connection string
+or password into this runbook, a PR comment, or an extension package.
+
+### Historical staging topology through November 15
+
+Earlier staging records used the Neon `phishlens` project, branch
+`pr-58-staging`, database `phishlens_dev`, and endpoint `ep-soft-fog-b3orfa8a`.
+Those records below are dated historical evidence and do not describe the
+current Render staging mapping.
 
 On 2026-10-28, Save and Deploy retried stale commit `35b68ba…` and failed with
 the missing-revision error. Render then used **Manual Deploy → Deploy latest
@@ -127,13 +137,12 @@ Configure two credentials in this service's Render environment:
   branch and is consumed only by the startup migration subprocess. The startup
   process removes it before seeding or launching Uvicorn.
 
-Both URLs must target Neon branch `pr-58-staging`, database `phishlens_dev`, and
-the same exact host in `STAGING_DATABASE_HOST`. Keep `development` for local and
-shared development; `pr-58-staging` is a separate branch created from a
-development snapshot. The startup script checks database names and exact hosts,
-but cannot resolve a Neon branch name from the URL. Before migrations, seeding,
-or manual writes, privately confirm that Render's connection hostname maps to
-`pr-58-staging` in Neon. Set
+Both URLs must target the currently pinned Neon staging project/branch and
+database `phishlens_dev`, and resolve to the same endpoint as
+`STAGING_DATABASE_HOST`. The startup script checks the pinned endpoint,
+database names, role identities, and normalized direct/pooler host identity.
+Before migrations, seeding, or manual writes, privately confirm that Render's
+connection hostname still maps to the pinned staging branch in Neon. Set
 `STAGING_APP_DATABASE_ROLE=phishlens_staging_app` and `APP_ENV=staging`.
 Startup rejects mismatched hosts, database names, or role identities before
 migrations or seed run. The trusted hosted-staging controller checks the
@@ -172,7 +181,7 @@ preflight:
 
 | Name | Value |
 |---|---|
-| `SECRETARY_STAGING_DB_HOST` | Exact hostname for Neon `pr-58-staging` |
+| `SECRETARY_STAGING_DB_HOST` | Exact private hostname for the pinned current staging branch |
 | `SECRETARY_PRODUCTION_DB_HOST` | Production Neon hostname, distinct from staging |
 
 Keep host values private to the GitHub environment configuration. Do not put
