@@ -448,6 +448,21 @@ async function waitForAccountToken(account) {
   assert.ok(accessTokens.has(account), 'Authenticated staging report request did not expose a session token in memory');
 }
 
+export async function verifyVisibleProvenance(reportPage) {
+  const section = reportPage.locator('#detail-content details').filter({
+    has: reportPage.locator('summary').filter({ hasText: /^About this result$/ }),
+  });
+  const analysis = section.getByText(/Automated analysis recorded when saved/i);
+  if (!(await analysis.isVisible())) await section.locator('summary').click();
+  await analysis.waitFor({ state: 'visible' });
+}
+
+export async function openRestoredAccount(reportPage) {
+  // Restored sessions show an Account button while the account panel stays closed.
+  await reportPage.getByRole('button', { name: 'Account', exact: true }).click();
+  await reportPage.locator('#account-sign-out').waitFor({ state: 'visible' });
+}
+
 async function createReport(subject, owner) {
   await page.locator('#server-create > summary').click();
   await page.locator('#create-subject').fill(subject);
@@ -458,7 +473,7 @@ async function createReport(subject, owner) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   assert.equal(await page.locator('#detail-heading').textContent(), subject);
-  await page.locator('#detail-content').getByText(/Automated analysis recorded when saved/i).waitFor({ state: 'visible' });
+  await verifyVisibleProvenance(page);
   assert.ok(createdIds.has(owner), 'Real staging API create response was not observed');
   const analysis = createdAnalysisEvidence.get(owner);
   assert.equal(analysis?.analysis_mode, 'real', 'A mock or unverified model result cannot pass acceptance');
@@ -516,6 +531,7 @@ async function testFaultStates() {
   const refresh = page.locator('#load-history').click();
   await page.locator('#loading').waitFor({ state: 'visible' });
   await refresh;
+  await page.locator('#loading').waitFor({ state: 'hidden' });
   evidence.user_experience.loading = true;
 
   await page.route(historyUrl, route => route.fulfill({
@@ -596,6 +612,7 @@ async function run() {
     const subjectB = `Synthetic release acceptance B ${runId}`;
     await signIn('a', emailA, `invalid-acceptance-${preflight.sourceSha}`, { invalid: true });
     await signIn('a', emailA, passwordA);
+    evidence.phase = 'account-a-reports';
     evidence.account_subject_sha256 = { a: subjectHash(emailA.toLowerCase()) };
     await enterReports();
     await waitForAccountToken('a');
@@ -614,11 +631,12 @@ async function run() {
     evidence.product.update = true;
     await page.close();
 
+    evidence.phase = 'restore-account-a-session';
     page = await context.newPage();
     await observePage(page);
     await page.goto(`chrome-extension://${preflight.packageEvidence.chrome_extension_id}/popup.html?environment=staging`);
     activeAccount = 'a';
-    await page.locator('#account-sign-out').waitFor({ state: 'visible' });
+    await openRestoredAccount(page);
     await enterReports();
     await waitForAccountToken('a');
     await page.locator('#history-list').getByText(subjectA, { exact: true }).waitFor();
@@ -690,10 +708,8 @@ async function run() {
   } catch (error) {
     evidence.status = 'blocked';
     evidence.failure_code = 'staging_acceptance_incomplete';
-    if (['preflight', 'account-a-auth', 'account-b-auth'].includes(evidence.phase)) {
-      const detail = error instanceof Error ? error.message : 'Unknown acceptance error';
-      console.error(`Staging acceptance failed during ${evidence.phase}: ${detail}`);
-    }
+    const detail = error instanceof Error ? error.message : 'Unknown acceptance error';
+    console.error(`Staging acceptance failed during ${evidence.phase}: ${detail}`);
   } finally {
     await cleanupUnfinished();
     await context?.close().catch(() => {});

@@ -9,6 +9,7 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { openRestoredAccount, verifyVisibleProvenance } from './staging_extension_acceptance.mjs';
 
 const database = process.env.PHISHLENS_AUTH_TEST_DATABASE_URL;
 const databaseUrl = new URL(database || 'https://invalid');
@@ -254,8 +255,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   assert.equal(authRequests, beforeProtocolChecks);
   checks.push('bridge rejects arbitrary SDK calls, extra fields and removed signup-verification OTP operations');
   await page.reload();
-  await page.locator('#show-account').click();
-  await page.locator('#account-sign-out').waitFor({ state: 'visible' });
+  await openRestoredAccount(page);
   checks.push('wrong password sanitized; cookie session restored after popup reload');
   await page.locator('#close-account').click();
   await page.locator('#paste-panel > summary').click();
@@ -284,6 +284,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#create-body').fill('Please review the synthetic meeting agenda for tomorrow.');
   await page.locator('#create-button').click();
   await page.locator('#detail-panel').waitFor({ state: 'visible', timeout: 30000 });
+  await verifyVisibleProvenance(page);
   const reportId = await page.evaluate(async ({ apiOrigin }) => {
     const { createNeonIntegration } = await import('./js/neon-integration.js');
     const { AUTH_CONFIG, AUTH_CONFIGS } = await import('./js/auth-config.js');
