@@ -100,6 +100,7 @@ function isValidAnalysis(analysis) {
 }
 
 const HISTORY_RESPONSE_BODY_LIMIT = 2048;
+const HISTORY_RESPONSE_BODY_PROBE_TIMEOUT_MS = 100;
 
 async function readBoundedResponseBody(response, limit = HISTORY_RESPONSE_BODY_LIMIT) {
     try {
@@ -124,7 +125,22 @@ async function readBoundedResponseBody(response, limit = HISTORY_RESPONSE_BODY_L
                 }
             }
 
-            if (byteLength === limit) truncated = true;
+            if (byteLength === limit && !truncated) {
+                let probeTimeout;
+                try {
+                    truncated = await Promise.race([
+                        reader.read().then(({ done }) => !done),
+                        new Promise(resolve => {
+                            probeTimeout = setTimeout(
+                                () => resolve(true),
+                                HISTORY_RESPONSE_BODY_PROBE_TIMEOUT_MS
+                            );
+                        }),
+                    ]);
+                } finally {
+                    clearTimeout(probeTimeout);
+                }
+            }
             if (truncated) await reader.cancel().catch(() => {});
 
             const bytes = new Uint8Array(byteLength);

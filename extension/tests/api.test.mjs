@@ -87,6 +87,24 @@ test("classifies HTTP 4xx responses as authentication or authorization failures"
     );
 });
 
+test("classifies HTTP 4xx responses as authentication or authorization failures", async () => {
+    globalThis.fetch = async () => new Response("sign in required", {
+        status: 401,
+        headers: { "WWW-Authenticate": "Bearer" }
+    });
+
+    await assert.rejects(
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.status === 401 &&
+            error.url === "https://example.test/api/analyses" &&
+            error.origin === "http" &&
+            error.category === "authentication_authorization" &&
+            error.code === "history_http_4xx" &&
+            error.wwwAuthenticate === "Bearer" &&
+            error.responseBody === "sign in required"
+    );
+});
+
 for (const [status, body] of [
     [400, "request timeout"],
     [401, "fetch failed"],
@@ -227,6 +245,16 @@ test("bounds the captured HTTP response body", async () => {
         error => error.responseBody.length <= 2070 &&
             error.responseBody.endsWith("… [truncated]") &&
             error.message.length < 2300
+    );
+});
+
+test("does not mark a response body truncated when it ends exactly at the limit", async () => {
+    const body = "x".repeat(2048);
+    globalThis.fetch = async () => new Response(body, { status: 503 });
+
+    await assert.rejects(
+        getAnalyses("https://example.test", { retries: 0 }),
+        error => error.responseBody === body && !error.responseBody.endsWith("… [truncated]")
     );
 });
 
