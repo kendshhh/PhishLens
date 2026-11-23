@@ -344,6 +344,18 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", deployment)
         self.assertNotIn("github.sha", deployment)
 
+        migration_start = hosted_job.index(
+            "      - name: Verify candidate can upgrade the applied staging revision", second_end
+        )
+        self.assertLess(migration_start, deploy_start)
+        database_preflight = hosted_job[second_end:migration_start]
+        migration_preflight = hosted_job[migration_start:deploy_start]
+        self.assertIn("db.read_only = True", database_preflight)
+        self.assertIn("SELECT version_num FROM public.alembic_version", database_preflight)
+        self.assertIn("steps.render-database-preflight.outputs.applied_revision", migration_preflight)
+        self.assertIn('--applied-revision "$APPLIED_REVISION"', migration_preflight)
+        self.assertNotIn("secrets.", migration_preflight)
+
         controller = (ROOT / "scripts/deploy_staging.py").read_text(encoding="utf-8")
         self.assertIn("def requested_pr_identity()", controller)
         self.assertIn("def live_pr_matches(", controller)

@@ -825,7 +825,12 @@ jobs:
               print(f'PR #{number} changed while staging was prepared; deployment skipped.')
           PY
 
+      - name: Install migration preflight dependencies
+        if: steps.staging-deploy-preflight.outputs.current == 'true'
+        run: python -m pip install 'alembic==1.20.1' 'psycopg[binary]==3.3.9' 'SQLAlchemy==2.1.8'
+
       - name: Verify Render staging Auth mode and exact database mapping
+        id: render-database-preflight
         if: steps.staging-deploy-preflight.outputs.current == 'true'
         env:
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
@@ -843,6 +848,9 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, re
+          from urllib.parse import urlsplit
+          import psycopg
+          from psycopg.conninfo import conninfo_to_dict
           from scripts.secretary.preview import render_request, verify_environment, verify_service
           config = json.loads(open('.github/secretary.json', encoding='utf-8').read())
           service_id = os.environ['RENDER_STAGING_SERVICE_ID']
@@ -875,8 +883,42 @@ jobs:
               raise SystemExit('Render staging production-host guard does not match the production allowlist.')
           if report_auth_mode != 'neon':
               raise SystemExit('Hosted staging requires Neon Auth before any deployment.')
+          # Read the stamp with the restricted runtime role. Keep the DSN in
+          # this step and pass only the validated revision to the candidate.
+          try:
+              uri = values['DATABASE_URL'].replace('postgresql+psycopg://', 'postgresql://', 1)
+              connection = conninfo_to_dict(uri)
+              permitted = {'host', 'port', 'dbname', 'user', 'password', 'sslmode', 'channel_binding'}
+              if (connection.keys() - permitted
+                      or connection.get('host') != urlsplit(uri).hostname
+                      or normalized(connection.get('host', '')) != normalized(os.environ['STAGING_NEON_EXPECTED_HOST'])
+                      or connection.get('port', '5432') != '5432'
+                      or connection.get('dbname') != 'phishlens_dev'
+                      or connection.get('user') != 'phishlens_staging_app'
+                      or connection.get('sslmode', 'require') not in {'require', 'verify-ca', 'verify-full'}):
+                  raise ValueError('Unexpected staging database connection parameters')
+              connection.setdefault('sslmode', 'require')
+              with psycopg.connect(**connection, connect_timeout=8) as db:
+                  db.read_only = True
+                  db.execute('SET LOCAL statement_timeout = 5000')
+                  stamps = db.execute('SELECT version_num FROM public.alembic_version LIMIT 2').fetchall()
+          except (KeyError, ValueError, OSError, psycopg.Error):
+              raise SystemExit('Cannot read the staging database migration revision safely; deployment blocked.') from None
+          if len(stamps) != 1 or not isinstance(stamps[0][0], str) or not re.fullmatch(r'[A-Za-z0-9_]{1,32}', stamps[0][0]):
+              raise SystemExit('Expected one valid staging database migration revision; deployment blocked.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'applied_revision={stamps[0][0]}\n')
           print('Render staging is privately mapped to the verified isolated branch and Neon Auth.')
           PY
+
+      - name: Verify candidate can upgrade the applied staging revision
+        if: steps.staging-deploy-preflight.outputs.current == 'true'
+        env:
+          APPLIED_REVISION: ${{ steps.render-database-preflight.outputs.applied_revision }}
+        run: |
+          set -euo pipefail
+          python pr-source/scripts/verify_migration_lineage.py --repo-root pr-source \
+            --applied-revision "$APPLIED_REVISION" --expected-head "$STAGING_MIGRATION_REVISION"
 
       - name: Deploy exact PR head using the trusted controller
         if: steps.staging-deploy-preflight.outputs.current == 'true'
