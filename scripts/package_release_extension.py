@@ -43,7 +43,7 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _auth_config(auth_url: str, database: str) -> dict[str, object]:
+def _auth_config(auth_url: str, database: str, api_origin: str) -> dict[str, object]:
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,63}", database or ""):
         raise ValueError("Auth database name is invalid")
     parsed = urlsplit(auth_url or "")
@@ -57,7 +57,12 @@ def _auth_config(auth_url: str, database: str) -> dict[str, object]:
         "enabled": True,
         "authUrl": auth_url,
         "database": database,
-        "apiOrigin": None,
+        # Keep the Auth SDK in a same-site HTTPS frame. Direct requests from
+        # chrome-extension:// can lose the Auth cookie when third-party
+        # cookies are blocked by the browser.
+        "apiOrigin": api_origin,
+        "transport": "https-bridge",
+        "bridgeUrl": api_origin + "/auth/bridge",
     }
 
 
@@ -77,10 +82,8 @@ def build(*, expected_sha: str, production_auth_url: str, production_auth_databa
         raise ValueError("The pinned Chrome extension public key is required")
     extension_id = chrome_extension_id(public_key)
 
-    production = _auth_config(production_auth_url, production_auth_database)
-    staging = _auth_config(staging_auth_url, staging_auth_database)
-    production["apiOrigin"] = PRODUCTION_API
-    staging["apiOrigin"] = STAGING_API
+    production = _auth_config(production_auth_url, production_auth_database, PRODUCTION_API)
+    staging = _auth_config(staging_auth_url, staging_auth_database, STAGING_API)
     if production["authUrl"] == staging["authUrl"]:
         raise ValueError("Production and staging Auth endpoints must be different")
 
@@ -88,9 +91,6 @@ def build(*, expected_sha: str, production_auth_url: str, production_auth_databa
     for config in (production, staging):
         origin = urlsplit(str(config["authUrl"])).scheme + "://" + str(urlsplit(str(config["authUrl"])).hostname)
         config["origin"] = origin
-        hosts.append(origin + "/*")
-    if len(hosts) != len(set(hosts)):
-        raise ValueError("Production and staging host permissions must be distinct")
 
     runtime_config = (
         "export const API_BASE_URLS = Object.freeze(" + json.dumps(

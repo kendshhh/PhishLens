@@ -184,15 +184,15 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.archive = self.root / "PhishLens-Staging-Extension.zip"
         auth_configs = {
             "production": {"enabled": True, "authUrl": "https://ep-production.neonauth.aws.neon.tech/phishlens/auth",
-                           "database": "phishlens"},
+                           "database": "phishlens", "transport": "https-bridge",
+                           "bridgeUrl": "https://phishlens-api-ocvt.onrender.com/auth/bridge"},
             "staging": {"enabled": True, "authUrl": "https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",
-                        "database": "phishlens"},
+                        "database": "phishlens", "transport": "https-bridge",
+                        "bridgeUrl": "https://phishlens-staging.onrender.com/auth/bridge"},
         }
         hosts = [
             "https://phishlens-api-ocvt.onrender.com/*",
             "https://phishlens-staging.onrender.com/*",
-            "https://ep-production.neonauth.aws.neon.tech/*",
-            "https://ep-staging.neonauth.aws.neon.tech/*",
         ]
         public_key = json.loads((Path(__file__).resolve().parents[2] / "extension/manifest.json").read_text())["key"]
         extension_id = chrome_extension_id(public_key)
@@ -220,9 +220,11 @@ class ReleaseReadinessTests(unittest.TestCase):
                 b'export const AUTH_CONFIGS = Object.freeze({"production":{"enabled":true,'
                 b'"authUrl":"https://ep-production.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-api-ocvt.onrender.com",'
+                b'"transport":"https-bridge","bridgeUrl":"https://phishlens-api-ocvt.onrender.com/auth/bridge",'
                 b'"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
                 b'"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
+                b'"transport":"https-bridge","bridgeUrl":"https://phishlens-staging.onrender.com/auth/bridge",'
                 b'"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
                 b'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
             ),
@@ -523,6 +525,12 @@ class ReleaseReadinessTests(unittest.TestCase):
     def test_exact_extension_archive_and_sidecar_pass(self):
         digest = verify_release_extension_archive(self.archive, self.extension_evidence, SOURCE_SHA)
         self.assertEqual(digest, self.extension_evidence["archive_sha256"])
+
+    def test_release_extension_requires_environment_bound_https_auth_bridge(self):
+        evidence = json.loads(json.dumps(self.extension_evidence))
+        evidence["auth_configs"]["staging"]["transport"] = "https-proxy"
+        with self.assertRaisesRegex(GateError, "approved HTTPS bridge"):
+            verify_release_extension_archive(self.archive, evidence, SOURCE_SHA)
 
     def test_extension_archive_mismatch_fails(self):
         evidence = dict(self.extension_evidence, source_commit="d" * 40)

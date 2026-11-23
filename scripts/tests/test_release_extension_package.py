@@ -51,16 +51,18 @@ class ReleaseExtensionPackageTests(unittest.TestCase):
                 manifest = json.loads(archive.read("manifest.json"))
                 self.assertEqual(manifest["host_permissions"], [
                     PRODUCTION_API + "/*", STAGING_API + "/*",
-                    "https://ep-production.neonauth.us-east-1.aws.neon.tech/*",
-                    "https://ep-staging.neonauth.us-east-1.aws.neon.tech/*",
                 ])
                 auth = archive.read("js/auth-config.js").decode()
                 self.assertIn(PRODUCTION_AUTH, auth)
                 self.assertIn(STAGING_AUTH, auth)
+                self.assertIn('"transport":"https-bridge"', auth)
+                self.assertIn('"bridgeUrl":"' + STAGING_API + '/auth/bridge"', auth)
                 self.assertNotIn("password", auth.lower())
                 popup = archive.read("popup.js").decode()
                 self.assertIn("requestedEnvironment === 'staging'", popup)
                 self.assertIn("API_BASE_URLS[releaseEnvironment]", popup)
+            self.assertEqual(evidence["auth_configs"]["staging"]["transport"], "https-bridge")
+            self.assertEqual(evidence["auth_configs"]["staging"]["bridgeUrl"], STAGING_API + "/auth/bridge")
 
     def test_same_auth_endpoint_and_non_neon_endpoint_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory, patch(

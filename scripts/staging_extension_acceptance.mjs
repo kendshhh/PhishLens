@@ -35,7 +35,12 @@ let page;
 let activeAccount = null;
 let productionAuthOrigin = null;
 let stagingAuthOrigin = null;
-const authDiagnostics = { status: null, transport: null };
+let stagingAuthPathPrefix = null;
+const AUTH_ROUTES = new Set([
+  'sign-in/email', 'get-session', 'sign-out', 'sign-up/email',
+  'email-otp/verify-email', 'email-otp/send-verification-otp',
+]);
+const authDiagnostics = { status: null, route: null, method: null, transport: null };
 const accessTokens = new Map();
 const createdIds = new Map();
 const createdAnalysisEvidence = new Map();
@@ -96,6 +101,7 @@ async function verifyPreflight() {
     'Staging Auth URL',
   );
   const stagingAuthUrl = new URL(packageEvidence.auth_configs?.staging?.authUrl || '');
+  stagingAuthPathPrefix = stagingAuthUrl.pathname.replace(/\/$/, '') + '/';
   const stagingAuthDatabase = approvedTarget.staging_auth_database;
   assert.ok(typeof stagingAuthDatabase === 'string' && /^[a-zA-Z0-9_-]{1,63}$/.test(stagingAuthDatabase),
     'Approved staging Auth database is missing or invalid');
@@ -103,7 +109,9 @@ async function verifyPreflight() {
       || stagingAuthUrl.pathname !== `/${stagingAuthDatabase}/auth`
       || required('STAGING_AUTH_URL') !== packageEvidence.auth_configs?.staging?.authUrl
       || required('STAGING_AUTH_DATABASE') !== stagingAuthDatabase
-      || packageEvidence.auth_configs?.staging?.database !== stagingAuthDatabase) {
+      || packageEvidence.auth_configs?.staging?.database !== stagingAuthDatabase
+      || packageEvidence.auth_configs?.staging?.transport !== 'https-bridge'
+      || packageEvidence.auth_configs?.staging?.bridgeUrl !== `${STAGING_ORIGIN}/auth/bridge`) {
     throw new Error('Packaged and approved Neon Auth targets differ');
   }
 
@@ -181,6 +189,8 @@ async function verifyPreflight() {
   evidence.auth = {
     mode: 'neon-auth', enabled: true, branch_id: branchId,
     proxy_extension_origin: extensionOrigin,
+    transport: packageEvidence.auth_configs.staging.transport,
+    bridge_url: packageEvidence.auth_configs.staging.bridgeUrl,
   };
   assert.match(required('STAGING_MIGRATION_REVISION'), /^[A-Za-z0-9_]+$/);
   evidence.ai_acceptance = modelApproval || { status: 'blocked', reason_code: modelApprovalProblem };
@@ -386,15 +396,30 @@ async function observePage(observedPage) {
       if (auth?.startsWith('Bearer ') && activeAccount) accessTokens.set(activeAccount, auth.slice(7));
     }
   });
+  const isAuthRoute = requestUrl => {
+    if (requestUrl.origin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/auth/')) {
+      return requestUrl.pathname.split('/api/auth/').at(-1);
+    }
+    if (requestUrl.origin === stagingAuthOrigin && stagingAuthPathPrefix
+        && requestUrl.pathname.startsWith(stagingAuthPathPrefix)) {
+      return requestUrl.pathname.slice(stagingAuthPathPrefix.length);
+    }
+    return null;
+  };
   observedPage.on('response', response => {
     const requestUrl = new URL(response.url());
-    if (requestUrl.origin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/auth/')) {
-      authDiagnostics.status = response.status();
-    }
+    const route = isAuthRoute(requestUrl);
+    if (route === null) return;
+    authDiagnostics.status = response.status();
+    authDiagnostics.route = AUTH_ROUTES.has(route) ? route : 'other';
+    authDiagnostics.method = response.request().method();
   });
   observedPage.on('requestfailed', request => {
     const requestUrl = new URL(request.url());
-    if (requestUrl.origin !== STAGING_ORIGIN || !requestUrl.pathname.startsWith('/api/auth/')) return;
+    const route = isAuthRoute(requestUrl);
+    if (route === null) return;
+    authDiagnostics.route = AUTH_ROUTES.has(route) ? route : 'other';
+    authDiagnostics.method = request.method();
     const errorText = request.failure()?.errorText || '';
     if (/NAME_NOT_RESOLVED|DNS|ENOTFOUND/i.test(errorText)) authDiagnostics.transport = 'dns';
     else if (/CERT|SSL|TLS/i.test(errorText)) authDiagnostics.transport = 'tls';
@@ -608,6 +633,8 @@ async function run() {
     const { email: emailB, password: passwordB } = preflight.accountB;
     await signIn('a', emailA, `invalid-acceptance-${preflight.sourceSha}`, { invalid: true });
     authDiagnostics.status = null;
+    authDiagnostics.route = null;
+    authDiagnostics.method = null;
     authDiagnostics.transport = null;
     await signIn('a', emailA, passwordA);
     await enterReports();
@@ -618,6 +645,8 @@ async function run() {
 
     evidence.phase = 'account-b-auth';
     authDiagnostics.status = null;
+    authDiagnostics.route = null;
+    authDiagnostics.method = null;
     authDiagnostics.transport = null;
     await signIn('b', emailB, passwordB);
     await enterReports();
@@ -629,6 +658,8 @@ async function run() {
 
     evidence.phase = 'account-a-crud';
     authDiagnostics.status = null;
+    authDiagnostics.route = null;
+    authDiagnostics.method = null;
     authDiagnostics.transport = null;
     await signIn('a', emailA, passwordA);
     await enterReports();
@@ -720,6 +751,8 @@ async function run() {
             ? 'staging_auth_http_rejected'
             : 'staging_auth_session_or_verified_account_missing';
       evidence.auth.failure_http_status = Number.isInteger(authDiagnostics.status) ? authDiagnostics.status : null;
+      evidence.auth.failure_route = authDiagnostics.route;
+      evidence.auth.failure_method = authDiagnostics.method;
       evidence.auth.failure_transport_category = authDiagnostics.transport;
     } else {
       evidence.failure_code = evidence.phase === 'preflight'

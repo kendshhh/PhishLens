@@ -764,9 +764,10 @@ def verify_release_extension_archive(
                 or parsed.path != f"/{database}/auth" or ".neonauth." not in host
                 or not host.endswith(".aws.neon.tech")):
             raise GateError(f"Release extension {environment} Auth endpoint is malformed")
-        hosts.append(f"https://{host}/*")
-    if len(hosts) != len(set(hosts)):
-        raise GateError("Release extension environment host permissions overlap")
+        api_origin = PRODUCTION_ORIGIN if environment == "production" else STAGING_ORIGIN
+        if (config.get("transport") != "https-bridge"
+                or config.get("bridgeUrl") != api_origin + "/auth/bridge"):
+            raise GateError(f"Release extension {environment} Auth must use its approved HTTPS bridge")
 
     try:
         with ZipFile(archive_path) as archive:
@@ -825,6 +826,8 @@ def verify_release_extension_archive(
             "authUrl": auth_configs[environment]["authUrl"],
             "database": auth_configs[environment]["database"],
             "apiOrigin": PRODUCTION_ORIGIN if environment == "production" else STAGING_ORIGIN,
+            "transport": auth_configs[environment]["transport"],
+            "bridgeUrl": auth_configs[environment]["bridgeUrl"],
             "origin": origin,
         }
     expected_auth_source = (

@@ -382,6 +382,9 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertNotIn("RELEASE_SOURCE_SHA: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
         self.assertIn("verified_account_sessions", acceptance)
+        self.assertIn("failure_route", acceptance)
+        self.assertIn("failure_method", acceptance)
+        self.assertIn("'sign-in/email', 'get-session'", acceptance)
         self.assertIn("account_subject_sha256.b = subjectB", acceptance)
         self.assertLess(
             acceptance.index("const subjectB = await waitForAccountToken('b')"),
