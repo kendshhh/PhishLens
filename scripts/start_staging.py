@@ -20,9 +20,9 @@ DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
 
-# Pin hosted staging to the verified `phishlens-staging` project's `staging-root`
-# Neon endpoint. Updating this pin requires a reviewed project/branch mapping;
-# Render variables alone must not be able to redirect startup to another branch.
+# Pin hosted staging to the verified Neon endpoint. Updating this pin requires
+# a reviewed project/branch mapping; Render variables alone must not redirect
+# startup to another branch.
 STAGING_NEON_ENDPOINT_ID = "ep-winter-wind-a1y2r1db"
 STAGING_NEON_ENDPOINT_SUFFIX = ".ap-southeast-1.aws.neon.tech"
 STAGING_NEON_ENDPOINT_HOSTS = frozenset({

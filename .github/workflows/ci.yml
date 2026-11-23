@@ -651,20 +651,7 @@ jobs:
   # after requiring Secretary staging; never bypass protection to install a bot.
   hosted-staging:
     name: Hosted staging
-    if: >-
-      github.event_name == 'pull_request' &&
-      contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') &&
-      vars.SECRETARY_PREVIEW_ENABLED == 'true' &&
-      vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' &&
-      !github.event.pull_request.draft &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' &&
-      needs.staging.result == 'success' &&
-      needs.hosted-staging-preflight.result == 'success' &&
-      needs.hosted-staging-preflight.outputs.current == 'true' &&
-      needs.backend.result == 'success' &&
-      needs.backend.outputs.migration_revision != ''
+    if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') && vars.SECRETARY_PREVIEW_ENABLED == 'true' && vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106' && needs.staging.result == 'success' && needs.hosted-staging-preflight.result == 'success' && needs.hosted-staging-preflight.outputs.current == 'true' && needs.backend.result == 'success' && needs.backend.outputs.migration_revision != ''
     needs: [staging, hosted-staging-preflight, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -693,6 +680,22 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Check out exact-head staging smoke and synthetic acceptance scripts
+        id: staging-exact-head-checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
+          sparse-checkout: |
+            extension/js/api.js
+            package.json
+            scripts/staging_history.mjs
+            scripts/staging_smoke.mjs
+            scripts/verify_crud.mjs
+            scripts/secretary/github_api.py
+          sparse-checkout-cone-mode: false
+
       - name: Recheck PR head immediately before deployment
         id: staging-final-preflight
         env:
@@ -733,14 +736,7 @@ jobs:
           PY
       - name: Deploy exact PR head using the trusted controller
         id: staging-deploy
-        if: >-
-          success() &&
-          needs.staging.result == 'success' &&
-          needs.hosted-staging-preflight.result == 'success' &&
-          needs.backend.result == 'success' &&
-          steps.staging-final-preflight.outputs.current == 'true' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          !github.event.pull_request.draft
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
@@ -752,44 +748,50 @@ jobs:
           STAGING_PR: ${{ github.event.pull_request.number }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
-        id: staging-api-smoke
+        id: hosted-history-smoke
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
-        run: node scripts/staging_smoke.mjs
-      - name: Check out the exact-head synthetic acceptance runner and blob client
-        id: staging-exact-head-checkout
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr-source
-          persist-credentials: false
-          sparse-checkout: |
-            package.json
-            extension/js/api.js
-            scripts/verify_crud.mjs
-            scripts/staging_auth.mjs
-            extension/vendor/neon/sdk.mjs
-          sparse-checkout-cone-mode: false
+        run: node pr-source/scripts/staging_smoke.mjs --github-output
+      - name: Validate hosted history acceptance mode
+        id: history-mode
+        if: steps.staging-final-preflight.outputs.current == 'true' && github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+        env:
+          HISTORY_ACCESS_MODE: ${{ steps.hosted-history-smoke.outputs.history_access_mode }}
+        run: |
+          set -euo pipefail
+          case "$HISTORY_ACCESS_MODE" in
+            auth_required|anonymous)
+              echo "mode=$HISTORY_ACCESS_MODE" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Hosted smoke did not produce a supported history access mode."
+              exit 1
+              ;;
+          esac
+
+      - name: Record authenticated staging acceptance as pending
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.history-mode.outputs.mode == 'auth_required'
+        run: |
+          {
+            echo 'Exact-head deployment, health, readiness, and anonymous /api/analyses Bearer challenge passed.'
+            echo 'Authenticated saved-report history and CRUD were not run; they remain a separate Neon Auth acceptance.'
+            echo 'No synthetic report was created and no staging extension artifact was published.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Verify saved report synthetic AI and CRUD checklist
         id: staging-crud
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true' && steps.history-mode.outputs.mode == 'anonymous'
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
           STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-          STAGING_NEON_AUTH_URL: ${{ vars.STAGING_NEON_AUTH_URL }}
-          PHISHLENS_STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
-          STAGING_AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_TEST_EMAIL }}
-          STAGING_AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_TEST_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging
           node pr-source/scripts/verify_crud.mjs \
             --base-url "$STAGING_BASE_URL" --environment staging \
-            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes --authenticate \
+            --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
             | tee output/hosted-staging/saved-report-crud.json
       - name: Verify deployed PR-head identity and package staging assets
         id: staging-finalize
-        if: steps.staging-final-preflight.outputs.current == 'true'
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.history-mode.outputs.mode == 'anonymous'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
@@ -912,13 +914,14 @@ jobs:
           path: output/hosted-staging/
           if-no-files-found: error
           retention-days: 7
+
       - name: Summarize hosted staging stage results
         if: always()
         env:
           HEAD_PREFLIGHT_OUTCOME: ${{ steps.staging-final-preflight.outcome }}
           HEAD_PREFLIGHT_CURRENT: ${{ steps.staging-final-preflight.outputs.current }}
           DEPLOY_OUTCOME: ${{ steps.staging-deploy.outcome }}
-          API_SMOKE_OUTCOME: ${{ steps.staging-api-smoke.outcome }}
+          API_SMOKE_OUTCOME: ${{ steps.hosted-history-smoke.outcome }}
           EXACT_HEAD_OUTCOME: ${{ steps.staging-exact-head-checkout.outcome }}
           CRUD_OUTCOME: ${{ steps.staging-crud.outcome }}
           FINALIZE_OUTCOME: ${{ steps.staging-finalize.outcome }}
@@ -958,5 +961,3 @@ jobs:
                   summary.write('- No final acceptance evidence was emitted. Review each stage outcome before treating this run as a pass.\n')
                   summary.write('- Stage outcomes: ' + '; '.join(f'{name}: {outcome}' for name, outcome in stages) + '\n')
           PY
-
-

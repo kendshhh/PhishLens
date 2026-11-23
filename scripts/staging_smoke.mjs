@@ -1,18 +1,21 @@
 import assert from 'node:assert/strict';
 import { appendFile } from 'node:fs/promises';
-import { readStagingHistory } from './staging_history.mjs';
+import { readStagingHistory, writeHistoryAccessOutput } from './staging_history.mjs';
 
 const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
 const timeoutMs = Number(process.env.STAGING_SMOKE_TIMEOUT_MS || 120000);
 const maxAttempts = Number(process.env.STAGING_MAX_ATTEMPTS || 30);
 const retryDelayMs = Number(process.env.STAGING_RETRY_DELAY_MS || 3000);
-const retryableStatuses = new Set([408, 425, 429, 502, 503, 504]);
+const retryableStatuses = new Set([408, 425, 429]);
+const emitGithubOutput = process.argv.includes('--github-output');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let currentStage = { name: 'startup readiness', endpoint: '/health', status: undefined };
 
 function transient(error) {
     // Once an HTTP response exists, classify its status before reading any error text.
-    if (Number.isInteger(error?.status)) return retryableStatuses.has(error.status);
+    if (Number.isInteger(error?.status)) {
+        return retryableStatuses.has(error.status) || (error.status >= 500 && error.status <= 599);
+    }
     const messages = [];
     const seen = new Set();
     let current = error;
@@ -63,7 +66,7 @@ async function readJson(path, remainingMs) {
         } catch {}
         throw requestError(
             `GET ${endpoint} returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`,
-            { endpoint, status: response.status, retryable: retryableStatuses.has(response.status) },
+            { endpoint, status: response.status, retryable: retryableStatuses.has(response.status) || (response.status >= 500 && response.status <= 599) },
         );
     }
 
@@ -94,7 +97,7 @@ async function retryStage(name, path, operation, deadline) {
 
             const remainingMs = deadline - Date.now();
             console.error(
-                `Staging ${name} attempt ${attempts}/${maxAttempts} failed; retrying in ${Math.min(retryDelayMs, remainingMs)} ms: ${error.message}`,
+                `Staging ${name} attempt ${attempts}/${maxAttempts} failed; retrying in ${Math.min(retryDelayMs, remainingMs)} ms: ${redact(error.message)}`,
             );
             await sleep(Math.min(retryDelayMs, remainingMs));
         }
@@ -158,9 +161,16 @@ async function main() {
         const items = await readStagingHistory(
             baseUrl,
             undefined,
-            { timeoutMs: Math.max(1, Math.min(10000, remainingMs)) },
+            {
+                attempts: 1,
+                delayMs: 0,
+                timeoutMs: Math.max(1, Math.min(10000, remainingMs)),
+            },
         );
         currentStage.status = items === null ? 401 : 200;
+        if (emitGithubOutput) {
+            await writeHistoryAccessOutput(items, process.env.GITHUB_OUTPUT);
+        }
         return items === null ? { kind: 'authentication-required' } : { kind: 'history', items };
     }, deadline);
 
@@ -187,6 +197,6 @@ main().catch(async error => {
     } catch (summaryError) {
         console.error(`Could not write GitHub step summary: ${summaryError instanceof Error ? summaryError.message : String(summaryError)}`);
     }
-    console.error(`Staging ${currentStage.name} failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`Staging ${currentStage.name} failed: ${redact(error instanceof Error ? error.message : String(error))}`);
     process.exitCode = 1;
 });
