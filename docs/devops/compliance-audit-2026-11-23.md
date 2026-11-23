@@ -48,23 +48,31 @@ means the available evidence cannot establish the state.
 | Local, preview, staging, and production are separated; secrets are environment-scoped, least-privilege, masked, and AI keys/spend limits are distinct per environment. | **Unverified / Partial** | Separate Render environments and GitHub staging environment are documented. Private Render-to-Neon targets, effective variable scopes, production secret permissions, and separately capped AI keys were not independently confirmed. This branch documents required quota variable names but does not provision their values. | Verify environment names, reviewer rules, Render service-to-database mapping, role grants, separate key identities and caps without recording secret values. Keep paid AI disabled until verified. |
 | Secret scanning is a required gate and alerts are resolved. | **Gap** | GitHub currently reports zero open secret alerts, but no secret-scanning required context appears in the protected check list. There are 15 open Dependabot alerts. | Make an explicit secret scan a required check, verify it on a PR, and triage the 15 dependency alerts with documented dispositions. |
 | Database migrations run through CI and schema changes use backward-compatible expand/dual-write/backfill/read-switch/contract sequencing; destructive changes have a backup. | **Partial** | Existing pipeline runs migrations against disposable PostgreSQL and checks lineage. This branch adds additive migration `0005_ai_request_quota`. The full suite’s database-dependent tests were skipped locally; this migration has not been applied to any hosted database. The live target mapping, full expand/contract history, and backup-before-destructive-change proof are not complete. | Run migration against an isolated disposable database and the exact hosted staging target after ownership/mapping approval; test old/new app compatibility and rollback before any destructive contract step. |
-| Track deployment frequency, merge-to-live lead time, change failure rate, and time to restore. | **Partial / Gap** | See the DORA section below. Frequency and lead time are partial historical samples; change failure rate and time to restore are unknown. | Reconcile deploys to successful releases and merged SHAs; link incidents, rollbacks, and hotfixes; record incident start and service-restored timestamps on a regular window. |
+| Track deployment frequency, merge-to-live lead time, change failure rate, and time to restore. | **Partial / Gap** | See the DORA section below. The Nov 23 rolling reconstruction observes 91 deploy records and 85 first-deploy lead-time samples, but has a 24.39-hour source gap; frequency and lead time remain partial, while change failure rate and time to restore remain unknown. | Reconcile deploys to successful releases and merged SHAs; link incidents, rollbacks, and hotfixes; record incident start and service-restored timestamps on a regular window. |
 | Measure an optimization baseline, change one lever at a time, and report comparable before/after results. | **Partial** | `docs/devops/optimizations.md` records small experiments. Cached uv Backend median was 50.92 s versus 61.52 s baseline (n=2 per side); staging cache whole-job median increased 3.5 s. These do not establish sustained end-to-end improvement. | Repeat on the same workflow/check set with a larger sample and publish runner time, wait time, variability, and before/after results. Keep all checks. |
 | Maintain a pipeline diagram, stage/trigger documentation, metrics log, optimization record, and per-consult metrics update. | **Partial** | `PIPELINE.md`, workflow diagrams, `docs/devops/metrics.md`, and `docs/devops/optimizations.md` exist. This branch refreshes metrics as of Nov 23 while preserving dated source samples. Course consultation updates are human evidence and were not verified. | Refresh the same metrics log before each consultation and record the actual report/meeting evidence. |
 
 ### DORA measurement status
 
-The latest complete source window remains **2026-10-17 00:00 UTC to
-2026-11-14 03:12 UTC**. The Nov 23 audit did not build a new reconciled 28-day
-sample, so these are the latest defensible historical figures, not current
-Nov 23 values.
+The refreshed rolling window is **2026-10-26 03:21:57 UTC through
+2026-11-23 03:21:57 UTC**. It combines 61 successful/live rows from the retained
+Render CSV through Nov 13 14:10:46 UTC with 30 successful/live rows from the
+current Render dashboard starting Nov 14 14:34:07 UTC. There is a **24h 23m 21s
+evidence gap**, leaving 26.9838 covered days out of 28. See the current DORA
+method and calculations in [metrics.md](metrics.md).
 
-| DORA measure | Existing result | Status and limitation |
+| DORA measure | Refreshed evidence | Status and limitation |
 |---|---|---|
-| Deployment frequency | 69 Render production deploy records in 28 days; raw inventory ratio 2.46 records/day. | **Partial.** Records are not deduplicated/reconciled to unique successful code releases delivered to users. 2.46 is not an accepted DORA frequency. |
-| Lead time for changes | 64 matched merged PR SHAs: mean 4.40 min, median 3.42 min, p90 5.47 min. 31 of 95 merged PR SHAs unmatched; five deploy records unmatched. | **Partial.** Incomplete match coverage and stale window. |
-| Change failure rate | Zero failed deploy statuses in 69 records. | **Unknown / Gap.** Deploy status is not incident/rollback/hotfix linkage. Do not report CFR as zero. |
-| Time to restore service | No measured production restoration sample; n=0. | **Unknown / Gap.** Do not report zero minutes. |
+| Deployment frequency | 91 observed successful/live deploy records; raw full-window ratio at least 3.25 records/day (3.37/day over covered time); 86 unique SHAs, including repeated same-SHA deploys and one SHA already deployed before the window. | **Partial.** The gap and mixed data sources mean the exact 28-day deployment count is unknown. Qualifying release semantics need to be documented. |
+| Lead time for changes | 85 first production deployments matched to distinct merged PR SHAs; mean 5.09 min, median 3.78 min, nearest-rank p90 8.61 min. | **Partial.** Newer estimate, with the same source-coverage gap; dashboard finish times are derived from timestamp plus displayed duration. |
+| Change failure rate | Zero failed deployment statuses in the 91 observed rows; no complete incident/rollback/hotfix linkage for the window. | **Unknown / Gap.** Deployment status does not establish that the production change caused no incident or needed no remediation. CFR cannot be called zero. |
+| Time to restore service | No in-window incident with exact start/detection and verified restoration timestamps; n=0. | **Unknown / Gap.** The Oct 14 planned rollback drill is outside this window and did not establish a customer outage or exact restoration duration. |
+
+Close this area by retaining a complete deployment export with merge SHA and
+actual finish time, defining which production releases count, and recording an
+incident/rollback/hotfix outcome for every deployment. Capture incident start
+and verified service-restoration times; then calculate CFR and restore time from
+those linked events. Until then, DORA remains **partial**, not complete.
 
 The 28-day CI sample records 682 PR workflow attempts (515 pass, 112 fail,
 55 cancelled), and 86 completed main-push runs (all passed). These are pipeline
