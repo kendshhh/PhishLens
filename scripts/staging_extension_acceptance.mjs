@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { requireHttpsOrigin } from './https_origin.mjs';
+import { authEndpointName, extractProviderErrorCode } from './staging_auth_diagnostics.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,7 +36,8 @@ let page;
 let activeAccount = null;
 let productionAuthOrigin = null;
 let stagingAuthOrigin = null;
-const authDiagnostics = { status: null, transport: null };
+const authDiagnostics = { responses: {}, lastFailure: null, transport: null, transportEndpoint: null };
+const pendingAuthDiagnosticReads = new Set();
 const accessTokens = new Map();
 const createdIds = new Map();
 const createdAnalysisEvidence = new Map();
@@ -52,6 +54,14 @@ function sha256(data) {
 
 function subjectHash(subject) {
   return sha256(`phishlens-staging-subject-v1:${subject}`);
+}
+
+async function resetAuthDiagnostics() {
+  await Promise.allSettled([...pendingAuthDiagnosticReads]);
+  authDiagnostics.responses = {};
+  authDiagnostics.lastFailure = null;
+  authDiagnostics.transport = null;
+  authDiagnostics.transportEndpoint = null;
 }
 
 async function readJson(file) {
@@ -389,12 +399,27 @@ async function observePage(observedPage) {
   observedPage.on('response', response => {
     const requestUrl = new URL(response.url());
     if (requestUrl.origin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/auth/')) {
-      authDiagnostics.status = response.status();
+      const diagnosticRead = (async () => {
+        const endpoint = authEndpointName(requestUrl.pathname);
+        const status = response.status();
+        authDiagnostics.responses[endpoint] = status;
+        if (status < 400) return;
+        let providerCode = null;
+        try { providerCode = extractProviderErrorCode(await response.json()); }
+        catch { /* response bodies are never logged or copied into evidence */ }
+        authDiagnostics.lastFailure = { endpoint, status, providerCode };
+      })();
+      pendingAuthDiagnosticReads.add(diagnosticRead);
+      void diagnosticRead.then(
+        () => pendingAuthDiagnosticReads.delete(diagnosticRead),
+        () => pendingAuthDiagnosticReads.delete(diagnosticRead),
+      );
     }
   });
   observedPage.on('requestfailed', request => {
     const requestUrl = new URL(request.url());
     if (requestUrl.origin !== STAGING_ORIGIN || !requestUrl.pathname.startsWith('/api/auth/')) return;
+    authDiagnostics.transportEndpoint = authEndpointName(requestUrl.pathname);
     const errorText = request.failure()?.errorText || '';
     if (/NAME_NOT_RESOLVED|DNS|ENOTFOUND/i.test(errorText)) authDiagnostics.transport = 'dns';
     else if (/CERT|SSL|TLS/i.test(errorText)) authDiagnostics.transport = 'tls';
@@ -607,8 +632,7 @@ async function run() {
     const { email: emailA, password: passwordA } = preflight.accountA;
     const { email: emailB, password: passwordB } = preflight.accountB;
     await signIn('a', emailA, `invalid-acceptance-${preflight.sourceSha}`, { invalid: true });
-    authDiagnostics.status = null;
-    authDiagnostics.transport = null;
+    await resetAuthDiagnostics();
     await signIn('a', emailA, passwordA);
     await enterReports();
     const subjectA = await waitForAccountToken('a');
@@ -617,8 +641,7 @@ async function run() {
     await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
 
     evidence.phase = 'account-b-auth';
-    authDiagnostics.status = null;
-    authDiagnostics.transport = null;
+    await resetAuthDiagnostics();
     await signIn('b', emailB, passwordB);
     await enterReports();
     const subjectB = await waitForAccountToken('b');
@@ -628,8 +651,7 @@ async function run() {
     await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
 
     evidence.phase = 'account-a-crud';
-    authDiagnostics.status = null;
-    authDiagnostics.transport = null;
+    await resetAuthDiagnostics();
     await signIn('a', emailA, passwordA);
     await enterReports();
     await waitForAccountToken('a');
@@ -712,14 +734,20 @@ async function run() {
   } catch (error) {
     evidence.status = 'blocked';
     if (['account-a-auth', 'account-b-auth', 'account-a-crud'].includes(evidence.phase)) {
+      await Promise.allSettled([...pendingAuthDiagnosticReads]);
+      const failureStatus = authDiagnostics.lastFailure?.status ?? null;
       evidence.failure_code = authDiagnostics.transport
         ? `staging_auth_${authDiagnostics.transport}_failure`
-        : authDiagnostics.status >= 500
+        : failureStatus >= 500
           ? 'staging_auth_service_rejected'
-          : authDiagnostics.status >= 400
+          : failureStatus >= 400
             ? 'staging_auth_http_rejected'
             : 'staging_auth_session_or_verified_account_missing';
-      evidence.auth.failure_http_status = Number.isInteger(authDiagnostics.status) ? authDiagnostics.status : null;
+      evidence.auth.failure_endpoint = authDiagnostics.lastFailure?.endpoint
+        || authDiagnostics.transportEndpoint || null;
+      evidence.auth.failure_http_status = Number.isInteger(failureStatus) ? failureStatus : null;
+      evidence.auth.failure_provider_code = authDiagnostics.lastFailure?.providerCode || null;
+      evidence.auth.response_statuses = authDiagnostics.responses;
       evidence.auth.failure_transport_category = authDiagnostics.transport;
     } else {
       evidence.failure_code = evidence.phase === 'preflight'

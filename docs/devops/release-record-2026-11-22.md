@@ -6,8 +6,9 @@ The protected staging mapping uses Neon project `ancient-brook-17208049`, branch
 `br-rough-sea-a1l6ehi1`, PostgreSQL endpoint
 `ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`, application/migration
 database `phishlens_dev`, and Auth database `neondb` at `/neondb/auth`. The
-non-secret target identities are pinned in `.github/secretary.json`; connection
-strings and credentials are intentionally omitted. The protected settings do not
+Auth URL is `https://ep-winter-wind-a1y2r1db.neonauth.ap-southeast-1.aws.neon.tech/neondb/auth`.
+These non-secret target identities are pinned in `.github/secretary.json`;
+connection strings and credentials are intentionally omitted. The protected settings do not
 by themselves establish Render's current runtime or migration database identities.
 
 **Release status: NO-GO.** These checks identify the target but do not prove that
