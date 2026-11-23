@@ -1,36 +1,18 @@
 ## Current audit and metric reconciliation — 2026-11-23
 
-This dated evidence refresh combines read-only GitHub/Render observations with
-repository changes on the isolated DevOps branch. It does **not** replace the
-complete 28-day source exports below. Current GitHub `main` is `0338ad163a4892987a6a682aed29b95c22c322da`;
-its latest recorded CI run `45019688558` passed. Main protection currently
-requires eight checks and one approval, dismisses stale approvals, requires
-latest-push approval, enforces rules for administrators, and blocks force-pushes
-and branch deletion. Open PR #281 is not releasable: it has changes requested,
-merge state blocked, and the required Hosted staging and Secretary staging
-checks are failing. Other ordinary PR checks passed.
+This dated refresh retains the partial 28-day DORA reconstruction below and adds exact candidate evidence. GitHub main is `0338ad163a4892987a6a682aed29b95c22c322da`; main protection was rechecked and still requires eight status contexts plus one approval, latest-push approval, and stale-review dismissal, while blocking force-push and deletion.
 
-Read-only public GET probes on 2026-11-23 found production `/version`,
-`/health`, `/ready`, and `/model-info` returning HTTP 200. Production serves
-`811980c2cbf70d9957146bf329627f0826a018f1`, behind current main; model info
-reports analysis disabled. Staging serves PR #281 SHA
-`b8feb7b472018da981e945717ff80d1278f34219` and returned HTTP 200 for the same
-GET endpoints. These do not prove authenticated product acceptance. A later
-Render dashboard view showed production Auto-Deploy enabled on `main`; the live
-SHA is still behind main, so merge-to-live behavior remains unverified. A staging
-request label was applied to PR #282, but no deployment had started at this cutoff.
-No secret values were viewed or changed.
+PR #282 candidate `48ead208487408b04f3eed9f8643631454d6cc83`: the ordinary CI jobs, Workflow lint, Dependency security/Gitleaks, Deterministic AI Evaluation, CodeQL, and Secretary report/label passed. The user-approved Render staging deploy failed `update_failed`; the overall CI workflow therefore failed, and the required Secretary staging context says “CI did not succeed; staging not deployed.” PR review remains required.
 
-GitHub Secret Protection and push protection are enabled; the Secret scanning
-page reported zero open and zero closed secret alerts, and CodeQL reported zero
-open alerts. This is an active push-time secret control, but there is no
-secret-scanning required PR status context, so the PDF required CI gate is not
-fully evidenced. GitHub lists **15 open Dependabot alerts**; current manifests pin
-`pyasn1==0.6.5` and `opentelemetry-api==1.45.2`, the patched versions shown
-on their advisories, but the dependency alert inventory says it was last checked
-Nov 21. Dependency Security passed on the current PR head; the alerts still need
-a fresh scan and explicit reconciliation. Environment variable values were not
-exposed; private target and least-privilege scopes remain unverified.
+Read-only probes after the failed staging update returned HTTP 200 from staging `/version`, `/health`, `/ready`, and `/model-info` for prior SHA `05bd559744ab96357b74a96404a4d4c8a6d070eb`. A fresh production probe at 13:12 UTC timed out/failed on `/version`, `/health`, `/ready`, and `/model-info`; the last successful `/model-info` at 12:24 UTC reported analysis disabled. Neither service served candidate `48ead20`. No production deployment or paid AI call occurred.
+
+GitHub still lists 15 open Dependabot alerts, while main manifests contain patched pins `pyasn1==0.6.5` and `opentelemetry-api==1.45.2`; the 15 alert records were last updated Oct 31 or Nov 14. Gitleaks now passes inside the required Dependency security context on the candidate. Private key scopes, alert-state refresh, and live Render-to-Neon permissions remain to be verified.
+
+## Exact-candidate delivery status — 2026-11-23 13:05 UTC
+
+PR #282 candidate `48ead208487408b04f3eed9f8643631454d6cc83` passed Backend checks in CI, Extension, disposable Staging integration, migration source preflight, Workflow lint, Dependency security/Gitleaks, Deterministic AI Evaluation and CodeQL. The user-approved Render staging deployment failed with `update_failed`; the subsequent `Secretary staging` required context failed because CI did not succeed. No production deployment occurred, so this does not change the production DORA window or denominator. The current DORA figures below remain historical partials; CFR and time to restore remain unknown, not zero.
+
+This evidence describes `48ead20` at the audit cutoff. The audit documentation is being committed as a descendant; these results do not establish checks, review, or staging approval for that new head.
 
 ### DORA measures: refreshed rolling window — 2026-11-23
 

@@ -2,23 +2,13 @@
 
 ## Current DevOps evidence snapshot — November 23, 2026
 
-The full requirement-by-requirement audit and actions are in
-[DevOps compliance audit](docs/devops/compliance-audit-2026-11-23.md). Current
-`main` is `0338ad163a4892987a6a682aed29b95c22c322da`; its latest recorded CI run
-passed. Branch protection is verified, including required review/checks and
-force-push/deletion blocks. Production remains on `811980c2cbf70d9957146bf329627f0826a018f1`,
-with analysis disabled, while current main has advanced. PR #281 remains blocked
-by review changes and failing required hosted staging checks. The live public
-GET health/readiness probes are not a substitute for exact-candidate acceptance.
-The refreshed DORA window is October 26-November 23: 91 observed live deploy
-records and 85 matched merge-to-live samples, both still partial because of a
-24h 23m source gap and incomplete cohort reconciliation. Change failure rate
-and time to restore remain unknown, not zero. PR #282 CI is green, but hosted
-staging and one required Secretary check are pending a fresh synchronize event;
-one review is still required. Release status remains **NO-GO**.
+The current full matrix is in [the requirement-by-requirement review](docs/devops/requirement-matrix-2026-11-23.md), with detailed findings in the [compliance audit](docs/devops/compliance-audit-2026-11-23.md) and the [environment map](docs/devops/environment-map-2026-11-23.md).
 
-> This top-level snapshot records the latest evidence and supersedes older
-> current-status summaries below; their historical observations are retained.
+The evidence snapshot covers implementation candidate `48ead208487408b04f3eed9f8643631454d6cc83`, based on main `0338ad163a4892987a6a682aed29b95c22c322da`. Backend jobs, Extension, disposable staging integration, migration preflight, Workflow lint, Dependency security/Gitleaks, Deterministic AI Evaluation, CodeQL, and Secretary report/label passed. The overall CI workflow failed: the user-approved protected Render staging deployment returned `update_failed`, and the required Secretary staging context reports “CI did not succeed; staging not deployed.” PR #282 remained `REVIEW_REQUIRED` at the evidence cutoff. This documentation update is a descendant of that candidate; its exact-head checks, review, and any protected staging approval are still required. Release status is **NO-GO**.
+
+The 28-day production DORA reconstruction remains partial: 91 observed deployment records and 85 matched lead-time samples with a 24h 23m source gap; change failure rate and time to restore remain unknown, not zero. The 40-case synthetic AI evaluation completed but reported 18.75% phishing recall and 6.25% legitimate false-positive rate; this run is a contract/development gate, not release-quality approval. A fresh production probe timed out/failed on `/version`, `/health`, `/ready`, and `/model-info`; the last successful model-info reported analysis disabled. No production deployment or paid inference was performed.
+
+> Older snapshots below are retained as dated history. The exact-candidate matrix and audit linked above control current status.
 
 ## Previous delivery and acceptance snapshot — November 21, 2026
 
