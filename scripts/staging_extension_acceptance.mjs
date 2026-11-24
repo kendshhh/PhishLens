@@ -523,43 +523,62 @@ async function checkCrossAccountOwnership(viewer, otherReportId) {
 }
 
 export async function verifyHistoryFaultStates(page, apiOrigin, outcomes) {
-  const browserContext = page.context();
   const historyUrl = apiOrigin + '/api/analyses';
   const refresh = page.locator('#load-history');
   const loading = page.locator('#loading');
   const status = page.locator('#crud-status');
 
-  await browserContext.route(historyUrl, async route => {
+  async function checkWithHistoryRoute(handle, check) {
+    const handler = route => route.request().method() === 'GET' ? handle(route) : route.fallback();
+    // The hosted page's network guard handles requests before any context routes.
+    await page.route(historyUrl, handler);
+    try {
+      await check();
+    } finally {
+      await page.unroute(historyUrl, handler);
+    }
+  }
+
+  let delayed = false;
+  await checkWithHistoryRoute(async route => {
+    delayed = true;
     await new Promise(resolve => setTimeout(resolve, 800));
     await route.fallback();
-  }, { times: 1 });
-  await refresh.click();
-  await loading.waitFor({ state: 'visible' });
-  await loading.waitFor({ state: 'hidden' });
-  outcomes.loading = true;
+  }, async () => {
+    await refresh.click();
+    await loading.waitFor({ state: 'visible' });
+    await loading.waitFor({ state: 'hidden' });
+    assert.ok(delayed, 'The saved reports request was not intercepted for the loading check');
+    outcomes.loading = true;
+  });
 
-  await browserContext.route(historyUrl, route => route.fulfill({
-    status: 503,
-    contentType: 'application/json',
-    body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
-  }), { times: 1 });
-  await refresh.click();
-  await status.filter({ hasText: /Saved reports are temporarily unavailable/i }).waitFor({ state: 'visible' });
-  outcomes.api_error = true;
+  let sentServiceError = false;
+  await checkWithHistoryRoute(route => {
+    sentServiceError = true;
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
+    });
+  }, async () => {
+    await refresh.click();
+    await status.filter({ hasText: /Saved reports are temporarily unavailable/i }).waitFor({ state: 'visible' });
+    assert.ok(sentServiceError, 'The saved reports request did not receive the injected HTTP 503');
+    outcomes.api_error = true;
+  });
 
   // Hold the response so the extension's request deadline expires in Chrome.
   let pendingRoute;
-  const holdResponse = route => { pendingRoute = route; };
-  await browserContext.route(historyUrl, holdResponse, { times: 1 });
   try {
-    await refresh.click();
-    await loading.waitFor({ state: 'visible' });
-    await status.filter({ hasText: /timed out|timeout/i }).waitFor({ state: 'visible' });
-    assert.ok(pendingRoute, 'The saved reports request was not intercepted for the timeout check');
-    await loading.waitFor({ state: 'hidden' });
-    outcomes.timeout = true;
+    await checkWithHistoryRoute(route => { pendingRoute = route; }, async () => {
+      await refresh.click();
+      await loading.waitFor({ state: 'visible' });
+      await status.filter({ hasText: /timed out|timeout/i }).waitFor({ state: 'visible' });
+      assert.ok(pendingRoute, 'The saved reports request was not intercepted for the timeout check');
+      await loading.waitFor({ state: 'hidden' });
+      outcomes.timeout = true;
+    });
   } finally {
-    await browserContext.unroute(historyUrl, holdResponse);
     await pendingRoute?.abort().catch(() => {});
   }
 }

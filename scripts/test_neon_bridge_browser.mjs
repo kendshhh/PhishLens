@@ -120,7 +120,9 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     const unsigned = header + '.' + payload;
     return unsigned + '.' + sign(null, Buffer.from(unsigned), privateKey).toString('base64url');
   }
-  await context.route(/^https?:\/\//, async route => {
+  page = await context.newPage();
+  // Match the hosted runner: a page-level handler terminates network requests.
+  await page.route(/^https?:\/\//, async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin === apiOrigin) {
       apiRequests++;
@@ -185,7 +187,6 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     }
     return route.fulfill({ status: 200, headers, body: JSON.stringify(data) });
   });
-  page = await context.newPage();
   page.on('requestfailed', request => console.error('Failed request:', new URL(request.url()).pathname, request.failure()?.errorText));
   page.on('pageerror', error => pageErrors.push(error.message));
   const popupUrl = `chrome-extension://${id}/popup.html?environment=staging`;
@@ -325,7 +326,11 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   const faultStates = {};
   await verifyHistoryFaultStates(page, apiOrigin, faultStates);
   assert.deepEqual(faultStates, { loading: true, api_error: true, timeout: true });
-  checks.push('saved reports show loading, service failure and request timeout');
+  const beforeRefresh = apiStatuses.length;
+  await page.locator('#load-history').click();
+  await page.locator('#crud-status').waitFor({ state: 'hidden' });
+  assert.ok(apiStatuses.slice(beforeRefresh).some(({ method, status }) => method === 'GET' && status === 200));
+  checks.push('saved reports show loading, service failure and request timeout, then refresh normally');
   await page.locator('#show-account').click();
   failLogout = true;
   await page.locator('#account-sign-out').click();
