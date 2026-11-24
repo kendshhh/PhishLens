@@ -23,6 +23,44 @@ X-Force-Fetch header is consumed by SDK 0.8.2 and removed before network access;
 this behavior is covered by an actual-SDK intercepted-HTTP test and must be
 rechecked when updating the pinned SDK.
 
+## HTTPS bridge for the Chrome extension
+
+Neon's trusted-domain configuration rejected the extension's `chrome-extension://`
+origin during staging preparation. The extension can use `transport: 'https-bridge'`
+and `bridgeUrl: API_BASE_URL + '/auth/bridge'` with the existing `authUrl`,
+`database`, and `apiOrigin` configuration. Its existing account screens and
+session adapter call the same bundled Neon SDK through an HTTPS iframe served
+by FastAPI. Neon receives the browser's HTTPS Origin from that iframe.
+
+The HTTPS API origin must be a trusted Neon domain. For staging this is
+`https://phishlens-staging.onrender.com`. Render provides `RENDER_EXTERNAL_URL`;
+`AUTH_BRIDGE_ORIGIN` can explicitly select a custom HTTPS API origin. The bridge
+requires `REPORT_AUTH_MODE=neon`, the configured Neon Auth URL, and a matching
+request origin. Its CSP permits scripts from its own origin, connections to the
+configured Auth host, and embedding by the fixed Chrome extension ID. Three
+explicit GET routes serve the bridge document, host script, and existing SDK.
+
+Both sides verify the message origin and source window. A random channel and
+request ID bind responses to the initiating frame and operation. The frame
+checks the configured Auth URL and a fixed list of SDK methods and input fields.
+Passwords and codes cross this browser message boundary and then travel directly
+to Neon. Render receives no credential POST. Tokens stay in memory, and the
+existing persisted sign-out marker contains a boolean. Provider errors retain
+their safe HTTP category and known verification codes while their messages are
+discarded. Requests that time out before the frame loads are never submitted.
+
+Chrome documents third-party cookie access in extension subframes. Session
+restoration uses a new forced SDK session read when the popup reopens. Verify
+this behavior against the actual managed Auth service and Chrome profile during
+staging acceptance. The direct SDK transport remains available for callers that
+already have a supported origin.
+
+Sources checked November 19, 2026:
+
+- https://neon.com/docs/auth/guides/configure-domains
+- https://neon.com/docs/auth/guides/plugins/jwt
+- https://developer.chrome.com/docs/extensions/develop/concepts/storage-and-cookies
+
 Sources inspected November 8, 2026:
 
 - https://neon.com/docs/reference/javascript-sdk
@@ -34,13 +72,12 @@ Sources inspected November 8, 2026:
 
 ## Runtime behavior
 
-- Signup uses signUp.email. Provider-managed signup OTP must be enabled; there
-  is no automatic second OTP request. Resend explicitly calls
-  emailOtp.sendVerificationOtp with type email-verification.
-- Verification uses emailOtp.verifyEmail. If the provider does not establish a
-  session, the UI sends the verified user to email/password sign-in.
+- Signup uses signUp.email without a mandatory email-verification step. The
+  selected provider branch must allow signup and sign-in without verified email.
+  A returned session signs the user in; otherwise the UI offers email/password
+  sign-in. The signup verification screen and resend action are removed.
 - Sign-in uses signIn.email and confirms the provider session and expected email.
-- Restoration requires a verified provider identity and future session expiry.
+- Restoration requires a valid provider identity and future session expiry.
 - The API token supplier rechecks the session, original account ID, JWT shape,
   subject and expiry. It does not verify JWT signatures; FastAPI does that.
   Null tokens block requests. Existing model/idempotency headers remain intact.
@@ -53,9 +90,11 @@ Sources inspected November 8, 2026:
   clients are not claimed to appear instantly; checks do not run after popup
   closure. Each new popup restores from the provider.
 - Sign-out blocks local token access before requesting remote sign-out. Failed
-  remote logout cannot restore this instance's access. A fresh popup can still
-  restore a surviving cookie after failed remote logout; the UI limitation must
-  not be represented as global revocation. Already-issued JWTs can survive to expiry.
+  remote logout leaves a boolean in extension storage, scoped to the Auth URL.
+  It blocks automatic restoration of a surviving cookie across popup and browser
+  restarts until a successful explicit sign-in confirms the
+  expected account. Password reset also blocks restoration of the previous
+  session. Already-issued JWTs can survive to expiry.
 - Password recovery uses the documented forgetPassword.emailOtp and
   emailOtp.resetPassword methods. Live delivery and branch configuration are
   unverified; no six-digit example code is accepted as live acceptance evidence.
@@ -78,13 +117,12 @@ Do not enable this by editing config alone: the production validator deliberatel
 restricts current host permissions; prepare/review a dedicated staging artifact
 and its allowlist together after the environment pairing is confirmed.
 
-Chrome permits credentialed cross-origin extension requests with exact host
-permissions. Cookie restrictions can still interfere. Neon's trusted-domain
-documentation does not explicitly guarantee chrome-extension origins. The exact
-installed extension origin must be accepted by the provider and verified in
-regular Chrome before calling this flow supported end to end. Do not forge an
-Origin header or weaken provider checks to make it work. If direct extension
-origins are rejected, review a supported web or OAuth/PKCE handoff separately.
+For the HTTPS bridge, use `--auth-transport https-bridge` when preparing the
+staging package. Register the staging HTTPS API origin with Neon, and check the
+installed Chrome origin against the bridge's frame policy. The package evidence
+records its bridge URL and required Neon trusted domain. The existing direct
+transport needs separate provider-origin acceptance. Hosted acceptance must
+verify the selected transport, cookie behavior, and backend/package revisions.
 
 ## Verification and remaining acceptance
 
@@ -120,6 +158,16 @@ node scripts/test_neon_adapter_browser.mjs
 python3 scripts/package_extension.py
 npm run test:browser
 ```
+
+The bridge integration test needs a freshly migrated disposable PostgreSQL 17
+database on loopback, named `phishlens_auth_test_*`, and installed Google Chrome.
+Set `PHISHLENS_AUTH_TEST_DATABASE_URL` and `PHISHLENS_PYTHON`, then run
+`node scripts/test_neon_bridge_browser.mjs`. It loads the actual extension,
+serves the actual FastAPI bridge, checks the bundled SDK's HTTPS Origin, and
+uses locally signed JWTs against the real backend, TF-IDF and PostgreSQL.
+Managed Auth responses, code delivery and the signing key source are synthetic.
+All browser HTTP traffic is intercepted, with backend traffic forwarded to the
+disposable loopback server. Hosted delivery and Neon settings need live acceptance.
 
 Still required: provider origin/cookie acceptance, real email verification and
 recovery, correct Auth/database pairing, staged migration/runtime grants, exact
