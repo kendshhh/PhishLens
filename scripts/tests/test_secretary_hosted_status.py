@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from scripts.secretary.hosted_status import decision, main
+from scripts.secretary.hosted_status import PRODUCT_GATE, decision, main
 
 SHA = "a" * 40
 REPOSITORY = "kendshhh/PhishLens"
@@ -27,10 +27,12 @@ def pull_request():
 
 
 def passed_jobs():
-    return {
+    jobs = {
         name: {"status": "completed", "conclusion": "success"}
         for name in ("Backend checks", "Extension checks", "Staging integration", "Hosted staging")
     }
+    jobs["Hosted staging"]["steps"] = [{"name": PRODUCT_GATE, "conclusion": "success"}]
+    return jobs
 
 
 class HostedStatusTests(unittest.TestCase):
@@ -58,6 +60,16 @@ class HostedStatusTests(unittest.TestCase):
             )
             self.assertEqual(state, "failure")
             self.assertIn("Authenticated Hosted staging did not pass", message)
+
+    def test_legacy_hosted_success_has_no_authenticated_gate_evidence(self):
+        jobs = passed_jobs()
+        jobs["Hosted staging"]["steps"] = [{"name": "Legacy smoke", "conclusion": "success"}]
+        state, message = decision(
+            pull_request(), [{"filename": "backend/app/main.py"}],
+            {"head_sha": SHA, "conclusion": "success"}, jobs, REPOSITORY, CONFIG,
+        )
+        self.assertEqual(state, "failure")
+        self.assertIn("authenticated CRUD/UX", message)
 
     def test_runtime_status_requires_label_and_required_ci(self):
         pr = pull_request()

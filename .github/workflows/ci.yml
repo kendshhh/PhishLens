@@ -607,6 +607,7 @@ jobs:
     environment: staging
     permissions:
       contents: read
+      actions: read
       pull-requests: read
     concurrency:
       group: phishlens-hosted-staging
@@ -690,19 +691,13 @@ jobs:
               if skip_reason:
                   raise SystemExit(1)
           PY
-      - name: Check out exact PR head
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr-source
-          persist-credentials: false
-
-      - name: Verify isolated Neon branch and Render database mapping before deployment
+      - name: Require trusted Neon branch and verify Render database mapping before deployment
         id: neon-preflight
         if: steps.staging-final-preflight.outputs.current == 'true'
         env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
           PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
           STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
@@ -717,13 +712,12 @@ jobs:
           STAGING_RENDER_DATABASE_CONFIG_ATTESTATION: ${{ vars.STAGING_RENDER_DATABASE_CONFIG_ATTESTATION }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/phishlens-hosted-staging"
           python - <<'PY'
           import os, re
           def normalized(host):
               return re.sub(r'-pooler(?=\.)', '', host.strip().rstrip('.').lower())
           required = (
-              'NEON_API_KEY', 'STAGING_NEON_PROJECT_ID', 'PRODUCTION_NEON_PROJECT_ID',
+              'STAGING_NEON_PROJECT_ID', 'PRODUCTION_NEON_PROJECT_ID',
               'STAGING_NEON_BRANCH_ID',
               'PRODUCTION_NEON_BRANCH_ID', 'STAGING_NEON_EXPECTED_HOST',
               'PRODUCTION_NEON_EXPECTED_HOST', 'SECRETARY_STAGING_DB_HOST',
@@ -750,16 +744,15 @@ jobs:
           if not production.startswith('ep-') or not production.endswith('.aws.neon.tech') or production != render_production or staging == production:
               raise SystemExit('Hosted staging and production Neon endpoints are not distinct and verified.')
           PY
-          python pr-source/scripts/verify_neon_release_branch.py \
-            --expected-host "$STAGING_NEON_EXPECTED_HOST" \
-            --production-rows-present "$STAGING_NEON_PRODUCTION_ROWS_PRESENT" \
-            > "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json"
-          branch_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["branch_id"])' "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json")"
-          endpoint_host="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["endpoint_host"])' "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json")"
-          {
-            echo "branch_id=$branch_id"
-            echo "endpoint_host=$endpoint_host"
-          } >> "$GITHUB_OUTPUT"
+          python -m scripts.staging_neon_attestation require
+
+      - name: Check out exact PR head
+        if: steps.staging-final-preflight.outputs.current == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
 
       - name: Build and verify the exact-head staging extension package
         if: steps.staging-final-preflight.outputs.current == 'true'

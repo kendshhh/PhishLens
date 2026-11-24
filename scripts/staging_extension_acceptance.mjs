@@ -522,36 +522,65 @@ async function checkCrossAccountOwnership(viewer, otherReportId) {
   }
 }
 
-async function testFaultStates() {
-  const historyUrl = STAGING_ORIGIN + '/api/analyses';
-  await page.route(historyUrl, async route => {
+export async function verifyHistoryFaultStates(page, apiOrigin, outcomes) {
+  const historyUrl = apiOrigin + '/api/analyses';
+  const refresh = page.locator('#load-history');
+  const loading = page.locator('#loading');
+  const status = page.locator('#crud-status');
+
+  async function checkWithHistoryRoute(handle, check) {
+    const handler = route => route.request().method() === 'GET' ? handle(route) : route.fallback();
+    // The hosted page's network guard handles requests before any context routes.
+    await page.route(historyUrl, handler);
+    try {
+      await check();
+    } finally {
+      await page.unroute(historyUrl, handler);
+    }
+  }
+
+  let delayed = false;
+  await checkWithHistoryRoute(async route => {
+    delayed = true;
     await new Promise(resolve => setTimeout(resolve, 800));
-    await route.continue();
-  }, { times: 1 });
-  const refresh = page.locator('#load-history').click();
-  await page.locator('#loading').waitFor({ state: 'visible' });
-  await refresh;
-  await page.locator('#loading').waitFor({ state: 'hidden' });
-  evidence.user_experience.loading = true;
+    await route.fallback();
+  }, async () => {
+    await refresh.click();
+    await loading.waitFor({ state: 'visible' });
+    await loading.waitFor({ state: 'hidden' });
+    assert.ok(delayed, 'The saved reports request was not intercepted for the loading check');
+    outcomes.loading = true;
+  });
 
-  await page.route(historyUrl, route => route.fulfill({
-    status: 503,
-    contentType: 'application/json',
-    body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
-  }), { times: 1 });
-  await page.locator('#load-history').click();
-  await page.getByText(/Saved reports are temporarily unavailable/i).waitFor({ state: 'visible' });
-  evidence.user_experience.api_error = true;
+  let sentServiceError = false;
+  await checkWithHistoryRoute(route => {
+    sentServiceError = true;
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
+    });
+  }, async () => {
+    await refresh.click();
+    await status.filter({ hasText: /Saved reports are temporarily unavailable/i }).waitFor({ state: 'visible' });
+    assert.ok(sentServiceError, 'The saved reports request did not receive the injected HTTP 503');
+    outcomes.api_error = true;
+  });
 
-  await page.route(historyUrl, route => route.abort('timedout'), { times: 1 });
-  const previousStatus = await page.locator('#crud-status').textContent();
-  await page.locator('#load-history').click();
-  await page.waitForFunction(previous => {
-    const status = document.querySelector('#crud-status');
-    return status?.getAttribute('role') === 'alert' && status.textContent !== previous;
-  }, previousStatus);
-  assert.match(await page.locator('#crud-status').textContent(), /unavailable|failed|network|fetch/i);
-  evidence.user_experience.timeout = true;
+  // Hold the response so the extension's request deadline expires in Chrome.
+  let pendingRoute;
+  try {
+    await checkWithHistoryRoute(route => { pendingRoute = route; }, async () => {
+      await refresh.click();
+      await loading.waitFor({ state: 'visible' });
+      await status.filter({ hasText: /timed out|timeout/i }).waitFor({ state: 'visible' });
+      assert.ok(pendingRoute, 'The saved reports request was not intercepted for the timeout check');
+      await loading.waitFor({ state: 'hidden' });
+      outcomes.timeout = true;
+    });
+  } finally {
+    await pendingRoute?.abort().catch(() => {});
+  }
 }
 
 async function verifyAnonymousHistoryIsRejected() {
@@ -691,7 +720,7 @@ async function run() {
     evidence.product.cleanup = true;
 
     evidence.phase = 'fault-injection-ux';
-    await testFaultStates();
+    await verifyHistoryFaultStates(page, STAGING_ORIGIN, evidence.user_experience);
     assert.equal(evidence.production_requests, 0);
     assert.equal(evidence.production_writes, 0);
     assert.equal(evidence.production_auth_requests, 0);
