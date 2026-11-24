@@ -1,7 +1,7 @@
 # Saved-analysis API reference
 
 Supports API documentation and client resilience tasks #140 and #135.
-Source rechecked against main: 31e86c78523cbdcfb6da83f99d331c86409bf0fa, November 21, 2026. The saved-create router, saved-analysis deadline/worker, auth owner resolution, and extension API client were rechecked at this revision. This records source behavior, not current hosted configuration or live Auth acceptance.
+Source rechecked against main: `ea00e2411d065d78e9a2efae47dcb555b67a21b5` (November 24, 2026). The review covered the saved-create router, saved-analysis deadline and worker, Auth owner resolution, and the extension API client.
 This is a source contract reference, not a live release sign-off.
 
 ## Client setup
@@ -24,7 +24,7 @@ Andrei injects this five-method object into the UI. Inject fetch as the second f
 the third argument accepts createTimeoutMs (default 25000), requiredModel and getAccessToken.
 Reads/PATCH/DELETE use 10000 milliseconds. requiredModel sends X-PhishLens-Model on create;
 getAccessToken is called for each CRUD request when a caller supplies it; the client then sends that token as Bearer. This hook does not establish that Auth is enabled in a hosted service or packaged extension. See [session contract](client-sessions.md).
-The legacy getAnalyses(baseUrl) export still returns the history array. HTTP belongs in api.js.
+The standalone `getAnalyses(baseUrl, { fetchImpl, timeoutMs = 10000, retries = 2, retryDelayMs = 250 } = {})` helper returns the history array and sends `Cache-Control: no-cache`. It uses a timeout per attempt and retries network errors, timeouts, and HTTP 408, 425, 429, and 5xx responses. The delay grows linearly with the attempt number. On failure it throws a structured error with fields such as `code`, `category`, `origin`, and `status`. This helper is separate from the authenticated client's `listAnalyses()`.
 
 ## Saved-create availability guard
 
@@ -60,9 +60,7 @@ The browser does not choose ownership or a verdict.
 
 The optional local_review field carries a validated local review report, not ownership or an
 authoritative server verdict. Its nested schema is defined in backend/app/analysis_schemas.py.
-The backend independently checks the configured TF-IDF model before accepting this save path.
-If requiredModel is supplied or local_review is present, an unavailable or mismatched TF-IDF service
-returns 503 before creation. Do not remove the model header to work around that response.
+See the [saved-create availability guard](#saved-create-availability-guard) for the TF-IDF model checks. Keep the model header when handling an availability error.
 
 ## Response fields
 
@@ -120,7 +118,7 @@ At the reviewed backend source, saved creation has one 20-second operation budge
 inference budget; the route accepts configured mock, Gemini or TF-IDF mode. This is not proof that every
 provider/cold start succeeds within that budget. Local provider suitability remains backend/AI-owned.
 
-A client timeout does not mean the server failed to commit. There are no automatic client retries.
+A client timeout does not mean the server failed to commit. Saved creation does not retry automatically.
 An uncertain create retains its Idempotency-Key; explicitly retry the identical input with that key.
 Retain the same client instance, or keep error.idempotencyKey and pass it to a recreated client:
 
@@ -181,8 +179,7 @@ or detail/history refresh after failure. See [acceptance status](client-acceptan
 The local client/HTTP tests and documented examples are preparation.
 On November 10 the six-status FastAPI/client replay passed against source snapshot
 fa9a23fbb5d1d60c45d0fc06333c50415d04d57e, along with 81 focused client/HTTP tests
-and schema validation of all four JSON examples. That dated run is not verification of
-the November 16 source snapshot cited above. Inference and database faults were controlled substitutes; no
+and schema validation of all four JSON examples. That run applies to the November 10 source snapshot. Inference and database faults were controlled substitutes; no
 external record was written. See the acceptance status for remaining live checks.
 October 31 API evidence on #103 is dated mock-mode evidence for its exact earlier SHA, not the
 current release. PR #103 is merged. The November 7 evidence audit records later TF-IDF staging
