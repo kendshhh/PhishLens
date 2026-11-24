@@ -522,36 +522,46 @@ async function checkCrossAccountOwnership(viewer, otherReportId) {
   }
 }
 
-async function testFaultStates() {
-  const historyUrl = STAGING_ORIGIN + '/api/analyses';
-  await page.route(historyUrl, async route => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    await route.continue();
-  }, { times: 1 });
-  const refresh = page.locator('#load-history').click();
-  await page.locator('#loading').waitFor({ state: 'visible' });
-  await refresh;
-  await page.locator('#loading').waitFor({ state: 'hidden' });
-  evidence.user_experience.loading = true;
+export async function verifyHistoryFaultStates(page, apiOrigin, outcomes) {
+  const browserContext = page.context();
+  const historyUrl = apiOrigin + '/api/analyses';
+  const refresh = page.locator('#load-history');
+  const loading = page.locator('#loading');
+  const status = page.locator('#crud-status');
 
-  await page.route(historyUrl, route => route.fulfill({
+  await browserContext.route(historyUrl, async route => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await route.fallback();
+  }, { times: 1 });
+  await refresh.click();
+  await loading.waitFor({ state: 'visible' });
+  await loading.waitFor({ state: 'hidden' });
+  outcomes.loading = true;
+
+  await browserContext.route(historyUrl, route => route.fulfill({
     status: 503,
     contentType: 'application/json',
     body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
   }), { times: 1 });
-  await page.locator('#load-history').click();
-  await page.getByText(/Saved reports are temporarily unavailable/i).waitFor({ state: 'visible' });
-  evidence.user_experience.api_error = true;
+  await refresh.click();
+  await status.filter({ hasText: /Saved reports are temporarily unavailable/i }).waitFor({ state: 'visible' });
+  outcomes.api_error = true;
 
-  await page.route(historyUrl, route => route.abort('timedout'), { times: 1 });
-  const previousStatus = await page.locator('#crud-status').textContent();
-  await page.locator('#load-history').click();
-  await page.waitForFunction(previous => {
-    const status = document.querySelector('#crud-status');
-    return status?.getAttribute('role') === 'alert' && status.textContent !== previous;
-  }, previousStatus);
-  assert.match(await page.locator('#crud-status').textContent(), /unavailable|failed|network|fetch/i);
-  evidence.user_experience.timeout = true;
+  // Hold the response so the extension's request deadline expires in Chrome.
+  let pendingRoute;
+  const holdResponse = route => { pendingRoute = route; };
+  await browserContext.route(historyUrl, holdResponse, { times: 1 });
+  try {
+    await refresh.click();
+    await loading.waitFor({ state: 'visible' });
+    await status.filter({ hasText: /timed out|timeout/i }).waitFor({ state: 'visible' });
+    assert.ok(pendingRoute, 'The saved reports request was not intercepted for the timeout check');
+    await loading.waitFor({ state: 'hidden' });
+    outcomes.timeout = true;
+  } finally {
+    await browserContext.unroute(historyUrl, holdResponse);
+    await pendingRoute?.abort().catch(() => {});
+  }
 }
 
 async function verifyAnonymousHistoryIsRejected() {
@@ -691,7 +701,7 @@ async function run() {
     evidence.product.cleanup = true;
 
     evidence.phase = 'fault-injection-ux';
-    await testFaultStates();
+    await verifyHistoryFaultStates(page, STAGING_ORIGIN, evidence.user_experience);
     assert.equal(evidence.production_requests, 0);
     assert.equal(evidence.production_writes, 0);
     assert.equal(evidence.production_auth_requests, 0);

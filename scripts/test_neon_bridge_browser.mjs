@@ -9,7 +9,9 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { openRestoredAccount, verifyVisibleProvenance } from './staging_extension_acceptance.mjs';
+import {
+  openRestoredAccount, verifyHistoryFaultStates, verifyVisibleProvenance,
+} from './staging_extension_acceptance.mjs';
 
 const database = process.env.PHISHLENS_AUTH_TEST_DATABASE_URL;
 const databaseUrl = new URL(database || 'https://invalid');
@@ -317,6 +319,14 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   }, { apiOrigin, reportId });
   assert.deepEqual(isolation, { count: 0, statuses: [404, 404, 404] });
   checks.push('second account cannot list, read, edit or delete first account report');
+  await page.locator('#close-account').click();
+  await page.locator('#show-reports').click();
+  await page.locator('#loading').waitFor({ state: 'hidden' });
+  const faultStates = {};
+  await verifyHistoryFaultStates(page, apiOrigin, faultStates);
+  assert.deepEqual(faultStates, { loading: true, api_error: true, timeout: true });
+  checks.push('saved reports show loading, service failure and request timeout');
+  await page.locator('#show-account').click();
   failLogout = true;
   await page.locator('#account-sign-out').click();
   await page.getByText(/could not confirm sign-out/).waitFor();
