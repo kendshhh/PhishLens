@@ -30,7 +30,7 @@ cryptography==50.0.2
     #   pyjwt
 distro==1.9.0
     # via google-genai
-fastapi==0.163.0
+fastapi==0.165.0
     # via -r requirements.in
 google-auth==2.62.0
     # via google-genai
