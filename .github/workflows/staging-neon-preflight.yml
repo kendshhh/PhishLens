@@ -1,0 +1,51 @@
+name: Trusted staging Neon preflight
+run-name: Staging Neon PR ${{ github.event.pull_request.number }} @ ${{ github.event.pull_request.head.sha }}
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-neon:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      !github.event.pull_request.draft &&
+      contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'needs-hosted-staging') &&
+      vars.SECRETARY_PREVIEW_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging-neon-preflight
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Check out trusted default-branch code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Verify and attest the target for this exact PR head
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
+          STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
+          STAGING_NEON_SCHEMA_ONLY_ATTESTATION: ${{ vars.STAGING_NEON_SCHEMA_ONLY_ATTESTATION }}
+          STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
+          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
+        run: python -m scripts.staging_neon_attestation publish
