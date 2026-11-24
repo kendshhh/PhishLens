@@ -116,6 +116,37 @@ def verify_deployment(
     if ready != {"status": "ready", "database": "connected"}:
         raise RuntimeError("Production readiness response did not match the API contract")
     model_info = get_json(base + "/model-info")
+    if model_info.get("analysis_enabled") is False:
+        if (model_info.get("provider_mode") != "disabled"
+                or model_info.get("supports_required_provider") is not False):
+            raise RuntimeError(
+                "Production reported analysis disabled without the expected disabled provider state"
+            )
+        final_identity = get_json(base + "/version")
+        if final_identity != identity:
+            raise RuntimeError("Production deployment changed during the read-only smoke")
+        return {
+            "generated_at_utc": datetime.now(UTC).isoformat(),
+            "status": "passed",
+            "environment": "production",
+            "deployment_sha": identity["commit"],
+            "analysis_enabled": False,
+            "provider_mode": "disabled",
+            "health": "passed",
+            "readiness": "passed",
+            "model_sha256": None,
+            "behavior_checks": [],
+            "inference_requests": 0,
+            "paid_provider_calls": 0,
+            "database_writes": 0,
+            "limitations": [
+                "Analysis is intentionally disabled; no inference request was sent.",
+                "This verifies deployment identity, health, readiness and the disabled model state.",
+                "It is not product acceptance, saved-report CRUD, a held-out quality evaluation, or a load test.",
+            ],
+        }
+    if model_info.get("analysis_enabled") not in (None, True):
+        raise RuntimeError("Production returned an invalid analysis_enabled value")
     if model_info.get("supports_required_provider") is not True:
         raise RuntimeError(
             "Production API does not confirm required-provider enforcement; refusing analysis"
@@ -202,7 +233,8 @@ def main() -> int:
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({key: report[key] for key in (
         "status", "environment", "deployment_sha", "health", "readiness",
-        "model_sha256", "inference_requests", "paid_provider_calls", "database_writes", "reason",
+        "analysis_enabled", "provider_mode", "model_sha256", "inference_requests",
+        "paid_provider_calls", "database_writes", "reason",
     ) if key in report}, sort_keys=True))
     return 0 if report["status"] == "passed" else 1
 

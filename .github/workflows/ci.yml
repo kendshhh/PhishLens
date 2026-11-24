@@ -21,6 +21,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
@@ -61,6 +62,7 @@ jobs:
         id: package_extension
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run package
 
       - name: Verify production package identity
@@ -78,7 +80,15 @@ jobs:
       - name: Test packaged extension in isolated Chromium
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run test:browser
+
+      - name: Require browser acceptance report and evidence
+        run: |
+          set -euo pipefail
+          test -s output/extension/browser-acceptance.json
+          test -d output/extension/browser-evidence
+          find output/extension/browser-evidence -type f -print -quit | grep -q .
 
       - name: Upload browser acceptance evidence
         if: always()
@@ -88,7 +98,7 @@ jobs:
           path: |
             output/extension/browser-acceptance.json
             output/extension/browser-evidence/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90
 
       - name: Upload extension package
@@ -167,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      migration_revision: ${{ steps.migration-lineage.outputs.head }}
+      migration_revision: ${{ steps.hosted-migration-lineage.outputs.head || steps.migration-lineage.outputs.head }}
     needs: migration-source-preflight
     if: always() && !cancelled()
     permissions:
@@ -255,6 +265,9 @@ jobs:
       - name: Lint trusted secretary code
         run: python -m ruff check scripts/secretary
 
+      - name: Test trusted secretary controllers
+        run: python -m pytest scripts/tests/test_secretary.py -q -p no:cacheprovider
+
       - name: Verify exact merge commit migration lineage
         id: migration-lineage
         run: python scripts/verify_migration_lineage.py --repo-root .
@@ -265,6 +278,7 @@ jobs:
         run: python scripts/ci_backend.py --check-environment
 
       - name: Verify exact hosted staging migration history
+        id: hosted-migration-lineage
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.migration-source-preflight.outputs.current == 'true'
         run: python scripts/verify_migration_lineage.py --repo-root staging-target
 
@@ -488,6 +502,8 @@ jobs:
           package-manager-cache: false
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt
+      - name: Test hosted history authentication smoke
+        run: node --test scripts/tests/staging_history.test.mjs
       - name: Start staging and test extension API integration
         shell: bash
         run: |
@@ -534,19 +550,20 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from scripts.secretary.github_api import APIError, GitHub
+          from scripts.deploy_staging import live_pr_matches, requested_pr_identity
+          from scripts.secretary.github_api import APIError, ReadOnlyGitHub
 
-          number = int(os.environ['STAGING_PR'])
-          expected = os.environ['STAGING_PR_HEAD_SHA']
+          number, expected = requested_pr_identity()
           skip_reason = None
           try:
-              current = GitHub().request(f'pulls/{number}')
-              labels = {label.get('name') for label in current.get('labels', [])
-                        if isinstance(label, dict)}
-              is_current = (current['state'] == 'open'
-                            and current['head']['sha'] == expected
-                            and not current.get('draft', False)
-                            and 'needs-hosted-staging' in labels)
+              api = ReadOnlyGitHub(
+                  repo=os.environ.get('GITHUB_REPOSITORY'),
+                  token=os.environ.get('GITHUB_TOKEN', ''),
+              )
+              current = api.request(f'pulls/{number}')
+              is_current = live_pr_matches(
+                  current, number, expected, os.environ['GITHUB_REPOSITORY']
+              )
           except APIError as error:
               is_current = False
               skip_reason = f'GitHub could not confirm the current PR head ({error}); no deployment was started.'
@@ -597,6 +614,21 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Check out exact-head staging smoke and synthetic acceptance scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
+          sparse-checkout: |
+            extension/js/api.js
+            package.json
+            scripts/staging_history.mjs
+            scripts/staging_smoke.mjs
+            scripts/verify_crud.mjs
+            scripts/secretary/github_api.py
+          sparse-checkout-cone-mode: false
+
       - name: Recheck PR head immediately before deployment
         id: staging-final-preflight
         env:
@@ -606,19 +638,20 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from scripts.secretary.github_api import APIError, GitHub
+          from scripts.deploy_staging import live_pr_matches, requested_pr_identity
+          from scripts.secretary.github_api import APIError, ReadOnlyGitHub
 
-          number = int(os.environ['STAGING_PR'])
-          expected = os.environ['STAGING_PR_HEAD_SHA']
+          number, expected = requested_pr_identity()
           skip_reason = None
           try:
-              current = GitHub().request(f'pulls/{number}')
-              labels = {label.get('name') for label in current.get('labels', [])
-                        if isinstance(label, dict)}
-              is_current = (current['state'] == 'open'
-                            and current['head']['sha'] == expected
-                            and not current.get('draft', False)
-                            and 'needs-hosted-staging' in labels)
+              api = ReadOnlyGitHub(
+                  repo=os.environ.get('GITHUB_REPOSITORY'),
+                  token=os.environ.get('GITHUB_TOKEN', ''),
+              )
+              current = api.request(f'pulls/{number}')
+              is_current = live_pr_matches(
+                  current, number, expected, os.environ['GITHUB_REPOSITORY']
+              )
           except APIError as error:
               is_current = False
               skip_reason = f'GitHub could not confirm the current PR head ({error}); deployment remains blocked.'
@@ -634,36 +667,52 @@ jobs:
               if skip_reason:
                   raise SystemExit(1)
           PY
-      - name: Deploy PR merge commit using the trusted legacy script
+      - name: Deploy exact PR head using the trusted controller
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
           SECRETARY_STAGING_DB_HOST: ${{ vars.SECRETARY_STAGING_DB_HOST }}
           SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
-          STAGING_COMMIT: ${{ github.sha }}
+          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STAGING_PR: ${{ github.event.pull_request.number }}
         run: python scripts/deploy_staging.py
       - name: Verify legacy hosted API integration
+        id: hosted-history-smoke
         if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
-        run: node scripts/staging_smoke.mjs
-      - name: Check out the exact-head synthetic acceptance runner and blob client
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr-source
-          persist-credentials: false
-          sparse-checkout: |
-            package.json
-            extension/js/api.js
-            scripts/verify_crud.mjs
-            scripts/secretary/github_api.py
-          sparse-checkout-cone-mode: false
+        run: node pr-source/scripts/staging_smoke.mjs --github-output
+      - name: Validate hosted history acceptance mode
+        id: history-mode
+        if: steps.staging-final-preflight.outputs.current == 'true' && github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+        env:
+          HISTORY_ACCESS_MODE: ${{ steps.hosted-history-smoke.outputs.history_access_mode }}
+        run: |
+          set -euo pipefail
+          case "$HISTORY_ACCESS_MODE" in
+            auth_required|anonymous)
+              echo "mode=$HISTORY_ACCESS_MODE" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Hosted smoke did not produce a supported history access mode."
+              exit 1
+              ;;
+          esac
+
+      - name: Record authenticated staging acceptance as pending
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.history-mode.outputs.mode == 'auth_required'
+        run: |
+          {
+            echo 'Exact-head deployment, health, readiness, and anonymous /api/analyses Bearer challenge passed.'
+            echo 'Authenticated saved-report history and CRUD were not run; they remain a separate Neon Auth acceptance.'
+            echo 'No synthetic report was created and no staging extension artifact was published.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Verify saved report synthetic AI and CRUD checklist
-        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true'
+        if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && steps.staging-final-preflight.outputs.current == 'true' && steps.history-mode.outputs.mode == 'anonymous'
         env:
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
-          STAGING_EXPECTED_SHA: ${{ github.sha }}
+          STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           mkdir -p output/hosted-staging
@@ -671,41 +720,38 @@ jobs:
             --base-url "$STAGING_BASE_URL" --environment staging \
             --expected-sha "$STAGING_EXPECTED_SHA" --allow-writes \
             | tee output/hosted-staging/saved-report-crud.json
-      - name: Verify deployed merge identity and package staging assets
+      - name: Verify deployed PR-head identity and package staging assets
         id: staging-finalize
-        if: steps.staging-final-preflight.outputs.current == 'true'
+        if: steps.staging-final-preflight.outputs.current == 'true' && steps.history-mode.outputs.mode == 'anonymous'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          STAGING_COMMIT: ${{ github.sha }}
+          STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}
           STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           STAGING_PR: ${{ github.event.pull_request.number }}
           STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
         run: |
           python - <<'PY'
           import datetime as dt
-          import importlib.util
           import json
           import os
           import sys
           from pathlib import Path
+          from scripts.deploy_staging import live_pr_matches, requested_pr_identity
+          from scripts.secretary.github_api import APIError, GitHub, ReadOnlyGitHub
           from scripts.secretary.preview import package, smoke
-
-          helper_path = Path('pr-source/scripts/secretary/github_api.py')
-          helper_spec = importlib.util.spec_from_file_location('staging_github_api', helper_path)
-          if helper_spec is None or helper_spec.loader is None:
-              raise RuntimeError('Could not load the bounded GitHub blob client')
-          helper = importlib.util.module_from_spec(helper_spec)
-          helper_spec.loader.exec_module(helper)
-          APIError = helper.APIError
-          GitHub = helper.GitHub
 
           config = json.loads(Path('.github/secretary.json').read_text())
           if os.environ['STAGING_BASE_URL'].rstrip('/') != config['staging_origin']:
               raise RuntimeError('Hosted smoke and extension must use the configured staging origin')
           deploy_sha = os.environ['STAGING_COMMIT']
-          pr_head_sha = os.environ['STAGING_PR_HEAD_SHA']
-          number = int(os.environ['STAGING_PR'])
+          number, pr_head_sha = requested_pr_identity()
+          if deploy_sha != pr_head_sha:
+              raise RuntimeError('The deployed commit is not the exact requested PR head')
           api = GitHub()
+          live_api = ReadOnlyGitHub(
+              repo=os.environ.get('GITHUB_REPOSITORY'),
+              token=os.environ.get('GITHUB_TOKEN', ''),
+          )
           output = Path('output/hosted-staging')
           def stop_without_artifact(reason):
               print(f'Hosted staging stopped: {reason}', file=sys.stderr)
@@ -717,14 +763,13 @@ jobs:
 
           def superseded():
               try:
-                  current = api.request(f'pulls/{number}')
+                  current = live_api.request(f'pulls/{number}')
               except APIError as error:
                   stop_without_artifact(f'GitHub could not confirm the current PR head ({error}).')
                   raise SystemExit(1)
-              # github.sha may be the synthetic merge commit; only compare the live
-              # PR head with the PR head captured when this run was queued.
-              if (current['state'] == 'open' and current['head']['sha'] == pr_head_sha
-                      and not current.get('draft', False)):
+              if live_pr_matches(
+                  current, number, pr_head_sha, os.environ['GITHUB_REPOSITORY']
+              ):
                   return False
               return stop_without_artifact('The PR closed, became a draft, or its head changed during deployment.')
           if superseded():
@@ -782,7 +827,7 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as result:
               result.write('current=true\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f'Hosted staging verified for PR #{number} head `{pr_head_sha}` using merge commit `{deploy_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
+              summary.write(f'Hosted staging verified for PR #{number} exact head `{pr_head_sha}` and Alembic revision `{os.environ["STAGING_MIGRATION_REVISION"]}`.\n\n')
               summary.write('- [x] Health, readiness, version, seeded history, and staging package passed.\n')
               summary.write(f"- [x] Synthetic saved-report CRUD/provenance passed (`{provider_mode}` provider; record cleaned up).\n")
               if analysis_mode == 'real':

@@ -56,29 +56,34 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertEqual(config.count("interval: weekly"), 3)
         self.assertNotIn("auto-merge", config)
 
-    def test_preview_concurrency_only_serializes_real_staging_deploys(self):
+    def test_secretary_preview_is_a_read_only_status_mirror(self):
         workflow = (WORKFLOWS / "secretary-preview.yml").read_text(encoding="utf-8")
-        jobs_start = workflow.index("jobs:\n")
-        preview_start = workflow.index("  preview:\n", jobs_start)
-        assess = workflow[jobs_start:preview_start]
-        preview = workflow[preview_start:]
+        controller = (ROOT / "scripts/secretary/hosted_status.py").read_text(encoding="utf-8")
 
-        self.assertNotIn("concurrency:", workflow[:jobs_start])
-        self.assertNotIn("concurrency:", assess)
-        self.assertIn("if: needs.assess.outputs.deploy == 'true'", preview)
-        self.assertIn("group: phishlens-hosted-staging", preview)
+        self.assertIn("types: [completed]", workflow)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("actions: read", workflow)
+        self.assertIn("statuses: write", workflow)
+        self.assertNotIn("deployments:", workflow)
+        self.assertNotIn("RENDER_", workflow)
+        self.assertNotIn("NEON_", workflow)
+        self.assertIn('"Hosted staging"', controller)
+        self.assertIn('"Secretary staging"', (ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
+        self.assertIn("hosted.get(\"status\") != \"completed\"", controller)
+        self.assertIn("hosted.get(\"conclusion\") != \"success\"", controller)
+        self.assertNotIn("render_request", controller)
 
     def test_secretary_required_context_uses_commit_status_from_trusted_controller(self):
         workflow = (WORKFLOWS / "secretary-preview.yml").read_text(encoding="utf-8")
         permissions = workflow.split("jobs:", 1)[0]
-        controller = (ROOT / "scripts/secretary/preview.py").read_text(encoding="utf-8")
+        controller = (ROOT / "scripts/secretary/hosted_status.py").read_text(encoding="utf-8")
 
-        self.assertIn("checks: write", permissions)
         self.assertIn("statuses: write", permissions)
         self.assertIn("ref: ${{ github.event.repository.default_branch }}", workflow)
-        self.assertIn('api.request("statuses/" + sha, payload)', controller)
-        self.assertIn('"context": config["preview_check"]', controller)
-        self.assertIn('"name": preview_check_run_name(config)', controller)
+        self.assertIn('api.request("statuses/" + sha, {', controller)
+        self.assertIn('"context": context', controller)
+        self.assertIn('publish_status(api, run["head_sha"], config["preview_check"]', controller)
 
     def test_report_runs_once_after_workflow_completion(self):
         workflow = (WORKFLOWS / "secretary-report.yml").read_text(encoding="utf-8")
@@ -117,9 +122,19 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", workflow)
         self.assertIn("scripts/verify_crud.mjs", workflow)
         self.assertIn("node pr-source/scripts/verify_crud.mjs", workflow)
+        self.assertIn("name: Check out exact-head staging smoke and synthetic acceptance scripts", workflow)
+        self.assertIn("scripts/staging_smoke.mjs", workflow)
+        self.assertIn("node pr-source/scripts/staging_smoke.mjs --github-output", workflow)
+        self.assertNotIn("node scripts/staging_smoke.mjs --github-output", workflow)
+        self.assertIn("name: Validate hosted history acceptance mode", workflow)
+        self.assertIn('case "$HISTORY_ACCESS_MODE" in', workflow)
+        self.assertIn("Hosted smoke did not produce a supported history access mode.", workflow)
+        self.assertIn("steps.history-mode.outputs.mode == 'anonymous'", workflow)
+        self.assertIn("steps.history-mode.outputs.mode == 'auth_required'", workflow)
+        self.assertIn("Authenticated saved-report history and CRUD were not run", workflow)
         self.assertIn("analysisProvenance:", (ROOT / "scripts/verify_crud.mjs").read_text(encoding="utf-8"))
         self.assertIn("Real AI acceptance is not checked", workflow)
-        self.assertIn("verify_saved_report(config[\"staging_origin\"], run[\"head_sha\"])", controller)
+        self.assertIn("verify_saved_report(config[\"staging_origin\"], staging_sha)", controller)
 
 
 if __name__ == "__main__":

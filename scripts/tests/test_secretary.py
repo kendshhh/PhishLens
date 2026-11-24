@@ -21,7 +21,7 @@ from scripts.secretary.core import (
     render,
     safe,
 )
-from scripts.secretary.github_api import APIError, GitHub
+from scripts.secretary.github_api import APIError, GitHub, ReadOnlyGitHub
 from scripts.secretary.preview import (
     completed_event,
     confirm_live_deployment,
@@ -83,6 +83,24 @@ class PolicyTests(unittest.TestCase):
             CONFIG["required_ci_jobs"], application_change(s["files"]),
             preview_requested,
         )[0]
+
+    def test_test_only_changes_do_not_request_hosted_staging(self):
+        self.assertFalse(application_change([
+            {"filename": "backend/tests/test_health.py"},
+            {"filename": "extension/tests/api.test.mjs"},
+            {"filename": "scripts/tests/test_secretary.py"},
+        ]))
+
+    def test_runtime_changes_still_request_hosted_staging_with_test_changes(self):
+        self.assertTrue(application_change([
+            {"filename": "backend/tests/test_health.py"},
+            {"filename": "backend/app/main.py"},
+        ]))
+
+    def test_nested_test_directories_are_not_runtime_changes(self):
+        self.assertFalse(application_change([
+            {"filename": "backend/app/tests/test_router.py"},
+        ]))
 
     def test_passing_is_review_never_approval(self):
         self.assertEqual(self.decision(fixture()), "READY FOR KENDRA’S REVIEW")
@@ -323,9 +341,30 @@ class GitHubPaginationTests(unittest.TestCase):
         network.assert_called_once()
         sleep.assert_not_called()
 
+    def test_read_only_client_rejects_writes_before_network_access(self):
+        api = ReadOnlyGitHub(repo="kendshhh/PhishLens", token="synthetic")
+        with patch("urllib.request.urlopen") as network, self.assertRaisesRegex(APIError, "GET requests only"):
+            api.request("pulls/123", {"state": "closed"})
+        network.assert_not_called()
+
+    def test_read_only_client_only_reads_pr_endpoints_and_never_drops_its_token(self):
+        api = ReadOnlyGitHub(repo="kendshhh/PhishLens", token="synthetic")
+        with patch("urllib.request.urlopen") as network, self.assertRaisesRegex(APIError, "pull-request reads only"):
+            api.request("contents/README.md")
+        network.assert_not_called()
+        denied = urllib.error.HTTPError("https://api.github.com/test", 403, "denied", {}, io.BytesIO())
+        with patch("urllib.request.urlopen", side_effect=denied) as network, \
+                self.assertRaisesRegex(APIError, "GitHub HTTP 403"):
+            api.request("pulls/123")
+        network.assert_called_once()
+
+    def test_read_only_client_requires_its_dedicated_token(self):
+        with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(APIError, "read-only PR token"):
+            ReadOnlyGitHub(repo="kendshhh/PhishLens")
+
 
 class PreviewTests(unittest.TestCase):
-    def test_neon_preflight_keeps_saved_report_verification_pending(self):
+    def test_neon_preflight_passes_required_status_and_keeps_auth_acceptance_pending(self):
         from scripts.secretary.preview import main
 
         data = fixture()
@@ -335,7 +374,7 @@ class PreviewTests(unittest.TestCase):
         responses = {"pulls/123": data["pr"], "check-runs": {"id": 1}, "deployments": {"id": 2}}
         api.request.side_effect = lambda path, *args: responses.get(path, [])
         event = {"workflow_run": {"id": 7, "event": "pull_request", "head_sha": SHA,
-                                  "conclusion": "success", "pull_requests": [{"number": 123}]}}
+                                  "conclusion": "success", "pull_requests": [{"number": 123, "head": {"sha": SHA}}]}}
         service = CONFIG["staging_service"]
         render = {
             f"services/{service}": {},
@@ -351,12 +390,15 @@ class PreviewTests(unittest.TestCase):
             event_path.write_text(json.dumps(event))
             summary_path = root / "summary.md"
             settings = {"GITHUB_EVENT_PATH": str(event_path), "GITHUB_RUN_ID": "7",
+                        "SECRETARY_PR_NUMBER": "123", "SECRETARY_PR_HEAD_SHA": SHA,
+                        "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                         "GITHUB_STEP_SUMMARY": str(summary_path),
                         "SECRETARY_PREVIEW_ENABLED": "true", "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
                         "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST}
             with (patch.dict(os.environ, settings, clear=True),
                   patch("scripts.secretary.preview.ROOT", root),
                   patch("scripts.secretary.preview.GitHub", return_value=api),
+                  patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api),
                   patch("scripts.secretary.preview.latest_jobs", return_value=(data["jobs"], {"id": 7})),
                   patch("scripts.secretary.preview.verify_service"),
                   patch("scripts.secretary.preview.render_request", side_effect=lambda path, *args: render[path]),
@@ -391,6 +433,11 @@ class PreviewTests(unittest.TestCase):
                             if entry.args[0] == "deployments/2/statuses"]
         self.assertEqual(status_calls, ["pending", "success"])
         self.assertEqual(deployment_calls, ["in_progress", "pending"])
+        self.assertEqual(
+            sum(call.args[0] == "pulls/123" for call in api.request.call_args_list),
+            4,
+            "PR state is checked initially, before deployment, before Render, and after smoke",
+        )
         auth_gate = next(
             entry.args[1]
             for entry in api.request.call_args_list
@@ -420,7 +467,7 @@ class PreviewTests(unittest.TestCase):
                 "event": "pull_request",
                 "head_sha": SHA,
                 "conclusion": "success",
-                "pull_requests": [{"number": 123}],
+                "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
             }
         }
         jobs = {name: {"conclusion": "success"} for name in CONFIG["required_ci_jobs"]}
@@ -434,10 +481,14 @@ class PreviewTests(unittest.TestCase):
             with patch.dict(os.environ, {
                 "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_RUN_ID": "7",
+                "SECRETARY_PR_NUMBER": "123",
+                "SECRETARY_PR_HEAD_SHA": SHA,
+                "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                 "SECRETARY_PREVIEW_ENABLED": "true",
             }, clear=True), \
                     patch("scripts.secretary.preview.ROOT", root), \
                     patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api), \
                     patch("scripts.secretary.preview.latest_jobs", return_value=(jobs, {"id": 7, "run_attempt": 1})), \
                     patch("scripts.secretary.preview.completed_event", return_value=True):
                 main()
@@ -461,7 +512,7 @@ class PreviewTests(unittest.TestCase):
                 "event": "pull_request",
                 "head_sha": SHA,
                 "conclusion": "failure",
-                "pull_requests": [{"number": 123}],
+                "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
             }
         }
         latest_jobs = {
@@ -478,10 +529,14 @@ class PreviewTests(unittest.TestCase):
             with patch.dict(os.environ, {
                 "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_RUN_ID": "8",
+                "SECRETARY_PR_NUMBER": "123",
+                "SECRETARY_PR_HEAD_SHA": SHA,
+                "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                 "SECRETARY_PREVIEW_ENABLED": "true",
             }, clear=True), \
                     patch("scripts.secretary.preview.ROOT", root), \
                     patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api), \
                     patch(
                         "scripts.secretary.preview.latest_jobs",
                         return_value=(latest_jobs, {"id": 7, "run_attempt": 2}),
@@ -510,7 +565,7 @@ class PreviewTests(unittest.TestCase):
                 "event": "pull_request",
                 "head_sha": SHA,
                 "conclusion": "failure",
-                "pull_requests": [{"number": 123}],
+                "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
             }
         }
 
@@ -525,10 +580,14 @@ class PreviewTests(unittest.TestCase):
                 "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_OUTPUT": str(output_path),
                 "GITHUB_RUN_ID": "8",
+                "SECRETARY_PR_NUMBER": "123",
+                "SECRETARY_PR_HEAD_SHA": SHA,
+                "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                 "SECRETARY_PREVIEW_ENABLED": "true",
             }, clear=True), \
                     patch("scripts.secretary.preview.ROOT", root), \
                     patch("scripts.secretary.preview.GitHub", return_value=api), \
+                    patch("scripts.secretary.preview.ReadOnlyGitHub", return_value=api), \
                     patch("scripts.secretary.preview.sys.argv", ["preview.py", "--assess"]), \
                     patch(
                         "scripts.secretary.preview.latest_jobs",
@@ -643,6 +702,13 @@ class PreviewTests(unittest.TestCase):
             )[0],
             "success",
         )
+        s = fixture()
+        s["pr"]["labels"] = []
+        action, message = eligibility(
+            s["pr"], s["files"], run, "kendshhh/PhishLens", opt_in_label,
+        )
+        self.assertEqual(action, "failure")
+        self.assertIn("require the `needs-hosted-staging` label", message)
         self.assertEqual(
             eligibility(
                 s["pr"], s["files"], {**run, "head_sha": "c" * 40},
@@ -661,26 +727,56 @@ class PreviewTests(unittest.TestCase):
         current["state"] = "closed"
         self.assertFalse(current_pr_head_matches(current, SHA))
 
+    def test_workflow_pr_identity_requires_exact_payload_number_and_head(self):
+        from scripts.secretary.preview import workflow_pr_identity
+
+        run = {
+            "head_sha": SHA,
+            "pull_requests": [{"number": 123, "head": {"sha": SHA}}],
+        }
+        self.assertEqual(workflow_pr_identity(run, "123", SHA), (123, SHA))
+        with self.assertRaisesRegex(RuntimeError, "associated with this workflow run"):
+            workflow_pr_identity(run, "124", SHA)
+        with self.assertRaisesRegex(RuntimeError, "differs from the completed PR CI head"):
+            workflow_pr_identity(run, "123", "c" * 40)
+        with self.assertRaisesRegex(RuntimeError, "valid PR head SHA"):
+            workflow_pr_identity(run, "123", "not-a-sha")
+
+    def test_predeploy_live_guard_rejects_an_advanced_pr_head(self):
+        from scripts.secretary.preview import require_live_pr_eligibility
+
+        pr = copy.deepcopy(fixture()["pr"])
+        pr["head"]["sha"] = "c" * 40
+        api = Mock()
+        api.request.return_value = pr
+        with self.assertRaisesRegex(RuntimeError, "head changed; staging deployment was not started"):
+            require_live_pr_eligibility(
+                api, 123, SHA, fixture()["files"],
+                {"head_sha": SHA, "conclusion": "success"},
+                "kendshhh/PhishLens", CONFIG["preview_opt_in_label"],
+            )
+        api.request.assert_called_once_with("pulls/123")
+
     def test_database_isolation_guards(self):
-        rows = render_staging_environment_rows()
+        rows = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
         with patch.dict(os.environ, {
             "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
             "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
         }):
-            verify_environment(rows)
+            verify_environment(rows, require_authenticated=True)
             set_render_environment_value(
                 rows, "DATABASE_URL",
                 f"postgresql://phishlens_staging_app:synthetic@{PRODUCTION_HOST}/phishlens_dev",
             )
             with self.assertRaises(RuntimeError):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
 
             set_render_environment_value(
                 rows, "DATABASE_URL",
                 f"postgresql://neondb_owner:synthetic@{STAGING_HOST}/phishlens_dev",
             )
             with self.assertRaisesRegex(RuntimeError, "phishlens_staging_app role"):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
 
             set_render_environment_value(
                 rows, "DATABASE_URL",
@@ -691,7 +787,7 @@ class PreviewTests(unittest.TestCase):
                 f"postgresql://neondb_owner:synthetic@{PRODUCTION_HOST}/phishlens_dev",
             )
             with self.assertRaisesRegex(RuntimeError, "isolated branch"):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
 
             rows = render_staging_environment_rows()
             rows = [
@@ -699,7 +795,18 @@ class PreviewTests(unittest.TestCase):
                 if row["envVar"]["key"] != "STAGING_MIGRATION_DATABASE_URL"
             ]
             with self.assertRaisesRegex(RuntimeError, "migration credential"):
-                verify_environment(rows)
+                verify_environment(rows, require_authenticated=True)
+
+    def test_hosted_staging_rejects_implicit_or_demo_auth_mode(self):
+        for rows in (
+            render_staging_environment_rows(REPORT_AUTH_MODE="demo"),
+            render_staging_environment_rows(),
+        ):
+            with patch.dict(os.environ, {
+                "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
+                "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+            }), self.assertRaisesRegex(RuntimeError, "requires explicit REPORT_AUTH_MODE=neon"):
+                verify_environment(rows, require_authenticated=True)
 
     def test_production_service_rejected(self):
         with self.assertRaises(RuntimeError):
