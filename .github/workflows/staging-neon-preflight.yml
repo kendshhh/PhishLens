@@ -1,5 +1,5 @@
 name: Trusted staging Neon preflight
-run-name: Staging Neon PR ${{ github.event.pull_request.number }} @ ${{ github.event.pull_request.head.sha }}
+run-name: ${{ github.event.action == 'labeled' && github.event.label.name != 'needs-hosted-staging' && 'Ignored label for' || 'Staging Neon' }} PR ${{ github.event.pull_request.number }} @ ${{ github.event.pull_request.head.sha }}
 
 on:
   pull_request_target:
