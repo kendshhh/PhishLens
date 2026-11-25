@@ -1,17 +1,185 @@
 # Deployment and Recovery Runbook
 
-> The deployment and recovery entries below are dated observations. Current
-> production and staging state is summarized in the
-> [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+## Current recovery position — 2026-11-21
 
-## October 21 playbook handoff
+Release remains **NO-GO**. The current service identities and evidence limits
+are maintained in the [release record](release-record-2026-11-21.md) and
+[environment map](environment-map-2026-11-21.md). The recorded production
+deployment is `dep-dc07rs67bikc73fjgjq0` on
+`811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. The
+recorded staging deployment is `dep-dc0im3h7lnhs738pncng` on
+`ba0b6c5475eb6a8f99c509c40384020d292e17e6`; its anonymous saved-report
+endpoint requires a Bearer session. Direct GET-only smokes from the review
+branch passed at 08:15 and about 08:35 UTC for health, readiness and anonymous
+`401 Bearer`; they do not verify deployed PR identity, authenticated CRUD, or
+deployment state.
+
+The review branch includes main's Bearer-aware history correction and adds
+bounded smoke retries, failure summaries, local server-exit monitoring and log
+retention. Hosted deployment requires
+successful staging, hosted preflight and backend results at both job and deploy
+step level. The synchronized candidate passed 321 local Node tests and the
+GET-only smoke. PR #268 head `d447b3c537bc24ec9b7c7ed0ba6f34b7316826d2` passed
+Backend, Extension and Staging integration in
+[run 44886742192](https://github.com/kendshhh/PhishLens/actions/runs/44886742192);
+hosted staging was skipped. Current main `06f89d7a0b5b9dec316dfa11f2846767a32086c5`
+has a separate CI failure at packaged-extension Chromium browser acceptance in
+[run 44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600),
+while Backend passed. Earlier PR #268 CI run
+[44883590782](https://github.com/kendshhh/PhishLens/actions/runs/44883590782)
+passed local staging integration and guard tests. The hosted preflight and
+deployment jobs were skipped pending the `needs-hosted-staging` label; the
+separate Secretary staging check requires that protected run. The hosted CRUD
+runner remains unauthenticated, required-check settings are not reverified, and
+the effective production deploy trigger remains unresolved. Do not merge,
+promote, or claim release readiness from these changes alone.
+
+The owner-approved recovery objectives are RTO no greater than 30 minutes and
+RPO no greater than one hour. Neither has been measured. The November 20
+isolated restore verified schema and aggregate integrity, not service recovery
+time or recoverable-point age. Production-compatible app/config/schema rollback,
+durable backup scheduling, and named primary/backup responders remain open.
+See the [November 20 recovery drill](recovery-drill-2026-11-20.md).
+
+## Historical recovery position — 2026-11-20
+
+Render has deployed application SHA
+`0c382dda175db3570e6bb7122841122254ba131d` as deploy
+`dep-dc04rb0473hc738839ug`. The owner-approved `AI_ANALYSIS_ENABLED=false`
+setting triggered follow-up deploy `dep-dc04t5dg1s2s73e5pc00`, which reached
+Live at 13:44:56 UTC on the same SHA. Direct post-deploy endpoint GETs returned
+HTTP 403 from this audit client; `/model-info` has not confirmed the effective
+disabled state. The last successful production endpoint checks at 12:18 UTC
+belonged to SHA
+`16f955321caf5dc368181be7ce5c00643750545d`. Staging remains on
+`d6612c258f289b3a45d8229e4a4803cac75a91ee`, with TF-IDF mode. The current
+production known-good app/config/schema combination and rollback rehearsal are
+not established; do not choose a rollback target from recency alone.
+
+On November 20, a manual snapshot was restored into a new isolated Neon branch
+without finalizing or changing production. Schema revision and aggregate
+user/report counts matched the source; no orphaned report owners were found.
+The provider reported the restored branch ready about one second after
+creation. This small-data snapshot-to-ready sample is not a full-service RTO
+measurement or proof of the approved RTO ≤30 minutes / RPO ≤1 hour targets.
+See the [dated recovery drill](recovery-drill-2026-11-20.md).
+
+Neon reports six-hour history retention. The manual snapshot and recovery
+branch expire November 27, 2026. Automatic schedules require a paid plan, and
+the current free plan rejected production branch protection because its
+protected-branch limit is zero. The production branch remains unprotected and
+there is no recurring snapshot schedule; no plan upgrade was made. The earlier
+November 8 staging rollback rehearsal below does not prove current production
+rollback.
+
+### Operational ownership and escalation
+
+The last named CI/deploy/runbook owner in repository evidence is Kendra
+(`kendshhh`); reconfirm this assignment before launch. The AI/model decision
+owner recorded in the November 14 handover is Wilberr (`EnviousCoal`). A
+production backup responder, database restore operator, and incident contact
+channel are **not named in current handover evidence**. Assign them before GO.
+The release lead records the incident and stops promotion; the database owner
+approves isolated restore/cutover; the AI owner approves model, evaluation and
+provider decisions. If the primary cannot respond, escalate using the
+pre-agreed backup/contact path; that path remains to be recorded.
+
+### Alert delivery and incident evidence
+
+No alert delivery path, backup recipient, or acknowledgement record was
+verified on November 20. The thresholds below remain candidates until the
+service owner approves them, configures a monitor and tests delivery. A failed
+scheduled workflow is not evidence that an alert reached an on-call responder.
+
+For the alert drill, preserve the signal and threshold, injected test event,
+event/delivery/acknowledgement timestamps, recipient and channel, first
+response, containment, recovery timestamp, post-recovery health and affected
+journey checks, data-integrity check, measured recovery time, and follow-up
+owner. Link the redacted record from the incident log. The production release
+cannot claim tested alert response until this record exists.
+
+### Proposed rollback triggers
+
+These are starting recommendations, not configured alert thresholds. Agree
+them with the service owner and test alert delivery before relying on them.
+
+- **Immediate containment:** wrong deployed SHA, wrong provider/model identity,
+  authentication or cross-user data isolation defect, critical extension action
+  broken, or confirmed privacy/security incident.
+- **Persistent service regression:** `/ready` fails on two consecutive probes
+  60 seconds apart, or two independent exact-release synthetic acceptance
+  checks fail one minute apart.
+- **Sustained degradation:** 5xx rate exceeds 5% for five minutes where request
+  volume is sufficient, or p95 user-flow latency exceeds twice the agreed
+  baseline for ten minutes.
+- **Single transient:** one timeout or failed probe causes a retry and close
+  observation. It does not by itself trigger automatic rollback.
+
+### Application rollback sequence
+
+1. Kendra, as the last documented release operator, or the assigned backup
+   responder declares the incident. Record time, deploy ID, commit SHA,
+   observed failure and affected user flow. The backup responder must be named
+   in the handover before launch.
+2. Stop promotion. PR #256 deployed `AI_ANALYSIS_ENABLED` support; the owner
+   set `AI_ANALYSIS_ENABLED=false` on Render and the matching-SHA configuration
+   deploy is Live. Endpoint verification remains pending because this audit
+   client received HTTP 403. Confirm the exact deployed SHA and that
+   `/model-info` reports analysis disabled. If verification fails, keep the
+   provider unconfigured and do not send inference traffic. When unset, the
+   variable defaults to enabled, so preserve the explicit false setting until
+   a shared budget and approved model are configured.
+3. In Render, select the last explicitly verified compatible deployment, then
+   use **Rollback to this deploy** (or **Manual Deploy > Deploy a specific
+   commit** when that is the documented recovery path). Confirm the target
+   commit and its expected schema/config compatibility before starting. If no
+   compatible known-good SHA is recorded, keep the affected feature disabled
+   and escalate rather than deploying an assumed predecessor.
+4. Restore the target's matching non-secret configuration and feature-flag
+   state from the controlled environment record. Never copy secret values into
+   an issue, log, artifact or repository.
+5. Confirm the deployment ID and `/version` SHA. Check `/health`, `/ready` and
+   `/model-info`, then run exact-SHA smoke and the relevant synthetic extension
+   journey. Verify authentication, saved-report behavior, ownership/isolation
+   and cleanup in the approved test environment. Watch the agreed error and
+   latency signals for at least 15 minutes.
+6. Keep the feature disabled and escalate if any identity, readiness, model or
+   critical user-flow check fails. Do not automatically roll forward or back
+   again on a single transient.
+7. Record the result and incident follow-up before resuming normal promotion.
+
+### Database and data recovery — separate from application rollback
+
+1. Stop writers for an affected data path and preserve the current app/schema
+   identities. Do not run a reverse migration or reset the shared production
+   branch during a rehearsal.
+2. For an irreversible or destructive change, restore the selected point into
+   an isolated Neon recovery branch using the provider's supported recovery
+   method. Confirm the source point is within retention and record its ID/time.
+3. Validate migration state, schema constraints, representative record counts,
+   ownership/isolation and application compatibility against the recovery
+   candidate. Record the data-loss window relative to the incident.
+4. Cut over only through the approved recovery procedure after the database
+   owner and release lead review the evidence. Recheck `/ready`, exact `/version`,
+   affected behavior and data integrity after cutover.
+5. Record recovery duration and data point achieved. Application rollback does
+   not restore deleted or corrupted database state.
+
+At the time of this November 20 note, the owner-approved RTO ≤30 minutes and
+RPO ≤1 hour targets had not been measured. The current position above retains
+that limit and records that these objectives remain unproven.
+
+> The entries below are dated observations. The [current pipeline status](../../PIPELINE.md)
+> supersedes older statements where service SHAs or release state differ.
+
+## Historical October 21 playbook handoff
 
 See [October 21 close-out](playbook-closeout-2026-10-21.md) for current evidence,
 the corrected Week 2 instructions and remaining integration gates. Production
 evidence run 39449283551 passed for main `149808e`; this is dated observer evidence,
 not a claim that every later independent endpoint probe succeeded.
 
-## Current post-merge verification — October 29, 2026 00:31 UTC
+## Historical post-merge verification — October 29, 2026 00:31 UTC
 
 PR #86 merged as `1344fcb061272bac93ced5911f1ab8fbb3b6785d`; production deploy
 `dep-dbh8v6ivcj2c73fql7c0` is Live on that commit. Read-only `/version`,
@@ -76,13 +244,11 @@ observations. Archive package `evidence.json` alongside the ZIP before expiry;
 compare its source/tested SHA and ZIP hash before installing. Packaging does not
 establish browser execution or database isolation.
 
-Before a rollback, record both app revisions and their expected schema revisions.
-Current source has migration `0001_initial_schema`; compare migration trees and
-coordinate with Trixia if either revision introduces schema changes. Do not run
-reverse migrations or a production failure drill to fill an evidence checkbox.
-Reuse the verified October 14 drill; its complete recovery time remains unknown.
-For the next necessary recovery, record incident start, action start, live result,
-independent restored `/version`/health/readiness time, and actual affected behavior.
+At this October 2026 snapshot, source had migration `0001_initial_schema`. That
+is historical context, not the current schema revision; staging's observed
+revision is `0004_neon_auth_subject`. Before a future rollback, compare the
+exact app/schema revisions and use the current approved recovery procedure.
+Do not reuse the October 14 drill as proof of current production recovery.
 
 The [Secretary pilot operator guide](secretary.md) adds exact-SHA preview and
 production observation. Its observer produces `metrics.json` and, on failure, an
@@ -106,7 +272,7 @@ Database connectivity is verified; schema-backed frontend and AI integration
 remain pending. Rollback and restoration were exercised, including one failed
 restoration attempt. See incidents.md for the evidence and limitations.
 
-## Service Configuration
+## Historical service configuration snapshot — initial deployment
 
 - Repository: kendshhh/PhishLens
 - Branch: main
@@ -125,7 +291,7 @@ Start command:
 
     python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
 
-## Initial Deployment
+## Historical initial deployment procedure
 
 1. Confirm the backend PR is reviewed and merged.
 2. Confirm CI passes on the merged main commit.
@@ -140,31 +306,42 @@ Start command:
 The health endpoint verifies the API process only.
 It does not verify database access, AI inference or extension integration.
 
-## Subsequent Deployments
+## Current deployment procedure — fail closed
 
-Before merging, follow [pre-merge staging](staging.md): all four required checks,
-the exact PR commit live on staging, Chrome verification with the staging package,
-and teammate approval. Missing staging settings must be fixed before merge.
+Release remains **NO-GO** until every current gate in the
+[scorecard](release-readiness-scorecard-2026-11-21.md) passes for one exact
+candidate and reviewers accept its linked evidence.
 
-1. Open a focused PR.
-2. Pass required checks and obtain teammate approval.
-3. Merge into main.
-4. Confirm main CI passes.
-5. Confirm Render deploys that commit automatically.
-6. From GitHub Actions, manually run **Production evidence** on `main` after the
-   exact commit is live. Retain its metrics artifact and confirm the exact SHA.
-7. Verify /health and the behavior affected by the change.
-8. Record merge-to-live time and evidence.
+1. Review the current DevOps index, candidate record, and open blockers. Keep
+   the original dirty checkout untouched; use a clean review branch.
+2. Require the relevant CI checks and independent review. The hosted-staging
+   job must run only when the local staging integration, current-head preflight
+   and backend migration lineage all succeed. Skipped or failed dependencies
+   cannot authorize a Render staging deploy.
+3. Verify current PR head immediately before deployment, then verify the exact
+   deployed `/version` SHA, migration, readiness, history/auth contract,
+   authenticated CRUD/cleanup and package provenance. A local integration pass
+   does not establish hosted service health.
+4. Do not merge a candidate while hosted CRUD lacks a supported Auth session,
+   or while required-check protection, deployment settings, secret scopes,
+   service-to-Neon mapping or test cleanup are unresolved.
+5. Render metadata was observed with auto-deploy off for production and staging,
+   while a production deploy record reported `new_commit`. Reconcile that
+   discrepancy in the control plane before relying on an automatic deploy.
+   Do not manually deploy production from this runbook; use only the separately
+   authorized release procedure after GO.
+6. The production observer is manual and read-only. A disabled-provider
+   observer pass establishes service state only, never inference, persistence
+   or product acceptance. Do not make paid calls or saved-report writes in
+   production.
+7. Record the exact source/deploy/package identities, run URL, statuses,
+   artifacts, recovery point and owner decisions. Keep unverified evidence open.
 
-The observer is manual and post-deploy so Render's **After CI Checks Pass** gate
-does not wait on a check that itself waits for the deployment. It never deploys
-or rolls back production.
-
-For database-dependent changes, also request /ready and expect HTTP 200 with
-{"status":"ready","database":"connected"}. Keep /health as the process
-health check. Readiness currently executes SELECT 1; it does not verify tables
-or records. Confirm DATABASE_URL's intended Neon branch privately in the host.
-The base URL / has no homepage and may correctly return 404.
+For database-dependent changes, verify `/ready` and exact `/version` on the
+candidate. Readiness currently checks database connectivity, not full table or
+record integrity. Confirm the private Render-to-Neon branch/database/role
+mapping without displaying connection strings or secrets. The API base URL may
+have no homepage and return 404.
 
 ## Deployment Failure
 
@@ -177,27 +354,28 @@ The base URL / has no homepage and may correctly return 404.
 
 Never paste secrets into issues or logs shared with teammates.
 
-## Rollback Plan
+## Current rollback position and procedure
+
+No current production app/config/schema combination is proven as a compatible
+rollback target. Stop promotion, declare the incident, preserve deploy and
+migration identities, and have the release lead and database owner select and
+review an exact compatible target. Do not select a target by recency or use the
+historical SHA records below as current approval.
+
+For an authorized application rollback: identify the exact Render deploy and
+matching non-secret configuration; check schema compatibility; use Render's
+rollback/deploy controls only under the approved incident procedure; verify
+deploy ID and `/version`; check `/health`, `/ready`, model/provider state and
+the affected user flow; retain logs and timestamps. Database restore/cutover is
+a separate decision and must use an isolated recovery branch first. Record
+actual service RTO and achieved recovery point; do not infer them from provider
+branch-ready timing.
+
+### Historical rollback observations — October 2026
 
 Rollback to 717334d was successful in 35.7 seconds. Restoration to 8a8634e
 succeeded on retry after an initial health-check/port-detection timeout.
 Full restoration duration remains unmeasured. This was a planned drill.
-
-After at least two successful deployments:
-1. Identify the last known-good deployment and its commit.
-2. Use Render's available rollback control.
-3. Verify /health and affected application behavior.
-4. Check the Auto-Deploy setting after rollback.
-5. Coordinate a reviewed correction before resuming normal deployment.
-6. Record the result and recovery time.
-
-Dashboard rollback automatically disables Auto-Deploy. Deploying a specific
-commit also disables it. Restore After CI Checks Pass only after verifying the
-intended version and reviewing any newer main changes.
-
-To restore a known-good version during a drill, use Manual Deploy > Deploy a
-specific commit and select its verified SHA. Confirm the Live SHA and /health,
-then restore Auto-Deploy. A health response alone cannot identify a version.
 
 If replacement deployment times out, inspect that deployment's own logs.
 General service logs can come from the still-running older instance. Preserve

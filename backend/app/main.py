@@ -1,4 +1,5 @@
 import os
+import time
 from functools import lru_cache
 from threading import Lock
 from typing import Literal
@@ -21,11 +22,24 @@ from backend.ai.schemas import (
 )
 from backend.ai.service import AIService
 from backend.ai.spend_limit import GeminiSpendPolicy, SpendLimitExceeded
+from backend.app.observability import (
+    request_observability_middleware,
+    set_ai_observation,
+)
+from backend.app.routers.auth_bridge import router as auth_bridge_router
 from backend.app.routers.history import router as history_router
-from backend.core.config import PROJECT_ROOT, get_ai_config
+from backend.app.routers.neon_auth import router as neon_auth_router
+from backend.core.config import PROJECT_ROOT, ai_analysis_enabled, get_ai_config
 
 app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
+app.include_router(neon_auth_router)
+app.include_router(auth_bridge_router)
+
+
+@app.middleware("http")
+async def observe_request(request: Request, call_next):
+    return await request_observability_middleware(request, call_next)
 
 
 def analysis_error(
@@ -95,6 +109,8 @@ _ai_service_lock = Lock()
 
 
 def get_ai_service() -> tuple[AIService, Literal["mock", "gemini", "local", "tfidf"]]:
+    if not ai_analysis_enabled():
+        raise RuntimeError("AI analysis is disabled")
     # Lock outside the cache so concurrent misses cannot create separate providers.
     with _ai_service_lock:
         return _get_cached_ai_service()
@@ -139,7 +155,9 @@ def health():
 def version():
     """Public deployment identity only; never expose environment or credential values."""
     return {
-        "commit": os.getenv("RENDER_GIT_COMMIT", "unknown"),
+        # Git-backed Render services set RENDER_GIT_COMMIT. Image-backed
+        # promotions embed the same source SHA into the image at build time.
+        "commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("PHISHLENS_SOURCE_SHA", "unknown"),
         "environment": os.getenv("APP_ENV", "development"),
     }
 
@@ -147,6 +165,14 @@ def version():
 @app.get("/model-info")
 def model_info():
     """Public save capability; no input, database access or private settings."""
+    if not ai_analysis_enabled():
+        return {
+            "provider_mode": "disabled",
+            "analysis_enabled": False,
+            "supports_required_provider": False,
+            "accepts_tfidf_reports": False,
+            "accepts_local_reviews": False,
+        }
     try:
         mode, _, _ = get_ai_config()
         if mode == "tfidf":
@@ -209,14 +235,36 @@ def model_info():
 )
 def analyze_email(
     request: AnalysisRequest,
+    http_request: Request,
     require_provider: Literal["tfidf"] | None = Header(
         default=None,
         alias="X-Require-Provider",
     ),
 ) -> AnalysisResponse | JSONResponse:
+    inference_started = time.perf_counter()
+    if not ai_analysis_enabled():
+        set_ai_observation(
+            http_request,
+            provider_mode="disabled",
+            outcome="unavailable",
+            failure_code="analysis_disabled",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
+        return analysis_error(
+            503,
+            "analysis_unavailable",
+            "Analysis temporarily unavailable",
+        )
     try:
         service, mode = get_ai_service()
     except RuntimeError:
+        set_ai_observation(
+            http_request,
+            provider_mode="unavailable",
+            outcome="unavailable",
+            failure_code="provider_configuration",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return analysis_error(
             503,
             "analysis_unavailable",
@@ -224,6 +272,13 @@ def analyze_email(
         )
 
     if require_provider is not None and mode != require_provider:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="unavailable",
+            failure_code="required_provider_mismatch",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return analysis_error(
             503,
             "analysis_unavailable",
@@ -237,24 +292,52 @@ def analyze_email(
             body=request.text,
         )
     except AnalysisUnavailableError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="unavailable",
+            failure_code="provider_unavailable",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return analysis_error(
             503,
             "analysis_unavailable",
             "Analysis temporarily unavailable",
         )
     except DailyQuotaExceeded:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="unavailable",
+            failure_code="provider_quota",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return analysis_error(
             503,
             "analysis_unavailable",
             "Analysis temporarily unavailable",
         )
     except SpendLimitExceeded:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="unavailable",
+            failure_code="spend_limit",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return analysis_error(
             503,
             "analysis_unavailable",
             "Analysis temporarily unavailable",
         )
     except RuntimeError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="inference_failed",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
         return analysis_error(
             502,
             "inference_failed",
@@ -266,6 +349,13 @@ def analyze_email(
         "spam": "medium",
         "phishing": "high",
     }[result.classification]
+    set_ai_observation(
+        http_request,
+        provider_mode=mode,
+        outcome="success",
+        result=result,
+        duration_ms=(time.perf_counter() - inference_started) * 1000,
+    )
     return AnalysisResponse(
         **result.model_dump(),
         risk_level=risk_level,
@@ -299,6 +389,7 @@ def analyze_email(
 def analyze_email_for_revision(
     expected_sha: str,
     request: AnalysisRequest,
+    http_request: Request,
     response: Response,
     require_provider: Literal["tfidf"] = Header(alias="X-Require-Provider"),
 ) -> AnalysisResponse | JSONResponse:
@@ -314,7 +405,11 @@ def analyze_email_for_revision(
         mismatch.headers["X-PhishLens-Revision"] = serving_sha
         return mismatch
 
-    result = analyze_email(request, require_provider=require_provider)
+    result = analyze_email(
+        request,
+        http_request,
+        require_provider=require_provider,
+    )
     if isinstance(result, JSONResponse):
         result.headers["X-PhishLens-Revision"] = serving_sha
     return result

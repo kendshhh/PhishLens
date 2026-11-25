@@ -53,11 +53,13 @@ def signed(monkeypatch):
 def test_valid_signed_identity(signed):
     assert auth.verify_identity(signed()) == ("subject-a", "a@example.test")
 
+def test_unverified_signed_identity_is_accepted_when_verification_is_not_required(signed):
+    assert auth.verify_identity(signed(emailVerified=False)) == ("subject-a", "a@example.test")
+
 @pytest.mark.parametrize("changes,status", [
     ({"exp": 1}, 401), ({"iat": 9999999999}, 401),
     ({"iss": "https://other.test"}, 401), ({"aud": "other"}, 401),
     ({"sub": ""}, 401), ({"email": None}, 401),
-    ({"emailVerified": False}, 403), ({"emailVerified": "true"}, 403),
     ({"banned": True}, 403), ({"banned": None}, 403), ({"banned": "false"}, 403),
 ])
 def test_rejected_claims(signed, changes, status):
@@ -82,6 +84,71 @@ def test_jwks_outage_is_not_invalid_credentials(signed, monkeypatch):
         auth.verify_identity(signed())
     assert error.value.status_code == 503
     assert "internal detail" not in error.value.detail
+
+
+@pytest.mark.parametrize("base_url", [
+    "https://[malformed-host",
+    "https://auth.example.test:not-a-port",
+])
+def test_malformed_auth_url_is_configuration_unavailable(signed, monkeypatch, base_url):
+    jwks = Mock(side_effect=AssertionError("invalid configuration reached JWKS"))
+    monkeypatch.setattr(auth, "jwks_client", lambda base: SimpleNamespace(get_signing_key_from_jwt=jwks))
+    monkeypatch.setenv("NEON_AUTH_BASE_URL", base_url)
+
+    with pytest.raises(HTTPException) as error:
+        auth.verify_identity(signed())
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "Authentication configuration unavailable"
+    jwks.assert_not_called()
+
+
+def test_model_info_cannot_load_dotenv_auth_mode_before_authenticated_request(monkeypatch, tmp_path):
+    from backend.core import config
+
+    settings = tmp_path / "render.env"
+    settings.write_text("REPORT_AUTH_MODE=demo\nAI_ANALYSIS_ENABLED=false\n")
+    monkeypatch.setattr(config, "ENV_FILE", settings)
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.delenv("REPORT_AUTH_MODE", raising=False)
+    monkeypatch.delenv("AI_ANALYSIS_ENABLED", raising=False)
+
+    old = app.dependency_overrides.copy()
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        with TestClient(app) as client:
+            info = client.get("/model-info")
+            saved_reports = client.get("/api/analyses")
+    finally:
+        app.dependency_overrides = old
+
+    assert info.status_code == 200
+    assert "AI_ANALYSIS_ENABLED" not in os.environ
+    assert "REPORT_AUTH_MODE" not in os.environ
+    assert saved_reports.status_code == 503
+    assert saved_reports.json()["detail"] == "Authentication configuration unavailable"
+
+
+@pytest.mark.parametrize("changes", [
+    {"sub": ""},
+    {"email": None},
+])
+def test_invalid_identity_claims_challenge_before_user_mapping(signed, monkeypatch, changes):
+    token = signed(**changes)
+    resolve = Mock(side_effect=AssertionError("Invalid identity reached user mapping"))
+    monkeypatch.setattr(auth, "resolve_user", resolve)
+    old = app.dependency_overrides.copy()
+    app.dependency_overrides[get_db] = lambda: None
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/analyses", headers={"Authorization": "Bearer " + token})
+    finally:
+        app.dependency_overrides = old
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+    assert token not in response.text
+    resolve.assert_not_called()
 
 @pytest.mark.parametrize("method,path,body", [
     ("GET", "/api/analyses", None),
@@ -110,14 +177,13 @@ def test_all_crud_requires_authentication(signed, method, path, body):
     ("DELETE", "/api/analyses/00000000-0000-0000-0000-000000000001", None),
 ])
 @pytest.mark.parametrize("kind,status", [
-    ("malformed", 401), ("expired", 401), ("unverified", 403), ("banned", 403),
+    ("malformed", 401), ("expired", 401), ("banned", 403),
     ("missing_banned", 403), ("malformed_banned", 403),
 ])
 def test_rejected_bearers_block_all_crud_before_mapping(signed, monkeypatch, method, path, body, kind, status):
     tokens = {
         "malformed": "not-a-signed-token",
         "expired": signed(exp=1),
-        "unverified": signed(emailVerified=False),
         "banned": signed(banned=True),
         "missing_banned": signed(without=("banned",)),
         "malformed_banned": signed(banned="false"),

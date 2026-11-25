@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kendshhh/PhishLens/docs/devops/release-manifest.schema.json",
+  "title": "PhishLens controlled release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format", "release", "source", "backend", "extension", "model", "auth",
+    "database", "staging_acceptance", "required_checks", "approval", "failure_switch",
+    "changelog", "external_production_config_attestation"
+  ],
+  "properties": {
+    "format": { "const": "phishlens-release-v1" },
+    "release": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "tag"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+        "tag": { "type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" }
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha", "author"],
+      "properties": { "sha": { "$ref": "#/$defs/sha40" }, "author": { "type": "string", "minLength": 1 } }
+    },
+    "backend": {
+      "type": "object", "additionalProperties": false,
+      "required": ["image", "digest", "source_sha"],
+      "properties": {
+        "image": { "type": "string", "pattern": "@sha256:[0-9a-f]{64}$" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "source_sha": { "$ref": "#/$defs/sha40" }
+      }
+    },
+    "extension": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha256", "version"],
+      "properties": { "sha256": { "$ref": "#/$defs/sha256" }, "version": { "type": "string" } }
+    },
+    "model": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approved", "provider", "revision", "evaluation_sha256", "policy_sha256"],
+      "properties": {
+        "approved": { "const": true }, "provider": { "type": "string", "not": { "enum": ["mock", "disabled", "unavailable"] } },
+        "revision": { "type": "string", "minLength": 1 }, "evaluation_sha256": { "$ref": "#/$defs/sha256" },
+        "policy_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "auth": {
+      "type": "object", "additionalProperties": false, "required": ["mode", "enabled"],
+      "properties": { "mode": { "const": "neon-auth" }, "enabled": { "const": true } }
+    },
+    "database": {
+      "type": "object", "additionalProperties": false,
+      "required": ["staging_project_id", "production_project_id", "staging_branch_id", "branch_kind", "production_rows_present", "staging_parent_id", "migration_revision"],
+      "properties": {
+        "staging_project_id": { "type": "string", "pattern": "^[a-z0-9-]{8,64}$" },
+        "production_project_id": { "type": "string", "pattern": "^[a-z0-9-]{8,64}$" },
+        "staging_branch_id": { "type": "string", "pattern": "^br-[a-z0-9-]+$" },
+        "branch_kind": { "const": "schema-only" }, "production_rows_present": { "const": false },
+        "staging_parent_id": { "type": "null" }, "migration_revision": { "type": "string", "minLength": 1 }
+      }
+    },
+    "staging_acceptance": {
+      "type": "object", "additionalProperties": false, "required": ["status", "evidence_sha256"],
+      "properties": { "status": { "const": "passed" }, "evidence_sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "required_checks": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_sha", "tested_sha", "tree_sha", "candidate_tree_sha", "pull_request", "author", "checks"],
+      "properties": {
+        "candidate_sha": { "$ref": "#/$defs/sha40" },
+        "tested_sha": { "$ref": "#/$defs/sha40" },
+        "tree_sha": { "$ref": "#/$defs/sha40" },
+        "candidate_tree_sha": { "$ref": "#/$defs/sha40" },
+        "pull_request": { "type": "integer", "minimum": 1 },
+        "author": { "type": "string", "minLength": 1 },
+        "checks": {
+          "type": "object", "additionalProperties": false,
+          "required": ["Backend checks", "Extension checks", "Staging integration", "CodeQL", "Secretary staging", "Deterministic AI Evaluation", "Dependency security", "Workflow lint"],
+          "properties": {
+            "Backend checks": { "$ref": "#/$defs/requiredCheck" },
+            "Extension checks": { "$ref": "#/$defs/requiredCheck" },
+            "Staging integration": { "$ref": "#/$defs/requiredCheck" },
+            "CodeQL": { "$ref": "#/$defs/requiredCheck" },
+            "Secretary staging": { "$ref": "#/$defs/requiredCheck" },
+            "Deterministic AI Evaluation": { "$ref": "#/$defs/requiredCheck" },
+            "Dependency security": { "$ref": "#/$defs/requiredCheck" },
+            "Workflow lint": { "$ref": "#/$defs/requiredCheck" }
+          }
+        }
+      }
+    },
+    "approval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approved", "mechanism", "independent", "approved_by", "run_id"],
+      "properties": {
+        "approved": { "const": true }, "mechanism": { "const": "github-environment" },
+        "independent": { "const": true }, "approved_by": { "type": "string", "minLength": 1 }, "run_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "failure_switch": {
+      "type": "object", "additionalProperties": false,
+      "required": ["promotion_enabled", "tested_fail_closed", "ai_kill_switch"],
+      "properties": {
+        "promotion_enabled": { "const": true }, "tested_fail_closed": { "const": true },
+        "ai_kill_switch": { "const": "AI_ANALYSIS_ENABLED" }
+      }
+    },
+    "changelog": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": { "path": { "const": "CHANGELOG.md" }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "external_production_config_attestation": { "const": "current" }
+  },
+  "$defs": {
+    "sha40": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "requiredCheck": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "tested_sha", "app_id", "source"],
+      "properties": {
+        "state": { "const": "success" },
+        "tested_sha": { "$ref": "#/$defs/sha40" },
+        "app_id": { "type": "integer" },
+        "source": { "enum": ["check_run", "commit_status"] },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

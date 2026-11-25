@@ -33,7 +33,7 @@ const expectedTests = [
   "empty history and history API failure states render clearly",
 ];
 let sourceCommit = process.env.SOURCE_COMMIT ?? null;
-let testedCommit = process.env.GITHUB_SHA ?? null;
+let testedCommit = process.env.TESTED_COMMIT ?? process.env.GITHUB_SHA ?? null;
 const evidence = {
   source_commit: sourceCommit ?? "unknown",
   tested_commit: testedCommit ?? "unknown",
@@ -347,6 +347,7 @@ async function run() {
   evidence.tested_commit = testedCommit;
   evidence.runtime_or_packaging_changes = identity.runtime_or_packaging_changes;
   assert.equal(identity.source_commit, sourceCommit, "Package source SHA differs from the PR head");
+  assert.equal(identity.tested_commit, testedCommit, "Package tested SHA differs from the browser-test checkout");
   assert.equal(identity.archive_sha256, packageSha256, "Package digest differs from its identity evidence");
   evidence.extension_version = identity.extension_version;
   if (process.env.GITHUB_ACTIONS === "true") {

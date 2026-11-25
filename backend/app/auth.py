@@ -31,8 +31,21 @@ def jwks_client(base_url):
 
 def verify_identity(token):
     base = os.getenv("NEON_AUTH_BASE_URL", "").rstrip("/")
-    parsed = urlsplit(base)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+    try:
+        parsed = urlsplit(base)
+        port = parsed.port
+        valid_url = (
+            parsed.scheme == "https"
+            and bool(parsed.hostname)
+            and not parsed.username
+            and not parsed.password
+            and not parsed.query
+            and not parsed.fragment
+            and (port is None or 1 <= port <= 65535)
+        )
+    except (TypeError, ValueError):
+        valid_url = False
+    if not valid_url:
         raise HTTPException(503, "Authentication configuration unavailable")
     origin = f"https://{parsed.netloc}"
     try:
@@ -45,13 +58,13 @@ def verify_identity(token):
         raise HTTPException(401, "Sign in to access saved reports", headers={"WWW-Authenticate": "Bearer"}) from None
     subject, email = claims.get("sub"), claims.get("email")
     if not isinstance(subject, str) or not 1 <= len(subject) <= 255:
-        raise HTTPException(401, "Sign in to access saved reports")
+        raise HTTPException(401, "Sign in to access saved reports", headers={"WWW-Authenticate": "Bearer"})
     # Require an explicit active value so missing or malformed status claims
     # cannot silently pass verification.
-    if claims.get("emailVerified") is not True or claims.get("banned") is not False:
-        raise HTTPException(403, "A verified, active account is required")
+    if claims.get("banned") is not False:
+        raise HTTPException(403, "An active account is required")
     if not isinstance(email, str) or not 3 <= len(email) <= 320 or "@" not in email:
-        raise HTTPException(401, "Sign in to access saved reports")
+        raise HTTPException(401, "Sign in to access saved reports", headers={"WWW-Authenticate": "Bearer"})
     return subject, email
 
 
