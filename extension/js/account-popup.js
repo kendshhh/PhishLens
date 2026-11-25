@@ -7,9 +7,11 @@ export function initializeAccountPopup({ documentImpl = document, chromeImpl = g
   adapter = unavailableAccounts, createClient = () => { throw new Error('Live account integration is not connected.'); },
   fetchImpl = globalThis.fetch, preview = false, apiOrigin = API_BASE_URL } = {}) {
   let popup;
+  let previousUserId;
   const accounts = createAccountSession({ adapter, createClient,
     async onChange(userId) {
-      popup?.resetReports();
+      popup?.resetReports({ preserveServerDraft: !previousUserId });
+      previousUserId = userId;
       const stored = await chromeImpl.storage.session.get('phishlensReportAccount');
       if (stored.phishlensReportAccount !== userId) {
         await chromeImpl.storage.session.remove('phishlensReportAttempt');

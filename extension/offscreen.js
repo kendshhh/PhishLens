@@ -39,7 +39,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (active) stop('superseded');
   if (!worker) createWorker();
   active = { jobId: message.jobId, respond,
-    timer: setTimeout(() => stop('judge_timeout'), ready ? 15000 : 120000),
+    // A warm GPU can still take longer under load. Keep both deadlines bounded.
+    timer: setTimeout(() => stop('judge_timeout'), ready ? 45000 : 120000),
     heartbeat: setInterval(() => chrome.runtime.sendMessage({ type: 'phishlens-judge-heartbeat', jobId: message.jobId }).catch(() => {}), 2000) };
   worker.postMessage({ jobId: message.jobId, primary: message.primary });
   return true;

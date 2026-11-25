@@ -92,6 +92,7 @@ try {
       elapsed_ms: warm.result?.workflow?.elapsed_ms, reevaluators: warm.result?.workflow?.reevaluators?.length };
     if (!record.warm_software_check.judge_valid) process.exitCode = 1;
     assert.equal(apiRequests.length, 0);
+    await page.click('#save-panel > summary');
     await page.click('#save-report'); assert.equal(apiRequests.length, 0);
     await page.fill('#report-subject', 'Software fixture <script>alert(1)</script>');
     await page.check('#save-consent'); await page.click('#save-report');

@@ -53,6 +53,7 @@ def test_browser_python_arithmetic_parity_on_software_fixtures():
     if node is None:
         pytest.skip("Node needed for cross-runtime parity")
     inputs = [
+        "Your account will be closed today. Confirm your password at https://account-check.example/verify to keep access.",
         "Please review the project meeting agenda.",
         "Verify your password now at https://accounts.example.test/login or access will be suspended.",
         "Your code is 123456. Do not share it. Contact qa@example.test.",

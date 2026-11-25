@@ -42,6 +42,7 @@ for asset in (
     popup,
     "css/popup.css",
     "js/popup.js",
+    "js/ghost.js",
     "js/account-session.js",
     "js/account-ui.js",
     "js/account-popup.js",

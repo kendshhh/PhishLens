@@ -9,7 +9,7 @@ const releasePopup = await readFile(new URL('../popup.js', import.meta.url), 'ut
 
 test('saved-report copy describes the real authenticated server path without pending placeholders', () => {
   assert.match(popup, /Saving requires sign-in and uploads the <strong>original email text<\/strong> to the PhishLens API/);
-  assert.match(popup, /saves the result to your signed-in account/);
+  assert.match(popup, /Sign in to save/);
   assert.doesNotMatch(popup, /Live account integration is pending|Account saving is not connected yet/);
 });
 

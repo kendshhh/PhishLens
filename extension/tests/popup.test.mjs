@@ -29,7 +29,7 @@ class Element {
   }
 }
 
-const ids = ["clear-report-search", "reset-report-search", "edit-correction", "reports-list-view", "report-search", "report-count", "no-report-matches", "back-to-reports", "history-heading", "report-mode-warning", "crud-status", "history-list", "empty", "loading", "create-form", "create-subject", "create-body", "detail-panel", "detail-heading", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-heading", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "create-button", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
+const ids = ["clear-report-search", "reset-report-search", "edit-correction", "reports-list-view", "report-search", "report-count", "no-report-matches", "back-to-reports", "history-heading", "report-mode-warning", "crud-status", "history-list", "empty", "loading", "detail-panel", "detail-heading", "detail-content", "edit-form", "edit-notes", "edit-feedback", "delete-confirm", "delete-heading", "delete-subject", "confirm-delete", "cancel-delete", "cancel-edit", "save-edit", "empty-state", "loading-state", "error-state", "result-state", "error-message", "classification", "risk-level", "analysis-mode", "selected-text", "tactics", "recommendations", "clear-button"];
 function setup(client) {
   const elements = new Map(ids.map(id => [id, new Element(id, ["empty", "detail-panel", "edit-form", "delete-confirm", "crud-status"].includes(id) ? "hidden" : "")]));
   const doc = { getElementById: id => elements.get(id), createElement: tag => Object.assign(new Element(), { tagName: tag }) };
@@ -59,8 +59,7 @@ test('account reset rejects a late create completion without repopulating the li
   let resolve;
   const { ui, controller } = setup({ ...createInMemoryAnalysisClient(),
     createAnalysis: () => new Promise(done => { resolve = done; }) });
-  ui.get('create-body').value = 'Synthetic previous account draft';
-  const pending = ui.get('create-form').fire('submit');
+  const pending = controller.saveServerReport({ subject: '', body: 'Synthetic previous account draft' });
   controller.reset(); resolve(record(id, 'Previous account result')); await pending;
   assert.deepEqual(controller.records, []);
   assert.equal(ui.get('history-list').children.length, 0);
@@ -93,7 +92,7 @@ test("HTML provides associated labels, focusable CRUD controls, a bounded popup 
   const css = await readFile(new URL("../css/popup.css", import.meta.url), "utf8");
   const popup = await readFile(new URL("../js/popup.js", import.meta.url), "utf8");
   const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
-  for (const [label, control] of [["create-subject", "create-subject"], ["create-body", "create-body"], ["edit-notes", "edit-notes"], ["edit-feedback", "edit-feedback"]]) {
+  for (const [label, control] of [["scan-subject", "scan-subject"], ["scan-body", "scan-body"], ["edit-notes", "edit-notes"], ["edit-feedback", "edit-feedback"]]) {
     assert.match(html, new RegExp(`<label for="${label}">`));
     assert.match(html, new RegExp(`id="${control}"`));
   }
@@ -102,10 +101,11 @@ test("HTML provides associated labels, focusable CRUD controls, a bounded popup 
   assert.match(html, /id="detail-heading" tabindex="-1"/);
   assert.match(html, /id="delete-heading" tabindex="-1"/);
   assert.match(html, /Analyze selection with PhishLens/);
-  assert.match(html, /<button id="create-button" type="submit">Analyze and save<\/button>/);
+  const checkView = html.slice(html.indexOf('id="check-view"'), html.indexOf('id="reports-view"'));
+  assert.equal((checkView.match(/<textarea/g) || []).length, 1);
+  assert.match(checkView, /id="scan-button"[^>]*type="submit"/);
+  assert.match(checkView, /id="save-report"[^>]*type="button"/);
   for (const id of ["empty-state", "loading-state", "error-state", "result-state", "clear-button"]) assert.match(html, new RegExp(`id="${id}"`));
-  // Split flow: right-click opens a tab-scoped action popup (chrome.action.openPopup, Chrome 127+);
-  // the toolbar opens the side panel, so the manifest must not define a default popup.
   assert.equal(manifest.minimum_chrome_version, "127");
   assert.equal(manifest.action.default_popup, undefined);
   assert.equal(manifest.side_panel.default_path, "popup.html");
@@ -204,8 +204,7 @@ test("older history response cannot erase a newly created analysis", async () =>
   };
   const { ui, controller } = setup(client);
   const oldRefresh = controller.refresh();
-  ui.get("create-body").value = "Synthetic email body";
-  await ui.get("create-form").fire("submit");
+  await controller.saveServerReport({ subject: "", body: "Synthetic email body" });
   resolveOldList([]);
   await oldRefresh;
   assert.equal(ui.get("history-list").children.length, 1);
@@ -483,27 +482,6 @@ test("a delayed older detail response cannot replace an open editor draft", asyn
   assert.equal(ui.get("edit-notes").value, "Unsaved editor draft");
   assert.equal(ui.get("detail-content").children[0].children[1].textContent, "Selected");
 });
-test("create subject and body stay disabled until save settles", async () => {
-  let resolveCreate;
-  const saved = record("created", "New draft");
-  const client = {
-    ...createInMemoryAnalysisClient(),
-    createAnalysis() { return new Promise(resolve => { resolveCreate = resolve; }); },
-    async listAnalyses() { return [saved]; },
-    async getAnalysis() { return saved; }
-  };
-  const { ui } = setup(client);
-  ui.get("create-subject").value = "New draft";
-  ui.get("create-body").value = "Synthetic body";
-  const saving = ui.get("create-form").fire("submit");
-  assert.equal(ui.get("create-subject").disabled, true);
-  assert.equal(ui.get("create-body").disabled, true);
-  resolveCreate(saved);
-  await saving;
-  assert.equal(ui.get("create-subject").disabled, false);
-  assert.equal(ui.get("create-body").disabled, false);
-});
-
 test("failed post-create history refresh warning is not replaced by detail success", async () => {
   const saved = record("created", "Saved but refresh unavailable");
   const client = {
@@ -512,9 +490,8 @@ test("failed post-create history refresh warning is not replaced by detail succe
     async listAnalyses() { throw new Error("Server unavailable"); },
     async getAnalysis() { return saved; }
   };
-  const { ui } = setup(client);
-  ui.get("create-body").value = "Synthetic email body";
-  await ui.get("create-form").fire("submit");
+  const { ui, controller } = setup(client);
+  await controller.saveServerReport({ subject: "", body: "Synthetic email body" });
   assert.match(ui.get("crud-status").textContent, /Saved analyses are unavailable: Server unavailable/);
   assert.doesNotMatch(ui.get("crud-status").textContent, /details loaded|saved successfully/i);
 });
@@ -523,9 +500,7 @@ test("create and edit submit through the injected five-method client", async () 
   const client = createInMemoryAnalysisClient();
   const { ui, controller } = setup(client);
   await controller.refresh();
-  ui.get("create-subject").value = "Test subject";
-  ui.get("create-body").value = "Email body";
-  await ui.get("create-form").fire("submit");
+  await controller.saveServerReport({ subject: "Test subject", body: "Email body" });
   const saved = (await client.listAnalyses())[0];
   assert.equal(saved.subject, "Test subject");
   assert.equal(saved.body, "Email body");
@@ -540,7 +515,7 @@ test("create and edit submit through the injected five-method client", async () 
   assert.equal((await client.getAnalysis(saved.id)).feedback, "false_positive");
 });
 
-test("failed create preserves input and duplicate pending submit is ignored", async () => {
+test("failed server save can retry, and duplicate saves are ignored while pending", async () => {
   let release;
   let creates = 0;
   const base = createInMemoryAnalysisClient();
@@ -550,32 +525,15 @@ test("failed create preserves input and duplicate pending submit is ignored", as
     await new Promise(resolve => { release = resolve; });
     return base.createAnalysis(input);
   } };
-  const { ui } = setup(client);
-  ui.get("create-subject").value = "Keep me";
-  ui.get("create-body").value = "Keep this body";
-  await ui.get("create-form").fire("submit");
-  assert.equal(ui.get("create-body").value, "Keep this body");
-  assert.equal(ui.get("create-subject").disabled, false);
-  assert.equal(ui.get("create-body").disabled, false);
-  const first = ui.get("create-form").fire("submit");
-  const second = ui.get("create-form").fire("submit");
-  await Promise.resolve();
+  const { controller } = setup(client);
+  const input = { subject: "Keep me", body: "Keep this body" };
+  assert.equal(await controller.saveServerReport(input), false);
+  const first = controller.saveServerReport(input);
+  assert.equal(await controller.saveServerReport(input), false);
   assert.equal(creates, 2);
-  assert.equal(ui.get("create-subject").disabled, true);
-  assert.equal(ui.get("create-body").disabled, true);
-  release(); await Promise.all([first, second]);
-  assert.equal(ui.get("create-subject").disabled, false);
-  assert.equal(ui.get("create-body").disabled, false);
-});
-
-test("empty body validation focuses the field and never calls create", async () => {
-  let calls = 0;
-  const client = { ...createInMemoryAnalysisClient(), async createAnalysis() { calls++; } };
-  const { ui } = setup(client);
-  await ui.get("create-form").fire("submit");
-  assert.equal(calls, 0);
-  assert.equal(ui.get("create-body").focused, true);
-  assert.match(ui.get("crud-status").textContent, /required|Enter/i);
+  release();
+  assert.equal((await first).body, input.body);
+  assert.equal((await base.listAnalyses())[0].body, input.body);
 });
 
 test("an unavailable refresh preserves the last loaded records", async () => {

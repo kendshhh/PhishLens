@@ -24,7 +24,7 @@ class ExtensionAssetValidationTests(unittest.TestCase):
         )
         self.extension = self.root / "extension"
         for asset in (
-            "popup.html", "css/popup.css", "js/popup.js", "js/config.js",
+            "popup.html", "css/popup.css", "js/popup.js", "js/ghost.js", "js/config.js",
             "js/api.js", "js/history.js", "background.js", "popup.js", "popup.css",
             "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
             "js/account-session.js", "js/account-ui.js", "js/account-popup.js",

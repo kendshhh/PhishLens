@@ -15,8 +15,8 @@ const evidencePath = path.join(root, "output", "extension", "browser-acceptance.
 const screenshotDirectory = path.join(root, "output", "extension", "browser-evidence");
 const expectedTests = [
   "packaged side-panel page loads synthetic history in the browser",
-  "toolbar button is configured to open the side panel as a secondary entry point",
-  "right-click selection opens the action popup with the highlighted text",
+  "toolbar button is configured to open the side panel",
+  "right-click handler delivers selected text through the shared side-panel UI",
   "synthetic analysis shows a clearly labeled local result or readable error",
   "local scan saves once and keeps its title and save marker after popup reload",
   "Clear during a local scan prevents a stale result from returning",
@@ -38,8 +38,7 @@ const evidence = {
   source_commit: sourceCommit ?? "unknown",
   tested_commit: testedCommit ?? "unknown",
   environment: "isolated synthetic browser",
-  scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. A test-only verified mock session is injected into the disposable copy; this does not verify live authentication. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, and synthetic saved-report CRUD. Native context-menu behavior is covered by extension unit tests; no real provider or production data is used.",
-  scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. A test-only verified mock session is injected into the disposable copy; this does not verify live authentication. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, synthetic saved-report CRUD, a provider-backed response fixture, and controlled create/history failures. The response fixtures and failures are synthetic substitutes; no real provider, confirmed staging API, or production data is used.",
+  scope: "The exact packaged extension archive is unpacked into a disposable browser profile and checked against its SHA-256 sidecar. Playwright uses bundled Chromium and falls back to installed Edge on Windows when bundled Chromium cannot launch. The API origin/host permission are redirected only to a local synthetic server. A test-only verified mock session is injected into the disposable copy; this does not verify live authentication. Browser tests cover local-scan presentation, a test-only delayed stale completion through the production Clear handler, synthetic saved-report CRUD, a provider-backed response fixture, and controlled create/history failures. Unit tests cover native context-menu panel opening. The response fixtures and failures are synthetic substitutes; no real provider, confirmed staging API, or production data is used.",
   synthetic_substitutes_only: true,
   tests: [],
   screenshots: [],
@@ -118,6 +117,12 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.url === "/analyses" && request.method === "POST") {
+    if (providerFailure) sendJson(response, 503, { detail: "Synthetic provider unavailable" });
+    else sendJson(response, 200, { classification: "phishing", model_alert: true, mode: "tfidf", model_revision: MODEL_SHA256 });
+    return;
+  }
+
   if (request.url === "/api/analyses" && request.method === "GET") {
     if (historyMode === "error") {
       sendJson(response, 503, { detail: "Synthetic history failure" });
@@ -150,7 +155,7 @@ const server = createServer(async (request, response) => {
         : structuredClone(seededRecord.analysis_provenance),
     };
     if (analysisMode === "real") {
-      record.prediction = "spam";
+      record.prediction = "phishing";
       record.confidence = 0.87;
       record.risk_level = "high";
       record.explanation = "Synthetic provider fixture explanation for browser acceptance only.";
@@ -324,12 +329,24 @@ async function setState(baseUrl, state) {
   assert.equal(response.status, 200);
 }
 
-async function openCreatePanel(page) {
-  if (!(await page.locator("#reports-view").isVisible())) await page.locator("#show-reports").click();
-  const panel = page.locator("#server-create");
-  if (!(await panel.evaluate(element => element.open))) {
-    await panel.locator(":scope > summary").click();
-  }
+async function openScanEditor(page) {
+  if (!(await page.locator("#check-view").isVisible())) await page.locator("#show-check").click();
+  await page.locator("#scan-editor").evaluate(editor => { editor.open = true; });
+}
+
+async function checkOnServer(page, body, subject = "") {
+  await openScanEditor(page);
+  await page.locator("#scan-subject").fill(subject);
+  await page.locator("#scan-body").fill(body);
+  await page.evaluate(() => chrome.storage.session.set({ phishlensDebugFailNext: true }));
+  await page.locator("#scan-button").click();
+  await page.locator("#server-fallback-button").click();
+}
+
+async function saveCheckedEmail(page) {
+  await page.locator("#result-state").waitFor({ state: "visible" });
+  await page.locator("#save-panel > summary").click();
+  await page.locator("#save-report").click();
 }
 
 async function run() {
@@ -421,8 +438,14 @@ async function run() {
     await page.locator("#empty-state").waitFor({ state: "visible" });
     const panelBehavior = await worker.evaluate(async () => chrome.sidePanel.getPanelBehavior());
     assert.equal(panelBehavior.openPanelOnActionClick, true);
-    evidence.tests.push("toolbar button is configured to open the side panel as a secondary entry point");
+    evidence.tests.push("toolbar button is configured to open the side panel");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    for (const width of [320, 380, 460]) {
+      await page.setViewportSize({ width, height: 600 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      assert.equal(await page.locator('#check-view textarea:visible').count(), 1);
+    }
+    await page.setViewportSize({ width: 380, height: 600 });
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-check.png") });
     await page.locator("#personal-reports:not(.hidden)").waitFor({ state: "attached" });
     await page.locator("#show-reports").click();
@@ -459,7 +482,7 @@ async function run() {
     }, undefined, { timeout: 120000 });
     if (await page.locator("#result-state").isVisible()) {
       const label = (await page.locator("#classification").textContent()).trim();
-      assert.match(label, /Suspicious|No strong warning signs|Uncertain/i);
+      assert.match(label, /^(Suspicious — review before acting|No strong warning signs|Uncertain — check before acting)$/);
       evidence.local_analysis_outcome = label;
     } else {
       const message = (await page.locator("#error-message").textContent()).trim();
@@ -470,6 +493,7 @@ async function run() {
 
     assert.equal(await page.locator("#result-state").isVisible(), true, "Packaged TF-IDF scan must produce a local result, including uncertainty");
     assert.equal(await page.locator("#selection-content").textContent(), formattedSelection);
+    await page.locator("#selection-preview > summary").click();
     const preview = await page.locator("#selection-content").evaluate(element => {
       element.scrollTop = 100;
       const result = { height: element.getBoundingClientRect().height, scroll: element.scrollTop,
@@ -478,30 +502,15 @@ async function run() {
     });
     assert.ok(preview.height <= 150 && preview.overflows && preview.scroll > 0, 'Selection preview must retain its height and scroll vertically');
     assert.equal(preview.whitespace, 'break-spaces');
-    // Primary flow: the right-click handler opens the real action popup even though the
-    // toolbar button is configured for the side panel.
-    const popupContexts = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ['POPUP'] }));
-    assert.ok(popupContexts.length > 0, 'The selection handler must open the real Chrome action popup');
-    evidence.popup_document_urls = popupContexts.map(context => new URL(context.documentUrl).pathname + new URL(context.documentUrl).search);
-    // A configured popup takes priority over openPanelOnActionClick. After the right-click
-    // popup has opened, no popup may remain configured, so the toolbar opens the side panel.
     const toolbarState = await worker.evaluate(async tabId => ({
       tab_popup: await chrome.action.getPopup({ tabId }),
       global_popup: await chrome.action.getPopup({}),
       open_panel_on_action_click: (await chrome.sidePanel.getPanelBehavior()).openPanelOnActionClick,
+      popup_count: (await chrome.runtime.getContexts({ contextTypes: ['POPUP'] })).length,
     }), sourceTab.id);
-    assert.deepEqual(toolbarState, { tab_popup: '', global_popup: '', open_panel_on_action_click: true },
-      'After right-click, the toolbar must have no popup configured so it opens the side panel');
+    assert.deepEqual(toolbarState, { tab_popup: '', global_popup: '', open_panel_on_action_click: true, popup_count: 0 });
     evidence.toolbar_state_after_right_click = toolbarState;
-    const popupView = await page.evaluate(() => {
-      const view = chrome.extension.getViews({ type: 'popup' })[0];
-      return view && { surface: view.document.documentElement.classList.contains('popup-surface'),
-        width: Math.round(view.document.body.getBoundingClientRect().width) };
-    });
-    assert.deepEqual(popupView, { surface: true, width: 380 }, 'The action popup must keep its fixed popup layout');
-    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('popup-surface')), false,
-      'Non-popup surfaces such as the side panel use the fluid layout');
-    evidence.tests.push("right-click selection opens the action popup with the highlighted text");
+    evidence.tests.push("right-click handler delivers selected text through the shared side-panel UI");
     await page.bringToFront();
     await sourcePage.close();
     await page.evaluate(() => scrollTo(0, 0));
@@ -509,6 +518,7 @@ async function run() {
     await page.locator("#classification").focus();
     await page.locator("#result-state").evaluate(element => element.scrollIntoView({ block: "start" }));
     await page.screenshot({ path: path.join(root, "output", "extension", "ui-result.png") });
+    await page.locator("#save-panel > summary").click();
     await page.locator("#report-subject").fill("Synthetic local scan report");
     await page.locator("#save-consent").check();
     await page.locator("#save-report").click();
@@ -558,7 +568,7 @@ async function run() {
     await page.locator("#result-state").waitFor({ state: "visible", timeout: 120000 });
     assert.equal(await page.locator("#selection-content").textContent(), "Synthetic delayed scan");
 
-    await page.locator("#paste-panel > summary").click();
+    await openScanEditor(page);
     const pastedText = "Synthetic pasted email:\n\n  Review\tthe meeting agenda.\n\nRegards,\n  Sender";
     await page.locator("#scan-body").fill(pastedText);
     await page.evaluate(() => chrome.storage.session.set({ phishlensDebugFailNext: true }));
@@ -569,11 +579,8 @@ async function run() {
     assert.equal(await page.locator("#selection-content").textContent(), pastedText);
     evidence.tests.push("Cancel retains the selection and retry recovers from a controlled local failure");
 
-    await page.locator("#show-reports").click();
-    await page.locator("#server-create > summary").click();
-    await page.locator("#create-subject").fill("Synthetic browser CRUD");
-    await page.locator("#create-body").fill("Synthetic browser acceptance. No personal data or credentials.");
-    await page.locator("#create-button").click();
+    await checkOnServer(page, "Synthetic browser acceptance. No personal data or credentials.", "Synthetic browser CRUD");
+    await saveCheckedEmail(page);
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     assert.equal(await page.locator("#detail-content").getByText("Synthetic browser CRUD").count(), 1);
     assert.equal(await page.evaluate(() => document.activeElement?.id), "detail-heading");
@@ -741,16 +748,14 @@ async function run() {
 
     await setState(apiOrigin, { historyMode: "seeded", analysisMode: "real", providerFailure: false });
     const providerFixtureSubject = "Synthetic provider fixture <img src=x>";
-    await page.locator("#server-create > summary").click();
-    await page.locator("#create-subject").fill(providerFixtureSubject);
-    await page.locator("#create-body").fill(
-      "Synthetic email only: an example.invalid notice asks for review. No person, account, or credential is real."
-    );
-    await page.locator("#create-button").click();
+    await checkOnServer(page,
+      "Synthetic email only: an example.invalid notice asks for review. No person, account, or credential is real.",
+      providerFixtureSubject);
+    await saveCheckedEmail(page);
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     const providerDetail = page.locator("#detail-content");
     await page.locator("#detail-heading").getByText(providerFixtureSubject, { exact: true }).waitFor();
-    assert.match(await providerDetail.textContent(), /Spam/);
+    assert.match(await providerDetail.textContent(), /Phishing/);
     assert.match(await providerDetail.textContent(), /Synthetic provider fixture explanation/);
     await providerDetail.locator("details").filter({ hasText: "About this result" }).locator("summary").click();
     assert.match(await providerDetail.innerText(), /Automated analysis recorded when saved/);
@@ -781,37 +786,27 @@ async function run() {
     await page.close();
     page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
-    await page.locator("#clear-button").click();
-    await page.locator("#show-reports").click();
-    await page.locator("#server-create > summary").click();
+    await page.locator("#empty-state").waitFor({ state: "visible" });
+    assert.equal(await page.locator("#result-state").isVisible(), false);
     await setState(apiOrigin, { providerFailure: true });
-    const failedSubject = "Synthetic controlled provider failure";
     const failedBody = "Synthetic email retained after a simulated provider outage.";
     const recordsBeforeFailure = records.size;
-    await openCreatePanel(page);
-    await page.locator("#create-subject").fill(failedSubject);
-    await page.locator("#create-body").fill(failedBody);
-    await page.locator("#create-button").click();
-    await page.locator("#crud-status").getByText(/Could not save analysis: Synthetic provider unavailable/).waitFor();
-    assert.equal(await page.locator("#create-subject").inputValue(), failedSubject);
-    assert.equal(await page.locator("#create-body").inputValue(), failedBody);
-    assert.equal(await page.locator("#detail-panel").isVisible(), false);
+    await checkOnServer(page, failedBody);
+    await page.locator("#error-message").waitFor({ state: "visible" });
+    assert.match(await page.locator("#error-message").textContent(), /Server screening is unavailable/);
+    assert.equal(await page.locator("#result-state").isVisible(), false);
+    assert.equal(await page.locator("#scan-body").inputValue(), failedBody);
     assert.equal(await page.locator("#detail-panel").isVisible(), false,
       "A failed request must not invent an analysis result");
     assert.equal(records.size, recordsBeforeFailure, "A failed synthetic provider call must not create a record");
     await captureScreenshot(page, "03-synthetic-provider-failure-preserves-input.png");
     evidence.tests.push("controlled provider failure preserves input without showing a verdict");
 
-    // After a save, the popup shows the history-refresh error first and then loads the new
-    // report's detail in a separate request. Delay that read so the ordering is always exercised.
+    // A successful save still opens the report when history refresh fails.
     await setState(apiOrigin, { providerFailure: false, historyMode: "error", analysisMode: "real", detailDelayMs: 1500 });
     const historyFailureSubject = "Synthetic history refresh failure";
-    await openCreatePanel(page);
-    await page.locator("#create-subject").fill(historyFailureSubject);
-    await page.locator("#create-body").fill("Synthetic provider-backed record with a controlled history refresh error.");
-    await page.locator("#create-button").click();
-    await page.locator("#crud-status").getByText(/Saved reports are temporarily unavailable/).waitFor();
-    // The detail read finishes after the history error is shown; wait for this report's detail.
+    await checkOnServer(page, "Synthetic provider-backed record with a controlled history refresh error.", historyFailureSubject);
+    await saveCheckedEmail(page);
     await page.locator("#detail-panel").waitFor({ state: "visible" });
     await page.locator("#detail-heading").getByText(historyFailureSubject, { exact: true }).waitFor();
     assert.equal(await page.locator("#detail-panel").isVisible(), true,

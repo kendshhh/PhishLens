@@ -25,6 +25,7 @@ let authOrigin = 'https://bridge-auth.example.test';
 let authUrl = authOrigin + '/neondb/auth';
 const archive = process.env.PHISHLENS_AUTH_TEST_ARCHIVE;
 let archiveHash, sourceCommit;
+let stagingOnlyPackage = false;
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
 const publicJwk = publicKey.export({ format: 'jwk' });
 const temporary = await mkdtemp(path.join(os.tmpdir(), 'phishlens-auth-bridge-'));
@@ -46,9 +47,11 @@ with ZipFile(sys.argv[1]) as package:
     package.extractall(target)
 `, archive, extension]);
     const configSource = await readFile(path.join(extension, 'js/auth-config.js'), 'utf8');
-    const config = configSource.startsWith('export const AUTH_CONFIGS = Object.freeze(')
-      ? JSON.parse(configSource.split('\n')[0].slice('export const AUTH_CONFIGS = Object.freeze('.length, -2)).staging
-      : JSON.parse(configSource.replace(/^export const AUTH_CONFIG = /, '').replace(/;\s*$/, ''));
+    const format = 'export const AUTH_CONFIGS = Object.freeze(';
+    stagingOnlyPackage = !configSource.startsWith(format);
+    const config = stagingOnlyPackage
+      ? JSON.parse(configSource.replace(/^export const AUTH_CONFIG = /, '').replace(/;\s*$/, ''))
+      : JSON.parse(configSource.split('\n')[0].slice(format.length, -2)).staging;
     assert.equal(config.transport, 'https-bridge');
     apiOrigin = config.apiOrigin;
     assert.equal(apiOrigin, 'https://phishlens-staging.onrender.com');
@@ -109,6 +112,8 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   const users = new Map();
   let failLogout = false;
   let authRequests = 0, apiRequests = 0;
+  let bridgeProbes = 0;
+  let signupRequests = 0;
   const apiStatuses = [];
   const unknownOrigins = [], pageErrors = [];
   function token(user) {
@@ -125,6 +130,16 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.route(/^https?:\/\//, async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin === apiOrigin) {
+      if (url.pathname === '/auth/bridge' && bridgeProbes < 2) {
+        assert.equal(request.method(), 'GET');
+        assert.equal(request.postData(), null);
+        assert.equal(request.headers().cookie, undefined);
+        if (++bridgeProbes === 1) {
+          return route.fulfill({ contentType: 'text/html', body: '<html>Render is starting</html>' });
+        }
+        await new Promise(resolve => setTimeout(resolve, 12000));
+        assert.equal(authRequests, 0, 'No Auth request may leave the extension before the real bridge loads');
+      }
       apiRequests++;
       const response = await new Promise((resolve, reject) => {
         const forwarded = httpRequest(localOrigin + url.pathname + url.search, {
@@ -144,6 +159,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     }
     if (url.origin !== authOrigin) { unknownOrigins.push(url.origin); return route.abort(); }
     authRequests++;
+    if (request.method() === 'POST' && url.pathname.endsWith('/sign-up/email')) signupRequests++;
     // This assertion catches any regression back to chrome-extension:// Origin.
     assert.equal(request.headers().origin, apiOrigin);
     const headers = { 'access-control-allow-origin': apiOrigin, 'access-control-allow-credentials': 'true',
@@ -189,9 +205,10 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   });
   page.on('requestfailed', request => console.error('Failed request:', new URL(request.url()).pathname, request.failure()?.errorText));
   page.on('pageerror', error => pageErrors.push(error.message));
-  const popupUrl = `chrome-extension://${id}/popup.html?environment=staging`;
+  const popupUrl = `chrome-extension://${id}/popup.html${stagingOnlyPackage ? '' : '?environment=staging'}`;
   await page.goto(popupUrl);
   await page.locator('#show-account').waitFor({ state: 'visible' });
+  await page.locator('#scan-body').waitFor({ state: 'visible' });
   await page.locator('#show-account').click();
   try { await page.locator('#account-panel').waitFor({ state: 'visible', timeout: 5000 }); }
   catch (error) {
@@ -210,7 +227,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     await page.locator('#signup-email').fill(email);
     await page.locator('#signup-password').fill(password);
     await page.locator('#account-sign-up button[type=submit]').click();
-    await page.locator('#account-sign-out').waitFor({ state: 'visible', timeout: 15000 });
+    await page.locator('#account-sign-out').waitFor({ state: 'visible', timeout: 30000 });
   }
   async function signIn(email, secret = password) {
     await page.locator('#account-email').fill(email);
@@ -218,6 +235,9 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     await page.locator('#account-sign-in button[type=submit]').click();
   }
   await register(emailA);
+  assert.equal(bridgeProbes, 2);
+  assert.equal(signupRequests, 1);
+  checks.push('bridge waits through a Render loading page and slow startup, then submits once');
   await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await signIn(emailA, 'Wrong-password');
@@ -261,10 +281,11 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await openRestoredAccount(page);
   checks.push('wrong password sanitized; cookie session restored after popup reload');
   await page.locator('#close-account').click();
-  await page.locator('#paste-panel > summary').click();
+  await page.locator('#scan-editor').evaluate(editor => { editor.open = true; });
   await page.locator('#scan-body').fill('Synthetic pasted email. Please review the meeting agenda.');
   await page.locator('#scan-button').click();
   await page.locator('#result-state').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('#save-panel > summary').click();
   await page.locator('#report-subject').fill('Saved from the actual Save report button');
   await page.locator('#save-consent').check();
   await page.locator('#save-report').click();
@@ -281,11 +302,45 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#confirm-delete').click();
   await page.locator('#detail-panel').waitFor({ state: 'hidden' });
   checks.push('actual Save report, detail, edit and deletion persisted through FastAPI to PostgreSQL');
+  await page.locator('#show-check').click();
+  const sample = 'Your account will be closed today. Confirm your password at https://account-check.example/verify to keep access.';
+  await page.locator('#scan-editor').evaluate(editor => { editor.open = true; });
+  await page.locator('#scan-body').fill(sample);
+  await page.locator('#scan-button').click();
+  await page.locator('#result-state').waitFor({ state: 'visible', timeout: 120000 });
+  assert.equal(await page.locator('#classification').textContent(), 'Uncertain — check before acting');
+  assert.equal(await page.locator('#result-state').getAttribute('data-tone'), 'uncertain');
+  assert.match(await page.locator('#assessment').textContent(), /Local review incomplete/);
+  assert.equal(await page.locator('#review-state').textContent(), 'Initial screening flagged this email as phishing.');
+  await page.locator('#ghost[data-mood=curious]').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#result-state #ghost').count(), 0);
+  assert.equal(await page.locator('#ghost').evaluate(ghost => getComputedStyle(ghost).position), 'fixed');
+  const ghostAnimation = () => page.locator('#ghost .ghost-body').evaluate(ghost => getComputedStyle(ghost).animationName);
+  assert.match(await ghostAnimation(), /ghost-float/);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(await ghostAnimation(), 'none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  checks.push('missing local model yields an uncertain verdict and the floating mascot respects reduced motion');
+  await page.locator('#scan-editor').evaluate(editor => { editor.open = true; });
+  assert.equal(await page.locator('#server-fallback-button').isVisible(), false);
+  await page.locator('#scan-subject').fill('Bridge synthetic report');
+  await page.evaluate(() => chrome.storage.session.set({ phishlensDebugFailNext: true }));
+  await page.locator('#scan-button').click();
+  await page.locator('#server-fallback-help').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#server-fallback-help').textContent(), /Send the body/);
+  await page.locator('#server-fallback-button').click();
+  await page.getByText('Server screening', { exact: true }).waitFor();
+  assert.equal(await page.locator('#classification:visible').count(), 1);
+  assert.equal(await page.locator('#classification').textContent(), 'Phishing');
+  assert.equal(await page.locator('#result-state').getAttribute('data-tone'), 'suspicious');
+  await page.locator('#ghost[data-mood=shocked]').waitFor({ state: 'visible' });
   await page.locator('#show-reports').click();
-  await page.locator('#server-create').evaluate(element => { element.open = true; });
-  await page.locator('#create-subject').fill('Bridge synthetic report');
-  await page.locator('#create-body').fill('Please review the synthetic meeting agenda for tomorrow.');
-  await page.locator('#create-button').click();
+  await page.locator('#empty').waitFor({ state: 'visible' });
+  checks.push('initial local screening and FastAPI both flagged the sample; server screening saved nothing');
+
+  await page.locator('#show-check').click();
+  await page.locator('#save-panel > summary').click();
+  await page.locator('#save-report').click();
   await page.locator('#detail-panel').waitFor({ state: 'visible', timeout: 30000 });
   await verifyVisibleProvenance(page);
   const reportId = await page.evaluate(async ({ apiOrigin }) => {
@@ -296,8 +351,11 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     const reports = await integration.createClient(session).listAnalyses();
     return reports[0].id;
   }, { apiOrigin });
-  checks.push('actual extension Analyze and save reached signed-JWT backend and local PostgreSQL');
+  assert.match(await page.locator('#detail-content').textContent(), /Phishing/);
+  checks.push('explicit server result save kept the classification and reached PostgreSQL');
   await page.locator('#show-account').click();
+  assert.equal(await page.locator('#signed-in-email').textContent(), emailA);
+  assert.equal(await page.locator('#show-account').getAttribute('aria-expanded'), 'true');
   await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await register(emailB);

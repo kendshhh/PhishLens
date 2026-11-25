@@ -105,7 +105,7 @@ try {
   }, record.body);
   await page.locator('#result-state').waitFor({ state: 'visible' });
   assert.equal(requests.length, 0);
-  assert.match(await page.locator('#classification').innerText(), /Suspicious|No strong warning signs|Uncertain/);
+  assert.match(await page.locator('#classification').innerText(), /Suspicious — review before acting|No strong warning signs|Uncertain — check before acting/);
   assert.doesNotMatch(await page.locator('#result-state').innerText(), /undefined|NaN/);
   check('Actual service worker scans locally and the side-panel page displays a labeled result');
   const out = path.join(root, 'output/tfidf-integration-20261029');
@@ -172,14 +172,12 @@ try {
     return seen;
   };
   evidence.keyboard_tab_order = { check_email: await tabCycle('Check email view') };
-  await tabUntil(focused => focused.tag === 'summary' && /paste email text/i.test(focused.name));
-  await page.keyboard.press('Enter');
   await tabUntil(focused => focused.id === 'scan-body');
   await page.keyboard.type('Synthetic keyboard check: please review the attached agenda before Friday.');
   await tabUntil(focused => focused.id === 'scan-button');
   await page.keyboard.press('Enter');
   await page.locator('#result-state').waitFor({ state: 'visible' });
-  assert.match(await page.locator('#classification').innerText(), /Suspicious|No strong warning signs|Uncertain/);
+  assert.match(await page.locator('#classification').innerText(), /Suspicious — review before acting|No strong warning signs|Uncertain — check before acting/);
   assert.doesNotMatch(await page.locator('#classification').innerText(), /\b(safe|genuine|legitimate)\b/i,
     'A local result must never be presented as a safe verdict');
   assert.equal(requests.length, 0);

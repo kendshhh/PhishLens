@@ -464,10 +464,17 @@ export async function openRestoredAccount(reportPage) {
 }
 
 async function createReport(subject, owner) {
-  await page.locator('#server-create > summary').click();
-  await page.locator('#create-subject').fill(subject);
-  await page.locator('#create-body').fill(`Synthetic release acceptance message ${owner}. No personal data, credentials, or live message content.`);
-  await page.locator('#create-button').click();
+  await page.locator('#show-check').click();
+  await page.locator('#scan-editor').evaluate(editor => { editor.open = true; });
+  await page.locator('#scan-subject').fill(subject);
+  await page.locator('#scan-body').fill(`Synthetic release acceptance message ${owner}. No personal data, credentials, or live message content.`);
+  await page.evaluate(() => chrome.storage.session.set({ phishlensDebugFailNext: true }));
+  await page.locator('#scan-button').click();
+  await page.locator('#server-fallback-button').click();
+  await page.locator('#result-state').waitFor({ state: 'visible' });
+  assert.equal(createdIds.has(owner), false, 'Server screening must not submit a report');
+  await page.locator('#save-panel > summary').click();
+  await page.locator('#save-report').click();
   await page.locator('#detail-panel').waitFor({ state: 'visible', timeout: 60000 });
   for (let attempt = 0; attempt < 50 && !createdIds.has(owner); attempt++) {
     await new Promise(resolve => setTimeout(resolve, 100));

@@ -52,6 +52,22 @@ test('compact judge output expands to complete English without changing its audi
   assert.equal(unsupported.audit, 'unsupported');
   assert.throws(() => validateJudge(JSON.stringify({ a: 's', q: 'q0', r: 'W' }), primary));
 });
+test('the judge can cite an explicit request to confirm a password at a web address', async () => {
+  const primary = await analyze('Your account will be closed today. Confirm your password at https://account-check.example/verify to keep access.');
+  const [quote] = quoteOptions(primary);
+  assert.equal(quote.quote, 'Confirm your password');
+  const judge = validateJudge(JSON.stringify({ r: 'P', q: quote.id }), primary);
+  const reevaluate = createReevaluator({ fetchImpl: files, getBasis: () => analyze.getAssets() });
+  assert.equal(releaseWorkflow(primary, judge, await reevaluate(primary)).verdict, 'suspicious');
+  for (const text of [
+    'Never confirm your password at https://account-check.example/verify.',
+    'Phishing example: Confirm your password at https://account-check.example/verify.',
+    'Confirm your password was changed.',
+  ]) {
+    assert.ok((await analyze(text)).evidence.every(item => item.type !== 'sensitive'), text);
+  }
+});
+
 test('cancellation before judge start performs no further model calls', async () => {
   let called = false;
   const scan = createWorkflow({ analyze: async () => primary, judge: async () => { called = true; }, evaluateAgain: async () => [] });
