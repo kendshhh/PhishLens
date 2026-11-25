@@ -40,6 +40,8 @@ class DeploymentTests(unittest.TestCase):
             "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
             "SECRETARY_STAGING_DB_HOST": "staging.invalid",
             "SECRETARY_PRODUCTION_DB_HOST": "production.invalid",
+            "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            "STAGING_AUTH_DATABASE": "phishlens_dev",
         }, clear=True)
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -91,7 +93,7 @@ class DeploymentTests(unittest.TestCase):
                 },
             },
         }
-        env_vars = render_staging_environment_rows()
+        env_vars = render_staging_environment_rows(REPORT_AUTH_MODE="neon")
         return [service, env_vars]
 
     def test_exact_commit_deployed_and_verified(self):
@@ -196,15 +198,14 @@ class DeploymentTests(unittest.TestCase):
         hosted = workflow.split("  hosted-staging:\n", 1)[1]
 
         self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertTrue(
-            "STAGING_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}" in hosted
-            or "STAGING_EXPECTED_BACKEND_SHA: ${{ github.event.pull_request.head.sha }}" in hosted,
-            "Hosted staging must bind its expected backend SHA to the current PR head.",
-        )
+        self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
         self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", hosted)
-        self.assertNotIn("STAGING_EXPECTED_SHA: ${{ github.sha }}", hosted)
-        self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
+        self.assertIn("RELEASE_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
+        self.assertIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
+        self.assertIn("EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
+        self.assertNotIn("EXPECTED_SHA: ${{ github.sha }}", hosted)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", hosted)
+        self.assertIn("from scripts.deploy_staging import live_pr_matches, requested_pr_identity", hosted)
         self.assertIn("from scripts.secretary.github_api import APIError, ReadOnlyGitHub", hosted)
         self.assertIn("hosted-migration-lineage.outputs.head", workflow)
 

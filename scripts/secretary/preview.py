@@ -16,7 +16,7 @@ from urllib.parse import quote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .core import application_change
-from .github_api import GitHub, ReadOnlyGitHub
+from .github_api import GitHub, PinnedExtensionGitHub, ReadOnlyGitHub
 from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +24,7 @@ ASSETS = ("manifest.json", "popup.html", "popup.js", "popup.css", "background.js
           "css/popup.css", "js/config.js", "js/api.js", "js/history.js", "js/popup.js")
 ACCOUNT_UI_ASSETS = ("js/account-popup.js", "js/account-session.js", "js/account-ui.js")
 NEON_AUTH_ASSETS = (
+    "js/neon-bridge-client.js",
     "js/neon-integration.js", "js/neon-accounts.js", "js/auth-config.js",
     "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
 )
@@ -113,20 +114,32 @@ def verify_service(service, config):
         raise RuntimeError("Unexpected staging startup command")
 
 
+def normalize_neon_host(host):
+    """Treat Neon pooled and direct endpoint names as the same branch host."""
+    host = str(host or "").strip().rstrip(".").lower()
+    return re.sub(r"-pooler(?=\.)", "", host)
+
+
 def verify_environment(rows, *, require_authenticated=False):
     values = {row["envVar"]["key"]: row["envVar"]["value"] for row in rows}
     expected = os.getenv("SECRETARY_STAGING_DB_HOST", "")
     production = os.getenv("SECRETARY_PRODUCTION_DB_HOST", "")
+    expected_host = normalize_neon_host(expected)
+    production_host = normalize_neon_host(production)
     database = urlsplit(values.get("DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     migration = urlsplit(values.get("STAGING_MIGRATION_DATABASE_URL", "").replace("postgresql+psycopg://", "postgresql://"))
     app_role = values.get("STAGING_APP_DATABASE_ROLE", "")
-    if not expected or not production or expected == production:
+    if not expected_host or not production_host or expected_host == production_host:
         raise RuntimeError("Declare distinct staging and production database hosts privately in environment variables")
-    if database.hostname != expected or database.path != "/phishlens_dev" or values.get("STAGING_DATABASE_HOST") != expected:
+    if (normalize_neon_host(database.hostname) != expected_host
+            or database.path != "/phishlens_dev"
+            or normalize_neon_host(values.get("STAGING_DATABASE_HOST")) != expected_host):
         raise RuntimeError("Staging database host/name does not match the isolated allowlist")
     if database.username != app_role or app_role != "phishlens_staging_app":
         raise RuntimeError("Staging runtime must use the phishlens_staging_app role")
-    if migration.hostname != expected or migration.path != "/phishlens_dev" or migration.username != "neondb_owner":
+    if (normalize_neon_host(migration.hostname) != expected_host
+            or migration.path != "/phishlens_dev"
+            or migration.username != "neondb_owner"):
         raise RuntimeError("Staging migration credential must target the isolated branch with the owner role")
     if migration.username == database.username:
         raise RuntimeError("Staging migration and runtime credentials must use separate roles")
@@ -140,6 +153,29 @@ def verify_environment(rows, *, require_authenticated=False):
             "Hosted staging requires explicit REPORT_AUTH_MODE=neon; demo mode "
             "cannot satisfy authenticated acceptance"
         )
+    if require_authenticated:
+        expected_auth_url = os.getenv("STAGING_AUTH_URL", "").strip().rstrip("/")
+        expected_auth_database = os.getenv("STAGING_AUTH_DATABASE", "").strip()
+        configured_auth_url = values.get("NEON_AUTH_BASE_URL", "").strip().rstrip("/")
+        parsed_auth_url = urlsplit(expected_auth_url)
+        if (
+            not expected_auth_database
+            or parsed_auth_url.scheme != "https"
+            or not parsed_auth_url.hostname
+            or parsed_auth_url.username
+            or parsed_auth_url.password
+            or parsed_auth_url.port is not None
+            or parsed_auth_url.query
+            or parsed_auth_url.fragment
+            or ".neonauth." not in parsed_auth_url.hostname
+            or not parsed_auth_url.hostname.endswith(".aws.neon.tech")
+            or parsed_auth_url.path != f"/{expected_auth_database}/auth"
+        ):
+            raise RuntimeError("Hosted staging requires a valid isolated Neon Auth URL and database")
+        if configured_auth_url != expected_auth_url:
+            raise RuntimeError(
+                "Render staging Neon Auth URL does not match the isolated staging branch"
+            )
     return report_auth_mode
 
 
@@ -229,6 +265,12 @@ def verify_saved_report(origin, sha):
 
 
 def package(api, sha, number, config, output):
+    if isinstance(api, ReadOnlyGitHub):
+        api = PinnedExtensionGitHub(
+            repo=api.repo, token=api.token, sha=sha,
+            asset_limits={asset: ASSET_SIZE_LIMITS.get(asset, 512_000)
+                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS},
+        )
     files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
     worker = files["background.js"].decode()
     local_scanner = bool(re.search(
