@@ -20,9 +20,9 @@ DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
 
-# Pin hosted staging to the verified Neon endpoint. Updating this pin requires
-# a reviewed project/branch mapping; Render variables alone must not redirect
-# startup to another branch.
+# Pin hosted staging to the verified Neon endpoint. Updating this
+# pin requires a reviewed Neon project/branch mapping; Render variables alone
+# must not be able to redirect startup to production or another branch.
 STAGING_NEON_ENDPOINT_ID = "ep-winter-wind-a1y2r1db"
 STAGING_NEON_ENDPOINT_SUFFIX = ".ap-southeast-1.aws.neon.tech"
 STAGING_NEON_ENDPOINT_HOSTS = frozenset({
@@ -132,14 +132,34 @@ def _validate_effective_connection_identity(database: URL, name: str) -> None:
         )
 
 
-def validate_hosted_database_urls(runtime: URL, migration: URL, expected_host: str, app_role: str) -> None:
+def _normalized_neon_host(host: str) -> str:
+    return re.sub(r"-pooler(?=\.)", "", host.rstrip(".").lower())
+
+
+def validate_hosted_database_urls(
+    runtime: URL, migration: URL, expected_host: str, app_role: str,
+    production_host: str, staging_project_id: str, production_project_id: str,
+    staging_branch_id: str, production_branch_id: str,
+) -> None:
     """Reject production, owner-runtime, or mixed-branch staging credentials."""
     for name, database in (("runtime", runtime), ("migration", migration)):
         _validate_hosted_connection_query(database, name)
 
-    normalized_host = expected_host.rstrip(".").lower()
-    if normalized_host not in STAGING_NEON_ENDPOINT_HOSTS:
+    normalized_host = _normalized_neon_host(expected_host)
+    normalized_production_host = _normalized_neon_host(production_host)
+    if (expected_host.rstrip(".").lower() not in STAGING_NEON_ENDPOINT_HOSTS
+            or not normalized_production_host.startswith("ep-")
+            or not normalized_production_host.endswith(".aws.neon.tech")
+            or normalized_host == normalized_production_host):
         raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
+    if (not re.fullmatch(r"br-[a-z0-9-]{8,64}", staging_branch_id or "")
+            or not re.fullmatch(r"br-[a-z0-9-]{8,64}", production_branch_id or "")
+            or staging_branch_id == production_branch_id):
+        raise SystemExit("Hosted staging must use a distinct verified Neon branch ID.")
+    if (not re.fullmatch(r"[a-z0-9-]{8,64}", staging_project_id or "")
+            or not re.fullmatch(r"[a-z0-9-]{8,64}", production_project_id or "")
+            or staging_project_id == production_project_id):
+        raise SystemExit("Hosted staging must use a separate Neon project from production.")
     if app_role != "phishlens_staging_app":
         raise SystemExit("Hosted staging requires an isolated host and the phishlens_staging_app role.")
     if runtime.database != "phishlens_dev" or migration.database != "phishlens_dev":
@@ -166,12 +186,24 @@ def main():
     # Local disposable PostgreSQL needs no cloud host declaration. Hosted staging does.
     if os.getenv("RENDER"):
         expected_host = os.getenv("STAGING_DATABASE_HOST", "")
+        production_host = os.getenv("PRODUCTION_NEON_EXPECTED_HOST", "")
+        staging_project_id = os.getenv("STAGING_NEON_PROJECT_ID", "")
+        production_project_id = os.getenv("PRODUCTION_NEON_PROJECT_ID", "")
+        staging_branch_id = os.getenv("STAGING_NEON_BRANCH_ID", "")
+        production_branch_id = os.getenv("PRODUCTION_NEON_BRANCH_ID", "")
         if os.getenv("APP_ENV") != "staging":
             raise SystemExit("Hosted staging requires APP_ENV=staging before migrations.")
+        if _normalized_neon_host(expected_host) != _normalized_neon_host(
+                os.getenv("STAGING_NEON_EXPECTED_HOST", "")):
+            raise SystemExit("STAGING_DATABASE_HOST does not match the verified staging Neon branch endpoint.")
         if not migration_url:
             raise SystemExit("Hosted staging requires a separate STAGING_MIGRATION_DATABASE_URL.")
         app_role = os.getenv("STAGING_APP_DATABASE_ROLE", "").strip()
-        validate_hosted_database_urls(runtime_database, migration_database, expected_host, app_role)
+        validate_hosted_database_urls(
+            runtime_database, migration_database, expected_host, app_role,
+            production_host, staging_project_id, production_project_id,
+            staging_branch_id, production_branch_id,
+        )
         print("[staging] resolving IPv4 routes for the runtime database", flush=True)
         runtime_database = pin_ipv4_addresses(runtime_database)
         print("[staging] resolving IPv4 routes for the migration database", flush=True)

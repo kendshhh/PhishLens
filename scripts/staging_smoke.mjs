@@ -130,6 +130,8 @@ async function writeFailureSummary(error) {
             ? `HTTP ${currentStage.status}`
             : 'no HTTP response';
     const detail = redact(error instanceof Error ? error.message : String(error));
+    const errorCode = typeof error?.code === 'string' && /^[a-z0-9_]{1,64}$/i.test(error.code)
+        ? error.code : 'staging_smoke_error';
     const attempts = Number.isInteger(error?.attempts) ? ` (attempts: ${error.attempts})` : '';
     const entry = [
         '',
@@ -137,6 +139,7 @@ async function writeFailureSummary(error) {
         `- Stage: ${redact(currentStage.name)}`,
         `- Endpoint: \`${redact(endpoint)}\``,
         `- Final result: ${status}${attempts}`,
+        `- Error code: ${errorCode}`,
         `- Error: ${detail}`,
         `- Overall deadline: ${timeoutMs} ms`,
         '',
