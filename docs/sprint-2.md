@@ -1,5 +1,5 @@
 # Sprint 2 — independent work
-
+``
 October 20 Kendra implementation update: see the
 [work/evidence and interface audit](devops/sprint-2-work-2026-10-20.md).
 PR #52 is now merged through main; the CI guard and remote failure/repair drill
@@ -183,4 +183,18 @@ The Sprint 2 board was refreshed separately. The recap's retrospective bullets
 remain a proposal, not a team-approved retro. Original async standups, dated
 consultation attendance and individual presentations still require
 participant-sourced records. The recorded November 7 instructor feedback is a
-paraphrase only; no exact wording, score, or rubric entry is available.
+paraphrase only; no exact wording, score, or rubric entry is available.     
+## November 25 — Leyan’s installed-Chrome staging trial
+
+I tested the PR #258 extension package (`30743b0`) in installed Chrome using
+the explicit staging page. Sign-in, History loading, saving and opening a
+synthetic report, editing notes, persistence after reload, deletion, and the
+signed-out prompt passed. The two original reports remained after cleanup.
+
+The local scan returned Uncertain because Chrome could not run the local
+review model during this trial. The saved-report flow passed.
+
+The final #44/#45 verification remains open pending a staging backend and
+extension package built from the same agreed merged `main` commit.
+
+[Installed-Chrome trial evidence](https://github.com/kendshhh/PhishLens/issues/45#issuecomment-7154563125)
