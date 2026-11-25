@@ -40,8 +40,10 @@ CRITERIA = {
 PINNED_FILES = (
     "scripts/evaluate_tfidf_cohort.py", "backend/ai/service.py",
     "backend/ai/schemas.py", "backend/ai/tfidf_provider.py",
+    "backend/ai/context_policy.py", "docs/devops/release-quality-policy.json",
     "backend/ai/evaluation_cases.py", "backend/requirements.txt",
     "extension/ai/contract.json", "extension/ai/tfidf_v12a.json",
+    "extension/ai/local-analyzer.mjs", "extension/ai/core.mjs", "extension/ai/context-policy.mjs",
 )
 ID = re.compile(r"[a-z0-9][a-z0-9_.-]{0,79}", re.ASCII)
 SHA256 = re.compile(r"[0-9a-f]{64}", re.ASCII)

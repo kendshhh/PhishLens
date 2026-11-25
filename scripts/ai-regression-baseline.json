@@ -4,7 +4,7 @@
   "approved_date": "2026-11-18",
   "policy_reference": "https://github.com/kendshhh/PhishLens/issues/93#issuecomment-6891138424",
   "policy": "Every reviewed contract must pass exactly once with zero missing/failed/errored/skipped tests. Every development case must finish with valid output and zero external provider calls. This is not a model-quality threshold.",
-  "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+  "model_sha256": "adace5ad3cfb281a15b7bc85774ef158126800dc3f78c942f46547dfde33dc27",
   "development": {
     "caseset": "synthetic-v1",
     "cases": 40,

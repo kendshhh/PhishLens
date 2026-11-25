@@ -58,6 +58,7 @@ for asset in (
     "ai/contract.json",
     "ai/local-analyzer.mjs",
     "ai/core.mjs",
+    "ai/context-policy.mjs",
     "ai/observations.mjs",
     "ai/tfidf_v12a.json",
     "ai/ATTRIBUTION.md",

@@ -24,6 +24,15 @@ test('scores between 50% and 88.71% remain below frozen cutoff', () => {
   const p = mapScore(-.5, mapping);
   assert.ok(p > .5 && p < mapScore(0, mapping));
 });
+test('a credential request still raises context risk inside a registration notice', async () => {
+  const analyze = createLocalAnalyzer({ fetchImpl: files });
+  const notice = 'Welcome after registration. Confirm the email address you entered in the signup form.';
+  const routine = await analyze(notice);
+  const request = await analyze(notice + ' An unverified operator asks for your password by reply.');
+  assert.ok(routine.context_margin < 0);
+  assert.ok(request.context_margin > 0);
+  assert.equal(request.alert, true);
+});
 test('only packaged asset URLs are read and concurrent calls share one load', async () => {
   const requests = [];
   const analyze = createLocalAnalyzer({ fetchImpl: async url => { requests.push(url); return files(url); } });

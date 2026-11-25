@@ -56,7 +56,8 @@ export function createReevaluator({ getBasis = () => analyzeLocal.getAssets(), f
     if (!response.ok) throw Error('Reevaluator manifest is unavailable.');
     const manifest = await response.json();
     const { artifact, contract } = await getBasis();
-    if (manifest.basis_sha256 !== contract.model_sha256) throw Error('Reevaluators use a different TF-IDF basis.');
+    const basisSha256 = contract.feature_basis_sha256 ?? contract.model_sha256;
+    if (manifest.basis_sha256 !== basisSha256) throw Error('Reevaluators use a different TF-IDF basis.');
     const models = [];
     for (const kind of ['krr', 'lightgbm']) {
       const entry = manifest.models[kind];
@@ -67,7 +68,7 @@ export function createReevaluator({ getBasis = () => analyzeLocal.getAssets(), f
       const sha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(x => x.toString(16).padStart(2, '0')).join('');
       if (sha !== entry.sha256 || bytes.byteLength !== entry.bytes) throw Error('Reevaluator integrity check failed.');
       const model = JSON.parse(new TextDecoder().decode(bytes));
-      if (model.kind !== kind || model.basis_sha256 !== contract.model_sha256) throw Error('Reevaluator identity mismatch.');
+      if (model.kind !== kind || model.basis_sha256 !== basisSha256) throw Error('Reevaluator identity mismatch.');
       models.push({ model, sha256: sha });
     }
     return { artifact, models };

@@ -362,7 +362,7 @@ jobs:
         id: read-staging
         env:
           STAGING_URL: https://phishlens-staging.onrender.com
-          EXPECTED_MODEL_SHA: a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c
+          EXPECTED_MODEL_SHA: adace5ad3cfb281a15b7bc85774ef158126800dc3f78c942f46547dfde33dc27
         run: |
           python - <<'PY'
           import datetime as dt

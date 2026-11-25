@@ -60,6 +60,9 @@ def test_browser_python_arithmetic_parity_on_software_fixtures():
         "İSTANBUL meeting tomorrow with team.",
         "Meeting agenda " + "a" * 2500 + " the final agenda",
         "🔒 Your reference 1234567890. Call +1 (202) 555-0142.",
+        "The unverified operator wants you to continue by replying with the access code.",
+        "Welcome after registration. Confirm the email address you entered in the signup form.",
+        "An unknown integration requests permission to read and send email.",
     ]
     program = """
 import {readFileSync} from 'node:fs';
@@ -77,6 +80,7 @@ console.log(JSON.stringify(JSON.parse(data).map(text=>analyze({text},a,c))));
         assert py["input_truncated"] == js["input_truncated"]
         assert math.isclose(py["raw_margin"], js["raw_margin"], abs_tol=1e-12)
         assert math.isclose(py["score"], js["score"], abs_tol=1e-12)
+        assert math.isclose(py["context_margin"], js["context_margin"], abs_tol=1e-12)
         assert py["alert"] == js["alert"]
 
 
@@ -91,6 +95,7 @@ def test_model_info_requires_no_database(monkeypatch):
     with TestClient(main.app) as client:
         info = client.get("/model-info").json()
     assert info["accepts_tfidf_reports"] is True
+    assert info["accepts_local_reviews"] is True
     assert info["supports_required_provider"] is True
     assert info["model_sha256"] == MODEL_SHA256
 
