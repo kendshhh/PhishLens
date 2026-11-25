@@ -1,9 +1,10 @@
 # PhishLens architecture and environment map
 
-This describes the repository's current implementation as of 2026-11-14. It is
-not proof that every hosted service is running this revision. See the
-[deployment and acceptance status](devops/kendra-sprint-1-3-status-2026-11-14.md)
-for the latest verified limits.
+This is an architecture snapshot from 2026-11-14, not a claim that every hosted
+service uses the described workflow or runs this revision. For the current
+staging identity and release limits, see the
+[environment map](devops/environment-map-2026-11-21.md) and
+[staging release record](devops/release-record-2026-11-22.md).
 
 ## System boundary
 
@@ -39,7 +40,7 @@ checks an exact candidate SHA under the protected `staging` environment.
 | Environment | App / delivery | Database target | Status and boundary |
 | --- | --- | --- | --- |
 | Local development | Developer checkout; `.env` is ignored | Dedicated local/development target | `.env.example` documents app configuration without real values. Do not use hosted staging or production credentials locally. |
-| Staging | Render staging service; GitHub `staging` environment gates hosted workflow | Neon project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`; app/migration database `phishlens_dev`; Neon Auth database `neondb` | `.github/secretary.json` pins the protected branch, PostgreSQL endpoint, and Auth endpoint/database mapping. Render's runtime and migration credentials remain separately checked against `phishlens_dev` and their least-privilege roles before deployment. The former `pr-58-staging` target is historical. |
+| Staging | Render staging service; GitHub `staging` environment gates hosted workflow | Neon project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`; PostgreSQL endpoint `ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`; app/migration database `phishlens_dev`; Auth database `neondb` | `.github/secretary.json` pins the target used by the #251-based candidate. The exact-head Hosted staging run privately verified the Render mapping before deployment. The `phishlens-staging` / `staging-root` target in parallel PR #268 is not the target used by this candidate. |
 | Production | Render API; checked `main` auto-deploy | Neon `production` branch; production database name is `phishlens_dev` in the current read-only inventory | The live Render `DATABASE_URL` mapping was not freshly compared with Neon during this closeout. Verify target before writes or promotion. |
 
 The database name `phishlens_dev` is used on more than one branch. A database
