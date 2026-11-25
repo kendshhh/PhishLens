@@ -174,6 +174,53 @@ test('failed remote logout blocks restoration in a new popup until explicit sign
   assert.ok(await openPopup().restore());
 });
 
+test('sign-out remains unconfirmed when storage and remote logout fail, and can be retried', async t => {
+  let providerSession = true;
+  let providerUnavailable = true;
+  const sdk = {
+    async getSession() { return { data: providerSession ? session(jwt()) : null }; },
+    async signOut() {
+      if (providerUnavailable) return { error: { status: 503 } };
+      providerSession = false;
+      return { data: { success: true } };
+    }
+  };
+  const signOutStorage = {
+    async isBlocked() { return false; },
+    async setBlocked() { throw new Error('Local storage unavailable'); }
+  };
+  const openPopup = () => {
+    const accounts = createAccountSession({
+      adapter: createNeonAccounts(sdk, { signOutStorage }),
+      createClient: () => ({}),
+      schedule: () => 0,
+      cancel() {}
+    });
+    t.after(() => accounts.dispose());
+    return accounts;
+  };
+
+  const first = openPopup();
+  await first.ready;
+  const states = [];
+  first.subscribe(state => states.push(state.status));
+  await first.signOut();
+
+  assert.deepEqual(states, ['signed-in', 'signing-out', 'sign-out-unconfirmed']);
+  assert.match(first.state.message, /session may still be active/);
+  await assert.rejects(first.client.listAnalyses(), { code: 'session_required' });
+  const reopened = openPopup();
+  await reopened.ready;
+  assert.equal(reopened.state.status, 'signed-in');
+
+  providerUnavailable = false;
+  await first.signOut();
+  assert.equal(first.state.status, 'signed-out');
+  const afterRetry = openPopup();
+  await afterRetry.ready;
+  assert.equal(afterRetry.state.status, 'signed-out');
+});
+
 test('invalid registration stays local and duplicate errors are sanitized', async () => {
   let signUps = 0;
   const adapter = createNeonAccounts({

@@ -86,10 +86,21 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
     async signOut() {
       ++epoch;
       signedOut = true;
-      // Keep restoration blocked across popup and browser restarts if the
-      // provider is unreachable and its session cookie survives.
-      try { await signOutStorage?.setBlocked(true); }
-      finally { await call(() => sdk.signOut()); }
+      let locallyBlocked = false;
+      try {
+        if (signOutStorage) {
+          await signOutStorage.setBlocked(true);
+          locallyBlocked = true;
+        }
+      } catch {
+        // The provider can still end the session if the local write fails.
+      }
+      try {
+        await call(() => sdk.signOut());
+      } catch (error) {
+        if (!locallyBlocked) error.code = 'signout_unconfirmed';
+        throw error;
+      }
     },
     async getAccessToken(expectedUserId) {
       const current = await read();

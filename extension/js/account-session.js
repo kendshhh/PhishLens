@@ -102,12 +102,19 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
       await clear();
     },
     async signOut() {
-      const clearing = clear();
+      const clearing = clear('signing-out', 'Signing out…');
       const version = revision;
       const [local, remote] = await Promise.allSettled([clearing, adapter.signOut()]);
-      if (version === revision && (local.status === 'rejected' || remote.status === 'rejected')) {
-        publish('signed-out', 'The account service could not confirm sign-out. Try signing out again after signing in.');
+      if (version !== revision) return;
+      if (remote.status === 'rejected' && remote.reason?.code === 'signout_unconfirmed') {
+        publish('sign-out-unconfirmed',
+          'The account service could not confirm sign-out. Your session may still be active. Try signing out again.');
+        return;
       }
+      const message = local.status === 'rejected' || remote.status === 'rejected'
+        ? 'The account service could not confirm sign-out. Try signing out again after signing in.'
+        : '';
+      publish('signed-out', message);
     },
     dispose() { disposed = true; ++revision; cancel(timer); listeners.clear(); session = null; client = null; }
   };
