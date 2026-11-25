@@ -1,9 +1,10 @@
 # Controlled PhishLens release path
 
-Status as of 2026-11-21: implementation is on a review branch. There is no
-current live acceptance evidence for this workflow, no version tag, and no
-release authorization. Keep issue #153 at NO-GO. The release path must not be
-dispatched as a production promotion until the external setup below is complete.
+Status as of 2026-11-25: the controlled-release workflow exists on `main`; its
+latest hardening and evidence updates are on a review branch. There is no
+accepted current-candidate product run, no version tag, and no release
+authorization. Keep issue #153 at NO-GO. Do not dispatch production promotion
+until the external setup below is complete.
 
 ## What the workflow does
 
@@ -22,12 +23,26 @@ immutable digests, and carries those artifacts through the same workflow run.
 The backend image is pushed to GHCR; the extension ZIP remains a workflow
 artifact until a successful release publishes that exact ZIP.
 
-The PR-required `Hosted staging` status uses a separate `staging` environment.
-It now rejects anonymous history requests as expected, aborts production API/Auth
-requests from the extension page before they are sent, and runs the exact merge-SHA ZIP
-through real Neon Auth and persistent CRUD in Chromium. Its status proves the
-extension/backend product path only. It records model-quality approval separately
-and cannot turn that gate green by passing CRUD.
+The PR-required `Hosted staging` status uses the protected `staging` environment.
+The workflow is designed to reject anonymous history requests, abort production
+API/Auth requests from the extension page before they are sent, and run the exact
+PR-head ZIP through real Neon Auth and persistent CRUD in Chromium. A green result
+proves the extension/backend product path for that exact SHA only. It records
+model-quality approval separately and cannot turn that gate green by passing CRUD.
+The current PR #291 Hosted staging job has not deployed. Its exact head
+`28052e825f413d170b24fa78375065f3487c3321` run [45580145160](https://github.com/kendshhh/PhishLens/actions/runs/45580145160)
+passed Backend, Extension, Staging integration, and its CI preflight; the actual
+Hosted staging job is queued. The shared staging queue is held by run
+[45539051728](https://github.com/kendshhh/PhishLens/actions/runs/45539051728)
+for superseded PR #268 SHA `7d32f3da98f5b0b02ae47f678aec9062dacc896d`,
+which awaits `xxTrixia`; current PR #268 head run
+[45541536613](https://github.com/kendshhh/PhishLens/actions/runs/45541536613)
+is next ahead of #291. Do not approve or deploy the obsolete SHA. Kendra has
+approved the test window and asked xxTrixia to reject the stale deployment,
+then review the current head. No PR #291 staging deploy or authenticated CRUD
+result exists yet. The trusted `pull_request_target` controller on `main` still
+filters for main-base PRs, so #291's exact-head Neon attestation is absent; the
+filter fix in this review branch only takes effect after merge.
 
 The protected `release-staging` environment is required before the workflow
 will access staging credentials. It checks Neon branch metadata and requires a
@@ -74,15 +89,25 @@ published evidence supports GO.
 
 ## External setup required
 
-These settings are intentionally not changed by this pull request. A fresh
-read-only Render check on 2026-11-21 found production service
+These service settings are not changed by this pull request. A read-only Render
+check on 2026-11-25 found production service
 `srv-db7eap25b2lc73fkelpg` Git-backed to `main` with
 `autoDeploy=no` / `autoDeployTrigger=off`; staging service
 `srv-db92irlg1s2s739404i0` is also Git-backed with auto-deploy off. The
-production auto-deploy stop is now verified, but it is an interim control, not
-proof of digest-based promotion. The new release preflight refuses Git-backed
+production auto-deploy stop is verified, but it is an interim control, not
+proof of digest-based promotion. The release preflight refuses Git-backed
 targets, so promotion remains blocked until both services are configured for
-the image-backed path. Render must be changed by an administrator, without
+the image-backed path. GitHub staging variables were rechecked without printing
+values and match the selected isolated Neon project `ancient-brook-17208049`,
+root branch `br-rough-sea-a1l6ehi1`, expected database host/name/role, Auth
+URLs/database, and production-separation checks. `STAGING_ACCEPTANCE_ENABLED`
+is `true`, production rows are attested absent, and the mapping-attestation
+variable is `current`. These settings do not independently prove the masked
+Render runtime/migration URLs; no current deployment has verified the mapping.
+`release-staging` still has no variables or secrets. The previous Neon catalog
+read found no public app tables or Alembic history in this target; recheck before
+migrating. Do not treat the current pending hosted run as acceptance. Render
+values remain private. Render must be changed by an administrator, without
 deploying:
 
 1. Keep production Git auto-deploy off. Convert staging and production to
@@ -97,19 +122,21 @@ deploying:
    Staging migration credentials must be separate from the app role. The
    production schema migration must follow the team's reviewed expand/contract
    procedure; this workflow never reads or copies production product rows.
-3. Create a fresh Neon **project separate from production**, with an independent
-   root branch initialized with **schema only**. Enable Neon Auth there, apply
-   current migrations, and create two dedicated empty staging users. A root
-   branch in the production project is not sufficient isolation. The current
-   `pr-58-staging` branch (`br-delicate-paper-b381z98i`) derives from the
-   development lineage and is not acceptable for acceptance. Do not use the
-   restored production snapshot branch.
+3. Use only the approved Neon project `ancient-brook-17208049` and independent
+   root branch `br-rough-sea-a1l6ehi1` for staging. Earlier read-only catalog
+   inspection reported no public application tables or Alembic revision there;
+   recheck that state, verify the `phishlens_dev` and `neondb` databases/roles,
+   and apply migrations and least-privilege grants only after confirming the
+   Render mapping. Do not use the older `hidden-shadow` target, a production
+   project branch, or a restored production snapshot.
 4. Add the staging extension ID as a trusted Neon Auth origin. Configure Render
    staging runtime and migration URLs, database host, branch ID, database name,
-   and separate roles to target only the new branch. Set the new
-   `STAGING_NEON_EXPECTED_HOST`, `STAGING_NEON_BRANCH_ID`, and
-   `PRODUCTION_NEON_EXPECTED_HOST` settings; the staging startup now checks these
-   against the service's runtime URLs before migrating or seeding.
+   and separate roles to target only the approved branch. Although the GitHub
+   variable `STAGING_RENDER_DATABASE_CONFIG_ATTESTATION` is now `current` and
+   hosted acceptance is enabled, verify the masked Render identity values in an
+   audited check and confirm them with a successful exact-candidate stage run
+   before relying on that attestation. Staging startup checks the configured
+   mapping before migrating or seeding.
 5. Configure protected GitHub environments `staging`, `release-staging`, and
    `production` with required reviewers. Production must prevent self-review;
    at least one production reviewer must be different from the source author.
@@ -168,11 +195,17 @@ In `production`:
 
 GitHub-protected environment secrets:
 
-- `release-staging`: `RENDER_API_KEY`, `NEON_API_KEY`,
+- `release-staging`: `RENDER_STAGING_API_KEY`, `NEON_API_KEY`,
   `STAGING_MIGRATION_DATABASE_URL`, `STAGING_AI_APPROVAL_JSON`,
   `STAGING_AUTH_USER_A_EMAIL`, `STAGING_AUTH_USER_A_PASSWORD`,
   `STAGING_AUTH_USER_B_EMAIL`, `STAGING_AUTH_USER_B_PASSWORD`.
-- `production`: `RENDER_API_KEY`.
+- `production`: `RENDER_PRODUCTION_API_KEY`.
+
+The existing staging environment credentials are scoped only to `staging`;
+GitHub does not expose their values for copying. Provision separate credentials
+in `release-staging` after confirming the mapping. That protected environment
+currently has no variables or secrets, so its workflow will fail closed before
+migration or deployment until setup is complete.
 
 The Render API key should be scoped to the designated PhishLens services. The
 Neon API key is used by the staging job for branch metadata only. Do not grant

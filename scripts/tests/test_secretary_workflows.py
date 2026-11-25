@@ -132,6 +132,19 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("if: always() && steps.staging-acceptance-preflight.outputs.current == 'true'", hosted)
 
 
+    def test_trusted_neon_preflight_covers_intentionally_stacked_pr_bases(self):
+        workflow = (WORKFLOWS / "staging-neon-preflight.yml").read_text(encoding="utf-8")
+        triggers = workflow.split("permissions:", 1)[0]
+
+        self.assertIn("pull_request_target:", triggers)
+        self.assertNotIn("branches:", triggers)
+        self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", workflow)
+        self.assertIn("ref: ${{ github.sha }}", workflow)
+        self.assertIn("environment: staging-neon-preflight", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("needs-hosted-staging", workflow)
+
+
     def test_ci_runs_packaged_browser_and_read_only_auth_staging_checks(self):
         workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
         hosted_start = workflow.index("  hosted-staging:\n")
