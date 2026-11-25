@@ -183,7 +183,8 @@ The Sprint 2 board was refreshed separately. The recap's retrospective bullets
 remain a proposal, not a team-approved retro. Original async standups, dated
 consultation attendance and individual presentations still require
 participant-sourced records. The recorded November 7 instructor feedback is a
-paraphrase only; no exact wording, score, or rubric entry is available.     
+paraphrase only; no exact wording, score, or rubric entry is available.
+
 ## November 25 — Leyan’s installed-Chrome staging trial
 
 I tested the PR #258 extension package (`30743b0`) in installed Chrome using
