@@ -152,6 +152,22 @@ export async function verifyReportPairIsolation(clientA, clientB, reportAId, rep
     return 'passed';
 }
 
+export async function verifyIdempotentReplay(client, input, idempotencyKey, originalId) {
+    if (typeof idempotencyKey !== 'string' || !idempotencyKey ||
+        typeof originalId !== 'string' || !originalId) {
+        throw new Error('An idempotency key and original report ID are required.');
+    }
+    const replay = await client.createAnalysis(input, { idempotencyKey });
+    assert.equal(replay.id, originalId,
+        'Repeating an identical create must return the original saved report');
+    await assert.rejects(
+        client.createAnalysis({ ...input, body: input.body + ' changed' }, { idempotencyKey }),
+        error => error.status === 409,
+        'Changing a create request with the same key must return HTTP 409'
+    );
+    return 'passed';
+}
+
 async function verifyCrudWithClient(target, options, getAccessToken, verifyIsolation) {
     const client = createAnalysisClient(target.baseUrl, target.safeFetch,
         getAccessToken ? { getAccessToken } : {});
@@ -256,14 +272,16 @@ async function verifyTwoAccountCrud(target, options, getAccessTokenA, getAccessT
     let createdB;
     let failure;
     let result;
+    const idempotencyKeyA = 'hosted-staging-' + runId + '-a';
 
     try {
-        createdA = await clientA.createAnalysis(inputA);
+        createdA = await clientA.createAnalysis(inputA, { idempotencyKey: idempotencyKeyA });
         assertReportProvenance(createdA);
         if (options.requireRealAI === true && createdA.analysis_mode !== 'real') {
             throw new Error('Mock output is not AI acceptance');
         }
         assert.equal(createdA.subject, inputA.subject);
+        await verifyIdempotentReplay(clientA, inputA, idempotencyKeyA, createdA.id);
         createdB = await clientB.createAnalysis(inputB);
         assertReportProvenance(createdB);
         if (options.requireRealAI === true && createdB.analysis_mode !== 'real') {
@@ -348,6 +366,7 @@ async function verifyTwoAccountCrud(target, options, getAccessTokenA, getAccessT
                 'per-account list isolation',
                 'cross-account read/patch/delete return 404',
                 'owner read/edit/clear/delete',
+                'identical-create idempotency replay and changed-input conflict',
                 'persistence after fresh clients',
                 'synthetic report provenance'
             ],
