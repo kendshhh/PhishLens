@@ -11,6 +11,7 @@ from functools import lru_cache
 
 from backend.ai.tfidf_provider import (
     ASSETS,
+    FEATURE_BASIS_SHA256,
     MODEL_SHA256,
     WORD,
     load_artifact,
@@ -26,7 +27,7 @@ JUDGE_REVISION = "14007543b6dc92de88daf96a9aa85d2f95ace6ef"
 def load_live_models():
     root = ASSETS / "reevaluators"
     manifest = json.loads((root / "manifest.json").read_text())
-    if manifest["basis_sha256"] != MODEL_SHA256:
+    if manifest["basis_sha256"] != FEATURE_BASIS_SHA256:
         raise ValueError("Wrong reevaluation basis")
     models = {}
     for name in ("krr", "lightgbm"):
@@ -37,7 +38,7 @@ def load_live_models():
         if hashlib.sha256(raw).hexdigest() != item["sha256"] or len(raw) != item["bytes"]:
             raise ValueError("Reevaluation integrity failed")
         model = json.loads(raw)
-        if model["basis_sha256"] != MODEL_SHA256 or model["classes"] != [0, 1]:
+        if model["basis_sha256"] != FEATURE_BASIS_SHA256 or model["classes"] != [0, 1]:
             raise ValueError("Wrong reevaluation labels")
         models[name] = (model, item["sha256"])
     return models

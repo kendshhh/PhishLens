@@ -30,7 +30,7 @@ NEON_AUTH_ASSETS = (
 )
 LOCAL_SCANNER_ASSETS = (
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
-    "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
+    "ai/core.mjs", "ai/context-policy.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
     "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md", "offscreen.html", "offscreen.js",
     "ai/judge-client.mjs", "ai/judge-contract.mjs", "ai/judge-worker.mjs",
     "ai/live-workflow.mjs", "ai/reevaluators.mjs", "ai/judge-assets.json",

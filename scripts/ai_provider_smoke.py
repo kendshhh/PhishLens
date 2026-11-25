@@ -14,8 +14,9 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 ROOT = Path(__file__).resolve().parents[1]
 SHA = re.compile(r"^[0-9a-f]{40}$")
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
-TFIDF_MODEL = "word_plus_char_wb_C1p0"
-TFIDF_REVISION = "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
+TFIDF_CONTRACT = json.loads((ROOT / "extension/ai/contract.json").read_text(encoding="utf-8"))
+TFIDF_MODEL = TFIDF_CONTRACT["model_id"]
+TFIDF_REVISION = TFIDF_CONTRACT["model_sha256"]
 SYNTHETIC_REQUEST = {
     "subject": "Synthetic PhishLens provider smoke",
     "sender": "smoke@example.invalid",

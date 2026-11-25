@@ -7,6 +7,7 @@ import { mkdtemp, rm, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
+import { MODEL_ID, MODEL_SHA256 } from '../extension/ai/local-analyzer.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const chromePath = process.env.PHISHLENS_CHROME;
@@ -45,13 +46,13 @@ try {
   const { id } = await session.send('Extensions.loadUnpacked', { path: path.join(root, 'extension') });
   check('Actual unpacked extension loaded in isolated Chrome profile');
   const requests = [];
-  const sha = 'a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c';
+  const sha = MODEL_SHA256;
   let saved = false, deleted = false;
   let record = { id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c', subject: 'Software smoke <script>alert(1)</script>',
     prediction: 'legitimate', confidence: null, risk_level: 'low', threat_indicators: [],
     explanation: 'Fixture response, not database evidence.', created_at: '2026-10-29T02:00:00Z',
     body: 'Please review the meeting agenda. Do not share your password.', notes: null, feedback: 'none',
-    analysis_mode: 'real', analysis_provenance: { model: 'word_plus_char_wb_C1p0', model_revision: sha } };
+    analysis_mode: 'real', analysis_provenance: { model: MODEL_ID, model_revision: sha } };
   // No request is allowed to reach a remote API, even on unexpected code paths.
   await context.route(/^https?:\/\//, async route => {
     const request = route.request(); const url = new URL(request.url());

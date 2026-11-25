@@ -357,6 +357,9 @@ class ReleaseReadinessTests(unittest.TestCase):
         validate_model_approval(model_approval())
 
         pending = json.loads(QUALITY_POLICY.read_text(encoding="utf-8"))
+        pending["approval"].update(
+            status="pending", approved_by=None, approved_at=None, record_url=None,
+        )
         pending_path = self.root / "pending-release-quality-policy.json"
         pending_path.write_text(json.dumps(pending), encoding="utf-8")
         with (

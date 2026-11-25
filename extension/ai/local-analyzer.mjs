@@ -1,6 +1,9 @@
 import { analyze } from './core.mjs';
+import { loadContextPolicy } from './context-policy.mjs';
 
-export const MODEL_SHA256 = 'a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c';
+export const MODEL_SHA256 = 'adace5ad3cfb281a15b7bc85774ef158126800dc3f78c942f46547dfde33dc27';
+export const MODEL_ID = 'word_plus_char_wb_context_v1';
+export const FEATURE_BASIS_SHA256 = 'a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c';
 
 function validArtifact(artifact) {
   if (!Number.isFinite(artifact.intercept) || artifact.blocks?.length !== 2) return false;
@@ -30,7 +33,8 @@ export function createLocalAnalyzer({ fetchImpl = fetch, cryptoImpl = globalThis
       .map(x => x.toString(16).padStart(2, '0')).join('');
     const contract = await contractResponse.json();
     if (digest !== MODEL_SHA256 || contract.model_sha256 !== MODEL_SHA256 ||
-        contract.model_id !== 'word_plus_char_wb_C1p0' || contract.system !== 'tfidf_v12a' ||
+        contract.feature_basis_sha256 !== FEATURE_BASIS_SHA256 ||
+        contract.model_id !== MODEL_ID || contract.system !== 'tfidf_context_candidate' ||
         contract.alert_mode !== 'raw_margin' || contract.alert_threshold !== 0 ||
         contract.mapping?.kind !== 'margin_sigmoid' ||
         contract.mapping?.slope !== 1.6158795082744162 ||
@@ -38,7 +42,10 @@ export function createLocalAnalyzer({ fetchImpl = fetch, cryptoImpl = globalThis
       throw Error('Model integrity check failed. Reload a verified PhishLens package.');
     }
     const artifact = JSON.parse(new TextDecoder().decode(bytes));
-    if (!validArtifact(artifact)) throw Error('Invalid packaged model. Reload the extension.');
+    if (!validArtifact(artifact) || artifact.model_id !== contract.model_id) {
+      throw Error('Invalid packaged model. Reload the extension.');
+    }
+    loadContextPolicy(artifact.context_model);
     return { artifact, contract };
   }
   async function getAssets() {
