@@ -1,23 +1,43 @@
 # Release AI quality preregistration
 
-Proposal for the release gate in #266 and the model acceptance in #147 and #153. The quality policy remains pending review. The release decision is NO-GO.
+The AI owner approved the evaluation build and thresholds for the release gate in #266. The release decision remains **NO-GO** while the representative cohort is prepared and reviewed.
 
-## Candidate
+## Approved evaluation build
 
-Propose the bundled CPU TF-IDF v12a provider (`AI_MODE=tfidf`), model `word_plus_char_wb_C1p0`. The following bytes were verified against the Git blobs at `f9061f4d81f0f9261e4bdf5273fe6506264b725e`.
+Use the bundled offline CPU TF-IDF provider (`AI_MODE=tfidf`) with model `word_plus_char_wb_context_v1` at commit `b6c2f11344fe02cbece4e65906ae71a622e18687`. Build PR #294 is based on #266 at `18fa7c8efbdb6edb8c6c0bafabb30d061861a920`. [Exact build commit](https://github.com/kendshhh/PhishLens/commit/b6c2f11344fe02cbece4e65906ae71a622e18687). [Build PR #294](https://github.com/kendshhh/PhishLens/pull/294). [AI owner build approval](https://github.com/kendshhh/PhishLens/pull/269#issuecomment-7152721051).
+
+The digests below cover the tracked blobs named by the pinned runner.
 
 | File | SHA-256 |
 | --- | --- |
-| `extension/ai/tfidf_v12a.json` | `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c` |
-| `extension/ai/contract.json` | `c1b0df6d0eb3aaf94794dc549fe1240cd77be9fdc7101db333d346c8bdba6947` |
-| `backend/ai/tfidf_provider.py` | `6a7853ca0b88f31227c7f73abaf276ce00c0b245f387d3eed4a50a43bb0587bd` |
+| `scripts/evaluate_tfidf_cohort.py` | `4edf21881ddf8b9912292c248babff085b4d6e31d9f048625eba276009f094ee` |
 | `backend/ai/service.py` | `2c89c17f9bba5acc0143d14e42ba8d75a4c86aeacb8e4f2ff9c8b99348729368` |
-| `scripts/evaluate_tfidf_cohort.py` | `2b64309ae5d06f63ebcba2b981f344550bf90140d5b71e42dcc0eedc46ab5cca` |
-| `docs/devops/release-quality-policy.json` (pending snapshot) | `12a40c84868ca1cde0bc54380f21e10cc03d7d829360d92c5cdf16ca040e5c12` |
+| `backend/ai/schemas.py` | `2a426d9aa830e7b45ab4a1907df6d48f85d26dbe0611682c0619a45e3c3a7df2` |
+| `backend/ai/tfidf_provider.py` | `b89d81cbe011366fb9a887d002fbfcfa92060998f3199fea35a98f3b76feaeca` |
+| `backend/ai/context_policy.py` | `2c22c6cbd87febfd738f7311df2237f6e6688ba6e6a333d704feab262e3fb2ce` |
+| `docs/devops/release-quality-policy.json` | `82ff53bc97b427d431702dab423108a73688c772b6ba77e17ab8cff03052901d` |
+| `backend/ai/evaluation_cases.py` | `adfde7a99f47b391413be11b9011b4c7ce188c31ee63c339fdb4c13cb03d8765` |
+| `backend/requirements.txt` | `24ffb11378cfbaa051cd9ce21e9951ca0cfcd41d2d5e6437ac7bf5ae37ee35d0` |
+| `extension/ai/contract.json` | `8bbb605a2c66b5e8a72ab5d06f47e2b8ad14e31295192596a3d03ded42acddb9` |
+| `extension/ai/tfidf_v12a.json` | `adace5ad3cfb281a15b7bc85774ef158126800dc3f78c942f46547dfde33dc27` |
+| `extension/ai/local-analyzer.mjs` | `ef554bc95340965ff5959b7d2715cdaf282d75e7b25eeef06af876a1914edae6` |
+| `extension/ai/core.mjs` | `73d5b810f0c371cd9ebffaeb879d5e800615c0f5e81cbfd0c8c6cb7f786ce182` |
+| `extension/ai/context-policy.mjs` | `f4ba637358a5efccc784ab25f81c147c324ddc3edac7366090d3886082ffa726` |
 
 The frozen input is the visible plain-text selection. The backend accepts at most 30,000 UTF-16 units, masks email local parts, phone-like strings and numbers of six or more digits, collapses whitespace, and keeps the first 2,000 and last 300 Unicode code points when prepared input exceeds 2,300. Run that production preprocessing once. An alert is a raw margin at or above zero. The existing sigmoid maps the margin for display.
 
-At freeze, record the final reviewed source SHA, code and artifact digests, runtime dependencies, and approved policy digest. Qualify the backend provider against that lock and match the eventual deployment to the provider and artifact. The historical source-pair sign-off retains its advisory English scope.
+At freeze, record the exact source commit, code and artifact digests, runtime dependencies, and approved policy digest. Run preflight from the pinned checkout and match the deployed provider and artifact to the reviewed lock. The historical source-pair sign-off retains its advisory English scope.
+
+### Local build verification
+
+The exact backend and packaged extension agreed on all 207 diagnostic decisions. The representative release cohort remains unscored.
+
+| Diagnostic cohort | Phishing alerted | Legitimate falsely alerted | Valid results |
+| --- | ---: | ---: | ---: |
+| Controlled regression | 8/8 | 0/12 | 26/26 |
+| Archived English source-pair reserve | 60/64 | 0/117 | 181/181 |
+
+The extension ZIP SHA-256 is `0a127b6d28c2ae05ff027262ad1d355bfdb33a0d0c3613e305ab2a5a83db13d1`. The redacted local verification report SHA-256 is `628b4da87575cd0392e12c68b00692c771599fb949d4ca595a53c4cdd634214f`. [Deterministic AI evaluation on the exact commit](https://github.com/kendshhh/PhishLens/actions/runs/45545588713).
 
 ## Intake and blind review
 
@@ -69,26 +89,25 @@ Trixia (`xxTrixia`) reviews source permissions and the frozen cohort before scor
 
 ### Current pre-scoring review record
 
-- Private source inventory revision/digest: not supplied for Trixia's review.
-- Trixia (`xxTrixia`) approval of the inventory: pending.
-- Exact frozen cohort lock SHA-256: not supplied for Trixia's review.
-- Trixia (`xxTrixia`) approval of the lock: pending.
-- First scoring run: blocked.
+- Trixia completed initial candidate intake review. Approval of the final source inventory is pending.
+- Score-blind review was requested through the restricted channel. Independent labels, any adjudication, and overlap clearance are pending.
+- Exact frozen cohort lock SHA-256 and Trixia's approval are pending.
+- The first official scoring run remains on hold.
 
 The archived October 29 v12a advisory cohort is not the lock for this proposed cohort: its recorded scope used one phishing-collector family and excluded generic spam. Do not reuse that historical lock for this run.
 
 Share the lock SHA-256 and the redacted aggregate report. Keep raw mail, private source permissions, and reviewer packets in the authorized data store. Include the approved policy and report SHA-256 values in the model decision. The release remains NO-GO until the exact pinned run passes and its evidence is accepted.
 
-## Proposed release thresholds
+## Approved release thresholds
 
-**Proposed decision for owner review:** retain the existing inference cutoff (alert when the raw TF-IDF margin is at least 0) and retain the release targets of at least 90% phishing recall, at most 3% legitimate false-positive rate, and 100% valid primary results. Do not tune the cutoff on the frozen cohort. These are proposed policy thresholds, not an approved decision; Wilberr (`EnviousCoal`) must approve or revise them before scoring. Apply the targets to unrounded metrics on the frozen actual-mail primary set. At the intake minima, at least 90 of 100 phishing families must alert, no more than 6 of 200 legitimate families may alert (including the 50 security-notice families), and all 400 attempts must return valid results.
+Wilberr (`EnviousCoal`) approved the raw margin alert cutoff of at least 0 and the release policy with SHA-256 `82ff53bc97b427d431702dab423108a73688c772b6ba77e17ab8cff03052901d`. Keep the cutoff fixed. Apply the targets to unrounded metrics on the frozen actual-mail primary set. At the intake minima, at least 90 of 100 phishing families must alert, at most 6 of 200 legitimate families may alert, and all 400 attempts must return valid results. [AI owner threshold approval](https://github.com/kendshhh/PhishLens/pull/269#issuecomment-7152323482). [Pinned policy](https://github.com/kendshhh/PhishLens/blob/b6c2f11344fe02cbece4e65906ae71a622e18687/docs/devops/release-quality-policy.json).
 
-| Metric | Proposed threshold | Denominator |
+| Metric | Approved threshold | Denominator |
 | --- | ---: | --- |
 | Phishing recall | ≥90% | All primary phishing families attempted |
 | Legitimate false-positive rate | ≤3% | All primary legitimate families attempted |
 | Valid result rate | 100% | All primary results attempted |
 
-A missed or unusable phishing result earns no true positive. Every missing, invalid, timed-out or failed result prevents a pass. Report spam and security-notice false alerts, per-source counts, failures and uncertainty separately. Use the [offline runner](../../scripts/evaluate_tfidf_cohort.py) on the reviewed lock and publish the redacted report with counts, denominators, limitations and the candidate, approved policy and cohort hashes.
+A missed or unusable phishing result earns no true positive. Every missing, invalid, timed-out or failed result prevents a pass. Report spam and security-notice false alerts, per-source counts, failures and uncertainty separately. Use the [offline runner](https://github.com/kendshhh/PhishLens/blob/b6c2f11344fe02cbece4e65906ae71a622e18687/scripts/evaluate_tfidf_cohort.py) on the reviewed lock and publish the redacted report with counts, denominators, limitations and the candidate, approved policy and cohort hashes.
 
-Record the owner decision against the final approved policy SHA-256 and the redacted report SHA-256 after independent review. Keep NO-GO if clearance is incomplete or any threshold fails. Preserve failed results, retune on development data, and freeze a fresh holdout for the next candidate. The model-quality decision covers the exact provider and model it tested.
+Record the final owner decision against the final approved policy SHA-256 and the redacted report SHA-256 after independent review. Keep NO-GO if clearance is incomplete or any threshold fails. Preserve failed results, retune on development data, and freeze a fresh holdout for the next candidate. The model-quality decision covers the exact provider and model it tested.
