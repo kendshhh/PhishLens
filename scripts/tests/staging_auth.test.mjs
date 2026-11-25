@@ -11,6 +11,7 @@ import { createAuthCookieFetch as createAuthCookieFetchFromVerifier,
     validateStagingAuthConfig as validateStagingAuthConfigFromVerifier,
     verifyReportIsolation,
     verifyReportPairIsolation,
+    verifyIdempotentReplay,
     verifyTarget
 } from '../verify_crud.mjs';
 
@@ -304,5 +305,26 @@ test('write verifier keeps targets pinned to loopback or the approved staging or
     await assert.rejects(verifyTarget('http://127.0.0.1:8000', {
         environment: 'demo', expectedSha: 'a'.repeat(40), allowWrites: false
     }), /Explicit write permission/);
+});
+
+test('authenticated CRUD requires idempotent replay and rejects changed input under the same key', async () => {
+    const key = 'hosted-staging-run-a';
+    const input = { subject: 'Synthetic message', body: 'Synthetic body' };
+    const calls = [];
+    const client = {
+        async createAnalysis(request, options) {
+            calls.push({ request, options });
+            if (request.body !== input.body) {
+                const error = new Error('Idempotency key conflict');
+                error.status = 409;
+                throw error;
+            }
+            return { id: 'saved-report-a' };
+        }
+    };
+
+    assert.equal(await verifyIdempotentReplay(client, input, key, 'saved-report-a'), 'passed');
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every(call => call.options.idempotencyKey === key));
 });
 
