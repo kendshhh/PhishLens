@@ -52,19 +52,19 @@ test('Auth config requires the staging Neon path, protected extension origin, an
     assert.equal(validateStagingAuthAccounts(authEnvironment).A.email, 'account-a@example.test');
     assert.throws(() => validateStagingAuthConfig({
         ...authEnvironment, STAGING_NEON_AUTH_URL: authUrl.replace('ep-winter-wind-a1y2r1db', 'ep-other-branch')
-    }), /approved HTTPS Neon Auth endpoint/);
+    }), /reviewed isolated Neon Auth endpoint/);
     assert.equal(typeof createAuthCookieFetchFromVerifier, 'function');
     assert.equal(validateStagingAuthConfigFromVerifier({ authUrl, database: 'neondb', trustedOrigin }).href, authUrl);
 
     assert.throws(() => validateStagingAuthConfig({
         ...authEnvironment, STAGING_NEON_AUTH_URL: authUrl.replace('/neondb/auth', '/other/auth')
-    }), /approved HTTPS Neon Auth endpoint/);
+    }), /reviewed isolated Neon Auth endpoint/);
     assert.throws(() => validateStagingAuthConfig({
         ...authEnvironment, STAGING_NEON_AUTH_URL: authUrl.replace('https://', 'http://')
-    }), /approved HTTPS Neon Auth endpoint/);
+    }), /reviewed isolated Neon Auth endpoint/);
     assert.throws(() => validateStagingAuthConfig({
         ...authEnvironment, STAGING_AUTH_TRUSTED_CHROME_ORIGIN: 'https://example.test'
-    }), /approved HTTPS Neon Auth endpoint/);
+    }), /reviewed isolated Neon Auth endpoint/);
     assert.throws(() => validateStagingAuthAccounts({
         ...authEnvironment, STAGING_AUTH_USER_B_EMAIL: 'ACCOUNT-A@example.test'
     }), /two distinct synthetic Auth accounts/);

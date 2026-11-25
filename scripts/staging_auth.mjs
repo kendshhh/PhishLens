@@ -27,7 +27,7 @@ function endpointSettings(environment = process.env) {
         url.search || url.hash || url.pathname !== '/' + database + '/auth' ||
         url.hostname !== STAGING_NEON_AUTH_HOST || database !== DEFAULT_AUTH_DATABASE ||
         !STAGING_CHROME_ORIGIN.test(trustedOrigin || '')) {
-        throw new Error('STAGING_NEON_AUTH_URL must be the approved HTTPS Neon Auth endpoint and trusted extension origin.');
+        throw new Error('STAGING_NEON_AUTH_URL must be the reviewed isolated Neon Auth endpoint over HTTPS with the trusted extension origin.');
     }
     return { url, database, trustedOrigin };
 }
