@@ -1,8 +1,8 @@
-"""Mirror the exact CI Hosted staging result into the stable Secretary status.
+"""Report non-runtime staging N/A and fail completed pre-staging CI errors.
 
-This trusted ``workflow_run`` controller never deploys staging. Runtime PRs can
-receive a successful ``Secretary staging`` status only when the same current CI
-run completed the protected authenticated Hosted staging job successfully.
+For runtime PRs this mirror deliberately publishes no status: the trusted
+controller is the sole writer, so a late pending result cannot overwrite its
+final authenticated-acceptance result.
 """
 
 from __future__ import annotations
@@ -17,8 +17,6 @@ from .report import latest_jobs
 
 ROOT = Path(__file__).resolve().parents[2]
 REQUIRED_CI_JOBS = ("Backend checks", "Extension checks", "Staging integration")
-HOSTED_STAGING_JOB = "Hosted staging"
-PRODUCT_GATE = "Require authenticated CRUD/UX product evidence; keep model quality separate"
 
 
 def decision(pr, files, run, jobs, repository, config):
@@ -40,7 +38,7 @@ def decision(pr, files, run, jobs, repository, config):
     if not runtime:
         return "success", "Not applicable: no application/runtime changes; required CI passed"
     if pr.get("draft"):
-        return "failure", "Runtime PR is draft; authenticated Hosted staging has not run"
+        return "failure", "Runtime PR is draft; protected staging acceptance has not run"
     head_repo = (pr.get("head", {}).get("repo") or {}).get("full_name")
     if head_repo != repository:
         return "failure", "Fork runtime PR cannot receive staging credentials; bring reviewed work to a trusted branch"
@@ -51,20 +49,11 @@ def decision(pr, files, run, jobs, repository, config):
     label = config.get("preview_opt_in_label")
     if not label or label not in labels:
         return "failure", "Runtime PR requires the needs-hosted-staging label and a fresh CI run"
-    hosted = jobs.get(HOSTED_STAGING_JOB)
-    if not isinstance(hosted, dict) or hosted.get("status") != "completed" or hosted.get("conclusion") != "success":
-        observed = "missing" if not isinstance(hosted, dict) else f"{hosted.get('status')}/{hosted.get('conclusion')}"
-        return "failure", f"Authenticated Hosted staging did not pass for this CI run ({observed})"
-    if not any(
-        step.get("name") == PRODUCT_GATE and step.get("conclusion") == "success"
-        for step in hosted.get("steps") or []
-    ):
-        return "failure", "Hosted staging did not pass the authenticated CRUD/UX evidence gate"
-    return "success", "Authenticated Hosted staging passed for the current PR head"
+    return "pending", "Waiting for the trusted controller to deploy and verify this exact PR head"
 
 
 def publish_status(api, sha, context, state, description, target_url):
-    if state not in {"success", "failure", "error"}:
+    if state not in {"pending", "success", "failure", "error"}:
         raise ValueError("Invalid required staging status")
     api.request("statuses/" + sha, {
         "state": state,
@@ -107,8 +96,10 @@ def main():
         state, message = decision(pr, files, run, jobs, api.repo, config)
         if state == "stale":
             continue
-        hosted = jobs.get(HOSTED_STAGING_JOB) or {}
-        target = hosted.get("html_url") or log_url
+        if state == "pending":
+            print("Runtime PR awaits the trusted controller; no competing status was published")
+            continue
+        target = log_url
         # Do not claim deployment, CRUD or AI proof in the description. The
         # authoritative evidence is the exact CI job and its uploaded artifact.
         publish_status(api, run["head_sha"], config["preview_check"], state, message, target)

@@ -193,21 +193,16 @@ class DeploymentTests(unittest.TestCase):
         self.assertTrue(all(len(render_call.args) == 1 for render_call in request.call_args_list))
         self.assertEqual(self.github.request.call_count, 2)
 
-    def test_hosted_workflow_targets_pr_head_with_scoped_read_token(self):
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        hosted = workflow.split("  hosted-staging:\n", 1)[1]
-
-        self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertIn("STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", hosted)
-        self.assertIn("RELEASE_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertIn("EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}", hosted)
-        self.assertNotIn("EXPECTED_SHA: ${{ github.sha }}", hosted)
-        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", hosted)
-        self.assertIn("from scripts.deploy_staging import live_pr_matches, requested_pr_identity", hosted)
-        self.assertIn("from scripts.secretary.github_api import APIError, ReadOnlyGitHub", hosted)
-        self.assertIn("hosted-migration-lineage.outputs.head", workflow)
+    def test_trusted_staging_workflow_targets_exact_pr_head(self):
+        workflow = (ROOT / ".github/workflows/trusted-hosted-staging.yml").read_text(encoding="utf-8")
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("workflow_run:", workflow)
+        self.assertIn("workflows: [CI]", workflow)
+        self.assertIn("STAGING_COMMIT: ${{ needs.inspect.outputs.source_sha }}", workflow)
+        self.assertIn("STAGING_PR_HEAD_SHA: ${{ needs.inspect.outputs.source_sha }}", workflow)
+        self.assertIn("ref: ${{ needs.inspect.outputs.source_sha }}", workflow)
+        self.assertNotIn("RENDER_STAGING_API_KEY", ci)
+        self.assertNotIn("environment: staging", ci)
 
     def test_github_denial_fails_closed_before_render(self):
         self.github.request.side_effect = deploy_staging.APIError("GitHub HTTP 403 for pulls/123")

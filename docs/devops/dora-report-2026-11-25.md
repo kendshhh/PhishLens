@@ -1,8 +1,8 @@
 # PhishLens DORA delivery report — 2026-11-25
 
 **Snapshot:** `46f0298d8e3299afa74e02882081be56c1de4933`<br>
-**Window:** 2026-10-28 09:07 UTC through 2026-11-25 09:07 UTC (28.00 days)<br>
-**Collected:** 2026-11-25T09:07:43.832506Z
+**Window:** 2026-10-28 10:56 UTC through 2026-11-25 10:56 UTC (28.00 days)<br>
+**Collected:** 2026-11-25T10:56:50.822896Z
 
 This report contains the four DORA delivery metrics and the current fifth metric,
 deployment rework rate. It also reports CI wall time as an internal pipeline
