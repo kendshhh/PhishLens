@@ -213,9 +213,6 @@ body { background: linear-gradient(180deg, #eaf1fb 0, #f4f7fb 220px) no-repeat, 
 .privacy-badge .icon { width: 12px; height: 12px; vertical-align: 0; }
 .view-nav button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .view-nav button .icon { width: 15px; height: 15px; }
-.account-bar { justify-content: flex-start; gap: 8px; padding: 0 2px; }
-.account-bar .icon { width: 15px; height: 15px; color: #7e8fa6; }
-.account-bar span { flex: 1; }
 .panel { border-radius: 16px; box-shadow: 0 4px 16px #1935520a; }
 .icon-heading { display: flex; align-items: center; gap: 8px; }
 h2.icon-heading { font-size: 16px; }

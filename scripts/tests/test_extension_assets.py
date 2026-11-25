@@ -29,6 +29,7 @@ class ExtensionAssetValidationTests(unittest.TestCase):
             "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
             "js/account-session.js", "js/account-ui.js", "js/account-popup.js",
             "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js",
+            "js/neon-bridge-client.js",
             "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
             "ai/local-analyzer.mjs", "ai/core.mjs", "ai/observations.mjs",
             "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md",

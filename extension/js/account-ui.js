@@ -1,6 +1,6 @@
 export function initializeAccountUI(accounts, doc = document, { preview = false } = {}) {
   const $ = id => doc.getElementById(id);
-  const screens = ['sign-in', 'sign-up', 'verify', 'recover', 'reset'];
+  const screens = ['sign-in', 'sign-up', 'recover', 'reset'];
   let busy = false;
   const visible = (id, value) => $(id).classList.toggle('hidden', !value);
   function message(value, error = false) {
@@ -8,7 +8,7 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     $('account-status').setAttribute('role', error ? 'alert' : 'status');
   }
   function clearSecrets() {
-    for (const id of ['account-password', 'signup-password', 'reset-password', 'verify-code', 'reset-code']) $(id).value = '';
+    for (const id of ['account-password', 'signup-password', 'reset-password', 'reset-code']) $(id).value = '';
   }
   function screen(name, focus = true) {
     clearSecrets();
@@ -21,7 +21,6 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   }
   for (const name of screens) $('open-' + name)?.addEventListener('click', () => {
     message('');
-    if (name === 'verify' && $('account-email').value.trim()) $('verify-email').value = $('account-email').value.trim();
     screen(name);
   });
   for (const button of $('account-panel').querySelectorAll('[data-account-back]')) {
@@ -57,24 +56,13 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     }
   });
   submit('account-sign-up', async () => {
-    await accounts.signUp({ name: $('signup-name').value.trim(), email: $('signup-email').value.trim(), password: $('signup-password').value });
-    $('verify-email').value = $('signup-email').value.trim();
-    screen('verify'); message(preview ? 'Demo only: enter 123456. No email was sent.' : 'Check your email for the verification code.');
-  });
-  submit('account-verify', async () => {
-    if (await accounts.verifyEmail({ email: $('verify-email').value.trim(), code: $('verify-code').value.trim() })) {
-      screen(null); message('Email verified. You are signed in.');
+    const email = $('signup-email').value.trim();
+    if (await accounts.signUp({ name: $('signup-name').value.trim(), email, password: $('signup-password').value })) {
+      screen(null); message(preview ? 'Signed in to the demo account. No live account was used.' : 'Account created and signed in.');
     } else {
-      $('account-email').value = $('verify-email').value.trim();
-      screen('sign-in'); message('Email verified. Sign in with your email and password.');
+      $('account-email').value = email;
+      screen('sign-in'); message('Account created. Sign in with your email and password.');
     }
-  });
-  $('resend-code').addEventListener('click', () => {
-    if (!$('verify-email').reportValidity()) return;
-    return run(async () => {
-      await accounts.resend({ email: $('verify-email').value.trim() });
-      message(preview ? 'Demo verification code: 123456. No email was sent.' : 'If eligible, a new verification code has been sent.');
-    });
   });
   submit('account-recover', async () => {
     await accounts.recover({ email: $('recovery-email').value.trim() });
@@ -98,7 +86,5 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     if (signedIn) screen(null, false);
   });
   visible('account-preview-notice', preview);
-  // Synthetic-record notice belongs only to the demo build, never to real accounts.
-  visible('reports-preview-notice', preview);
   return { dispose: unsubscribe };
 }
