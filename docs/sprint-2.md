@@ -1,5 +1,5 @@
 # Sprint 2 — independent work
-``
+
 October 20 Kendra implementation update: see the
 [work/evidence and interface audit](devops/sprint-2-work-2026-10-20.md).
 PR #52 is now merged through main; the CI guard and remote failure/repair drill
