@@ -3,7 +3,6 @@
 import math
 import re
 
-
 FEATURES = ("secret_disclosure", "unsafe_entry", "redirected_payment",
             "unverified_app_access", "account_notification", "address_confirmation")
 
