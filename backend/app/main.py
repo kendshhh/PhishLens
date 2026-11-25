@@ -33,11 +33,15 @@ from backend.app.observability import (
     request_observability_middleware,
     set_ai_observation,
 )
+from backend.app.routers.auth_bridge import router as auth_bridge_router
 from backend.app.routers.history import router as history_router
+from backend.app.routers.neon_auth import router as neon_auth_router
 from backend.core.config import PROJECT_ROOT, ai_analysis_enabled, get_ai_config
 
 app = FastAPI(title="PhishLens API")
 app.include_router(history_router)
+app.include_router(neon_auth_router)
+app.include_router(auth_bridge_router)
 
 
 @app.middleware("http")
@@ -158,7 +162,9 @@ def health():
 def version():
     """Public deployment identity only; never expose environment or credential values."""
     return {
-        "commit": os.getenv("RENDER_GIT_COMMIT", "unknown"),
+        # Git-backed Render services set RENDER_GIT_COMMIT. Image-backed
+        # promotions embed the same source SHA into the image at build time.
+        "commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("PHISHLENS_SOURCE_SHA", "unknown"),
         "environment": os.getenv("APP_ENV", "development"),
     }
 

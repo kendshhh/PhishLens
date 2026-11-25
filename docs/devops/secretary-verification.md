@@ -37,20 +37,35 @@ may grow as regression coverage is added; use the PR's latest run for acceptance
 An offline state-machine test is not a real deployment. There are no fabricated
 screenshots, automatic approvals, or production rollback claims in this log.
 
-## Rollout acceptance checklist — owner records links
+## Current required-status bridge — 2026-11-21
+
+The Secretary preview workflow is now a trusted status mirror. It does not
+deploy staging. The `Secretary staging` commit status is successful for an
+application/runtime PR only when the same latest CI run for the current PR head
+has passed Backend checks, Extension checks, Staging integration, and the
+protected authenticated `Hosted staging` job. A skipped, missing, stale, failed,
+or incomplete Hosted staging job produces a non-green Secretary status. A
+documentation-only PR may receive a not-applicable status only after ordinary
+required CI succeeds. The controller checks out the default branch and has no
+Render, Neon, or deployment credentials.
+
+This PR cannot execute its new workflow-run controller before that controller
+is on the default branch. The currently installed controller is still the old
+implementation until an authorized merge; no required status is manually
+written or treated as passed to bypass that bootstrap boundary. A passing
+`Hosted staging` run remains the direct authenticated product evidence.
+
+## Remaining live setup and acceptance — owner records links
 
 - [ ] Review source and trust boundaries with a teammate.
-- [ ] Create protected `staging` and `production-observer` environments.
-- [ ] Move/rotate the repository deployment secret into staging; remove the old repository secret.
-- [ ] Privately verify the `pr-58-staging` Neon host, staging-only role, and mock-only staging config.
-- [ ] Let the trusted legacy bootstrap run verify the pilot PR before merge; retain existing protection.
-- [ ] Human approval and authorized merge install trusted workflows on main.
-- [ ] Set preview enabled and run the first exact-SHA test PR.
-- [ ] Confirm one bot-owned report and no duplicated comment after a rerun.
-- [ ] Open `/version` and the fresh artifact; perform and record manual Chrome tests.
-- [ ] Owner requires `Secretary staging` after its first observed check, alongside existing checks.
-- [ ] Set repository variable `SECRETARY_REPLACES_LEGACY_STAGING=true` only after the new check is required and proven.
-- [ ] Retire the legacy bootstrap job in a separate reviewed PR; no direct protection bypass.
+- [ ] Create/verify protected `staging`, `release-staging`, and `production-observer` environments.
+- [ ] Configure a new independent schema-only Neon staging root, Neon Auth, least-privilege roles, and empty synthetic accounts. Existing `pr-58-staging` is not accepted for this run.
+- [ ] Privately verify the Render staging service maps to that branch and production remains disconnected from candidate staging credentials.
+- [ ] An authorized reviewer approves the protected staging job for the exact current candidate.
+- [ ] Confirm the candidate ZIP/backend identities and run the authenticated extension CRUD/UX acceptance.
+- [ ] Verify `Secretary staging` mirrors success only when the current `Hosted staging` job succeeds; missing/skipped/failing Hosted staging stays non-green.
+- [ ] Confirm one current exact-head status and artifact after a rerun; stale runs do not overwrite the latest status.
+- [ ] Install the exact fresh artifact in Chrome and record any manual checks separately from automated evidence.
 - [ ] Verify main auto-deploy and the exact merged SHA in Render.
 - [ ] After Render shows that SHA live, manually run **Production evidence** from
   GitHub Actions on `main`; retain the artifact and confirm `/version`, `/health`
@@ -60,9 +75,8 @@ screenshots, automatic approvals, or production rollback claims in this log.
 
 The production observer is deliberately `workflow_dispatch`-only. A `workflow_run`
 trigger would create a separate GitHub check on the same main commit while the
-observer waits for Render to deploy it. With Render set to **After CI Checks Pass**,
-that check can prevent the deployment it is waiting to verify. Run the observer only
-after the expected commit is live; it is evidence collection, not a deployment gate.
+observer waits for Render to deploy it. The Secretary status mirror listens only
+to completed PR CI runs and does not observe or gate production deployments.
 
 ## Consultation demonstration (about 3 minutes of DevOps segment)
 

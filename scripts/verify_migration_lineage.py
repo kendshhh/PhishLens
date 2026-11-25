@@ -21,8 +21,8 @@ class MigrationLineageError(ValueError):
     """Raised when a required historical revision is missing or changed."""
 
 
-def verify_migration_lineage(repo_root: Path) -> str:
-    """Return the sole Alembic head after validating Render's stamped history."""
+def verify_migration_lineage(repo_root: Path, *, applied_revision: str | None = None) -> str:
+    """Return the sole Alembic head after checking required and applied revisions."""
     repo_root = repo_root.resolve()
     config_path = repo_root / "backend" / "alembic.ini"
     if not config_path.is_file():
@@ -51,6 +51,10 @@ def verify_migration_lineage(repo_root: Path) -> str:
         raise MigrationLineageError(
             f"Expected one Alembic head for 'upgrade head'; found {len(heads)}: {heads!r}."
         )
+    if applied_revision is not None and applied_revision not in revisions:
+        raise MigrationLineageError(
+            f"Staging's applied revision {applied_revision!r} is missing from the candidate migration graph."
+        )
     return heads[0]
 
 
@@ -62,21 +66,24 @@ def main() -> int:
         default=Path(__file__).resolve().parents[1],
         help="Repository tree whose backend migration history should be checked.",
     )
+    parser.add_argument("--applied-revision", help="Current version_num from the staging database.")
+    parser.add_argument("--expected-head", help="Alembic head verified by backend CI for this source.")
     args = parser.parse_args()
 
     try:
-        head = verify_migration_lineage(args.repo_root)
+        head = verify_migration_lineage(args.repo_root, applied_revision=args.applied_revision)
+        if args.expected_head is not None and head != args.expected_head:
+            raise MigrationLineageError(
+                f"Candidate Alembic head {head!r} differs from the verified CI head {args.expected_head!r}."
+            )
     except MigrationLineageError as exc:
         print(f"Migration preflight failed: {exc}", file=sys.stderr)
         return 1
 
-    print(
-        "Migration preflight passed: "
-        "0001_initial_schema -> 0002_analysis_provenance -> "
-        "0003_saved_analysis_idempotency -> 0004_neon_auth_subject -> "
-        "0005_ai_request_quota; "
-        f"Alembic head is {head}."
-    )
+    lineage = " -> ".join(revision for revision, _ in REQUIRED_REVISIONS)
+    print(f"Migration preflight passed: {lineage}; Alembic head is {head}.")
+    if args.applied_revision is not None:
+        print(f"Staging's applied revision {args.applied_revision} is present in the candidate.")
     github_output = os.getenv("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a", encoding="utf-8") as output:

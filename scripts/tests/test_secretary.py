@@ -394,7 +394,9 @@ class PreviewTests(unittest.TestCase):
                         "SECRETARY_PR_READ_TOKEN": "synthetic-read-only",
                         "GITHUB_STEP_SUMMARY": str(summary_path),
                         "SECRETARY_PREVIEW_ENABLED": "true", "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
-                        "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST}
+                        "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+                        "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+                        "STAGING_AUTH_DATABASE": "phishlens_dev"}
             with (patch.dict(os.environ, settings, clear=True),
                   patch("scripts.secretary.preview.ROOT", root),
                   patch("scripts.secretary.preview.GitHub", return_value=api),
@@ -762,6 +764,8 @@ class PreviewTests(unittest.TestCase):
         with patch.dict(os.environ, {
             "SECRETARY_STAGING_DB_HOST": STAGING_HOST,
             "SECRETARY_PRODUCTION_DB_HOST": PRODUCTION_HOST,
+            "STAGING_AUTH_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
+            "STAGING_AUTH_DATABASE": "phishlens_dev",
         }):
             verify_environment(rows, require_authenticated=True)
             set_render_environment_value(
