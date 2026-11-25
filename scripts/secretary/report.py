@@ -19,7 +19,7 @@ def latest_jobs(api, sha):
         return {}, None
     run = max(runs, key=lambda r: (r["id"], r.get("run_attempt", 1)))
     jobs = api.pages(f"actions/runs/{run['id']}/attempts/{run.get('run_attempt', 1)}/jobs", "jobs")
-    return {j["name"]: {k: j.get(k) for k in ("status", "conclusion", "html_url")} for j in jobs}, {
+    return {j["name"]: {k: j.get(k) for k in ("status", "conclusion", "html_url", "steps")} for j in jobs}, {
         k: run.get(k) for k in ("id", "run_attempt", "status", "conclusion", "head_sha", "html_url")}
 
 

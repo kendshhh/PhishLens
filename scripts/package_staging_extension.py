@@ -66,9 +66,13 @@ def assert_clean_extension_checkout(root):
         raise RuntimeError("Staging checkout has modified or untracked extension inputs")
 
 
-def auth_settings(auth_url, auth_database, manifest_key):
+def auth_settings(auth_url, auth_database, manifest_key, *, auth_transport="direct"):
     """Validate an opt-in Neon Auth target and return package-safe settings."""
+    if auth_transport not in {"direct", "https-bridge"}:
+        raise ValueError("Unsupported Auth transport")
     if auth_url is None and auth_database is None and manifest_key is None:
+        if auth_transport != "direct":
+            raise ValueError("HTTPS Auth bridge requires an Auth-enabled package")
         return None
     if not isinstance(manifest_key, str) or not manifest_key:
         raise ValueError("Auth-enabled staging packages require the extension owner's public manifest key")
@@ -86,7 +90,7 @@ def auth_settings(auth_url, auth_database, manifest_key):
             or ".neonauth." not in hostname or not hostname.endswith(".aws.neon.tech")):
         raise ValueError("Auth URL must be a canonical Neon Auth HTTPS URL for the selected database")
     extension_id = chrome_extension_id(manifest_key)
-    return {
+    settings = {
         "enabled": True,
         "auth_url": auth_url,
         "database": auth_database,
@@ -102,16 +106,19 @@ def auth_settings(auth_url, auth_database, manifest_key):
             "apiOrigin": STAGING_ORIGIN,
         },
     }
+    if auth_transport == "https-bridge":
+        settings["config"].update(transport=auth_transport, bridgeUrl=STAGING_ORIGIN + "/auth/bridge")
+    return settings
 
 
 def build(source_root, archive_path, evidence_path, expected_staging, *, auth_url=None,
-          auth_database=None, manifest_key=None):
+          auth_database=None, manifest_key=None, auth_transport="direct", candidate_only=False):
     source_root = Path(source_root).resolve(strict=True)
     archive_path = Path(archive_path).resolve()
     evidence_path = Path(evidence_path).resolve()
     if not full_sha(expected_staging):
         raise ValueError("Expected staging revision must be a full lowercase commit SHA")
-    auth = auth_settings(auth_url, auth_database, manifest_key)
+    auth = auth_settings(auth_url, auth_database, manifest_key, auth_transport=auth_transport)
     if archive_path == evidence_path or archive_path.is_relative_to(source_root) or evidence_path.is_relative_to(source_root):
         raise ValueError("Staging package and evidence outputs must be separate from the source checkout")
 
@@ -144,7 +151,7 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
         "format": "phishlens-staging-package-v1",
         "environment": "staging",
         "source_commit": package_revision,
-        "observed_staging_commit": expected_staging,
+        "observed_staging_commit": None if candidate_only else expected_staging,
         "packager_commit": packager_revision,
         "api_origin": STAGING_ORIGIN,
         "host_permissions": host_permissions,
@@ -156,6 +163,13 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
         "chrome_extension_id": auth["chrome_extension_id"] if auth else None,
         "expected_chrome_origin": auth["expected_chrome_origin"] if auth else None,
     }
+    bridge_evidence = {}
+    if candidate_only:
+        bridge_evidence.update(candidate_only=True, hosted_acceptance_verified=False)
+    if auth and auth_transport == "https-bridge":
+        bridge_evidence.update(auth_transport=auth_transport, auth_bridge_url=STAGING_ORIGIN + "/auth/bridge",
+                               required_neon_trusted_origin=STAGING_ORIGIN)
+    embedded_evidence.update(bridge_evidence)
     embedded_bytes = (json.dumps(embedded_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8")
     with ZipFile(archive_path, "w", ZIP_DEFLATED) as archive:
         for asset in sorted(ASSETS):
@@ -206,7 +220,7 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
         "chrome_extension_id": auth["chrome_extension_id"] if auth else None,
         "expected_chrome_origin": auth["expected_chrome_origin"] if auth else None,
         "trusted_chrome_origin": None,
-        "observed_staging_commit": expected_staging,
+        "observed_staging_commit": None if candidate_only else expected_staging,
         "package_checkout_commit": package_revision,
         "packager_checkout_commit": packager_revision,
         "workflow_event_sha": event_revision,
@@ -218,6 +232,7 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
         "archive_sha256": archive_hash,
         "files_sha256": file_hashes,
     }
+    evidence.update(bridge_evidence)
     evidence_path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     return evidence
 
@@ -233,6 +248,10 @@ def main():
         help="Enable Neon Auth in this staging-only package for this confirmed Auth URL",
     )
     parser.add_argument("--auth-database", help="Neon Auth database name; required with --auth-url")
+    parser.add_argument("--candidate-only", action="store_true",
+                        help="Prepare an offline candidate without claiming an observed staging deployment")
+    parser.add_argument("--auth-transport", choices=("direct", "https-bridge"), default="direct",
+                        help="Use https-bridge for the Chrome extension when Neon rejects its origin")
     parser.add_argument(
         "--manifest-key-file", type=Path,
         help="File containing the extension owner's base64 public manifest key (not the private signing key)",
@@ -246,6 +265,8 @@ def main():
             args.expected_staging,
             auth_url=args.auth_url,
             auth_database=args.auth_database,
+            auth_transport=args.auth_transport,
+            candidate_only=args.candidate_only,
             manifest_key=args.manifest_key_file.read_text(encoding="ascii").strip()
             if args.manifest_key_file else None,
         )

@@ -1,0 +1,32 @@
+{
+  "format": "phishlens-release-quality-policy-v1",
+  "cohort": {
+    "kind": "held-out-representative",
+    "primary_families_minimum": {
+      "phishing": 100,
+      "legitimate": 200,
+      "spam": 100
+    },
+    "primary_sources_per_label_minimum": 2,
+    "security_notice_families_minimum": 50,
+    "minimum_attempted_results": 400
+  },
+  "review": {
+    "score_blind": true,
+    "distinct_label_reviewers_minimum": 2,
+    "unresolved_admitted_maximum": 0,
+    "overlap_status_required": "cleared"
+  },
+  "approval": {
+    "status": "pending",
+    "required_role": "AI/model owner",
+    "approved_by": null,
+    "approved_at": null,
+    "record_url": null
+  },
+  "thresholds": {
+    "phishing_recall_min": 0.9,
+    "legitimate_false_positive_rate_max": 0.03,
+    "valid_result_rate_min": 1.0
+  }
+}
