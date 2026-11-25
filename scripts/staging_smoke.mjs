@@ -106,6 +106,7 @@ async function retryStage(name, path, operation, deadline) {
     if (lastError) {
         lastError.endpoint ||= currentStage.endpoint;
         lastError.attempts = attempts;
+        lastError.maxAttempts = maxAttempts;
         throw lastError;
     }
     throw requestError(
@@ -117,7 +118,24 @@ async function retryStage(name, path, operation, deadline) {
 function redact(value) {
     return String(value)
         .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
-        .replace(/((?:password|token|secret|api[_-]?key)=)[^&\s]+/gi, '$1[redacted]');
+        .replace(/((?:password|token|secret|api[_-]?key)=)[^&\s]+/gi, '$1[redacted]')
+        .replace(/(["']?(?:password|token|secret|api[_-]?key|authorization)["']?\s*[:=]\s*["']?)[^"'&\s,;}]+/gi, '$1[redacted]');
+}
+
+function reportStagingFailure(error) {
+    const endpoint = error?.url || error?.endpoint || currentStage.endpoint;
+    const status = Number.isInteger(error?.status) ? error.status : 'unavailable';
+    const origin = error?.origin || 'assertion';
+    const category = error?.category || 'staging_contract';
+    const code = error?.code || 'staging_assertion_failed';
+    const attempts = Number.isInteger(error?.attempts) ? error.attempts : 1;
+    const max = Number.isInteger(error?.maxAttempts) ? error.maxAttempts : maxAttempts;
+    console.error(`Staging check failed: GET ${redact(endpoint)}`);
+    console.error(`status=${status} origin=${origin} category=${category} code=${code} attempts=${attempts}/${max}`);
+    if (error?.responseBody) {
+        console.error(`Response body (bounded): ${redact(error.responseBody)}`);
+    }
+    console.error(redact(error instanceof Error ? error.message : String(error)));
 }
 
 async function writeFailureSummary(error) {
@@ -200,6 +218,6 @@ main().catch(async error => {
     } catch (summaryError) {
         console.error(`Could not write GitHub step summary: ${summaryError instanceof Error ? summaryError.message : String(summaryError)}`);
     }
-    console.error(`Staging ${currentStage.name} failed: ${redact(error instanceof Error ? error.message : String(error))}`);
+    reportStagingFailure(error);
     process.exitCode = 1;
 });
