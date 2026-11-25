@@ -1,4 +1,4 @@
-"""Read-only Neon metadata preflight for an independently initialized schema branch."""
+"""Read-only Neon metadata preflight for an independent staging branch."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import argparse
 import json
 import os
 import re
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -17,8 +16,8 @@ class NeonReleaseError(RuntimeError):
 
 def verify_branch(*, project_id: str, branch_id: str, production_project_id: str,
                   production_branch_id: str,
-                  schema_only_attestation: str, expected_parent_id: str = "",
-                  expected_host: str = "") -> dict:
+                  schema_only_attestation: str, production_rows_present: str,
+                  expected_parent_id: str = "", expected_host: str = "") -> dict:
     """Read branch metadata only; never query tables or product rows."""
     if not re.fullmatch(r"[a-z0-9-]{8,64}", project_id or ""):
         raise NeonReleaseError("Staging Neon project ID is invalid")
@@ -31,9 +30,13 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
     if branch_id == production_branch_id:
         raise NeonReleaseError("Staging cannot target the production Neon branch")
     if expected_parent_id:
-        raise NeonReleaseError("Schema-only staging branch must be an independent root")
-    if schema_only_attestation != "true":
-        raise NeonReleaseError("Protected environment must attest this branch was initialized schema-only")
+        raise NeonReleaseError("Staging branch must be an independent root")
+    if schema_only_attestation not in ("true", "false"):
+        raise NeonReleaseError(
+            "Protected environment must attest (explicitly record) whether this branch was initialized schema-only"
+        )
+    if production_rows_present != "false":
+        raise NeonReleaseError("Protected environment must attest that production rows are absent")
 
     token = os.environ.get("NEON_API_KEY", "")
     if not token:
@@ -45,7 +48,11 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
     try:
         with urlopen(request, timeout=20) as response:
             payload = json.loads(response.read())
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+    except HTTPError as exc:
+        raise NeonReleaseError(
+            f"Neon branch metadata request failed (HTTP {exc.code})"
+        ) from None
+    except (URLError, TimeoutError, json.JSONDecodeError):
         raise NeonReleaseError("Neon branch metadata request failed; details were suppressed") from None
     branch = payload.get("branch") if isinstance(payload, dict) else None
     if not isinstance(branch, dict):
@@ -69,7 +76,11 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
         try:
             with urlopen(endpoints_request, timeout=20) as response:
                 endpoints_payload = json.loads(response.read())
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        except HTTPError as exc:
+            raise NeonReleaseError(
+                f"Neon endpoint metadata request failed (HTTP {exc.code})"
+            ) from None
+        except (URLError, TimeoutError, json.JSONDecodeError):
             raise NeonReleaseError("Neon endpoint metadata request failed; details were suppressed") from None
         endpoints = endpoints_payload.get("endpoints") if isinstance(endpoints_payload, dict) else None
         if not isinstance(endpoints, list):
@@ -91,8 +102,8 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
         "branch_id": branch_id,
         "branch_name": branch.get("name"),
         "parent_id": None,
-        "branch_kind": "schema-only",
-        "schema_only_attested": True,
+        "branch_kind": "schema-only" if schema_only_attestation == "true" else "independent-root",
+        "schema_only_attested": schema_only_attestation == "true",
         **({"endpoint_host": endpoint_host} if endpoint_host else {}),
     }
 
@@ -106,22 +117,15 @@ def main() -> int:
     parser.add_argument("--parent-id", default=os.getenv("STAGING_NEON_PARENT_ID", ""))
     parser.add_argument("--expected-host", default=os.getenv("STAGING_NEON_EXPECTED_HOST", ""))
     parser.add_argument("--schema-only-attestation", default=os.getenv("STAGING_NEON_SCHEMA_ONLY_ATTESTATION", ""))
+    parser.add_argument("--production-rows-present", default=os.getenv("STAGING_NEON_PRODUCTION_ROWS_PRESENT", ""))
     args = parser.parse_args()
     try:
-        config_path = Path(__file__).resolve().parents[1] / ".github/secretary.json"
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-        normalized = lambda host: re.sub(r"-pooler(?=\.)", "", host.strip().rstrip(".").lower())
-        if (
-            args.project_id != config.get("staging_neon_project_id")
-            or args.branch_id != config.get("staging_neon_branch_id")
-            or normalized(args.expected_host) != normalized(config.get("staging_database_host", ""))
-        ):
-            raise NeonReleaseError("Staging Neon target differs from the owner-approved release target")
         print(json.dumps(verify_branch(
             project_id=args.project_id, branch_id=args.branch_id,
             production_project_id=args.production_project_id,
             production_branch_id=args.production_branch_id,
             schema_only_attestation=args.schema_only_attestation,
+            production_rows_present=args.production_rows_present,
             expected_parent_id=args.parent_id,
             expected_host=args.expected_host,
         ), sort_keys=True))

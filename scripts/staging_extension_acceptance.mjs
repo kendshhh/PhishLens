@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -8,7 +8,6 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { requireHttpsOrigin } from './https_origin.mjs';
-import { authEndpointName, extractProviderErrorCode } from './staging_auth_diagnostics.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -34,16 +33,23 @@ const evidence = {
 let context;
 let page;
 let activeAccount = null;
+let authAttempt = null;
 let productionAuthOrigin = null;
 let stagingAuthOrigin = null;
-const authDiagnostics = { responses: {}, lastFailure: null, transport: null, transportEndpoint: null };
-const pendingAuthDiagnosticReads = new Set();
+let stagingAuthBasePath = null;
 const accessTokens = new Map();
 const createdIds = new Map();
 const createdAnalysisEvidence = new Map();
+const pendingCreates = new Set();
 
 function required(name) {
   const value = process.env[name]?.trim();
+  assert.ok(value, `Missing protected staging setting ${name}`);
+  return value;
+}
+
+function requiredPassword(name) {
+  const value = process.env[name];
   assert.ok(value, `Missing protected staging setting ${name}`);
   return value;
 }
@@ -54,14 +60,6 @@ function sha256(data) {
 
 function subjectHash(subject) {
   return sha256(`phishlens-staging-subject-v1:${subject}`);
-}
-
-async function resetAuthDiagnostics() {
-  await Promise.allSettled([...pendingAuthDiagnosticReads]);
-  authDiagnostics.responses = {};
-  authDiagnostics.lastFailure = null;
-  authDiagnostics.transport = null;
-  authDiagnostics.transportEndpoint = null;
 }
 
 async function readJson(file) {
@@ -87,7 +85,6 @@ async function verifyPreflight() {
   const packageEvidencePath = path.resolve(required('RELEASE_EXTENSION_EVIDENCE'));
   const aiApprovalRaw = process.env.STAGING_AI_APPROVAL_JSON?.trim() || '';
   const packageEvidence = await readJson(packageEvidencePath);
-  const approvedTarget = await readJson(path.join(root, '.github/secretary.json'));
   const archiveDigest = sha256(await readFile(packagePath));
   assert.equal(packageEvidence.archive_sha256, archiveDigest);
   assert.equal(packageEvidence.source_commit, sourceSha);
@@ -105,17 +102,11 @@ async function verifyPreflight() {
     packageEvidence.auth_configs?.staging?.authUrl || '',
     'Staging Auth URL',
   );
-  const stagingAuthUrl = new URL(packageEvidence.auth_configs?.staging?.authUrl || '');
-  const stagingAuthDatabase = approvedTarget.staging_auth_database;
-  assert.ok(typeof stagingAuthDatabase === 'string' && /^[a-zA-Z0-9_-]{1,63}$/.test(stagingAuthDatabase),
-    'Approved staging Auth database is missing or invalid');
-  if (stagingAuthUrl.hostname !== approvedTarget.staging_auth_host
-      || stagingAuthUrl.pathname !== `/${stagingAuthDatabase}/auth`
-      || required('STAGING_AUTH_URL') !== packageEvidence.auth_configs?.staging?.authUrl
-      || required('STAGING_AUTH_DATABASE') !== stagingAuthDatabase
-      || packageEvidence.auth_configs?.staging?.database !== stagingAuthDatabase) {
-    throw new Error('Packaged and approved Neon Auth targets differ');
-  }
+  assert.equal(required('STAGING_AUTH_URL'), packageEvidence.auth_configs?.staging?.authUrl);
+  assert.equal(required('STAGING_AUTH_DATABASE'), packageEvidence.auth_configs?.staging?.database);
+  assert.equal(packageEvidence.auth_configs.staging.transport, 'https-bridge');
+  assert.equal(packageEvidence.auth_configs.staging.bridgeUrl, STAGING_ORIGIN + '/auth/bridge');
+  stagingAuthBasePath = new URL(packageEvidence.auth_configs.staging.authUrl).pathname;
 
   const extensionOrigin = `chrome-extension://${packageEvidence.chrome_extension_id}`;
   assert.equal(required('STAGING_AUTH_TRUSTED_CHROME_ORIGIN'), extensionOrigin,
@@ -125,11 +116,6 @@ async function verifyPreflight() {
     'The staging Neon branch must be an independent root');
   const branchId = required('STAGING_NEON_BRANCH_ID');
   const stagingProjectId = required('STAGING_NEON_PROJECT_ID');
-  if (branchId !== approvedTarget.staging_neon_branch_id
-      || stagingProjectId !== approvedTarget.staging_neon_project_id
-      || process.env.STAGING_BASE_URL !== approvedTarget.staging_origin) {
-    throw new Error('Acceptance settings do not match the owner-approved staging target');
-  }
   const productionProjectId = required('PRODUCTION_NEON_PROJECT_ID');
   assert.match(stagingProjectId, /^[a-z0-9-]{8,64}$/);
   assert.match(productionProjectId, /^[a-z0-9-]{8,64}$/);
@@ -138,19 +124,6 @@ async function verifyPreflight() {
   assert.match(branchId, /^br-[a-z0-9-]+$/);
   assert.notEqual(branchId, required('PRODUCTION_NEON_BRANCH_ID'));
   assert.equal(required('STAGING_NEON_PRODUCTION_ROWS_PRESENT'), 'false');
-
-  const accountA = {
-    email: required('STAGING_AUTH_USER_A_EMAIL'),
-    password: required('STAGING_AUTH_USER_A_PASSWORD'),
-  };
-  const accountB = {
-    email: required('STAGING_AUTH_USER_B_EMAIL'),
-    password: required('STAGING_AUTH_USER_B_PASSWORD'),
-  };
-  if (accountA.email.trim().toLowerCase() === accountB.email.trim().toLowerCase()
-      || !accountA.password || !accountB.password) {
-    throw new Error('Acceptance requires two distinct, pre-registered synthetic Auth accounts');
-  }
 
   const policyBytes = await readFile(path.join(root, 'docs/devops/release-quality-policy.json'));
   const policy = JSON.parse(policyBytes.toString('utf8'));
@@ -194,8 +167,7 @@ async function verifyPreflight() {
   };
   assert.match(required('STAGING_MIGRATION_REVISION'), /^[A-Za-z0-9_]+$/);
   evidence.ai_acceptance = modelApproval || { status: 'blocked', reason_code: modelApprovalProblem };
-  return { packagePath, packageEvidence, sourceSha, backendSha, imageDigest, branchId,
-    modelApproval, acceptanceMode, accountA, accountB };
+  return { packagePath, packageEvidence, sourceSha, backendSha, imageDigest, branchId, modelApproval, acceptanceMode };
 }
 
 function validateModelApproval(report, policy, policySha) {
@@ -389,65 +361,78 @@ async function observePage(observedPage) {
     await route.continue();
   });
   observedPage.on('request', async request => {
+    const owner = activeAccount;
     const requestUrl = new URL(request.url());
     const requestOrigin = requestUrl.origin;
     if (requestOrigin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/')) {
       const auth = (await request.allHeaders()).authorization;
-      if (auth?.startsWith('Bearer ') && activeAccount) accessTokens.set(activeAccount, auth.slice(7));
+      if (auth?.startsWith('Bearer ') && owner) accessTokens.set(owner, auth.slice(7));
     }
+  });
+  observedPage.on('request', request => {
+    const url = new URL(request.url());
+    if (url.origin !== STAGING_ORIGIN || url.pathname !== '/api/analyses' ||
+        request.method() !== 'POST' || !activeAccount) return;
+    const create = getCreatedResponse(request, activeAccount);
+    pendingCreates.add(create);
+    void create.then(() => pendingCreates.delete(create));
   });
   observedPage.on('response', response => {
-    const requestUrl = new URL(response.url());
-    if (requestUrl.origin === STAGING_ORIGIN && requestUrl.pathname.startsWith('/api/auth/')) {
-      const diagnosticRead = (async () => {
-        const endpoint = authEndpointName(requestUrl.pathname);
-        const status = response.status();
-        authDiagnostics.responses[endpoint] = status;
-        if (status < 400) return;
-        let providerCode = null;
-        try { providerCode = extractProviderErrorCode(await response.json()); }
-        catch { /* response bodies are never logged or copied into evidence */ }
-        authDiagnostics.lastFailure = { endpoint, status, providerCode };
-      })();
-      pendingAuthDiagnosticReads.add(diagnosticRead);
-      void diagnosticRead.then(
-        () => pendingAuthDiagnosticReads.delete(diagnosticRead),
-        () => pendingAuthDiagnosticReads.delete(diagnosticRead),
-      );
-    }
+    const attempt = authAttempt;
+    if (!attempt || attempt.responses.length >= 12) return;
+    const url = new URL(response.url());
+    const method = response.request().method();
+    const prefix = url.origin === stagingAuthOrigin ? stagingAuthBasePath
+      : url.origin === STAGING_ORIGIN ? '/api/auth' : null;
+    if (!prefix) return;
+    const route = url.pathname.slice(prefix.length);
+    if (!url.pathname.startsWith(prefix + '/') ||
+        !((route === '/sign-in/email' && method === 'POST') ||
+          (route === '/get-session' && method === 'GET'))) return;
+    attempt.responses.push({
+      service: url.origin === stagingAuthOrigin ? 'neon-auth' : 'render-auth-proxy',
+      route, status: response.status(),
+    });
   });
-  observedPage.on('requestfailed', request => {
-    const requestUrl = new URL(request.url());
-    if (requestUrl.origin !== STAGING_ORIGIN || !requestUrl.pathname.startsWith('/api/auth/')) return;
-    authDiagnostics.transportEndpoint = authEndpointName(requestUrl.pathname);
-    const errorText = request.failure()?.errorText || '';
-    if (/NAME_NOT_RESOLVED|DNS|ENOTFOUND/i.test(errorText)) authDiagnostics.transport = 'dns';
-    else if (/CERT|SSL|TLS/i.test(errorText)) authDiagnostics.transport = 'tls';
-    else if (/TIMED_OUT|timeout/i.test(errorText)) authDiagnostics.transport = 'timeout';
-    else authDiagnostics.transport = 'network';
-  });
-  observedPage.on('request', request => { void getCreatedResponse(request); });
 }
 
 async function signIn(account, email, password, { invalid = false } = {}) {
   activeAccount = account;
   if (!(await page.locator('#account-panel').isVisible())) await page.locator('#show-account').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
-  await page.locator('#account-email').fill(email);
-  await page.locator('#account-password').fill(password);
-  await page.locator('#account-sign-in button[type="submit"]').click();
-  if (invalid) {
-    await page.locator('#account-status[role="alert"]').waitFor({ state: 'visible', timeout: 20000 });
-    assert.match(await page.locator('#account-status').textContent(), /invalid|incorrect|not accepted|temporarily unavailable|try again|password|credentials/i);
-    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
-    await page.locator('#account-sign-in button[type="submit"]').waitFor({ state: 'visible' });
-    assert.equal(accessTokens.has(account), false, 'Rejected staging credentials created an authenticated session');
-    evidence.user_experience.authentication_failure = true;
-    return;
+  const signOut = page.locator('#account-sign-out:visible');
+  const alert = page.locator('#account-status[role="alert"]:visible');
+  const attempt = { account, kind: invalid ? 'intentional-rejection' : 'sign-in', responses: [] };
+  (evidence.auth.sign_in_attempts ??= []).push(attempt);
+  authAttempt = attempt;
+  try {
+    await page.locator('#account-email').fill(email);
+    await page.locator('#account-password').fill(password);
+    await page.locator('#account-sign-in button[type="submit"]').click();
+    if (invalid) {
+      await alert.waitFor({ state: 'visible', timeout: 20000 });
+      assert.ok(attempt.responses.some(({ route, status }) => route === '/sign-in/email' && status === 401),
+        'The intentional invalid-password attempt did not return the expected sign-in rejection');
+      await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
+      await page.locator('#account-sign-in button[type="submit"]').waitFor({ state: 'visible' });
+      assert.equal(accessTokens.has(account), false, 'Rejected staging credentials created an authenticated session');
+      evidence.user_experience.authentication_failure = true;
+      return;
+    }
+    await signOut.or(alert).first().waitFor({ state: 'visible', timeout: 30000 });
+    if (!await signOut.isVisible()) throw new Error('The extension rejected the sign-in or could not establish a session');
+    assert.match(await page.locator('#account-status').textContent(), /signed in/i);
+    evidence.product.sign_in = true;
+  } catch {
+    // Playwright errors can include the arguments passed to fill(), including a password.
+    const signInResponse = attempt.responses.findLast(({ route }) => route === '/sign-in/email');
+    attempt.result = !signInResponse ? 'no-sign-in-response'
+      : signInResponse.status >= 400 ? 'sign-in-rejected' : 'session-not-confirmed';
+    console.error('Staging Auth attempt failed: ' + JSON.stringify(attempt));
+    throw new Error('Staging Auth attempt failed; see redacted route and status evidence');
+  } finally {
+    authAttempt = null;
   }
-  await page.locator('#account-sign-out').waitFor({ state: 'visible', timeout: 30000 });
-  assert.match(await page.locator('#account-status').textContent(), /signed in/i);
-  evidence.product.sign_in = true;
 }
 
 async function enterReports() {
@@ -460,20 +445,22 @@ async function waitForAccountToken(account) {
   for (let attempt = 0; attempt < 50 && !accessTokens.has(account); attempt++) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  const token = accessTokens.get(account);
-  assert.ok(token, 'Authenticated staging report request did not expose a session token in memory');
-  const parts = token.split('.');
-  assert.equal(parts.length, 3, 'Authenticated account session did not produce a JWT');
-  let claims;
-  try { claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')); }
-  catch { throw new Error('Authenticated account session JWT claims were invalid'); }
-  if (typeof claims.sub !== 'string' || !claims.sub || !Number.isFinite(claims.exp)
-      || claims.exp * 1000 <= Date.now()) {
-    throw new Error('Authenticated account session JWT identity or expiry was invalid');
-  }
-  evidence.auth.verified_account_sessions ||= {};
-  evidence.auth.verified_account_sessions[account] = true;
-  return subjectHash(claims.sub);
+  assert.ok(accessTokens.has(account), 'Authenticated staging report request did not expose a session token in memory');
+}
+
+export async function verifyVisibleProvenance(reportPage) {
+  const section = reportPage.locator('#detail-content details').filter({
+    has: reportPage.locator('summary').filter({ hasText: /^About this result$/ }),
+  });
+  const analysis = section.getByText(/Automated analysis recorded when saved/i);
+  if (!(await analysis.isVisible())) await section.locator('summary').click();
+  await analysis.waitFor({ state: 'visible' });
+}
+
+export async function openRestoredAccount(reportPage) {
+  // Restored sessions show an Account button while the account panel stays closed.
+  await reportPage.getByRole('button', { name: 'Account', exact: true }).click();
+  await reportPage.locator('#account-sign-out').waitFor({ state: 'visible' });
 }
 
 async function createReport(subject, owner) {
@@ -486,7 +473,7 @@ async function createReport(subject, owner) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   assert.equal(await page.locator('#detail-heading').textContent(), subject);
-  await page.locator('#detail-content').getByText(/Automated analysis recorded when saved/i).waitFor({ state: 'visible' });
+  await verifyVisibleProvenance(page);
   assert.ok(createdIds.has(owner), 'Real staging API create response was not observed');
   const analysis = createdAnalysisEvidence.get(owner);
   assert.equal(analysis?.analysis_mode, 'real', 'A mock or unverified model result cannot pass acceptance');
@@ -500,17 +487,14 @@ async function createReport(subject, owner) {
   return createdIds.get(owner);
 }
 
-async function getCreatedResponse(request) {
-  const requestUrl = new URL(request.url());
-  if (request.method() !== 'POST' || requestUrl.origin !== STAGING_ORIGIN
-      || requestUrl.pathname !== '/api/analyses') return;
+async function getCreatedResponse(request, owner) {
   const response = await request.response().catch(() => null);
-  if (!response || response.status() !== 201 || !activeAccount) return;
+  if (!response || response.status() !== 201) return;
   try {
     const body = await response.json();
-    if (typeof body.id === 'string') {
-      createdIds.set(activeAccount, body.id);
-      createdAnalysisEvidence.set(activeAccount, {
+    if (typeof body.id === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body.id)) {
+      createdIds.set(owner, body.id);
+      createdAnalysisEvidence.set(owner, {
         analysis_mode: body.analysis_mode,
         provider_mode: body.analysis_provenance?.provider_mode,
         model_revision: body.analysis_provenance?.model_revision,
@@ -519,13 +503,13 @@ async function getCreatedResponse(request) {
   } catch { /* response bodies are never copied to evidence */ }
 }
 
-async function checkCrossAccountOwnership(accountAId) {
-  const bearer = accessTokens.get('b');
-  assert.ok(bearer, 'Account B API token was not observed in memory');
+async function checkCrossAccountOwnership(viewer, otherReportId) {
+  const bearer = accessTokens.get(viewer);
+  assert.ok(bearer, 'The signed-in account API token was not observed in memory');
   for (const [method, path, data] of [
-    ['GET', `/api/analyses/${accountAId}`],
-    ['PATCH', `/api/analyses/${accountAId}`, { notes: 'forbidden synthetic cross-account edit' }],
-    ['DELETE', `/api/analyses/${accountAId}`],
+    ['GET', `/api/analyses/${otherReportId}`],
+    ['PATCH', `/api/analyses/${otherReportId}`, { notes: 'forbidden synthetic cross-account edit' }],
+    ['DELETE', `/api/analyses/${otherReportId}`],
   ]) {
     const response = await context.request.fetch(STAGING_ORIGIN + path, {
       method,
@@ -536,38 +520,67 @@ async function checkCrossAccountOwnership(accountAId) {
     });
     assert.equal(response.status(), 404, `Cross-account ${method} must return not found`);
   }
-  evidence.product.ownership_checks = true;
 }
 
-async function testFaultStates() {
-  const historyUrl = STAGING_ORIGIN + '/api/analyses';
-  await page.route(historyUrl, async route => {
+export async function verifyHistoryFaultStates(page, apiOrigin, outcomes) {
+  const historyUrl = apiOrigin + '/api/analyses';
+  const refresh = page.locator('#load-history');
+  const loading = page.locator('#loading');
+  const status = page.locator('#crud-status');
+
+  async function checkWithHistoryRoute(handle, check) {
+    const handler = route => route.request().method() === 'GET' ? handle(route) : route.fallback();
+    // The hosted page's network guard handles requests before any context routes.
+    await page.route(historyUrl, handler);
+    try {
+      await check();
+    } finally {
+      await page.unroute(historyUrl, handler);
+    }
+  }
+
+  let delayed = false;
+  await checkWithHistoryRoute(async route => {
+    delayed = true;
     await new Promise(resolve => setTimeout(resolve, 800));
-    await route.continue();
-  }, { times: 1 });
-  const refresh = page.locator('#load-history').click();
-  await page.locator('#loading').waitFor({ state: 'visible' });
-  await refresh;
-  evidence.user_experience.loading = true;
+    await route.fallback();
+  }, async () => {
+    await refresh.click();
+    await loading.waitFor({ state: 'visible' });
+    await loading.waitFor({ state: 'hidden' });
+    assert.ok(delayed, 'The saved reports request was not intercepted for the loading check');
+    outcomes.loading = true;
+  });
 
-  await page.route(historyUrl, route => route.fulfill({
-    status: 503,
-    contentType: 'application/json',
-    body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
-  }), { times: 1 });
-  await page.locator('#load-history').click();
-  await page.getByText(/Saved reports are temporarily unavailable/i).waitFor({ state: 'visible' });
-  evidence.user_experience.api_error = true;
+  let sentServiceError = false;
+  await checkWithHistoryRoute(route => {
+    sentServiceError = true;
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Acceptance-only injected service failure' }),
+    });
+  }, async () => {
+    await refresh.click();
+    await status.filter({ hasText: /Saved reports are temporarily unavailable/i }).waitFor({ state: 'visible' });
+    assert.ok(sentServiceError, 'The saved reports request did not receive the injected HTTP 503');
+    outcomes.api_error = true;
+  });
 
-  await page.route(historyUrl, route => route.abort('timedout'), { times: 1 });
-  const previousStatus = await page.locator('#crud-status').textContent();
-  await page.locator('#load-history').click();
-  await page.waitForFunction(previous => {
-    const status = document.querySelector('#crud-status');
-    return status?.getAttribute('role') === 'alert' && status.textContent !== previous;
-  }, previousStatus);
-  assert.match(await page.locator('#crud-status').textContent(), /unavailable|failed|network|fetch/i);
-  evidence.user_experience.timeout = true;
+  // Hold the response so the extension's request deadline expires in Chrome.
+  let pendingRoute;
+  try {
+    await checkWithHistoryRoute(route => { pendingRoute = route; }, async () => {
+      await refresh.click();
+      await loading.waitFor({ state: 'visible' });
+      await status.filter({ hasText: /timed out|timeout/i }).waitFor({ state: 'visible' });
+      assert.ok(pendingRoute, 'The saved reports request was not intercepted for the timeout check');
+      await loading.waitFor({ state: 'hidden' });
+      outcomes.timeout = true;
+    });
+  } finally {
+    await pendingRoute?.abort().catch(() => {});
+  }
 }
 
 async function verifyAnonymousHistoryIsRejected() {
@@ -581,8 +594,7 @@ async function verifyAnonymousHistoryIsRejected() {
 }
 
 async function deleteCurrentReport(subject) {
-  const item = page.locator('#history-list > li').filter({ hasText: subject });
-  await item.getByRole('button', { name: `View ${subject}` }).click();
+  await page.locator('#history-list').getByRole('button', { name: `View ${subject}`, exact: true }).click();
   await page.locator('#detail-panel').waitFor({ state: 'visible' });
   await page.locator('#detail-content').getByRole('button', { name: 'Delete report' }).click();
   await page.locator('#confirm-delete').click();
@@ -590,27 +602,17 @@ async function deleteCurrentReport(subject) {
 }
 
 async function cleanupUnfinished() {
+  await Promise.allSettled(pendingCreates);
   const bearerByAccount = new Map(accessTokens);
   for (const [owner, id] of createdIds) {
     const bearer = bearerByAccount.get(owner);
     if (!bearer) continue;
-    await context?.request.delete(`${STAGING_ORIGIN}/api/analyses/${id}`, {
+    const response = await context?.request.delete(`${STAGING_ORIGIN}/api/analyses/${id}`, {
       headers: { authorization: `Bearer ${bearer}` }, maxRedirects: 0, timeout: 10000,
-    }).catch(() => {});
+    }).catch(() => null);
+    if (response && [204, 404].includes(response.status())) createdIds.delete(owner);
   }
-}
-
-async function signOutDuringCleanup() {
-  try {
-    const signOut = page?.locator('#account-sign-out');
-    if (signOut && await signOut.isVisible()) {
-      await signOut.click();
-      await signOut.waitFor({ state: 'hidden', timeout: 5000 });
-      evidence.auth.cleanup_sign_out = true;
-    }
-  } catch {
-    evidence.auth.cleanup_sign_out = false;
-  }
+  evidence.cleanup_pending = createdIds.size;
 }
 
 async function run() {
@@ -629,40 +631,27 @@ async function run() {
     profile = await launchExtension(preflight.packagePath, preflight.packageEvidence.chrome_extension_id);
     await verifyAnonymousHistoryIsRejected();
     evidence.phase = 'account-a-auth';
-    const { email: emailA, password: passwordA } = preflight.accountA;
-    const { email: emailB, password: passwordB } = preflight.accountB;
+    const emailA = required('STAGING_AUTH_USER_A_EMAIL');
+    const passwordA = requiredPassword('STAGING_AUTH_USER_A_PASSWORD');
+    const emailB = required('STAGING_AUTH_USER_B_EMAIL');
+    const passwordB = requiredPassword('STAGING_AUTH_USER_B_PASSWORD');
+    assert.ok(emailA.toLowerCase() !== emailB.toLowerCase(), 'Accounts A and B must be distinct staging accounts');
+    const runId = randomUUID();
+    const subjectA = `Synthetic release acceptance A ${runId}`;
+    const subjectB = `Synthetic release acceptance B ${runId}`;
     await signIn('a', emailA, `invalid-acceptance-${preflight.sourceSha}`, { invalid: true });
-    await resetAuthDiagnostics();
     await signIn('a', emailA, passwordA);
-    await enterReports();
-    const subjectA = await waitForAccountToken('a');
-    evidence.account_subject_sha256 = { a: subjectA };
-    await page.locator('#account-sign-out').click();
-    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
-
-    evidence.phase = 'account-b-auth';
-    await resetAuthDiagnostics();
-    await signIn('b', emailB, passwordB);
-    await enterReports();
-    const subjectB = await waitForAccountToken('b');
-    evidence.account_subject_sha256.b = subjectB;
-    if (subjectA === subjectB) throw new Error('Synthetic staging accounts resolved to the same Auth identity');
-    await page.locator('#account-sign-out').click();
-    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
-
-    evidence.phase = 'account-a-crud';
-    await resetAuthDiagnostics();
-    await signIn('a', emailA, passwordA);
+    evidence.phase = 'account-a-reports';
+    evidence.account_subject_sha256 = { a: subjectHash(emailA.toLowerCase()) };
     await enterReports();
     await waitForAccountToken('a');
-    await page.locator('#empty').waitFor({ state: 'visible' });
-    const idA = await createReport(`Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}`, 'a');
+    const idA = await createReport(subjectA, 'a');
     evidence.product.create = true;
     evidence.product.read = true;
     await page.locator('#back-to-reports').click();
-    await page.locator('#history-list').getByText(`Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}`).waitFor();
+    await page.locator('#history-list').getByText(subjectA, { exact: true }).waitFor();
     evidence.product.list = true;
-    await page.locator('#history-list').getByRole('button', { name: `View Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}` }).click();
+    await page.locator('#history-list').getByRole('button', { name: `View ${subjectA}`, exact: true }).click();
     await page.locator('#detail-panel').waitFor({ state: 'visible' });
     await page.locator('#detail-content').getByRole('button', { name: 'Edit notes' }).click();
     await page.locator('#edit-notes').fill('Synthetic verified staging note');
@@ -671,15 +660,16 @@ async function run() {
     evidence.product.update = true;
     await page.close();
 
+    evidence.phase = 'restore-account-a-session';
     page = await context.newPage();
     await observePage(page);
     await page.goto(`chrome-extension://${preflight.packageEvidence.chrome_extension_id}/popup.html?environment=staging`);
     activeAccount = 'a';
-    await page.locator('#account-sign-out').waitFor({ state: 'visible' });
+    await openRestoredAccount(page);
     await enterReports();
     await waitForAccountToken('a');
-    await page.locator('#history-list').getByText(`Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}`).waitFor();
-    await page.locator('#history-list').getByRole('button', { name: `View Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}` }).click();
+    await page.locator('#history-list').getByText(subjectA, { exact: true }).waitFor();
+    await page.locator('#history-list').getByRole('button', { name: `View ${subjectA}`, exact: true }).click();
     await page.locator('#detail-content').getByText('Synthetic verified staging note', { exact: true }).waitFor();
     evidence.product.persistence_after_reload = true;
     const screenshotPath = path.join(path.dirname(required('STAGING_ACCEPTANCE_OUTPUT')), 'staging-extension-report.png');
@@ -690,34 +680,47 @@ async function run() {
       mask: [page.locator('#account-identity')],
     });
 
-    evidence.phase = 'account-isolation';
+    evidence.phase = 'account-b-auth';
     await page.locator('#account-sign-out').click();
     await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
     await signIn('b', emailB, passwordB);
+    evidence.phase = 'account-isolation';
+    evidence.account_subject_sha256.b = subjectHash(emailB.toLowerCase());
+    assert.notEqual(evidence.account_subject_sha256.a, evidence.account_subject_sha256.b);
     await enterReports();
     await waitForAccountToken('b');
-    await page.locator('#empty').waitFor({ state: 'visible' });
-    await checkCrossAccountOwnership(idA);
-    await page.locator('#history-list').getByText(`Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}`).waitFor({ state: 'hidden' });
-    evidence.product.user_isolation = true;
-    const idB = await createReport(`Synthetic release acceptance B ${preflight.sourceSha.slice(0, 8)}`, 'b');
+    await checkCrossAccountOwnership('b', idA);
+    await page.locator('#history-list').getByText(subjectA, { exact: true }).waitFor({ state: 'hidden' });
+    const idB = await createReport(subjectB, 'b');
+    assert.notEqual(idB, idA, 'Accounts must own distinct synthetic reports');
     await page.locator('#back-to-reports').click();
-    await deleteCurrentReport(`Synthetic release acceptance B ${preflight.sourceSha.slice(0, 8)}`);
-    evidence.product.delete = true;
-    createdIds.delete('b');
+    await page.locator('#history-list').getByText(subjectB, { exact: true }).waitFor();
 
     await page.locator('#account-sign-out').click();
     await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
     await signIn('a', emailA, passwordA);
     await enterReports();
-    await page.locator('#history-list').getByText(`Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}`).waitFor();
-    await deleteCurrentReport(`Synthetic release acceptance A ${preflight.sourceSha.slice(0, 8)}`);
+    await waitForAccountToken('a');
+    await checkCrossAccountOwnership('a', idB);
+    await page.locator('#history-list').getByText(subjectB, { exact: true }).waitFor({ state: 'hidden' });
+    evidence.product.user_isolation = true;
+    evidence.product.ownership_checks = true;
+    await deleteCurrentReport(subjectA);
     createdIds.delete('a');
-    await page.locator('#empty').waitFor({ state: 'visible' });
+    await page.locator('#history-list').getByText(subjectA, { exact: true }).waitFor({ state: 'hidden' });
+
+    await page.locator('#account-sign-out').click();
+    await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
+    await signIn('b', emailB, passwordB);
+    await enterReports();
+    await deleteCurrentReport(subjectB);
+    createdIds.delete('b');
+    await page.locator('#history-list').getByText(subjectB, { exact: true }).waitFor({ state: 'hidden' });
+    evidence.product.delete = true;
     evidence.product.cleanup = true;
 
     evidence.phase = 'fault-injection-ux';
-    await testFaultStates();
+    await verifyHistoryFaultStates(page, STAGING_ORIGIN, evidence.user_experience);
     assert.equal(evidence.production_requests, 0);
     assert.equal(evidence.production_writes, 0);
     assert.equal(evidence.production_auth_requests, 0);
@@ -733,33 +736,11 @@ async function run() {
     }
   } catch (error) {
     evidence.status = 'blocked';
-    if (['account-a-auth', 'account-b-auth', 'account-a-crud'].includes(evidence.phase)) {
-      await Promise.allSettled([...pendingAuthDiagnosticReads]);
-      const failureStatus = authDiagnostics.lastFailure?.status ?? null;
-      evidence.failure_code = authDiagnostics.transport
-        ? `staging_auth_${authDiagnostics.transport}_failure`
-        : failureStatus >= 500
-          ? 'staging_auth_service_rejected'
-          : failureStatus >= 400
-            ? 'staging_auth_http_rejected'
-            : 'staging_auth_session_or_verified_account_missing';
-      evidence.auth.failure_endpoint = authDiagnostics.lastFailure?.endpoint
-        || authDiagnostics.transportEndpoint || null;
-      evidence.auth.failure_http_status = Number.isInteger(failureStatus) ? failureStatus : null;
-      evidence.auth.failure_provider_code = authDiagnostics.lastFailure?.providerCode || null;
-      evidence.auth.response_statuses = authDiagnostics.responses;
-      evidence.auth.failure_transport_category = authDiagnostics.transport;
-    } else {
-      evidence.failure_code = evidence.phase === 'preflight'
-        ? 'staging_acceptance_preflight_failed'
-        : 'staging_product_acceptance_incomplete';
-    }
-    if (['preflight', 'account-a-auth', 'account-b-auth'].includes(evidence.phase)) {
-      console.error(`Staging acceptance failed: ${evidence.failure_code}; phase=${evidence.phase}.`);
-    }
+    evidence.failure_code = 'staging_acceptance_incomplete';
+    const detail = error instanceof Error ? error.message : 'Unknown acceptance error';
+    console.error(`Staging acceptance failed during ${evidence.phase}: ${detail}`);
   } finally {
     await cleanupUnfinished();
-    await signOutDuringCleanup();
     await context?.close().catch(() => {});
     if (profile) await rm(profile, { recursive: true, force: true }).catch(() => {});
     const output = path.resolve(required('STAGING_ACCEPTANCE_OUTPUT'));

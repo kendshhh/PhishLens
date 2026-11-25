@@ -18,6 +18,7 @@ from .report import latest_jobs
 ROOT = Path(__file__).resolve().parents[2]
 REQUIRED_CI_JOBS = ("Backend checks", "Extension checks", "Staging integration")
 HOSTED_STAGING_JOB = "Hosted staging"
+PRODUCT_GATE = "Require authenticated CRUD/UX product evidence; keep model quality separate"
 
 
 def decision(pr, files, run, jobs, repository, config):
@@ -54,6 +55,11 @@ def decision(pr, files, run, jobs, repository, config):
     if not isinstance(hosted, dict) or hosted.get("status") != "completed" or hosted.get("conclusion") != "success":
         observed = "missing" if not isinstance(hosted, dict) else f"{hosted.get('status')}/{hosted.get('conclusion')}"
         return "failure", f"Authenticated Hosted staging did not pass for this CI run ({observed})"
+    if not any(
+        step.get("name") == PRODUCT_GATE and step.get("conclusion") == "success"
+        for step in hosted.get("steps") or []
+    ):
+        return "failure", "Hosted staging did not pass the authenticated CRUD/UX evidence gate"
     return "success", "Authenticated Hosted staging passed for the current PR head"
 
 

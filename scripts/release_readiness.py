@@ -827,6 +827,11 @@ def verify_release_extension_archive(
             "apiOrigin": PRODUCTION_ORIGIN if environment == "production" else STAGING_ORIGIN,
             "origin": origin,
         }
+        if environment == "staging":
+            bridge = {"transport": "https-bridge", "bridgeUrl": STAGING_ORIGIN + "/auth/bridge"}
+            if any(auth_configs[environment].get(key) != value for key, value in bridge.items()):
+                raise GateError("Release extension must use the HTTPS Auth bridge in staging")
+            runtime_auth_configs[environment].update(bridge)
     expected_auth_source = (
         "export const AUTH_CONFIGS = Object.freeze("
         + json.dumps(runtime_auth_configs, separators=(",", ":"))

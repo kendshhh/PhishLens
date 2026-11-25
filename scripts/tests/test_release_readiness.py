@@ -186,7 +186,8 @@ class ReleaseReadinessTests(unittest.TestCase):
             "production": {"enabled": True, "authUrl": "https://ep-production.neonauth.aws.neon.tech/phishlens/auth",
                            "database": "phishlens"},
             "staging": {"enabled": True, "authUrl": "https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",
-                        "database": "phishlens"},
+                        "database": "phishlens", "transport": "https-bridge",
+                        "bridgeUrl": "https://phishlens-staging.onrender.com/auth/bridge"},
         }
         hosts = [
             "https://phishlens-api-ocvt.onrender.com/*",
@@ -223,7 +224,8 @@ class ReleaseReadinessTests(unittest.TestCase):
                 b'"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
                 b'"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
-                b'"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
+                b'"origin":"https://ep-staging.neonauth.aws.neon.tech","transport":"https-bridge",'
+                b'"bridgeUrl":"https://phishlens-staging.onrender.com/auth/bridge"}});\n'
                 b'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
             ),
         }
@@ -591,20 +593,24 @@ class ReleaseReadinessTests(unittest.TestCase):
         with self.assertRaisesRegex(NeonReleaseError, "attest"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
                           production_project_id="prod-project-654321",
-                          production_branch_id="br-production-123456", schema_only_attestation="false")
+                          production_branch_id="br-production-123456", schema_only_attestation="unknown",
+                          production_rows_present="false")
         with self.assertRaisesRegex(NeonReleaseError, "independent root"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
                           production_project_id="prod-project-654321",
                           production_branch_id="br-production-123456", schema_only_attestation="true",
-                          expected_parent_id="br-production-123456")
+                          expected_parent_id="br-production-123456",
+                          production_rows_present="false")
         with self.assertRaisesRegex(NeonReleaseError, "production Neon branch"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-production-123456",
                           production_project_id="prod-project-654321",
-                          production_branch_id="br-production-123456", schema_only_attestation="true")
+                          production_branch_id="br-production-123456", schema_only_attestation="true",
+                          production_rows_present="false")
         with self.assertRaisesRegex(NeonReleaseError, "separate Neon project"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
                           production_project_id="patient-bird-25428852",
-                          production_branch_id="br-production-123456", schema_only_attestation="true")
+                          production_branch_id="br-production-123456", schema_only_attestation="true",
+                          production_rows_present="false")
 
     def test_neon_preflight_binds_database_host_to_the_exact_branch_endpoint(self):
         class FakeResponse:
@@ -638,6 +644,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 production_project_id="prod-project-654321",
                 production_branch_id="br-production-123456",
                 schema_only_attestation="true",
+                production_rows_present="false",
                 expected_host="ep-staging-pooler.c-4.ap-southeast-1.aws.neon.tech",
             )
         self.assertEqual(evidence["endpoint_host"], "ep-staging.c-4.ap-southeast-1.aws.neon.tech")
@@ -654,6 +661,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 production_project_id="prod-project-654321",
                 production_branch_id="br-production-123456",
                 schema_only_attestation="true",
+                production_rows_present="false",
                 expected_host="ep-production.c-4.ap-southeast-1.aws.neon.tech",
             )
 

@@ -129,7 +129,29 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertNotIn("staging_smoke.mjs", hosted)
         self.assertNotIn("verify_crud.mjs", hosted)
         self.assertIn("set -euo pipefail", hosted)
-        self.assertIn("if: always() && steps.staging-deploy-preflight.outputs.current == 'true'", hosted)
+        self.assertIn("if: always() && steps.staging-acceptance-preflight.outputs.current == 'true'", hosted)
+
+
+    def test_ci_runs_packaged_browser_and_read_only_auth_staging_checks(self):
+        workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        hosted_start = workflow.index("  hosted-staging:\n")
+        hosted = workflow[hosted_start:]
+        finalizer_start = hosted.index("      - name: Verify PR-head identity and package staging assets")
+        finalizer_end = hosted.index("      - name: Run authenticated extension and persistent CRUD acceptance", finalizer_start)
+        finalizer = hosted[finalizer_start:finalizer_end]
+
+        self.assertIn("npm run test:browser", workflow)
+        self.assertIn("Extension-Browser-Acceptance", workflow)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", hosted)
+        self.assertIn("smoke(config['staging_origin'], deploy_sha, report_auth_mode='neon')", finalizer)
+        self.assertIn("('/auth/bridge', 'text/html')", finalizer)
+        self.assertIn("('/auth/bridge/client.js', 'javascript')", finalizer)
+        self.assertIn("('/auth/bridge/sdk.mjs', 'javascript')", finalizer)
+        self.assertIn("'application_crud_writes_performed': False", finalizer)
+        self.assertIn("'saved_report_crud': {'result': 'not_run'}", finalizer)
+        self.assertIn("endpoint preflight uses GET requests only", finalizer)
+        self.assertNotIn("scripts/verify_crud.mjs", hosted)
+        self.assertNotIn("--allow-writes", finalizer)
 
 
 if __name__ == "__main__":

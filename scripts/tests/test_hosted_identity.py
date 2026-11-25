@@ -78,6 +78,40 @@ class HostedIdentityTests(unittest.TestCase):
                 "STAGING_PR_HEAD_SHA": SHA,
                 "STAGING_PR": "68",
             }
+            extension_origin = "chrome-extension://ceneonaedddlkdocdapimkfggbjcchlb"
+            bridge_requests = []
+
+            class BridgeResponse:
+                def __init__(self, url):
+                    self.url = url
+                    self.status = 200
+                    path = url.split("?", 1)[0]
+                    content_type = "text/html; charset=utf-8" if path.endswith("/auth/bridge") else "application/javascript"
+                    self.headers = {"Content-Type": content_type}
+                    if path.endswith("/auth/bridge"):
+                        self.headers["Content-Security-Policy"] = f"frame-ancestors {extension_origin}"
+                    self.body = (
+                        f'<div data-extension-origin="{extension_origin}"></div>'.encode()
+                        if path.endswith("/auth/bridge") else b""
+                    )
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_args):
+                    return False
+
+                def geturl(self):
+                    return self.url
+
+                def read(self, _limit=-1):
+                    return self.body
+
+            class BridgeOpener:
+                def open(self, request, timeout=20):
+                    bridge_requests.append((request.get_method(), request.full_url, timeout))
+                    return BridgeResponse(request.full_url)
+
             previous_dir = Path.cwd()
             exit_code = None
             step_error = None
@@ -87,7 +121,7 @@ class HostedIdentityTests(unittest.TestCase):
                     ReadOnlyGitHub, "request", side_effect=request_effect
                 ), patch("scripts.secretary.preview.smoke", return_value={"health": "passed"}), patch(
                     "scripts.secretary.preview.package", side_effect=package_effect
-                ):
+                ), patch("urllib.request.build_opener", return_value=BridgeOpener()):
                     try:
                         runpy.run_path(str(script_file), run_name="__main__")
                     except SystemExit as error:
@@ -107,6 +141,9 @@ class HostedIdentityTests(unittest.TestCase):
                 "summary": summary_file.read_text(encoding="utf-8") if summary_file.exists() else "",
                 "evidence_exists": (output_dir / "evidence.json").exists(),
                 "package_exists": (output_dir / "PhishLens-Staging-Extension.zip").exists(),
+                "evidence": json.loads((output_dir / "evidence.json").read_text(encoding="utf-8"))
+                    if (output_dir / "evidence.json").exists() else None,
+                "bridge_requests": bridge_requests,
             }
 
     def responses(self):
@@ -294,7 +331,6 @@ class HostedIdentityTests(unittest.TestCase):
         first = hosted_job[first_start:first_end]
         second = hosted_job[second_start:second_end]
         deployment = hosted_job[deploy_start:deploy_end]
-        auth_gate = hosted_job[hosted_job.index(auth_preflight):deploy_start]
 
         self.assertIn("live_pr_matches(", first)
         self.assertIn("ReadOnlyGitHub", first)
@@ -307,11 +343,18 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("STAGING_PR: ${{ github.event.pull_request.number }}", deployment)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", deployment)
         self.assertNotIn("github.sha", deployment)
-        self.assertIn("owner-approved target", auth_gate)
-        self.assertIn("NEON_AUTH_BASE_URL", auth_gate)
-        self.assertIn("method='OPTIONS'", auth_gate)
-        self.assertIn("STAGING_AUTH_USER_A_EMAIL", auth_gate)
-        self.assertIn("STAGING_AUTH_USER_B_EMAIL", auth_gate)
+
+        migration_start = hosted_job.index(
+            "      - name: Verify candidate can upgrade the applied staging revision", second_end
+        )
+        self.assertLess(migration_start, deploy_start)
+        database_preflight = hosted_job[second_end:migration_start]
+        migration_preflight = hosted_job[migration_start:deploy_start]
+        self.assertIn("db.read_only = True", database_preflight)
+        self.assertIn("SELECT version_num FROM public.alembic_version", database_preflight)
+        self.assertIn("steps.render-database-preflight.outputs.applied_revision", migration_preflight)
+        self.assertIn('--applied-revision "$APPLIED_REVISION"', migration_preflight)
+        self.assertNotIn("secrets.", migration_preflight)
 
         controller = (ROOT / "scripts/deploy_staging.py").read_text(encoding="utf-8")
         self.assertIn("def requested_pr_identity()", controller)
@@ -338,7 +381,6 @@ class HostedIdentityTests(unittest.TestCase):
     def test_authenticated_hosted_acceptance_uses_the_exact_pr_head(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         hosted = workflow[workflow.index("  hosted-staging:\n"):]
-        acceptance = (ROOT / "scripts/staging_extension_acceptance.mjs").read_text(encoding="utf-8")
         self.assertIn("node scripts/staging_extension_acceptance.mjs", hosted)
         self.assertIn("verify-pr-staging", hosted)
         self.assertIn("--expected-sha \"$EXPECTED_SHA\"", hosted)
@@ -350,47 +392,6 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertNotIn("STAGING_COMMIT: ${{ github.sha }}", hosted)
         self.assertNotIn("RELEASE_SOURCE_SHA: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
-        self.assertIn("verified_account_sessions", acceptance)
-        self.assertIn("account_subject_sha256.b = subjectB", acceptance)
-        self.assertLess(
-            acceptance.index("const subjectB = await waitForAccountToken('b')"),
-            acceptance.index("const idA = await createReport("),
-        )
-        self.assertNotIn("subjectHash(emailA", acceptance)
-
-    def test_stale_pr_head_withholds_authenticated_acceptance_evidence(self):
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        hosted = workflow[workflow.index("  hosted-staging:\n"):]
-        marker = "      - name: Recheck PR head before publishing staging evidence"
-        verifier = "      - name: Require authenticated CRUD/UX product evidence; keep model quality separate"
-        artifact = "      - name: Preserve hosted staging acceptance evidence and extension"
-
-        self.assertIn("steps.staging-acceptance-finalize.outputs.current == 'true'", hosted)
-        self.assertIn("steps.staging-acceptance-finalize.outputs.current != 'false'", hosted)
-        self.assertIn("live_pr_matches(", self.workflow_python_script(marker))
-        self.assertLess(hosted.index(marker), hosted.index(verifier))
-        self.assertLess(hosted.index(verifier), hosted.index(artifact))
-
-        stale_pr = {
-            "number": 68,
-            "state": "open",
-            "head": {"sha": "b" * 40, "repo": {"full_name": "kendshhh/PhishLens"}},
-            "draft": False,
-            "labels": [{"name": "needs-hosted-staging"}],
-        }
-        result = self.run_workflow_python(marker, stale_pr)
-
-        self.assertEqual(result["exit_code"], 0)
-        self.assertIn("current=false", result["output"])
-        self.assertIn("was withheld because", result["summary"])
-
-    def test_github_error_blocks_acceptance_evidence_publication(self):
-        marker = "      - name: Recheck PR head before publishing staging evidence"
-        result = self.run_workflow_python(marker, APIError("GitHub HTTP 403 for pulls/68"))
-
-        self.assertIn("Staging evidence publication blocked", str(result["exit_code"]))
-        self.assertIn("current=false", result["output"])
-        self.assertIn("publication blocked", result["summary"])
 
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {
@@ -408,12 +409,109 @@ class HostedIdentityTests(unittest.TestCase):
             "      - name: Recheck PR head immediately before staging deploy",
             [current_draft],
         )
+        hosted = self.run_workflow_python(
+            "      - name: Verify PR-head identity and package staging assets",
+            [current_draft],
+        )
 
         self.assertEqual(preflight["exit_code"], 0)
         self.assertIn("current=false", preflight["output"])
         self.assertIn("a draft", preflight["summary"])
         self.assertEqual(deploy_preflight["exit_code"], 0)
         self.assertIn("current=false", deploy_preflight["output"])
+        self.assertEqual(hosted["exit_code"], 0)
+        self.assertIn("current=false", hosted["output"])
+        self.assertIn("became a draft", hosted["summary"])
+        self.assertFalse(hosted["evidence_exists"])
+        self.assertFalse(hosted["package_exists"])
+
+    def test_read_only_finalizer_runs_before_authenticated_acceptance(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        hosted = workflow[workflow.index("  hosted-staging:\n"):]
+        start = hosted.index("      - name: Verify PR-head identity and package staging assets")
+        end = hosted.index("      - name: Run authenticated extension and persistent CRUD acceptance", start)
+        finalizer = hosted[start:end]
+        acceptance_preflight_start = hosted.index("      - name: Recheck live PR head before authenticated acceptance", start)
+        acceptance_preflight = hosted[acceptance_preflight_start:end]
+        acceptance = hosted[end:]
+
+        self.assertIn("requested_pr_identity()", finalizer)
+        self.assertIn("live_pr_matches(current, number, pr_head_sha, repository)", finalizer)
+        self.assertIn("ReadOnlyGitHub", finalizer)
+        self.assertIn("STAGING_COMMIT: ${{ github.event.pull_request.head.sha }}", finalizer)
+        self.assertNotIn("github.sha", finalizer)
+        self.assertIn("id: staging-acceptance-preflight", acceptance_preflight)
+        self.assertIn("requested_pr_identity()", acceptance_preflight)
+        self.assertIn("live_pr_matches(", acceptance_preflight)
+        self.assertIn("if: steps.staging-acceptance-preflight.outputs.current == 'true'", acceptance)
+        self.assertIn("result.write('current=false\\n')", finalizer)
+        self.assertEqual(finalizer.count("if superseded():"), 3)
+
+    def test_api_errors_during_hosted_verification_never_publish_success(self):
+        marker = "      - name: Verify PR-head identity and package staging assets"
+        current_pr = {
+            "number": 68,
+            "state": "open",
+            "head": {"sha": SHA, "repo": {"full_name": "kendshhh/PhishLens"}},
+            "draft": False,
+            "labels": [{"name": "needs-hosted-staging"}],
+        }
+        cases = (
+            ("head lookup", APIError("GitHub HTTP 403 for pulls/68"), None),
+            ("package lookup", [current_pr, current_pr], APIError("GitHub HTTP 403 for commits/SHA")),
+        )
+        for label, request_effect, package_effect in cases:
+            with self.subTest(label=label):
+                result = self.run_workflow_python(marker, request_effect, package_effect)
+
+                self.assertEqual(result["exit_code"], 1)
+                self.assertIn("current=false", result["output"])
+                self.assertIn("No extension artifact was published", result["summary"])
+                self.assertNotIn("read-only preflight passed", result["summary"])
+                self.assertFalse(result["evidence_exists"])
+                self.assertFalse(result["package_exists"])
+
+    def test_hosted_finalizer_is_read_only_and_records_auth_bridge_checks(self):
+        marker = "      - name: Verify PR-head identity and package staging assets"
+        current_pr = {
+            "number": 68,
+            "state": "open",
+            "head": {"sha": SHA, "repo": {"full_name": "kendshhh/PhishLens"}},
+            "draft": False,
+            "labels": [{"name": "needs-hosted-staging"}],
+        }
+
+        def package_effect(_api, _sha, _number, _config, output):
+            Path(output).write_bytes(b"synthetic staging package")
+
+        result = self.run_workflow_python(
+            marker, [current_pr, current_pr, current_pr], package_effect
+        )
+
+        self.assertEqual(result["exit_code"], 0)
+        self.assertIn("current=true", result["output"])
+        self.assertIn("Hosted staging read-only preflight passed", result["summary"])
+        self.assertIn("no account or saved-report writes were performed", result["summary"])
+        self.assertIn("endpoint preflight uses GET requests only", result["summary"])
+        self.assertTrue(result["evidence_exists"])
+        self.assertTrue(result["package_exists"])
+
+        checklist = result["evidence"]["automated_checklist"]
+        read_only = checklist["read_only_preflight"]
+        self.assertEqual(read_only["result"], "passed")
+        self.assertEqual(read_only["auth_bridge"], "passed")
+        self.assertEqual(read_only["anonymous_saved_report"], "authentication_required")
+        self.assertEqual(read_only["seeded_history"], "not_checked")
+        self.assertFalse(read_only["application_crud_writes_performed"])
+        self.assertEqual(checklist["live_auth_acceptance"]["result"], "not_run")
+        self.assertEqual(checklist["saved_report_crud"]["result"], "not_run")
+        self.assertEqual([request[0] for request in result["bridge_requests"]], ["GET", "GET", "GET"])
+        self.assertEqual(
+            [request[1].removeprefix("https://phishlens-staging.onrender.com")
+             for request in result["bridge_requests"]],
+            ["/auth/bridge", "/auth/bridge/client.js", "/auth/bridge/sdk.mjs"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

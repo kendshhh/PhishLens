@@ -36,7 +36,7 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
     if (path.endsWith('/sign-in/email')) { active = true; return Response.json(session('opaque-cookie-token')); }
     if (path.endsWith('/get-session')) return Response.json(active ? session('opaque-cookie-token') : null,
       { headers: active ? { 'set-auth-jwt': token } : {} });
-    if (/\/(sign-up\/email|email-otp\/verify-email|email-otp\/send-verification-otp|forget-password\/email-otp|email-otp\/reset-password)$/.test(path)) {
+    if (/\/(sign-up\/email|forget-password\/email-otp|email-otp\/reset-password)$/.test(path)) {
       return Response.json({ success: true });
     }
     assert.fail('Unexpected SDK path: ' + path);
@@ -62,8 +62,8 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
     assert.equal(requests.filter(r => new URL(r.url).pathname.startsWith('/api/analyses')).length, apiCalls.length);
     token = jwt();
     await adapter.signUp({ name: user.name, email: user.email, password: 'Synthetic-password-only' });
-    await adapter.resend({ email: user.email });
-    await adapter.verifyEmail({ email: user.email, code: '123456' });
+    assert.equal(adapter.verifyEmail, undefined);
+    assert.equal(adapter.resend, undefined);
     assert.equal((await adapter.signIn({ email: user.email, password: 'Synthetic-password-only' })).user.id, user.id);
     await adapter.recover({ email: user.email });
     await adapter.resetPassword({ email: user.email, code: '123456', password: 'Synthetic-password-only' });
@@ -71,7 +71,7 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
     await adapter.signIn({ email: user.email, password: 'Synthetic-password-only' });
     await adapter.signOut();
     assert.equal(await adapter.getAccessToken(user.id), null);
-    assert.ok(requests.some(r => r.url.endsWith('/email-otp/verify-email') && JSON.parse(r.options.body).otp === '123456'));
+    assert.equal(requests.some(r => /\/(email-otp\/verify-email|email-otp\/send-verification-otp)$/.test(new URL(r.url).pathname)), false);
   } finally { globalThis.fetch = original; }
 });
 
@@ -81,6 +81,47 @@ test('rejects opaque, expired, or mismatched tokens without returning them', asy
     if (token === 'opaque') await assert.rejects(adapter.getAccessToken(user.id), { status: 503 });
     else assert.equal(await adapter.getAccessToken(user.id), null);
   }
+});
+
+test('signup and sign-in establish sessions without an email verification code', async () => {
+  let active = false;
+  const unverifiedUser = { ...user, emailVerified: false };
+  const sdk = {
+    signUp: { email: async () => { active = true; return { data: { user: unverifiedUser } }; } },
+    signIn: { email: async () => { active = true; return { data: { user: unverifiedUser } }; } },
+    getSession: async () => ({ data: active ? { user: unverifiedUser,
+      session: { expiresAt: new Date(Date.now() + 60000).toISOString(), token: jwt(user.id) } } : null }),
+    signOut: async () => { active = false; return { data: { success: true } }; }
+  };
+  const adapter = createNeonAccounts(sdk);
+  const created = await adapter.signUp({ name: user.name, email: user.email, password: 'synthetic-password' });
+  assert.equal(created.user.emailVerified, false);
+  assert.equal((await adapter.signIn({ email: user.email, password: 'synthetic-password' })).user.id, user.id);
+});
+
+test('actual SDK HTTP failures preserve safe sign-in, duplicate and recovery-code errors', async () => {
+  const original = globalThis.fetch;
+  const errors = [
+    [401, 'INVALID_EMAIL_OR_PASSWORD', 401, /Email or password/, 'signIn'],
+    [422, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 409, /Try signing in/, 'signUp'],
+    [400, 'OTP_EXPIRED', 400, /This code expired/, 'resetPassword'],
+    [429, 'TOO_MANY_REQUESTS', 429, /Too many attempts/, 'signIn']
+  ];
+  try {
+    for (const [status, code, expectedStatus, message, method] of errors) {
+      globalThis.fetch = async () => Response.json({ code, message: 'private-provider-value' }, { status });
+      const { adapter } = createNeonIntegration({ apiOrigin,
+        config: { enabled: true, authUrl, database: 'test', apiOrigin },
+        hostPermissions: [origin + '/*', apiOrigin + '/*'] });
+      const action = method === 'signUp'
+        ? adapter.signUp({ name: user.name, email: user.email, password: 'Synthetic-password' })
+        : method === 'resetPassword'
+          ? adapter.resetPassword({ email: user.email, code: '123456', password: 'Synthetic-password' })
+          : adapter.signIn({ email: user.email, password: 'Synthetic-password' });
+      await assert.rejects(action, error =>
+        error.status === expectedStatus && message.test(error.message) && !error.message.includes('private-provider-value'));
+    }
+  } finally { globalThis.fetch = original; }
 });
 
 test('service errors are sanitized and bounded; rate limits retain useful status', async () => {
@@ -101,6 +142,54 @@ test('sign-out invalidates late restoration even if remote logout fails', async 
   assert.equal(await adapter.getAccessToken(user.id), null);
 });
 
+test('failed remote logout blocks restoration in a new popup until explicit sign-in', async () => {
+  const values = new Map();
+  const storage = {
+    async get(key) { return { [key]: values.get(key) }; },
+    async set(items) { for (const [key, value] of Object.entries(items)) values.set(key, value); },
+    async remove(key) { values.delete(key); }
+  };
+  let reads = 0;
+  const sdk = {
+    async getSession() { reads++; return { data: session(jwt()) }; },
+    async signOut() { return { error: { status: 503 } }; },
+    signIn: { async email() { return { data: {} }; } }
+  };
+  const openPopup = () => createNeonIntegration({
+    config: { enabled: true, authUrl, database: 'test', apiOrigin }, apiOrigin,
+    hostPermissions: [origin + '/*', apiOrigin + '/*'], storage, sdkFactory: () => sdk
+  }).adapter;
+  const first = openPopup();
+  assert.ok(await first.restore());
+  await assert.rejects(first.signOut(), { status: 503 });
+  assert.deepEqual([...values.values()], [true]);
+  const reopened = openPopup();
+  assert.equal(await reopened.restore(), null);
+  assert.equal(await reopened.getAccessToken(user.id), null);
+  assert.equal(reads, 1);
+  await assert.rejects(reopened.signIn({ email: 'other@example.test', password: 'Synthetic-password' }), { status: 401 });
+  assert.equal(await reopened.restore(), null);
+  assert.ok(await reopened.signIn({ email: user.email, password: 'Synthetic-password' }));
+  assert.equal(values.size, 0);
+  assert.ok(await openPopup().restore());
+});
+
+test('invalid registration stays local and duplicate errors are sanitized', async () => {
+  let signUps = 0;
+  const adapter = createNeonAccounts({
+    signUp: { async email() {
+      signUps++;
+      return { error: { status: 422, code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', message: 'private provider details' } };
+    } }
+  });
+  const valid = { name: 'Test A', email: user.email, password: 'Synthetic-password' };
+  for (const input of [{ name: '   ' }, { email: 'invalid' }, { password: 'short' }]) {
+    await assert.rejects(adapter.signUp({ ...valid, ...input }), { status: 400 });
+  }
+  assert.equal(signUps, 0);
+  await assert.rejects(adapter.signUp(valid), { status: 409, message: /Try signing in/ });
+});
+
 test('provider session renewal preserves reports and updates the expiry timer', async () => {
   let next = { user, expiresAt: 2000 }, delay;
   const changes = [];
@@ -114,11 +203,10 @@ test('provider session renewal preserves reports and updates the expiry timer', 
   accounts.dispose();
 });
 
-test('verification may succeed without a session; sign-in without a retained session is explicit', async () => {
+test('sign-in without a retained session is explicit', async () => {
   const ok = async () => ({ data: { success: true } });
-  const adapter = createNeonAccounts({ emailOtp: { verifyEmail: ok }, signIn: { email: ok },
+  const adapter = createNeonAccounts({ signIn: { email: ok },
     getSession: async () => ({ data: null }) });
-  assert.equal(await adapter.verifyEmail({ email: user.email, code: '123456' }), null);
   await assert.rejects(adapter.signIn({ email: user.email, password: 'synthetic' }), /cookie permissions/);
 });
 

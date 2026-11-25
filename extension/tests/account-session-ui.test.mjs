@@ -32,8 +32,14 @@ test('restores a verified unexpired session and clears account state before expo
   assert.deepEqual(await accounts.client.listAnalyses(), ['ada']); accounts.dispose();
 });
 
-test('expired and unverified restored sessions cannot load reports', async () => {
-  for (const session of [{ ...user('ada'), expiresAt: 0 }, { ...user('ada'), user: { ...user('ada').user, emailVerified: false } }]) {
+test('unverified email sessions remain usable; expired sessions cannot load reports', async () => {
+  const unverified = { ...user('ada'), user: { ...user('ada').user, emailVerified: false } };
+  const usable = setup({ adapter: { async restore() { return unverified; } } });
+  await usable.accounts.ready;
+  assert.equal(usable.accounts.state.status, 'signed-in');
+  assert.deepEqual(await usable.accounts.client.listAnalyses(), ['ada']);
+  usable.accounts.dispose();
+  for (const session of [{ ...user('ada'), expiresAt: 0 }]) {
     const { accounts, calls } = setup({ adapter: { async restore() { return session; } } });
     await accounts.ready; assert.equal(accounts.state.status, 'expired');
     await assert.rejects(accounts.client.listAnalyses(), { status: 401 });
@@ -96,17 +102,13 @@ test('failed remote sign-out still removes local access and shows the limitation
   assert.equal(accounts.state.user, null); assert.match(accounts.state.message, /could not confirm/); accounts.dispose();
 });
 
-test('demo signup, verification, recovery and restoration remain local and reject real email domains', async () => {
+test('demo signup and sign-in need no verification; credentials remain local and reject real email domains', async () => {
   const values = new Map();
   const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
   const adapter = createMockAccounts(storage);
   await assert.rejects(adapter.signUp({ name: 'Demo', email: 'someone@gmail.com', password: 'Demo-only-123!' }), /fictional/);
-  await adapter.signUp({ name: '<img src=x>', email: 'new@example.test', password: 'Demo-only-123!' });
-  await assert.rejects(adapter.signIn({ email: 'new@example.test', password: 'Demo-only-123!' }), /Verify/);
-  await adapter.resend({ email: 'new@example.test' });
-  await assert.rejects(adapter.verifyEmail({ email: 'new@example.test', code: '000000' }), /incorrect/);
-  const session = await adapter.verifyEmail({ email: 'new@example.test', code: '123456' });
-  assert.equal(session.user.emailVerified, true);
+  const session = await adapter.signUp({ name: '<img src=x>', email: 'new@example.test', password: 'Demo-only-123!' });
+  assert.equal(session.user.emailVerified, false);
   assert.deepEqual(await adapter.restore(), session);
   assert.doesNotMatch([...values.values()].join(''), /password|Demo-only/);
   await adapter.signOut(); assert.equal(await adapter.restore(), null);
