@@ -35,17 +35,30 @@ Set `window_start` and `window_end` to the approved ISO timestamps with `+08:00`
 The helper blocks execution outside that window. Cleanup that needs extra time
 requires an explicit extension of its approval; do not silently extend the plan.
 
-The proposed target is shared staging, not a PR-specific branch:
+The target must satisfy `docs/devops/staging.md`: a separate Neon project from
+production, an independent root branch initialized schema-only, and no copied
+production rows. The historical `patient-bird-25428852` / `pr-58-staging` target
+is not the current approved target. The configuration owner must confirm and
+record the canonical project, branch, endpoint and Auth database before testing;
+this runbook does not approve a replacement.
 
-| Component | Proposed identity; reverify before approval |
+| Component | Required identity; record exact values in the private plan |
 | --- | --- |
 | Backend | `https://phishlens-staging.onrender.com` |
-| Neon project | `patient-bird-25428852` |
-| Shared branch | `br-delicate-paper-b381z98i` (`pr-58-staging`) |
-| Application database | `phishlens_dev` |
-| Auth database | `neondb` |
-| Auth base URL | `https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth` |
+| Neon project / branch | Owner-confirmed isolated project and independent root branch |
+| Application / migration database | `phishlens_dev` |
+| Runtime / migration roles | `phishlens_staging_app` / `neondb_owner` |
+| Auth database / URL | Same branch; database must match URL path and package configuration |
 | Expected model | TF-IDF SHA in the example plan; reverify `/model-info` |
+
+Trixia coordinates and executes the two-account browser/API acceptance and
+approved synthetic-account cleanup. Kendra confirms infrastructure, migration
+readiness and rollback; protected staging approval must come from an authorized
+reviewer under the current environment rules. Record an explicit start and end
+with `+08:00`; a previous window is not a new authorization. Signup and sign-in
+use email/password without mandatory signup verification. Confirm this provider
+setting before signup. Password recovery still requires its recovery code;
+removing signup verification does not remove recovery security.
 
 Kendra must verify the Render credential hostname actually identifies that
 branch/database, separately from `/ready`. Record exact runtime auth mode,
@@ -63,7 +76,7 @@ confirmation references record the operator's prior checks, not automated proof.
 
 The normal production package remains unchanged and Auth stays disabled in the
 tracked source. After Kendra confirms the exact paired backend revision and
-Leyan supplies the confirmed Auth URL/database and the extension owner's public
+the configuration owner supplies the confirmed Auth URL/database and the extension owner's public
 manifest key, the staging packager can create an opt-in Auth-enabled ZIP as an
 overlay. The public key is required to make Chrome's extension ID deterministic
 and bind it to the package. Never request, store, or pass the private signing
@@ -80,10 +93,16 @@ python scripts/package_staging_extension.py \
   --expected-staging FULL_VERIFIED_BACKEND_SHA \
   --auth-url https://CONFIRMED_NEON_AUTH_HOST/neondb/auth \
   --auth-database neondb \
+  --auth-transport https-bridge \
   --manifest-key-file /private/path/extension-public-key.txt \
   --output /private/path/PhishLens-Staging-Auth.zip \
   --evidence /private/path/PhishLens-Staging-Auth-evidence.json
 ```
+
+For preparation before deployment, add `--candidate-only` and supply the reviewed
+source SHA to `--expected-staging`. Candidate evidence leaves the observed staging
+SHA empty and records hosted acceptance as unverified. After deployment, compare
+the actual `/version` SHA against the candidate's source SHA before any live trial.
 
 The key file contains only the extension owner's canonical base64 RSA
 SubjectPublicKeyInfo DER public manifest key. The builder rejects malformed or
@@ -91,7 +110,7 @@ unsupported key encodings. It embeds `phishlens-build-evidence.json` in the ZIP 
 the full source/backend SHA, packager SHA, Auth target, exact host permissions,
 public-key digest, and derived Chrome ID/origin. It also writes a sidecar with
 the ZIP and per-file hashes. Keep the ZIP and sidecar together; send both from
-the same build. Leyan should independently hash the received ZIP and run the
+the same build. Trixia should independently hash the received ZIP and run the
 verifier before installation. A hash mismatch means the received archive is
 not the verified candidate and must not be installed.
 
@@ -100,10 +119,16 @@ The package receives only the staging API host and that exact Auth origin as
 required host permissions. The builder rejects credentials, query strings,
 extra hosts, non-Neon Auth domains, missing or mismatched public keys and source
 checkouts whose extension inputs are dirty. The evidence records the expected
-Chrome ID from the public key and leaves `trusted_chrome_origin` unset. After
-Leyan independently confirms the installed ID matches, have the Neon
-administrator verify that exact
-origin before any Auth setting change. This local package build is preparation;
+Chrome ID from the public key. With `--auth-transport https-bridge`, the package
+uses `/auth/bridge` on the staging API. Confirm that Render serves the bridge
+with the matching Auth URL, `REPORT_AUTH_MODE=neon`, and
+`RENDER_EXTERNAL_URL=https://phishlens-staging.onrender.com` (or the explicit
+`AUTH_BRIDGE_ORIGIN` override). Register `https://phishlens-staging.onrender.com`
+as the Neon trusted domain. The fixed installed Chrome origin is checked by
+the bridge's frame policy and message handler. Record the verified HTTPS domain
+in the private plan's `trusted_origin`. The evidence records the required HTTPS
+domain, and leaves the historical `trusted_chrome_origin` field unset.
+This local package build is preparation;
 it does not install the extension, update Neon trusted origins, configure
 Render, or authorize hosted testing. The trusted Secretary controller must be
 reviewed and promoted before its hosted preview can use a new packager revision.
@@ -184,10 +209,13 @@ IDs, expected history IDs, conflict code, owner PATCH fields and cross-account
 PATCH/DELETE denial. The
 operator compares the private before/after fields and records pass/fail. Do not
 repeat a blocked helper step by deleting its receipt. Extra requests must fit
-the agreed scope. Signup, real email/OTP, browser cookie/session restoration, renewal,
-expiry, sign-out and UI account switching remain Leyan's installed-Chrome checks.
+the agreed scope. Signup and password sign-in without a signup verification code,
+browser cookie/session restoration, renewal, expiry, sign-out and UI account
+switching remain Trixia's installed-Chrome checks. Email-verification OTP delivery
+and verification are out of scope while disabled; password-recovery code handling
+is a separate check.
 
-Anonymous/expired denial across all five CRUD operations, unverified-account
+Anonymous/expired denial across all five CRUD operations, banned-account
 denial (403 where a JWT exists), and demo separation remain outside this helper's
 live two-report sequence. Agree on their exact requests separately, using only
 this run's recorded IDs; never test destructive denial against seed or unrelated

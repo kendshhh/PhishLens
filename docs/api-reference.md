@@ -147,12 +147,12 @@ The backend selects report ownership; the client never sends an owner ID.
   `demo@phishlens.test` user. This is not personal storage or authenticated isolation.
 - With `REPORT_AUTH_MODE=neon`, all five saved CRUD operations require
   `Authorization: Bearer <JWT>`. The backend validates an EdDSA token's signature, issuer,
-  audience, expiry, issued-at time, subject and email; `emailVerified` must be `true` and
-  `banned` must be `false`. It maps the verified subject to an internal user ID and scopes
+  audience, expiry, issued-at time, subject and email; `banned` must be `false`.
+  Email verification is not required for API access. It maps the signed subject to an internal user ID and scopes
   list/detail/create/update/delete and idempotency lookup to that owner. Legacy demo records
   are not linked by email.
 - Missing, malformed, invalid or expired Bearer tokens return 401; missing, malformed or
-  negative verified/active account claims return 403; invalid Auth configuration or JWKS
+  negative active-account claims return 403; invalid Auth configuration or JWKS
   availability failures return 503. An unknown auth mode also fails closed with 503.
 - Another user's report is returned as 404. Idempotency keys are scoped per owner: replaying
   the same key and payload returns the original save; reusing that owner's key with changed

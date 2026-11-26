@@ -28,10 +28,11 @@ class PackageVerificationTests(unittest.TestCase):
                                "host_permissions": hosts or self.hosts}).encode()
         files = {name: b"synthetic asset" for name in ASSETS}
         files["manifest.json"] = manifest
-        files["js/config.js"] = (
-            b'export const API_BASE_URL = "https://phishlens-api-ocvt.onrender.com";'
-            + (b"\n" if config_newline else b"")
+        config = (
+            b'export const API_BASE_URL = "https://phishlens-api-ocvt.onrender.com";\n'
+            b"export const API_BASE_URLS = Object.freeze({ production: API_BASE_URL });"
         )
+        files["js/config.js"] = config + (b"\n" if config_newline else b"")
         with ZipFile(self.archive, "w") as package:
             for name, content in files.items():
                 package.writestr(name, content)
@@ -60,6 +61,35 @@ class PackageVerificationTests(unittest.TestCase):
     def test_config_without_final_newline_passes(self):
         self.build(config_newline=False)
         self.assertEqual(self.check()["files_verified"], len(ASSETS))
+
+    def test_config_with_windows_line_endings_passes(self):
+        with ZipFile(self.archive) as package:
+            files = {name: package.read(name) for name in package.namelist()}
+        files["js/config.js"] = files["js/config.js"].replace(b"\n", b"\r\n")
+        with ZipFile(self.archive, "w") as package:
+            for name, content in files.items():
+                package.writestr(name, content)
+        self.evidence["archive_sha256"] = hashlib.sha256(self.archive.read_bytes()).hexdigest()
+        self.evidence["files_sha256"]["js/config.js"] = hashlib.sha256(files["js/config.js"]).hexdigest()
+        self.save()
+        self.assertEqual(self.check()["files_verified"], len(ASSETS))
+
+    def test_staging_origin_is_rejected_from_production_package(self):
+        with ZipFile(self.archive) as package:
+            files = {name: package.read(name) for name in package.namelist()}
+        files["js/config.js"] = (
+            b'export const API_BASE_URLS = Object.freeze({"production":"https://phishlens-api-ocvt.onrender.com",'
+            b'"staging":"https://phishlens-staging.onrender.com"});\n'
+            b"export const API_BASE_URL = API_BASE_URLS.production;\n"
+        )
+        with ZipFile(self.archive, "w") as package:
+            for name, content in files.items():
+                package.writestr(name, content)
+        self.evidence["archive_sha256"] = hashlib.sha256(self.archive.read_bytes()).hexdigest()
+        self.evidence["files_sha256"]["js/config.js"] = hashlib.sha256(files["js/config.js"]).hexdigest()
+        self.save()
+        with self.assertRaisesRegex(ValueError, "Production API configuration"):
+            self.check()
 
     def test_stale_source_rejected(self):
         with self.assertRaisesRegex(ValueError, "source"):

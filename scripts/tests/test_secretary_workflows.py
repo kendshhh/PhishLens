@@ -68,10 +68,11 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertNotIn("deployments:", workflow)
         self.assertNotIn("RENDER_", workflow)
         self.assertNotIn("NEON_", workflow)
-        self.assertIn('"Hosted staging"', controller)
+        self.assertNotIn('"Hosted staging"', controller)
         self.assertIn('"Secretary staging"', (ROOT / ".github/secretary.json").read_text(encoding="utf-8"))
-        self.assertIn("hosted.get(\"status\") != \"completed\"", controller)
-        self.assertIn("hosted.get(\"conclusion\") != \"success\"", controller)
+        self.assertIn('return "pending", "Waiting for the trusted controller', controller)
+        self.assertIn('if state == "pending":', controller)
+        self.assertIn("no competing status was published", controller)
         self.assertNotIn("render_request", controller)
 
     def test_secretary_required_context_uses_commit_status_from_trusted_controller(self):
@@ -112,29 +113,73 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
         self.assertNotIn("github.event.pull_request.head.sha", workflow)
 
-    def test_ci_runs_packaged_browser_and_staging_saved_report_checks(self):
-        workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-        controller = (ROOT / "scripts/secretary/preview.py").read_text(encoding="utf-8")
+    def test_trusted_neon_preflight_covers_intentionally_stacked_pr_bases(self):
+        workflow = (WORKFLOWS / "staging-neon-preflight.yml").read_text(encoding="utf-8")
+        triggers = workflow.split("permissions:", 1)[0]
 
-        self.assertIn("npm run test:browser", workflow)
-        self.assertIn("Extension-Browser-Acceptance", workflow)
-        self.assertIn("Verify saved report synthetic AI and CRUD checklist", workflow)
-        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", workflow)
-        self.assertIn("scripts/verify_crud.mjs", workflow)
-        self.assertIn("node pr-source/scripts/verify_crud.mjs", workflow)
-        self.assertIn("name: Check out exact-head staging smoke and synthetic acceptance scripts", workflow)
-        self.assertIn("scripts/staging_smoke.mjs", workflow)
-        self.assertIn("node pr-source/scripts/staging_smoke.mjs --github-output", workflow)
-        self.assertNotIn("node scripts/staging_smoke.mjs --github-output", workflow)
-        self.assertIn("name: Validate hosted history acceptance mode", workflow)
-        self.assertIn('case "$HISTORY_ACCESS_MODE" in', workflow)
-        self.assertIn("Hosted smoke did not produce a supported history access mode.", workflow)
-        self.assertIn("steps.history-mode.outputs.mode == 'anonymous'", workflow)
-        self.assertIn("steps.history-mode.outputs.mode == 'auth_required'", workflow)
-        self.assertIn("Authenticated saved-report history and CRUD were not run", workflow)
-        self.assertIn("analysisProvenance:", (ROOT / "scripts/verify_crud.mjs").read_text(encoding="utf-8"))
-        self.assertIn("Real AI acceptance is not checked", workflow)
-        self.assertIn("verify_saved_report(config[\"staging_origin\"], staging_sha)", controller)
+        self.assertIn("pull_request_target:", triggers)
+        self.assertNotIn("branches:", triggers)
+        self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", workflow)
+        self.assertIn("ref: ${{ github.sha }}", workflow)
+        self.assertIn("environment: staging-neon-preflight", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("needs-hosted-staging", workflow)
+
+
+    def test_pr_ci_has_no_hosted_deployment_credentials_or_auth_secrets(self):
+        workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        self.assertIn("pull_request:", workflow)
+        self.assertNotIn("RENDER_STAGING_API_KEY", workflow)
+        self.assertNotIn("NEON_API_KEY", workflow)
+        self.assertNotIn("STAGING_AUTH_USER_A_PASSWORD", workflow)
+        self.assertNotIn("STAGING_AUTH_USER_B_PASSWORD", workflow)
+        self.assertNotIn("environment: staging", workflow)
+        self.assertNotIn("environment: release-staging", workflow)
+
+    def test_trusted_controller_isolates_deploy_credential_from_candidate_code(self):
+        workflow = (WORKFLOWS / "trusted-hosted-staging.yml").read_text(encoding="utf-8")
+        ci = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        deploy = workflow.split("  deploy-staging:\n", 1)[1].split("  accept-staging:\n", 1)[0]
+        accept = workflow.split("  accept-staging:\n", 1)[1].split("  report:\n", 1)[0]
+
+        self.assertIn("workflow_run:", workflow)
+        self.assertIn("workflows: [CI]", workflow)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("environment: release-staging", deploy)
+        self.assertIn("RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}", deploy)
+        self.assertNotIn("actions/checkout", deploy.split("Deploy only the verified PR head", 1)[1])
+        self.assertNotIn("STAGING_AUTH_USER_A_PASSWORD", deploy)
+        self.assertNotIn("STAGING_AUTH_USER_B_PASSWORD", deploy)
+        self.assertIn("environment: staging", accept)
+        self.assertIn("ref: ${{ needs.inspect.outputs.source_sha }}", accept)
+        self.assertIn("STAGING_AUTH_USER_A_PASSWORD", accept)
+        self.assertIn("STAGING_AUTH_USER_B_PASSWORD", accept)
+        self.assertNotIn("RENDER_STAGING_API_KEY", accept)
+        self.assertNotIn("RENDER_STAGING_API_KEY", ci)
+        acceptance_step = accept.split(
+            "- name: Run authenticated exact-package CRUD and extension acceptance", 1
+        )[1].split("- name: Require authenticated CRUD/UX evidence", 1)[0]
+        self.assertNotIn("working-directory: pr-source", acceptance_step)
+        self.assertIn("node scripts/staging_extension_acceptance.mjs", acceptance_step)
+        browser_dependencies = workflow.split(
+            "- name: Install trusted browser dependencies without acceptance credentials", 1
+        )[1].split("- name: Confirm live staging identity", 1)[0]
+        self.assertNotIn("working-directory: pr-source", browser_dependencies)
+        self.assertIn("npm ci", browser_dependencies)
+
+    def test_required_secretary_status_stays_pending_until_trusted_acceptance(self):
+        controller = (ROOT / "scripts/secretary/hosted_status.py").read_text(encoding="utf-8")
+        workflow = (WORKFLOWS / "trusted-hosted-staging.yml").read_text(encoding="utf-8")
+
+        self.assertIn('return "pending", "Waiting for the trusted controller', controller)
+        self.assertIn('"context": config["preview_check"]',
+                      (ROOT / "scripts/secretary/trusted_staging.py").read_text(encoding="utf-8"))
+        self.assertIn("INSPECT_RESULT: ${{ needs.inspect.result }}", workflow)
+        self.assertIn("DEPLOY_RESULT: ${{ needs.deploy-staging.result }}", workflow)
+        self.assertIn("ACCEPTANCE_RESULT: ${{ needs.accept-staging.result }}", workflow)
+        self.assertIn('state = "success" if passed else "failure"',
+                      (ROOT / "scripts/secretary/trusted_staging.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

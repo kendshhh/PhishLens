@@ -1,4 +1,5 @@
 -r requirements.in
 ruff
 pytest
+httpx
 httpx2

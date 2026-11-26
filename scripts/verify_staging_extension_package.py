@@ -47,7 +47,11 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         raise TypeError("Package evidence must be a JSON object")
     if evidence.get("environment") != "staging" or evidence.get("api_origin") != STAGING_ORIGIN:
         raise ValueError("Package evidence does not identify the staging API origin")
-    if (evidence.get("observed_staging_commit") != expected_staging
+    candidate_only = evidence.get("candidate_only") is True
+    observed_commit = None if candidate_only else expected_staging
+    if candidate_only and (evidence.get("hosted_acceptance_verified") is not False or staging_evidence_path is not None):
+        raise ValueError("Offline candidate cannot claim hosted acceptance")
+    if (evidence.get("observed_staging_commit") != observed_commit
             or evidence.get("package_checkout_commit") != expected_staging
             or evidence.get("source_commit") != expected_staging):
         raise ValueError("Package checkout does not match the observed staging revision")
@@ -155,11 +159,31 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
     if any(PRODUCTION_HOST.encode("ascii") in data.lower() for data in contents.values()):
         raise ValueError("Production API hostname appears in the staging package")
     auth_config = contents["js/auth-config.js"].decode("utf-8")
+    bridge_evidence = {}
+    bridge_fields = ("auth_bridge_url", "required_neon_trusted_origin")
+    if evidence.get("auth_transport", "direct") != "https-bridge" and any(
+        evidence.get(key) is not None for key in bridge_fields
+    ):
+        raise ValueError("Direct Auth package must not claim an HTTPS bridge")
+    if not auth_enabled and evidence.get("auth_transport") is not None:
+        raise ValueError("Disabled Auth package must not claim a transport")
     if auth_enabled:
+        auth_configuration = {"enabled": True, "authUrl": auth_url, "database": auth_database,
+                              "apiOrigin": STAGING_ORIGIN}
+        transport = evidence.get("auth_transport", "direct")
+        if transport not in {"direct", "https-bridge"}:
+            raise ValueError("Unsupported Auth transport in package evidence")
+        if transport == "https-bridge":
+            if trusted_origin is not None:
+                raise ValueError("HTTPS bridge uses its API trusted domain")
+            bridge_evidence = {"auth_transport": transport, "auth_bridge_url": STAGING_ORIGIN + "/auth/bridge",
+                               "required_neon_trusted_origin": STAGING_ORIGIN}
+            if any(evidence.get(key) != value for key, value in bridge_evidence.items()):
+                raise ValueError("HTTPS Auth bridge does not match the staging API origin")
+            auth_configuration.update(transport=transport, bridgeUrl=STAGING_ORIGIN + "/auth/bridge")
         expected_auth_config = (
             "export const AUTH_CONFIG = "
-            + json.dumps({"enabled": True, "authUrl": auth_url, "database": auth_database,
-                          "apiOrigin": STAGING_ORIGIN}, separators=(",", ":"))
+            + json.dumps(auth_configuration, separators=(",", ":"))
             + ";\n"
         )
         if auth_config != expected_auth_config:
@@ -171,7 +195,7 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         "format": "phishlens-staging-package-v1",
         "environment": "staging",
         "source_commit": evidence["source_commit"],
-        "observed_staging_commit": expected_staging,
+        "observed_staging_commit": observed_commit,
         "packager_commit": evidence["packager_checkout_commit"],
         "api_origin": STAGING_ORIGIN,
         "host_permissions": expected_hosts,
@@ -183,6 +207,9 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         "chrome_extension_id": extension_id,
         "expected_chrome_origin": expected_chrome_origin,
     }
+    embedded_expected.update(bridge_evidence)
+    if candidate_only:
+        embedded_expected.update(candidate_only=True, hosted_acceptance_verified=False)
     if embedded_evidence != embedded_expected:
         raise ValueError("Embedded provenance does not match the package evidence")
 
@@ -207,6 +234,7 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
             raise ValueError("Read-only staging evidence must confirm that no writes were performed")
 
     return {
+        **bridge_evidence,
         "environment": "staging",
         "api_origin": STAGING_ORIGIN,
         "auth_enabled": auth_enabled,
@@ -215,11 +243,12 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
         "chrome_extension_id": extension_id,
         "expected_chrome_origin": expected_chrome_origin,
         "trusted_chrome_origin": trusted_origin,
-        "observed_staging_commit": expected_staging,
+        "observed_staging_commit": observed_commit,
         "package_checkout_commit": evidence["package_checkout_commit"],
         "workflow_event_sha": event_sha,
         "archive_sha256": archive_hash,
         "files_verified": len(names),
+        "candidate_only": candidate_only,
     }
 
 
