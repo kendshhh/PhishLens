@@ -1,0 +1,75 @@
+# Owner decision packet — Sprint 3 in-progress work
+
+Prepared 2026-11-16 for the existing board audit PR #233. The current **Sprint 3 — Backlog by person** view was rechecked in the signed-in browser: it still has the same 14 target issues In Progress. The filtered **Sprint 3 — S3 tasks** view is not the complete carryover view. This packet proposes choices and records the exact evidence needed to resume; it does not authorize provider calls, staging writes, failure injection, or a status change.
+
+## 1. AI evaluation decisions — #92 and #93 (reconciled 2026-11-20)
+
+**Owners:** Wilberr (`EnviousCoal`) for #92; Kendra (`kendshhh`) for #93. Trixia (`xxTrixia`) is the #92 reviewer. The AI-owner decisions are recorded; the remaining gates below are evaluation inputs, implementation/review and delivery.
+
+- **#92 scoped approval (Nov 15):** EnviousCoal accepts TF-IDF v12a `word_plus_char_wb_C1p0`, model SHA-256 `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`, raw-margin cutoff zero for advisory screening on the frozen English source-pair cohort. Approved criteria are at least 90% phishing recall, at most 3% legitimate-only false positives, and 100% valid output. The accepted result is limited to that cohort and does not establish contemporary-source performance.
+- **#92 corrected synthetic diagnostic:** The corrected manifest, overlap audit and lock were posted in [the issue update](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6891932603). The earlier Nov 18 preflight reproduced the lock and replayed saved historical predictions with zero candidate inferences. Later that day, exactly one offline diagnostic run completed under the owner's recorded exception to the pending independent final-lock approval ([exception](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6983613256), [result](https://github.com/kendshhh/PhishLens/issues/92#issuecomment-6983792340)); the exception is not an approval attributed to Trixia. All 45 cases returned valid outputs. The primary split detected 1/12 phishing cases (11 missed), with 0/12 legitimate and 0/12 spam alerts; context and stress phishing detections were 0/2 and 0/1. Primary recall was 8.33% (95% Wilson interval 1.49–35.39%). This synthetic diagnostic is not an actual-mail result or quality acceptance. The one authorized run is complete; no rerun or tuning is claimed. Independent final-lock review, actual-mail contemporary qualification, and explanation review remain open.
+- **#92 remaining fresh-data gate:** Broader evaluation still needs a rights-cleared contemporary cohort, score-blind labels, independent source families, overlap review, frozen manifest/protocol and revision-linked report. Keep actual-mail coverage and explanation review open; do not use private inbox content or tune against holdout results.
+- **#93 approved policy (Nov 15):** EnviousCoal approved the deterministic development baseline: all required contract/failure cases must run and pass, with zero missing, failed or skipped tests; all 40 development cases must return valid, correctly identified results; paid/external inference and model-weight downloads are prohibited. The development set has no numeric model-quality cutoff. Keep held-out quality thresholds separate under #92.
+- **#93 implementation evidence (Nov 18):** The owner approved the explicit 113-test inventory and pinned 40-case/model identities. The applicable path and explicit not-applicable status path were observed in the issue update and evidence on PRs [#245](https://github.com/kendshhh/PhishLens/pull/245) and [#246](https://github.com/kendshhh/PhishLens/pull/246). Required review, merge and main-branch delivery remain open.
+
+Kendra's Nov 16 reply deferred execution of #92/#93 evaluation work. Preserve it as attributed feedback: it did not revoke the AI-owner policy approvals. The reply predates the Nov 18 owner-authorized synthetic diagnostic; the one run completed under the exception linked above, and the exception is not attributed to Trixia.
+
+**Next steps:** For #92, independently review the final lock and explanation grounding, then complete the rights-cleared contemporary-data protocol, score-blind labels, independent-family and overlap review, and a revision-linked report before prospective actual-mail qualification. Do not rerun or tune against the already-scored synthetic diagnostic bundle; use a separate untouched confirmation cohort if further diagnostic evaluation is authorized. For #93, complete required review, merge and main-branch delivery of the approved gate. Both issues remain In Progress until their remaining acceptance boundaries are satisfied.
+
+## 2. Provider smoke and failure drill — #94, #95, #96
+
+**Owners:** Kendra for #94/#95; Trixia (`xxTrixia`) for #96. EnviousCoal is the named reviewer for these AI gates.
+
+Choose one path:
+
+1. **Defer live provider work.** Keep all runs deterministic/local and keep the live acceptance criteria open; or
+2. **Authorize a bounded staging run.** Record the approved provider and exact model revision, exact staging service and deployed SHA, confirmed nonproduction Neon branch, fixed synthetic input, maximum request count (the #94 smoke permits at most one), maximum spend in USD, timeout, retry policy (zero automatic retries), quota stop rule, failure cases, rollback/stop owner, and approving owner. No value is assumed in this packet.
+
+For #95/#96, the proposed failure matrix is unavailable configuration/provider, timeout, quota/rate limit, malformed or unsupported output, and database-save failure. Mark each scenario as deterministic simulation or approved live injection. Define what counts as detection/recovery before measuring it. Existing deterministic tests and staging rollback timing are not AI failure/recovery measurements.
+
+**Next step after approval:** verify the exact target with a current `/version` check and redacted service-to-Neon branch evidence; run only the approved scope; publish request count, source/model/deployment identities, outcomes and measured timings without payloads or secrets. Stop if identity, quota, timeout or spend controls fail. Until the owner packet and exact target are recorded, #94/#95/#96 remain In Progress.
+
+## 3. Environment and connected CRUD evidence — #37, #42, #44, #45, #7, #23, #87, #98
+
+**Owners:** Kendra for #37; Trixia for #42; Leyan (`inaki3023`) for #44/#45/#7/#23/#87/#98. Reviewers are the ones named on the respective issues.
+
+The last read-only probe recorded production on main `6544364` with its provider unavailable, and staging on open PR #156 SHA `a448fbb` in TF-IDF mode. Readiness alone does not identify the Neon branch. The required owner-supplied environment record is a redacted attestation of each Render service → Neon branch mapping and external API-key scope; include identifiers and scope names, never secret values. The environment owner must confirm staging is isolated and disposable writes are authorized before any synthetic record is created.
+
+After that record and exact deployed candidate are verified, the frontend/API owners can run the scoped synthetic connected acceptance: create once → use returned ID → detail/history reread → edit and reread → delete and confirm absent → reopen/refresh. Record redacted HTTP statuses, source/client/backend/package SHA, browser/version, cleanup and failure-state results. Include #7/#23 changed-record and loading/empty/request-failure/malformed-response checks; #44/#45 real client/API and UI composition plus sprint-log handoff; #87/#98 saved-report behavior, no blind retries, and controlled error handling; #42 persistence and schema behavior. Do not use production or existing seeded/user records.
+
+For #37, the package, manifest and local checks pass, but effective service/key scope and the existing history finding have not been resolved. The issue criterion about private emails in repository history cannot be certified under the recorded **no-rewrite** disposition. Kendra and reviewer inaki3023 must either provide a non-history-rewriting remediation that satisfies the criterion or record an explicit accepted exception/change to that criterion; do not rewrite refs or disclose the identities.
+
+## 4. Actual process records — #41
+
+**Owner:** Kendra; reviewer: inaki3023.
+
+Supply the actual dates and records for two or three async standups (done/next/blocked), a written retrospective (went well/did not/one next change), and the whole-team 15-minute rehearsal (actual participants/attendance and each participant's own technical explanation). Also provide real slip reasons, owners and replans where applicable. If those activities have not happened, hold them with the actual team and write contemporaneous records; do not backdate or infer them from PRs/CI. The board/status/evidence audit is current, but cannot substitute for these events. #41 stays In Progress until the actual records and handoff are attached.
+
+## Reply fields to unblock the next pass
+
+Provide decisions or records in this shape; “defer” is a valid answer and leaves the relevant issue open:
+
+- #92: complete independent review of the final synthetic lock and explanation grounding, then provide rights-cleared contemporary data, score-blind labels, independent-family and overlap evidence, a frozen protocol, and a revision-linked report for prospective actual-mail qualification. The one synthetic diagnostic run is complete; do not rescore its consumed bundle. The TF-IDF v12a scope/threshold decision is already recorded.
+- #93: complete required review, merge and main-branch delivery of the approved 113-test, 40-case/model-pinned gate; no additional owner threshold decision is outstanding.
+- Provider and staging owner / decision for #94–#96: provider/model revision; spend cap; request cap; timeout/retry/quota controls; failure matrix; exact staging service/SHA and Neon branch; approval for the bounded actions.
+- Environment evidence for #37 and connected CRUD tasks: redacted Render-service-to-Neon-branch mapping, API-key scope names, staging isolation and synthetic-write authorization.
+- Consultation records for #41: actual dated standups, retro, rehearsal attendance and delivered explanations, or confirmation that the events still need to be held.
+- #37 history criterion: non-rewrite remediation or explicit owner-approved criterion exception consistent with the existing no-rewrite disposition.
+
+## User response — 2026-11-16
+
+Kendra replied to the decision request as follows:
+
+- **#92/#93:** defer. The issue's TF-IDF v12a candidate remains a proposal; no data protocol, final threshold or EnviousCoal approval was supplied. Keep the holdout untouched and the deterministic gate unchanged.
+- **#94/#95/#96:** defer live provider and staging failure work. No provider request, quota spend or failure injection is authorized by this reply.
+- **Environment/connected CRUD (#37/#42/#44/#45/#7/#23/#87/#98):** Kendra does not know the Render-to-Neon mapping, effective scope names, or write authorization. The environment owner must provide the redacted attestation; the relevant API/frontend owners then run their acceptance against the confirmed exact staging revision.
+- **#41:** Kendra does not have the actual consultation and sprint-process records. The actual participants must supply them, or the team must hold the real activities and document them contemporaneously.
+- **#37 history criterion:** no change to the recorded no-rewrite disposition was requested; the criterion remains unresolved. Kendra and reviewer inaki3023 must identify a criterion-satisfying non-rewrite path or explicitly resolve the criterion through the project's review process.
+
+These replies narrow the blockers but do not satisfy the remaining acceptance criteria. All 14 items stay In Progress pending the named owner evidence and real records above.
+
+## Fresh environment evidence — 2026-11-16
+
+Read-only Render metadata lists staging deployment dep-dbt6d9m7bikc73d6a7r0 as live at [PR #156](https://github.com/kendshhh/PhishLens/pull/156) SHA a448fbba4acad48ac9026658c42a879cd3d2fa4a (last updated 03:11:31 UTC; observed 03:14:58 UTC). The Render service starts with python scripts/start_staging.py; the exact deployed [staging guard](https://github.com/kendshhh/PhishLens/blob/a448fbba4acad48ac9026658c42a879cd3d2fa4a/scripts/start_staging.py) pins the permitted Neon endpoint ep-soft-fog-b3orfa8a, which the Neon control plane maps to branch pr-58-staging. This is source/configuration corroboration of the intended isolated staging target. Fresh GET-only /version retries to staging and production around 03:11 UTC timed out after 8 seconds, so the current runtime identity and effective database connection were not confirmed. Production has no matching source-level branch pin; its database mapping and both services' effective external API-key scope names remain unknown because the connector does not expose service variables. No database or secret values were read and no write was attempted.
+
+This narrows the #37 blocker but does not satisfy its live isolation check or authorize CRUD acceptance. The environment owner still needs to attest the effective production/staging mapping and key scopes through an approved redacted read-only method, and explicitly authorize synthetic writes to staging. Kendra and reviewer inaki3023 still need to resolve the history criterion through a criterion-satisfying non-rewrite path or an approved criterion change. Keep #37 In Progress.
