@@ -57,6 +57,7 @@
     "backend.tests.test_ai_providers::test_phishing_in_later_window_is_detected[2000]",
     "backend.tests.test_ai_providers::test_phishing_in_later_window_is_detected[2001]",
     "backend.tests.test_ai_providers::test_phishing_in_later_window_is_detected[25000]",
+    "backend.tests.test_ai_providers::test_saved_create_gemini_timeout_keeps_single_sdk_attempt",
     "backend.tests.test_ai_service::test_benchmark_metrics_count_errors_as_failed_opportunities",
     "backend.tests.test_ai_service::test_benchmark_rejects_duplicate_paid_models_before_starting_workers",
     "backend.tests.test_ai_service::test_benchmark_stops_at_daily_quota_without_inventing_missing_scores",
