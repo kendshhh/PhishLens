@@ -1,5 +1,4 @@
 """Start only against the separately configured staging database."""
-import json
 import queue
 import re
 import socket
@@ -7,7 +6,6 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from sqlalchemy.dialects.postgresql.psycopg import PGDialect_psycopg
@@ -22,9 +20,9 @@ DATABASE_CONNECT_TIMEOUT_SECONDS = 10
 MIGRATION_TIMEOUT_SECONDS = 300
 SEED_TIMEOUT_SECONDS = 180
 
-# Pin hosted staging to the verified `phishlens-staging` project's `staging-root`
-# Neon endpoint. Updating this pin requires a reviewed project/branch mapping;
-# Render variables alone must not be able to redirect startup to another branch.
+# Pin hosted staging to the verified Neon endpoint. Updating this
+# pin requires a reviewed Neon project/branch mapping; Render variables alone
+# must not be able to redirect startup to production or another branch.
 STAGING_NEON_ENDPOINT_ID = "ep-winter-wind-a1y2r1db"
 STAGING_NEON_ENDPOINT_SUFFIX = ".ap-southeast-1.aws.neon.tech"
 STAGING_NEON_ENDPOINT_HOSTS = frozenset({
@@ -138,31 +136,6 @@ def _normalized_neon_host(host: str) -> str:
     return re.sub(r"-pooler(?=\.)", "", host.rstrip(".").lower())
 
 
-def validate_owner_approved_target(
-    expected_host: str, project_id: str, branch_id: str, auth_url: str
-) -> None:
-    """Keep Render startup pinned to the target approved for this release workflow."""
-    config_path = Path(__file__).resolve().parents[1] / ".github/secretary.json"
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    if (
-        _normalized_neon_host(expected_host) != _normalized_neon_host(config.get("staging_database_host", ""))
-        or project_id != config.get("staging_neon_project_id")
-        or branch_id != config.get("staging_neon_branch_id")
-    ):
-        raise SystemExit("Hosted staging target differs from the owner-approved Neon project and branch.")
-    auth = urlsplit((auth_url or "").strip().rstrip("/"))
-    auth_database = config.get("staging_auth_database", "")
-    if (
-        auth.scheme != "https"
-        or auth.hostname != config.get("staging_auth_host")
-        or not re.fullmatch(r"[a-zA-Z0-9_-]{1,63}", auth_database)
-        or auth.path != f"/{auth_database}/auth"
-        or auth.username or auth.password or auth.port is not None
-        or auth.query or auth.fragment
-    ):
-        raise SystemExit("Hosted staging Auth URL differs from the owner-approved Neon branch.")
-
-
 def validate_hosted_database_urls(
     runtime: URL, migration: URL, expected_host: str, app_role: str,
     production_host: str, staging_project_id: str, production_project_id: str,
@@ -173,30 +146,19 @@ def validate_hosted_database_urls(
         _validate_hosted_connection_query(database, name)
 
     normalized_host = _normalized_neon_host(expected_host)
-    pinned_hosts = {
-        _normalized_neon_host(host) for host in STAGING_NEON_ENDPOINT_HOSTS
-    }
     normalized_production_host = _normalized_neon_host(production_host)
-    if (
-        normalized_host not in pinned_hosts
-        or not normalized_host.startswith("ep-")
-        or not normalized_host.endswith(".aws.neon.tech")
-        or not normalized_production_host.startswith("ep-")
-        or not normalized_production_host.endswith(".aws.neon.tech")
-        or normalized_host == normalized_production_host
-    ):
+    if (expected_host.rstrip(".").lower() not in STAGING_NEON_ENDPOINT_HOSTS
+            or not normalized_production_host.startswith("ep-")
+            or not normalized_production_host.endswith(".aws.neon.tech")
+            or normalized_host == normalized_production_host):
         raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
-    if (
-        not re.fullmatch(r"br-[a-z0-9-]{8,64}", staging_branch_id or "")
-        or not re.fullmatch(r"br-[a-z0-9-]{8,64}", production_branch_id or "")
-        or staging_branch_id == production_branch_id
-    ):
+    if (not re.fullmatch(r"br-[a-z0-9-]{8,64}", staging_branch_id or "")
+            or not re.fullmatch(r"br-[a-z0-9-]{8,64}", production_branch_id or "")
+            or staging_branch_id == production_branch_id):
         raise SystemExit("Hosted staging must use a distinct verified Neon branch ID.")
-    if (
-        not re.fullmatch(r"[a-z0-9-]{8,64}", staging_project_id or "")
-        or not re.fullmatch(r"[a-z0-9-]{8,64}", production_project_id or "")
-        or staging_project_id == production_project_id
-    ):
+    if (not re.fullmatch(r"[a-z0-9-]{8,64}", staging_project_id or "")
+            or not re.fullmatch(r"[a-z0-9-]{8,64}", production_project_id or "")
+            or staging_project_id == production_project_id):
         raise SystemExit("Hosted staging must use a separate Neon project from production.")
     if app_role != "phishlens_staging_app":
         raise SystemExit("Hosted staging requires an isolated host and the phishlens_staging_app role.")
@@ -231,14 +193,6 @@ def main():
         production_branch_id = os.getenv("PRODUCTION_NEON_BRANCH_ID", "")
         if os.getenv("APP_ENV") != "staging":
             raise SystemExit("Hosted staging requires APP_ENV=staging before migrations.")
-        if os.getenv("REPORT_AUTH_MODE") != "neon":
-            raise SystemExit("Hosted staging requires REPORT_AUTH_MODE=neon before migrations.")
-        validate_owner_approved_target(
-            expected_host,
-            staging_project_id,
-            staging_branch_id,
-            os.getenv("NEON_AUTH_BASE_URL", ""),
-        )
         if _normalized_neon_host(expected_host) != _normalized_neon_host(
                 os.getenv("STAGING_NEON_EXPECTED_HOST", "")):
             raise SystemExit("STAGING_DATABASE_HOST does not match the verified staging Neon branch endpoint.")

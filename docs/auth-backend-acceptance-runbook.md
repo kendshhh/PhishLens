@@ -1,36 +1,5 @@
 # Backend Auth acceptance and cleanup procedure
 
-## Current staging target contract (2026-11-22)
-
-The protected staging target is Neon project `ancient-brook-17208049`, branch
-`br-rough-sea-a1l6ehi1`, and PostgreSQL endpoint
-`ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`. Runtime and migration
-URLs continue to target `phishlens_dev` with separate app and owner roles. Neon
-Auth uses its separate `neondb` database at `/neondb/auth`. The #268 base's
-PostgreSQL endpoint is preserved; `.github/secretary.json` pins the current
-protected project, branch, endpoint, and Auth mapping. The startup guard requires
-these identities to match.
-
-The latest protected acceptance run (`45040106942`) passed mapping preflight,
-deployed the exact candidate, and reached a healthy staging service. Sign-in for
-synthetic account A returned HTTP 401 at phase `account-a-auth`, before saved-report
-CRUD. Its sanitized evidence records no production requests or writes. Before the
-next run, verify that accounts A and B exist and are email-verified on this exact
-Neon Auth branch, and that the protected GitHub secrets match those accounts. Do
-not put their credentials in chat, source, or evidence.
-
-Before the next hosted run, privately verify that Render's runtime
-`DATABASE_URL`, `STAGING_DATABASE_HOST`, and separate
-`STAGING_MIGRATION_DATABASE_URL` resolve to the pinned branch and report the
-expected database and separate roles, and that the configured Auth host is enabled
-for the same branch. The protected non-secret target identities were checked
-read-only; Render's current URL identities still require private verification. No
-live Auth/CRUD acceptance is claimed by this reconciliation. Keep the protected
-settings authoritative; never put credential values in this runbook.
-
-The earlier `patient-bird-25428852` / `pr-58-staging` target is historical and
-must not be copied into protected settings.
-
 Preparation only. This document and its examples are not authorization to run
 anything against staging. They do not select a deployment or change Auth config.
 The two-account Auth run is separate from #48's one-report TF-IDF lifecycle.
@@ -66,10 +35,12 @@ Set `window_start` and `window_end` to the approved ISO timestamps with `+08:00`
 The helper blocks execution outside that window. Cleanup that needs extra time
 requires an explicit extension of its approval; do not silently extend the plan.
 
-The target must satisfy [staging acceptance](devops/staging.md): a separate
-Neon project from production, an independent root branch initialized schema-only,
-and no copied production rows. The current mapping still requires private
-Render/Auth verification before hosted acceptance.
+The target must satisfy `docs/devops/staging.md`: a separate Neon project from
+production, an independent root branch initialized schema-only, and no copied
+production rows. The historical `patient-bird-25428852` / `pr-58-staging` target
+is not the current approved target. The configuration owner must confirm and
+record the canonical project, branch, endpoint and Auth database before testing;
+this runbook does not approve a replacement.
 
 | Component | Required identity; record exact values in the private plan |
 | --- | --- |

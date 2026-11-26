@@ -14,13 +14,6 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_QUERY = {"sslmode", "channel_binding"}
 
 
-def verified_migration_head() -> str:
-    """Load the migration checker using the repository package namespace."""
-    from scripts.verify_migration_lineage import verify_migration_lineage
-
-    return verify_migration_lineage(ROOT)
-
-
 def validate_target(env: dict[str, str]) -> str:
     if env.get("STAGING_NEON_SCHEMA_ONLY_ATTESTATION") != "true":
         raise ValueError("Schema-only staging attestation is required")
@@ -95,7 +88,8 @@ def main() -> int:
     if revision.returncode:
         print("Could not verify the migrated staging revision.", file=sys.stderr)
         return revision.returncode
-    expected = verified_migration_head()
+    from scripts.verify_migration_lineage import verify_migration_lineage
+    expected = verify_migration_lineage(ROOT)
     match = re.search(r"^Rev:\s+([A-Za-z0-9_]+)", revision.stdout + "\n" + revision.stderr,
                       flags=re.MULTILINE)
     if not match or match.group(1) != expected:

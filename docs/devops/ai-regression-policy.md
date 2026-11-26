@@ -6,9 +6,11 @@ AI owner: EnviousCoal. Policy recorded November 15 and reconciled November 18,
 The ordinary PR gate requires the reviewed contract inventory to pass exactly
 once, with zero missing, extra, duplicated, failed, errored or skipped tests.
 The explicit inventory is in `scripts/ai-regression-baseline.json`. It contains
-113 tests: the 94 existing selected tests, eight tests of the evidence guard and
-11 tests of the bounded provider-smoke controller. Controller tests substitute
-every HTTP response and make no staging/provider request.
+114 tests: 95 selected contract tests, eight tests of the evidence guard and
+11 tests of the bounded provider-smoke controller. The additional contract test
+covers the 15-second Gemini saved-create SDK timeout and single attempt.
+[AI owner approval in #107](https://github.com/kendshhh/PhishLens/pull/107#issuecomment-6984039087).
+Controller tests substitute every HTTP response and make no staging/provider request.
 Pytest subtests are reported separately and are not additional inventory items.
 
 All 40 `synthetic-v1` development cases must complete with valid outputs, zero
@@ -27,7 +29,7 @@ are recorded in [#92](https://github.com/kendshhh/PhishLens/issues/92#issuecomme
 
 ## Verification
 
-Run the eight paths in the baseline's `test_paths` list with Python 3.12 and
+Run the paths in the baseline's `test_paths` list with Python 3.12 and
 `backend/requirements-dev.txt`, with `AI_MODE=mock`, saving JUnit XML. Then:
 
 ```powershell
@@ -46,9 +48,7 @@ required workload step.
 An intentional test or development/model inventory change requires a reviewed
 baseline update with its rationale and the AI owner's decision. A dependency
 change that changes collected test identities also requires reconciliation.
-Do not silently regenerate the baseline during CI. In particular, merge #107's
-additional provider test with an explicitly reviewed inventory update if that
-changes this selection.
+Do not silently regenerate the baseline during CI.
 
 ## Required-status delivery
 

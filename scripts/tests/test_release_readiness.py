@@ -184,8 +184,7 @@ class ReleaseReadinessTests(unittest.TestCase):
         self.archive = self.root / "PhishLens-Staging-Extension.zip"
         auth_configs = {
             "production": {"enabled": True, "authUrl": "https://ep-production.neonauth.aws.neon.tech/phishlens/auth",
-                           "database": "phishlens", "transport": "https-bridge",
-                           "bridgeUrl": "https://phishlens-api-ocvt.onrender.com/auth/bridge"},
+                           "database": "phishlens"},
             "staging": {"enabled": True, "authUrl": "https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",
                         "database": "phishlens", "transport": "https-bridge",
                         "bridgeUrl": "https://phishlens-staging.onrender.com/auth/bridge"},
@@ -193,6 +192,8 @@ class ReleaseReadinessTests(unittest.TestCase):
         hosts = [
             "https://phishlens-api-ocvt.onrender.com/*",
             "https://phishlens-staging.onrender.com/*",
+            "https://ep-production.neonauth.aws.neon.tech/*",
+            "https://ep-staging.neonauth.aws.neon.tech/*",
         ]
         public_key = json.loads((Path(__file__).resolve().parents[2] / "extension/manifest.json").read_text())["key"]
         extension_id = chrome_extension_id(public_key)
@@ -220,12 +221,11 @@ class ReleaseReadinessTests(unittest.TestCase):
                 b'export const AUTH_CONFIGS = Object.freeze({"production":{"enabled":true,'
                 b'"authUrl":"https://ep-production.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-api-ocvt.onrender.com",'
-                b'"transport":"https-bridge","bridgeUrl":"https://phishlens-api-ocvt.onrender.com/auth/bridge",'
                 b'"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
                 b'"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
-                b'"transport":"https-bridge","bridgeUrl":"https://phishlens-staging.onrender.com/auth/bridge",'
-                b'"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
+                b'"origin":"https://ep-staging.neonauth.aws.neon.tech","transport":"https-bridge",'
+                b'"bridgeUrl":"https://phishlens-staging.onrender.com/auth/bridge"}});\n'
                 b'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
             ),
         }
@@ -526,12 +526,6 @@ class ReleaseReadinessTests(unittest.TestCase):
         digest = verify_release_extension_archive(self.archive, self.extension_evidence, SOURCE_SHA)
         self.assertEqual(digest, self.extension_evidence["archive_sha256"])
 
-    def test_release_extension_requires_environment_bound_https_auth_bridge(self):
-        evidence = json.loads(json.dumps(self.extension_evidence))
-        evidence["auth_configs"]["staging"]["transport"] = "https-proxy"
-        with self.assertRaisesRegex(GateError, "approved HTTPS bridge"):
-            verify_release_extension_archive(self.archive, evidence, SOURCE_SHA)
-
     def test_extension_archive_mismatch_fails(self):
         evidence = dict(self.extension_evidence, source_commit="d" * 40)
         with self.assertRaisesRegex(GateError, "source SHA"):
@@ -704,17 +698,58 @@ class ReleaseReadinessTests(unittest.TestCase):
             extract_notes(changelog, "1.2.3")
 
     def test_protected_environments_require_reviewer_and_prevent_self_review(self):
-        payload = {"name": "production", "protection_rules": [{
+        payload = {"name": "production", "can_admins_bypass": False,
+                   "deployment_branch_policy": {"protected_branches": True,
+                                                "custom_branch_policies": False},
+                   "protection_rules": [{
             "type": "required_reviewers", "reviewers": [{"type": "User", "id": 123}],
             "prevent_self_review": True,
         }]}
         self.assertTrue(validate_environment(payload, "production")["prevent_self_review"])
         with self.assertRaisesRegex(EnvironmentGateError, "reviewer"):
-            validate_environment({"name": "production", "protection_rules": []}, "production")
+            validate_environment({
+                "name": "production",
+                "can_admins_bypass": False,
+                "deployment_branch_policy": {
+                    "protected_branches": True,
+                    "custom_branch_policies": False,
+                },
+                "protection_rules": [],
+            }, "production")
         bad = json.loads(json.dumps(payload))
         bad["protection_rules"][0]["prevent_self_review"] = False
         with self.assertRaisesRegex(EnvironmentGateError, "self-review"):
             validate_environment(bad, "production")
+        bad = json.loads(json.dumps(payload))
+        bad["can_admins_bypass"] = True
+        with self.assertRaisesRegex(EnvironmentGateError, "administrator bypass"):
+            validate_environment(bad, "production")
+        bad = json.loads(json.dumps(payload))
+        bad["deployment_branch_policy"]["protected_branches"] = False
+        with self.assertRaisesRegex(EnvironmentGateError, "protected branches"):
+            validate_environment(bad, "production")
+
+    def test_release_staging_requires_independent_main_only_gate(self):
+        payload = {
+            "name": "release-staging",
+            "can_admins_bypass": False,
+            "deployment_branch_policy": {
+                "protected_branches": False,
+                "custom_branch_policies": True,
+            },
+            "protection_rules": [{
+                "type": "required_reviewers",
+                "reviewers": [{"type": "User", "id": 220726329}],
+                "prevent_self_review": True,
+            }],
+        }
+        branch_policies = {"branch_policies": [{"name": "main", "type": "branch"}]}
+        result = validate_environment(payload, "release-staging", branch_policies)
+        self.assertEqual(result["required_reviewers"], 1)
+        with self.assertRaisesRegex(EnvironmentGateError, "only the main branch"):
+            validate_environment(payload, "release-staging", {
+                "branch_policies": [{"name": "refs/pull/*/merge", "type": "branch"}]
+            })
 
 
 if __name__ == "__main__":

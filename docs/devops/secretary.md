@@ -1,10 +1,10 @@
 # PhishLens staging and release gates
 
-> Architecture and rollout design reference. For the current controller observation and staging/Auth gaps, see [Secretary verification](secretary-verification.md) and the [DevOps evidence index](README.md). Treat workflow and Render settings in this guide as design assumptions unless a current control-plane observation confirms them.
-
-This is a reporting-only pilot for Veriqo in the existing `kendshhh/PhishLens` repository. The source repository still uses the PhishLens name. Start with [the rollout checklist](secretary-verification.md) and [course mapping](secretary-course.md).
-
-**Candidate state on 2026-11-22:** the authenticated acceptance and release-promotion path is being reconciled on a review branch. It is not active on `main`; no live acceptance run is claimed here. Keep issue #153 at **NO-GO**.
+**State on 2026-11-21:** the authenticated acceptance and release-promotion
+changes are on PR #266. They are not active on `main` and have not produced a
+live acceptance run. Keep issue #153 at **NO-GO**. This guide describes the
+candidate workflow in that PR; it is not evidence that staging or production has
+passed.
 
 ## PR acceptance flow
 
