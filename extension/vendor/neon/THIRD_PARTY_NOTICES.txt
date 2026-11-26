@@ -1,4 +1,4 @@
-@better-auth/core@1.7.18 (MIT)
+@better-auth/core@1.7.23 (MIT)
 The MIT License (MIT)
 Copyright (c) 2024 - present, Bereket Engida
 
@@ -307,7 +307,7 @@ SOFTWARE.
 
 ---
 
-better-auth@1.7.18 (MIT)
+better-auth@1.7.23 (MIT)
 The MIT License (MIT)
 Copyright (c) 2024 - present, Bereket Engida
 
