@@ -1,3 +1,5 @@
+const UNCONFIRMED_SIGN_OUT = 'The account service could not confirm sign-out. Your session may still be active. Try signing out again.';
+
 export function sessionError(message = 'Sign in to view your saved reports.') {
   return Object.assign(new Error(message), { code: 'session_required', status: 401 });
 }
@@ -43,7 +45,13 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     const version = await clear('restoring', 'Checking your account…');
     if (disposed || version !== revision) return false;
     try { return await accept(await adapter[method](input), version); }
-    catch (error) { if (version === revision) publish('signed-out'); throw error; }
+    catch (error) {
+      if (version === revision) {
+        if (error?.code === 'signout_unconfirmed') publish('sign-out-unconfirmed', UNCONFIRMED_SIGN_OUT);
+        else publish('signed-out');
+      }
+      throw error;
+    }
   }
   async function refresh() {
     const version = revision;
@@ -62,14 +70,22 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
       cancel(timer);
       timer = schedule(() => { void clear('expired', 'Your session expired. Sign in again.').catch(() => {}); },
         Math.min(next.expiresAt - now(), 2147483647));
-    } catch {
-      if (version === revision) await clear('expired', 'Your session could not be checked. Sign in again.');
+    } catch (error) {
+      if (version === revision) {
+        if (error?.code === 'signout_unconfirmed') await clear('sign-out-unconfirmed', UNCONFIRMED_SIGN_OUT);
+        else await clear('expired', 'Your session could not be checked. Sign in again.');
+      }
     }
   }
   const ready = (async () => {
     const version = revision;
     try { await accept(await adapter.restore(), version); }
-    catch { if (version === revision) publish('signed-out', 'Your session could not be restored. Sign in again.'); }
+    catch (error) {
+      if (version === revision) {
+        if (error?.code === 'signout_unconfirmed') publish('sign-out-unconfirmed', UNCONFIRMED_SIGN_OUT);
+        else publish('signed-out', 'Your session could not be restored. Sign in again.');
+      }
+    }
   })();
   const guarded = {};
   for (const method of ['listAnalyses', 'getAnalysis', 'createAnalysis', 'updateAnalysis', 'deleteAnalysis']) {
@@ -107,8 +123,7 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
       const [local, remote] = await Promise.allSettled([clearing, adapter.signOut()]);
       if (version !== revision) return;
       if (remote.status === 'rejected' && remote.reason?.code === 'signout_unconfirmed') {
-        publish('sign-out-unconfirmed',
-          'The account service could not confirm sign-out. Your session may still be active. Try signing out again.');
+        publish('sign-out-unconfirmed', UNCONFIRMED_SIGN_OUT);
         return;
       }
       const message = local.status === 'rejected' || remote.status === 'rejected'
