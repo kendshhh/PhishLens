@@ -54,6 +54,14 @@ A distinct HTTP 504 response has not been implemented. Timeout classification an
 
 ## Local verification
 
+> Historical snapshot note: the runtime and deadline statements below describe
+> the Week 1 source and verification recorded on October 21, 2026. Persistent
+> saved-create later gained a supervised 15-second inference budget, a
+> 20-second operation target, a 15,000 ms Gemini SDK timeout, and HTTP 504
+> `analysis_timeout`. The separate unsaved `POST /analyses` path retains its
+> 30-second SDK timeout. Current persistent-create behavior and qualifications
+> are recorded in `docs/s2-t1-backend-handoff.md`.
+
 Run from the repository root:
 
     ./.venv/bin/python -m ruff check backend
