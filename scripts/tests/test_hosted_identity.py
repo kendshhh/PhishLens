@@ -15,6 +15,13 @@ from scripts.secretary.preview import smoke, verify_saved_report
 
 SHA = "a" * 40
 ROOT = Path(__file__).resolve().parents[2]
+LEGACY_INLINE_HOSTED_WORKFLOW = "\n  hosted-staging:\n" in (
+    ROOT / ".github/workflows/ci.yml"
+).read_text(encoding="utf-8")
+LEGACY_WORKFLOW_REASON = (
+    "The PR-triggered staging job was replaced by the trusted workflow_run controller; "
+    "its current policy is covered by test_trusted_staging.py."
+)
 
 
 class HostedIdentityTests(unittest.TestCase):
@@ -75,6 +82,7 @@ class HostedIdentityTests(unittest.TestCase):
                 "STAGING_BASE_URL": config["staging_origin"],
                 "STAGING_COMMIT": SHA,
                 "STAGING_MIGRATION_REVISION": "0003_saved_analysis_idempotency",
+                "STAGING_HISTORY_ACCESS_MODE": "anonymous",
                 "STAGING_PR_HEAD_SHA": SHA,
                 "STAGING_PR": "68",
             }
@@ -261,6 +269,7 @@ class HostedIdentityTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Staging smoke failed"):
                     self.verify(values)
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_stale_runs_are_filtered_before_deployment(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         preflight_start = workflow.index("  hosted-staging-preflight:\n")
@@ -297,6 +306,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("github.event.pull_request.user.login != 'dependabot[bot]'", hosted_header)
         self.assertIn("environment: staging", hosted_header)
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_hosted_staging_rechecks_current_head_before_deployment(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         extension_start = workflow.index("  extension:\n")
@@ -361,6 +371,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("def live_pr_matches(", controller)
         self.assertIn("require_live_pr(github, number, head_sha, repository)", controller)
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_api_error_before_deployment_fails_closed(self):
         marker = "      - name: Check PR head before entering staging queue"
         result = self.run_workflow_python(marker, APIError("GitHub HTTP 403 for pulls/68"))
@@ -369,6 +380,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("current=false", result["output"])
         self.assertIn("no deployment was started", result["summary"])
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_api_error_immediately_before_deployment_fails_closed(self):
         marker = "      - name: Recheck PR head immediately before staging deploy"
         result = self.run_workflow_python(marker, APIError("GitHub HTTP 403 for pulls/68"))
@@ -378,6 +390,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertFalse(result["evidence_exists"])
         self.assertFalse(result["package_exists"])
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_authenticated_hosted_acceptance_uses_the_exact_pr_head(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         hosted = workflow[workflow.index("  hosted-staging:\n"):]
@@ -393,6 +406,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertNotIn("RELEASE_SOURCE_SHA: ${{ github.sha }}", hosted)
         self.assertNotIn("STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}", hosted)
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_draft_pr_is_skipped_before_deployment_and_verification(self):
         current_draft = {
             "number": 68,
@@ -425,6 +439,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertFalse(hosted["evidence_exists"])
         self.assertFalse(hosted["package_exists"])
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_read_only_finalizer_runs_before_authenticated_acceptance(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         hosted = workflow[workflow.index("  hosted-staging:\n"):]
@@ -447,6 +462,7 @@ class HostedIdentityTests(unittest.TestCase):
         self.assertIn("result.write('current=false\\n')", finalizer)
         self.assertEqual(finalizer.count("if superseded():"), 3)
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_api_errors_during_hosted_verification_never_publish_success(self):
         marker = "      - name: Verify PR-head identity and package staging assets"
         current_pr = {
@@ -471,6 +487,7 @@ class HostedIdentityTests(unittest.TestCase):
                 self.assertFalse(result["evidence_exists"])
                 self.assertFalse(result["package_exists"])
 
+    @unittest.skipUnless(LEGACY_INLINE_HOSTED_WORKFLOW, LEGACY_WORKFLOW_REASON)
     def test_hosted_finalizer_is_read_only_and_records_auth_bridge_checks(self):
         marker = "      - name: Verify PR-head identity and package staging assets"
         current_pr = {

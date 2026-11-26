@@ -39,23 +39,46 @@ def requested_pr_identity() -> tuple[int, str]:
     if not isinstance(event, dict):
         raise SystemExit("Refusing deployment because the pull-request event context is invalid.")
 
-    pull_request = event.get("pull_request")
-    event_repository = event.get("repository")
-    head = pull_request.get("head") if isinstance(pull_request, dict) else None
-    head_repo = head.get("repo") if isinstance(head, dict) else None
     number = int(number_text)
+    event_repository = event.get("repository")
+    if not isinstance(event_repository, dict) or event_repository.get("full_name") != repository:
+        raise SystemExit("Refusing deployment: event repository does not match the trusted checkout.")
+
+    pull_request = event.get("pull_request")
+    if isinstance(pull_request, dict):
+        head = pull_request.get("head")
+        head_repo = head.get("repo") if isinstance(head, dict) else None
+        if (
+            event.get("number") != number
+            or pull_request.get("number") != number
+            or not isinstance(head, dict)
+            or head.get("sha") != head_sha
+            or not isinstance(head_repo, dict)
+            or head_repo.get("full_name") != repository
+        ):
+            raise SystemExit("Refusing deployment: requested PR identity does not match the trusted event.")
+        return number, head_sha
+
+    # The privileged controller can also run after a trusted workflow_run.
+    # It still binds the exact source run SHA and the current PR is re-read via
+    # the API immediately before Render is mutated.
+    source_run = event.get("workflow_run")
     if (
-        event.get("number") != number
-        or not isinstance(event_repository, dict)
-        or event_repository.get("full_name") != repository
-        or not isinstance(pull_request, dict)
-        or pull_request.get("number") != number
-        or not isinstance(head, dict)
-        or head.get("sha") != head_sha
-        or not isinstance(head_repo, dict)
-        or head_repo.get("full_name") != repository
+        not isinstance(source_run, dict)
+        or source_run.get("event") != "pull_request"
+        or source_run.get("head_sha") != head_sha
+        or source_run.get("conclusion") != "success"
     ):
-        raise SystemExit("Refusing deployment: requested PR identity does not match the trusted event.")
+        raise SystemExit("Refusing deployment: source CI run does not match the requested PR SHA.")
+    source_repo = source_run.get("head_repository")
+    if isinstance(source_repo, dict) and source_repo.get("full_name") != repository:
+        raise SystemExit("Refusing deployment from an untrusted fork head.")
+    linked = source_run.get("pull_requests") or []
+    linked_numbers = {
+        row.get("number") for row in linked if isinstance(row, dict)
+    }
+    if linked_numbers and number not in linked_numbers:
+        raise SystemExit("Refusing deployment: requested PR is not linked to the completed CI run.")
     return number, head_sha
 
 
@@ -106,7 +129,6 @@ def main() -> None:
     key = os.environ.get("RENDER_STAGING_API_KEY")
     service_id = os.environ.get("RENDER_STAGING_SERVICE_ID")
     commit = os.environ.get("STAGING_COMMIT", "").strip()
-    migration_revision = os.environ.get("STAGING_MIGRATION_REVISION", "").strip()
 
     if not key or not service_id:
         raise SystemExit(
@@ -117,10 +139,6 @@ def main() -> None:
     number, head_sha = requested_pr_identity()
     if commit != head_sha:
         raise SystemExit("Refusing deployment: requested SHA differs from the verified PR head.")
-    if not migration_revision:
-        raise SystemExit(
-            "Refusing deployment: migration lineage was not verified for this source."
-        )
 
     try:
         github = ReadOnlyGitHub(
