@@ -698,17 +698,58 @@ class ReleaseReadinessTests(unittest.TestCase):
             extract_notes(changelog, "1.2.3")
 
     def test_protected_environments_require_reviewer_and_prevent_self_review(self):
-        payload = {"name": "production", "protection_rules": [{
+        payload = {"name": "production", "can_admins_bypass": False,
+                   "deployment_branch_policy": {"protected_branches": True,
+                                                "custom_branch_policies": False},
+                   "protection_rules": [{
             "type": "required_reviewers", "reviewers": [{"type": "User", "id": 123}],
             "prevent_self_review": True,
         }]}
         self.assertTrue(validate_environment(payload, "production")["prevent_self_review"])
         with self.assertRaisesRegex(EnvironmentGateError, "reviewer"):
-            validate_environment({"name": "production", "protection_rules": []}, "production")
+            validate_environment({
+                "name": "production",
+                "can_admins_bypass": False,
+                "deployment_branch_policy": {
+                    "protected_branches": True,
+                    "custom_branch_policies": False,
+                },
+                "protection_rules": [],
+            }, "production")
         bad = json.loads(json.dumps(payload))
         bad["protection_rules"][0]["prevent_self_review"] = False
         with self.assertRaisesRegex(EnvironmentGateError, "self-review"):
             validate_environment(bad, "production")
+        bad = json.loads(json.dumps(payload))
+        bad["can_admins_bypass"] = True
+        with self.assertRaisesRegex(EnvironmentGateError, "administrator bypass"):
+            validate_environment(bad, "production")
+        bad = json.loads(json.dumps(payload))
+        bad["deployment_branch_policy"]["protected_branches"] = False
+        with self.assertRaisesRegex(EnvironmentGateError, "protected branches"):
+            validate_environment(bad, "production")
+
+    def test_release_staging_requires_independent_main_only_gate(self):
+        payload = {
+            "name": "release-staging",
+            "can_admins_bypass": False,
+            "deployment_branch_policy": {
+                "protected_branches": False,
+                "custom_branch_policies": True,
+            },
+            "protection_rules": [{
+                "type": "required_reviewers",
+                "reviewers": [{"type": "User", "id": 220726329}],
+                "prevent_self_review": True,
+            }],
+        }
+        branch_policies = {"branch_policies": [{"name": "main", "type": "branch"}]}
+        result = validate_environment(payload, "release-staging", branch_policies)
+        self.assertEqual(result["required_reviewers"], 1)
+        with self.assertRaisesRegex(EnvironmentGateError, "only the main branch"):
+            validate_environment(payload, "release-staging", {
+                "branch_policies": [{"name": "refs/pull/*/merge", "type": "branch"}]
+            })
 
 
 if __name__ == "__main__":

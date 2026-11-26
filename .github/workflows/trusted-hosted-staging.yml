@@ -1,0 +1,307 @@
+name: Trusted hosted staging
+run-name: Hosted staging for CI run ${{ github.event.workflow_run.id }}
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  checks: read
+  statuses: write
+
+concurrency:
+  group: phishlens-hosted-staging
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  inspect:
+    name: Inspect exact PR candidate
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      checks: read
+    outputs:
+      disposition: ${{ steps.candidate.outputs.disposition }}
+      pr_number: ${{ steps.candidate.outputs.pr_number }}
+      source_sha: ${{ steps.candidate.outputs.source_sha }}
+      ci_run_id: ${{ steps.candidate.outputs.ci_run_id }}
+    steps:
+      - name: Check out trusted default-branch controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Confirm current PR, staging label, and all pre-deployment checks
+        id: candidate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TRUSTED_STAGING_OPERATION: inspect
+        run: python -m scripts.secretary.trusted_staging
+
+  neon-preflight:
+    name: Verify isolated Neon target
+    needs: inspect
+    if: needs.inspect.outputs.disposition == 'eligible'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging-neon-preflight
+    outputs:
+      project_id: ${{ steps.attestation.outputs.project_id }}
+      branch_id: ${{ steps.attestation.outputs.branch_id }}
+      expected_host: ${{ steps.attestation.outputs.expected_host }}
+      production_project_id: ${{ steps.attestation.outputs.production_project_id }}
+      production_branch_id: ${{ steps.attestation.outputs.production_branch_id }}
+      parent_id: ${{ steps.attestation.outputs.parent_id }}
+      production_rows_present: ${{ steps.attestation.outputs.production_rows_present }}
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out trusted default-branch controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Require the trusted Neon attestation for this exact PR head
+        id: attestation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          STAGING_PR: ${{ needs.inspect.outputs.pr_number }}
+          STAGING_PR_HEAD_SHA: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
+          STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
+          STAGING_NEON_SCHEMA_ONLY_ATTESTATION: ${{ vars.STAGING_NEON_SCHEMA_ONLY_ATTESTATION }}
+          STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
+          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
+        run: python -m scripts.staging_neon_attestation require
+
+  deploy-staging:
+    name: Deploy exact SHA to staging (trusted controller)
+    needs: [inspect, neon-preflight]
+    if: needs.inspect.outputs.disposition == 'eligible' && needs.neon-preflight.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: release-staging
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    steps:
+      - name: Check out trusted default-branch controller only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Recheck the required status contract immediately before deployment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          STAGING_PR: ${{ needs.inspect.outputs.pr_number }}
+          STAGING_PR_HEAD_SHA: ${{ needs.inspect.outputs.source_sha }}
+          TRUSTED_STAGING_OPERATION: wait-for-checks
+        run: python -m scripts.secretary.trusted_staging
+      - name: Deploy only the verified PR head with the protected Render credential
+        env:
+          RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          SECRETARY_STAGING_DB_HOST: ${{ needs.neon-preflight.outputs.expected_host }}
+          SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
+          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
+          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          STAGING_COMMIT: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_PR_HEAD_SHA: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_PR: ${{ needs.inspect.outputs.pr_number }}
+        run: python scripts/deploy_staging.py
+
+  accept-staging:
+    name: Authenticated extension and CRUD acceptance
+    needs: [inspect, neon-preflight, deploy-staging]
+    if: needs.inspect.outputs.disposition == 'eligible' && needs.deploy-staging.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+    steps:
+      - name: Check out trusted verification code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Check out the exact PR source for acceptance only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ needs.inspect.outputs.source_sha }}
+          path: pr-source
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install migration verifier dependency
+        run: python -m pip install 'alembic==1.20.1' 'SQLAlchemy==2.1.8'
+      - name: Verify the candidate migration graph without deploy credentials
+        id: migration-lineage
+        working-directory: pr-source
+        run: python scripts/verify_migration_lineage.py --repo-root .
+      - name: Build and verify the exact-head extension package
+        working-directory: pr-source
+        env:
+          STAGING_COMMIT: ${{ needs.inspect.outputs.source_sha }}
+          PRODUCTION_AUTH_URL: ${{ vars.PHISHLENS_PRODUCTION_AUTH_URL }}
+          PRODUCTION_AUTH_DATABASE: ${{ vars.PHISHLENS_PRODUCTION_AUTH_DATABASE }}
+          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
+          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+        run: |
+          set -euo pipefail
+          python scripts/package_release_extension.py \
+            --expected-sha "$STAGING_COMMIT" \
+            --production-auth-url "$PRODUCTION_AUTH_URL" \
+            --production-auth-database "$PRODUCTION_AUTH_DATABASE" \
+            --staging-auth-url "$STAGING_AUTH_URL" \
+            --staging-auth-database "$STAGING_AUTH_DATABASE" \
+            --output "$RUNNER_TEMP/PhishLens-Staging-Extension.zip" \
+            --evidence "$RUNNER_TEMP/extension-evidence.json"
+      - name: Install trusted browser dependencies without acceptance credentials
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Confirm live staging identity and Auth bridge using trusted code
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          STAGING_PR: ${{ needs.inspect.outputs.pr_number }}
+          STAGING_PR_HEAD_SHA: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_COMMIT: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_MIGRATION_REVISION: ${{ steps.migration-lineage.outputs.head }}
+          RELEASE_EXTENSION_EVIDENCE: ${{ runner.temp }}/extension-evidence.json
+          STAGING_PREFLIGHT_EVIDENCE: ${{ runner.temp }}/staging-preflight.json
+        run: python scripts/hosted_staging_finalize.py
+      - name: Run authenticated exact-package CRUD and extension acceptance
+        env:
+          STAGING_ACCEPTANCE_ENABLED: ${{ vars.STAGING_ACCEPTANCE_ENABLED }}
+          STAGING_ACCEPTANCE_MODE: pr-source
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          RELEASE_SOURCE_SHA: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_EXPECTED_BACKEND_SHA: ${{ needs.inspect.outputs.source_sha }}
+          RELEASE_EXTENSION_ZIP: ${{ runner.temp }}/PhishLens-Staging-Extension.zip
+          RELEASE_EXTENSION_EVIDENCE: ${{ runner.temp }}/extension-evidence.json
+          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
+          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
+          STAGING_AUTH_TRUSTED_CHROME_ORIGIN: ${{ vars.STAGING_AUTH_TRUSTED_CHROME_ORIGIN }}
+          STAGING_NEON_PROJECT_ID: ${{ needs.neon-preflight.outputs.project_id }}
+          STAGING_NEON_BRANCH_ID: ${{ needs.neon-preflight.outputs.branch_id }}
+          STAGING_NEON_BRANCH_KIND: schema-only
+          STAGING_NEON_PARENT_ID: ${{ needs.neon-preflight.outputs.parent_id }}
+          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ needs.neon-preflight.outputs.production_rows_present }}
+          STAGING_MIGRATION_REVISION: ${{ steps.migration-lineage.outputs.head }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ needs.neon-preflight.outputs.production_branch_id }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ needs.neon-preflight.outputs.production_project_id }}
+          STAGING_AUTH_USER_A_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
+          STAGING_AUTH_USER_A_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
+          STAGING_AUTH_USER_B_EMAIL: ${{ secrets.STAGING_AUTH_USER_B_EMAIL }}
+          STAGING_AUTH_USER_B_PASSWORD: ${{ secrets.STAGING_AUTH_USER_B_PASSWORD }}
+          STAGING_ACCEPTANCE_OUTPUT: ${{ runner.temp }}/staging-evidence.json
+        run: node scripts/staging_extension_acceptance.mjs
+      - name: Require authenticated CRUD/UX evidence for the exact candidate
+        env:
+          STAGING_EVIDENCE: ${{ runner.temp }}/staging-evidence.json
+          EXTENSION_ZIP: ${{ runner.temp }}/PhishLens-Staging-Extension.zip
+          EXTENSION_EVIDENCE: ${{ runner.temp }}/extension-evidence.json
+          EXPECTED_SHA: ${{ needs.inspect.outputs.source_sha }}
+          STAGING_BRANCH_ID: ${{ needs.neon-preflight.outputs.branch_id }}
+        run: |
+          set -euo pipefail
+          python -m scripts.release_readiness verify-pr-staging \
+            --evidence "$STAGING_EVIDENCE" \
+            --extension-zip "$EXTENSION_ZIP" \
+            --extension-evidence "$EXTENSION_EVIDENCE" \
+            --expected-sha "$EXPECTED_SHA" \
+            --branch-id "$STAGING_BRANCH_ID" \
+            | tee "$RUNNER_TEMP/acceptance-verification.json"
+          echo 'Authenticated staging product acceptance passed for the exact candidate. Model-quality approval remains a separate release gate.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve redacted staging evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: PhishLens-Staging-PR-${{ needs.inspect.outputs.pr_number }}-${{ needs.inspect.outputs.source_sha }}
+          path: |
+            ${{ runner.temp }}/PhishLens-Staging-Extension.zip
+            ${{ runner.temp }}/extension-evidence.json
+            ${{ runner.temp }}/staging-preflight.json
+            ${{ runner.temp }}/staging-evidence.json
+            ${{ runner.temp }}/acceptance-verification.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  report:
+    name: Report required Secretary staging status
+    if: always() && github.event.workflow_run.event == 'pull_request'
+    needs: [inspect, neon-preflight, deploy-staging, accept-staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Check out trusted default-branch reporter
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Publish final status only after exact authenticated acceptance
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          TRUSTED_STAGING_OPERATION: report
+          INSPECT_RESULT: ${{ needs.inspect.result }}
+          DEPLOY_RESULT: ${{ needs.deploy-staging.result }}
+          ACCEPTANCE_RESULT: ${{ needs.accept-staging.result }}
+        run: python -m scripts.secretary.trusted_staging
