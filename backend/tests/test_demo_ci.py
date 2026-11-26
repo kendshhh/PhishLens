@@ -1,0 +1,12 @@
+from fastapi.testclient import TestClient
+
+from backend.app.main import app
+
+
+def test_health_response_is_json():
+    with TestClient(app) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()["status"] == "ok"
