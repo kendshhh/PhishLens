@@ -40,4 +40,3 @@ test('auth cookie transport retains only scoped cookies and refuses cross-origin
     await authFetch(authUrl + '/get-session', { method: 'GET' });
     assert.equal(requests[3].headers.get('cookie'), null);
 });
-

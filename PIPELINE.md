@@ -1,96 +1,30 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 25, 2026
+## Current delivery and acceptance snapshot — November 27, 2026
 
-This section supersedes the dated snapshots below. The release remains **NO-GO**.
-See [PR #296](https://github.com/kendshhh/PhishLens/pull/296) for the release closeout, staging procedure, controlled release path, and current 28-day DORA report.
+Release decision remains **NO-GO**; issue #153 remains open. This is a status snapshot, not an acceptance claim. PR #296 merged on November 26 and added the trusted staging controller; PR #282 is being aligned to the current `main` before another protected staging run.
 
-### Main branch, review branch, and merge gates
+### Main, merge gates, and trusted staging
 
-GitHub `main` is
-[`46f0298d8e3299afa74e02882081be56c1de4933`](https://github.com/kendshhh/PhishLens/commit/46f0298d8e3299afa74e02882081be56c1de4933).
-The DevOps hardening is being reviewed in PR #296; its changes are not active
-on `main` until approved and merged. Current required contexts in classic
-branch protection and active ruleset #27733591 match exactly: Backend checks,
-Extension checks, Staging integration, CodeQL, Secretary staging,
-Deterministic AI Evaluation, Dependency security, and Workflow lint. Strict
-up-to-date checks are enabled in both. One independent review is required,
-stale approvals are dismissed, latest-push approval is required, and admins
-cannot bypass the active rulesets. These settings were checked live on
-November 25; the current-PR tests still need to demonstrate a deliberately
-failing required check blocks merge.
+Current GitHub `main` is `11b40841fe251942244e494f9088baff6c105668`. Active ruleset #27733591 requires strict status checks for Backend checks, Extension checks, Staging integration, CodeQL, Secretary staging, Deterministic AI Evaluation, Dependency security, and Workflow lint. Ruleset #26782191 requires one approval and approval of the latest push. The required-check contract is verified from the active rulesets; a deliberately failing current required check has not yet been demonstrated to block merge.
 
-### Credential boundary and staging
+The default-branch `trusted-hosted-staging.yml` controller is present on `main`. It checks the PR head and required statuses, attests the isolated Neon target, deploys only that exact SHA through protected environments, and uses trusted verification code for authenticated extension/CRUD acceptance. The old #282 head is behind `main` and its previous CI run failed before executing Hosted staging steps; it was not rerun. This branch update carries the current trusted workflow forward. A new exact-head protected staging run is still required, with the configured independent reviewer approval.
 
-On `main`, the legacy PR-triggered Hosted staging job remains in the workflow,
-but the protected `staging` environment now allows only `main` and requires
-xxTrixia's independent approval with self-review disabled. PR refs cannot
-request its secrets. PR #296 removes the deployment-capable job from PR CI and
-adds a default-branch `workflow_run` controller. In that design, only trusted
-controller code receives Render deployment credentials; the candidate source
-is used for migration inspection and package construction, while the browser
-acceptance script and dependencies come from the default branch. The runtime
-`Secretary staging` context is written only by the trusted controller after
-exact-candidate acceptance; non-runtime N/A and early CI failures are handled
-by the read-only mirror. This controller is pending review and has not yet
-produced a live acceptance run.
+### Staging identity and live service
 
-The `release-staging` environment exists, is restricted to `main`, requires
-xxTrixia's independent approval, and prevents self-review. It currently has no
-secrets. Its non-secret values identify the approved isolated Neon target
-`ancient-brook-17208049` / `br-rough-sea-a1l6ehi1`; the mapping attestation
-remains `pending` because the masked Render runtime and migration connection
-settings have not been verified. That Neon target was last observed without
-application tables or migration history. Do not run migrations or CRUD checks
-until Render mapping, schema-only state, role grants, and Auth account mapping
-are privately confirmed. The two synthetic users were reported active on the
-selected Auth target, but a previous sign-in returned HTTP 401; no Auth
-acceptance is claimed.
+The staging mapping reported from Render matches the approved isolated Neon project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, host `ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`, database `phishlens_dev`, runtime role `phishlens_staging_app`, and migration role `neondb_owner`. The Auth endpoint points to the same staging project. After the staging database credentials were rotated and updated, `/health` and `/ready` returned 200 and readiness reported a connected database. The current live staging backend is still `30743b077169357455620b55233f75806ea636aa`; the new PR candidate has not been deployed or accepted. The migration credential has not yet been exercised by a current-candidate migration run. No product data or production database was used.
 
-### Live services and release candidate
+Production was not changed. Staging and production remain Git-backed Render services with auto-deploy off; a single immutable backend image and extension package have not been promoted through both environments. No exact-candidate Auth/CRUD/extension acceptance has passed. The earlier Account A 401 is not considered resolved until the protected acceptance run passes.
 
-Production Render service `srv-db7eap25b2lc73fkelpg` remains Git-backed and
-serves SHA `811980c2cbf70d9957146bf329627f0826a018f1`; `main` is ahead. The
-production auto-deploy setting is off. Staging Render service
-`srv-db92irlg1s2s739404i0` is also Git-backed, auto-deploy is off, and its
-latest live deploy is SHA `30743b077169357455620b55233f75806ea636aa`. These
-SHAs and settings do not establish a compatible staged release. No versioned
-release tag or GitHub Release has been published.
+### Model quality and release decision
 
-The controlled release workflow builds an immutable backend image and
-extension ZIP once, verifies digests and staging evidence, and refuses
-production promotion if Render is still Git-backed. The same image digest has
-not been deployed through staging and production. Do not change the production
-service during PR review or dispatch a production promotion.
+Staging `/model-info` reports TF-IDF model `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. That establishes identity, not release quality. The historical English evaluation supports advisory use on that historical cohort only. No reviewed representative current-source holdout and approved numeric thresholds are recorded, so the model-quality gate remains blocked and AI release acceptance is not claimed.
 
-### Product acceptance and model quality
+### DORA, recovery, and operations
 
-No current exact-candidate authenticated extension/backend acceptance has
-passed. The historical English evaluation (190/200 phishing detected, one
-false alert in 1,000 legitimate messages, 1,200 valid outputs) supports
-advisory use on that historical cohort only. It is not an approved current-source
-holdout or a pass for the current release model. The approved representative
-holdout, numeric threshold decision, and exact-model release evidence remain
-open. Production's disabled analysis state is not product or AI acceptance.
+The latest reproducible DORA report is dated November 25: 68 successful Render deployment records, 62 exact merged-SHA-to-deploy matches from 130 merged PRs, and 108 main CI runs. Change failure rate, time to restore service, and deployment rework rate remain unmeasured; the report establishes no like-for-like optimization gain. See the [November 25 DORA report](docs/devops/dora-report-2026-11-25.md).
 
-### Operations, recovery, and DORA evidence
-
-The refreshed 28-day DORA report records lead time from 62 exact merged-SHA to
-successful-deploy matches out of 130 merged PRs; deployment frequency of 68
-successful deploy records; and main CI wall time from 108 runs. Change fail
-rate, failed-deployment recovery time, and deployment rework rate remain
-unmeasured because incident linkage, verified recovery timestamps, and reviewed
-planned/unplanned classifications are missing. The current comparable
-optimization result is “no gain established”; earlier cache trials do not show
-an end-to-end improvement.
-
-A current-production-compatible rollback, isolated data restore with measured
-RTO/RPO, tested alert delivery, and named backup response remain unproven. The
-November 20 isolated Neon restore was not a current-production recovery drill.
-Keep issue #153 at NO-GO until the exact release candidate passes product and
-model acceptance, immutable artifact promotion and post-deploy verification,
-and the required operational recovery evidence.
-
+A current-production-compatible rollback rehearsal, isolated restore with measured RTO/RPO, verified alert delivery, and backup responder exercise remain outstanding. No release tag or production promotion is authorized by this snapshot. Keep the release at **NO-GO** until product acceptance, approved model quality, immutable promotion, exact-SHA post-deploy verification, and recovery evidence pass.
 ## Historical DevOps evidence snapshot — November 23, 2026
 
 The full matrix, compliance audit, and environment map for this date are recorded in [PR #282](https://github.com/kendshhh/PhishLens/pull/282).
@@ -99,11 +33,11 @@ The evidence snapshot covers implementation candidate `48ead208487408b04f3eed9f8
 
 The 28-day production DORA reconstruction remains partial: 91 observed deployment records and 85 matched lead-time samples with a 24h 23m source gap; change failure rate and time to restore remain unknown, not zero. The 40-case synthetic AI evaluation completed but reported 18.75% phishing recall and 6.25% legitimate false-positive rate; this run is a contract/development gate, not release-quality approval. A fresh production probe timed out/failed on `/version`, `/health`, `/ready`, and `/model-info`; the last successful model-info reported analysis disabled. No production deployment or paid inference was performed.
 
-> This is a dated evidence record. The November 25 release snapshot above controls current status.
+> This is a dated evidence record. The November 27 release snapshot above controls current status.
 
 ## Historical delivery and acceptance snapshot — November 21, 2026
 
-This is the November 21 historical release snapshot. The November 25 section above controls current status. The associated evidence remains in [PR #268](https://github.com/kendshhh/PhishLens/pull/268).
+This is the November 21 historical release snapshot. The November 27 section above controls current status. The associated evidence remains in [PR #268](https://github.com/kendshhh/PhishLens/pull/268).
 
 ### Source and candidate
 
@@ -261,7 +195,7 @@ until all gates pass for one exact candidate.
 ## Historical delivery and acceptance snapshot — November 15, 2026
 
 > The following November 15 snapshot is preserved for history and is superseded
-> by the November 25 status above.
+> by the November 27 status above.
 
 The [November 15 Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
 and [November 15 staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
