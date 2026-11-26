@@ -10,7 +10,6 @@ from scripts.deploy_staging import live_pr_matches, requested_pr_identity
 from scripts.secretary.github_api import APIError, GitHub
 from scripts.verify_neon_release_branch import NeonReleaseError, verify_branch
 
-
 WORKFLOW_PATH = ".github/workflows/staging-neon-preflight.yml"
 STATUS_CONTEXT = "Trusted staging Neon"
 TARGET_FIELDS = {
@@ -93,6 +92,24 @@ def publish_attestation(api, number, sha):
     publish("success", describe_target(target))
 
 
+def write_verified_outputs(target):
+    """Expose only the non-secret target identities verified by this job."""
+    values = {
+        "project_id": target["project_id"],
+        "branch_id": target["branch_id"],
+        "expected_host": target["expected_host"],
+        "production_project_id": target["production_project_id"],
+        "production_branch_id": target["production_branch_id"],
+        "parent_id": target["expected_parent_id"],
+        "production_rows_present": target["production_rows_present"],
+    }
+    if any(not isinstance(value, str) or "\n" in value or "\r" in value
+           for value in values.values()):
+        raise NeonReleaseError("Verified Neon target contains an invalid output value")
+    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+        output.writelines(f"{name}={value}\n" for name, value in values.items())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=["publish", "require"])
@@ -106,8 +123,7 @@ def main():
             target = current_target(os.environ)
             for attempt in range(10):
                 if has_attestation(api, number, sha, target):
-                    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-                        output.write(f"branch_id={target['branch_id']}\n")
+                    write_verified_outputs(target)
                     return
                 if attempt < 9:
                     time.sleep(5)
