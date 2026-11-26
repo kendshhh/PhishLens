@@ -186,7 +186,8 @@ class ReleaseReadinessTests(unittest.TestCase):
             "production": {"enabled": True, "authUrl": "https://ep-production.neonauth.aws.neon.tech/phishlens/auth",
                            "database": "phishlens"},
             "staging": {"enabled": True, "authUrl": "https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",
-                        "database": "phishlens"},
+                        "database": "phishlens", "transport": "https-bridge",
+                        "bridgeUrl": "https://phishlens-staging.onrender.com/auth/bridge"},
         }
         hosts = [
             "https://phishlens-api-ocvt.onrender.com/*",
@@ -223,7 +224,8 @@ class ReleaseReadinessTests(unittest.TestCase):
                 b'"origin":"https://ep-production.neonauth.aws.neon.tech"},"staging":{"enabled":true,'
                 b'"authUrl":"https://ep-staging.neonauth.aws.neon.tech/phishlens/auth",'
                 b'"database":"phishlens","apiOrigin":"https://phishlens-staging.onrender.com",'
-                b'"origin":"https://ep-staging.neonauth.aws.neon.tech"}});\n'
+                b'"origin":"https://ep-staging.neonauth.aws.neon.tech","transport":"https-bridge",'
+                b'"bridgeUrl":"https://phishlens-staging.onrender.com/auth/bridge"}});\n'
                 b'export const AUTH_CONFIG = AUTH_CONFIGS.production;\n'
             ),
         }
@@ -591,20 +593,24 @@ class ReleaseReadinessTests(unittest.TestCase):
         with self.assertRaisesRegex(NeonReleaseError, "attest"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
                           production_project_id="prod-project-654321",
-                          production_branch_id="br-production-123456", schema_only_attestation="false")
+                          production_branch_id="br-production-123456", schema_only_attestation="unknown",
+                          production_rows_present="false")
         with self.assertRaisesRegex(NeonReleaseError, "independent root"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
                           production_project_id="prod-project-654321",
                           production_branch_id="br-production-123456", schema_only_attestation="true",
-                          expected_parent_id="br-production-123456")
+                          expected_parent_id="br-production-123456",
+                          production_rows_present="false")
         with self.assertRaisesRegex(NeonReleaseError, "production Neon branch"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-production-123456",
                           production_project_id="prod-project-654321",
-                          production_branch_id="br-production-123456", schema_only_attestation="true")
+                          production_branch_id="br-production-123456", schema_only_attestation="true",
+                          production_rows_present="false")
         with self.assertRaisesRegex(NeonReleaseError, "separate Neon project"):
             verify_branch(project_id="patient-bird-25428852", branch_id="br-release-schema-123456",
                           production_project_id="patient-bird-25428852",
-                          production_branch_id="br-production-123456", schema_only_attestation="true")
+                          production_branch_id="br-production-123456", schema_only_attestation="true",
+                          production_rows_present="false")
 
     def test_neon_preflight_binds_database_host_to_the_exact_branch_endpoint(self):
         class FakeResponse:
@@ -638,6 +644,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 production_project_id="prod-project-654321",
                 production_branch_id="br-production-123456",
                 schema_only_attestation="true",
+                production_rows_present="false",
                 expected_host="ep-staging-pooler.c-4.ap-southeast-1.aws.neon.tech",
             )
         self.assertEqual(evidence["endpoint_host"], "ep-staging.c-4.ap-southeast-1.aws.neon.tech")
@@ -654,6 +661,7 @@ class ReleaseReadinessTests(unittest.TestCase):
                 production_project_id="prod-project-654321",
                 production_branch_id="br-production-123456",
                 schema_only_attestation="true",
+                production_rows_present="false",
                 expected_host="ep-production.c-4.ap-southeast-1.aws.neon.tech",
             )
 
@@ -690,17 +698,58 @@ class ReleaseReadinessTests(unittest.TestCase):
             extract_notes(changelog, "1.2.3")
 
     def test_protected_environments_require_reviewer_and_prevent_self_review(self):
-        payload = {"name": "production", "protection_rules": [{
+        payload = {"name": "production", "can_admins_bypass": False,
+                   "deployment_branch_policy": {"protected_branches": True,
+                                                "custom_branch_policies": False},
+                   "protection_rules": [{
             "type": "required_reviewers", "reviewers": [{"type": "User", "id": 123}],
             "prevent_self_review": True,
         }]}
         self.assertTrue(validate_environment(payload, "production")["prevent_self_review"])
         with self.assertRaisesRegex(EnvironmentGateError, "reviewer"):
-            validate_environment({"name": "production", "protection_rules": []}, "production")
+            validate_environment({
+                "name": "production",
+                "can_admins_bypass": False,
+                "deployment_branch_policy": {
+                    "protected_branches": True,
+                    "custom_branch_policies": False,
+                },
+                "protection_rules": [],
+            }, "production")
         bad = json.loads(json.dumps(payload))
         bad["protection_rules"][0]["prevent_self_review"] = False
         with self.assertRaisesRegex(EnvironmentGateError, "self-review"):
             validate_environment(bad, "production")
+        bad = json.loads(json.dumps(payload))
+        bad["can_admins_bypass"] = True
+        with self.assertRaisesRegex(EnvironmentGateError, "administrator bypass"):
+            validate_environment(bad, "production")
+        bad = json.loads(json.dumps(payload))
+        bad["deployment_branch_policy"]["protected_branches"] = False
+        with self.assertRaisesRegex(EnvironmentGateError, "protected branches"):
+            validate_environment(bad, "production")
+
+    def test_release_staging_requires_independent_main_only_gate(self):
+        payload = {
+            "name": "release-staging",
+            "can_admins_bypass": False,
+            "deployment_branch_policy": {
+                "protected_branches": False,
+                "custom_branch_policies": True,
+            },
+            "protection_rules": [{
+                "type": "required_reviewers",
+                "reviewers": [{"type": "User", "id": 220726329}],
+                "prevent_self_review": True,
+            }],
+        }
+        branch_policies = {"branch_policies": [{"name": "main", "type": "branch"}]}
+        result = validate_environment(payload, "release-staging", branch_policies)
+        self.assertEqual(result["required_reviewers"], 1)
+        with self.assertRaisesRegex(EnvironmentGateError, "only the main branch"):
+            validate_environment(payload, "release-staging", {
+                "branch_policies": [{"name": "refs/pull/*/merge", "type": "branch"}]
+            })
 
 
 if __name__ == "__main__":

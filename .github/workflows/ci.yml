@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review, labeled]
   push:
     branches: [main]
 
@@ -21,6 +21,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
@@ -61,6 +62,7 @@ jobs:
         id: package_extension
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run package
 
       - name: Verify production package identity
@@ -78,7 +80,15 @@ jobs:
       - name: Test packaged extension in isolated Chromium
         env:
           SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run test:browser
+
+      - name: Require browser acceptance report and evidence
+        run: |
+          set -euo pipefail
+          test -s output/extension/browser-acceptance.json
+          test -d output/extension/browser-evidence
+          find output/extension/browser-evidence -type f -print -quit | grep -q .
 
       - name: Upload browser acceptance evidence
         if: always()
@@ -88,7 +98,7 @@ jobs:
           path: |
             output/extension/browser-acceptance.json
             output/extension/browser-evidence/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90
 
       - name: Upload extension package
@@ -167,7 +177,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
-      migration_revision: ${{ steps.migration-lineage.outputs.head }}
+      migration_revision: ${{ steps.hosted-migration-lineage.outputs.head || steps.migration-lineage.outputs.head }}
+      hosted_migration_revision: ${{ steps.hosted-migration-lineage.outputs.head }}
     needs: migration-source-preflight
     if: always() && !cancelled()
     permissions:
@@ -260,6 +271,8 @@ jobs:
 
       - name: Test release manifest, target safety, and artifact gates
         run: python -m pytest scripts/tests/test_release_readiness.py scripts/tests/test_release_extension_package.py scripts/tests/test_release_render.py -q -p no:cacheprovider
+      - name: Test isolated Neon staging branch preflight
+        run: python -m pytest scripts/tests/test_neon_release_branch.py -q -p no:cacheprovider
 
       - name: Build backend image without publishing
         env:
@@ -280,6 +293,7 @@ jobs:
         run: python scripts/ci_backend.py --check-environment
 
       - name: Verify exact hosted staging migration history
+        id: hosted-migration-lineage
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.migration-source-preflight.outputs.current == 'true'
         run: python scripts/verify_migration_lineage.py --repo-root staging-target
 
@@ -503,6 +517,10 @@ jobs:
           package-manager-cache: false
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt
+      - name: Test hosted history authentication smoke
+        run: node --test scripts/tests/staging_history.test.mjs
+      - name: Test shared staging Auth and CRUD helpers
+        run: node --test scripts/tests/staging_auth.test.mjs
       - name: Start staging and test extension API integration
         shell: bash
         run: |
@@ -516,409 +534,3 @@ jobs:
           fi
       - name: Test staging deployment guards
         run: python -m unittest discover -s scripts/tests -v
-
-  # Check PR heads before staging so obsolete runs never enter the queue
-  # or deploy code that is no longer the PR head.
-  hosted-staging-preflight:
-    name: Hosted staging preflight
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') && vars.SECRETARY_PREVIEW_ENABLED == 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
-    needs: [staging]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      current: ${{ steps.staging-preflight.outputs.current }}
-    steps:
-      - name: Read trusted legacy controller only
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: '3.12'
-      - name: Check PR head before entering staging queue
-        id: staging-preflight
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          STAGING_PR: ${{ github.event.pull_request.number }}
-        run: |
-          python - <<'PY'
-          import os
-          from scripts.secretary.github_api import APIError, GitHub
-
-          number = int(os.environ['STAGING_PR'])
-          expected = os.environ['STAGING_PR_HEAD_SHA']
-          skip_reason = None
-          try:
-              current = GitHub().request(f'pulls/{number}')
-              labels = {label.get('name') for label in current.get('labels', [])
-                        if isinstance(label, dict)}
-              is_current = (current['state'] == 'open'
-                            and current['head']['sha'] == expected
-                            and not current.get('draft', False)
-                            and 'needs-hosted-staging' in labels)
-          except APIError as error:
-              is_current = False
-              skip_reason = f'GitHub could not confirm the current PR head ({error}); no deployment was started.'
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'current={str(is_current).lower()}\n')
-          if is_current:
-              print(f'PR #{number} is still at the queued head {expected}.')
-          else:
-              print(f'PR #{number} staging run is superseded; deployment skipped.')
-              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  reason = skip_reason or f'PR #{number} is closed, a draft, has a different head than `{expected}`, or no longer has the `needs-hosted-staging` label.'
-                  summary.write(f'Staging skipped before deployment: {reason} The latest PR run owns staging.\n')
-              if skip_reason:
-                  raise SystemExit(1)
-          PY
-
-  # Preserve the stable Hosted staging status while protected, exact-candidate
-  # browser acceptance replaces the old unauthenticated smoke. Render deployment
-  # remains controlled by the trusted default-branch script.
-  hosted-staging:
-    name: Hosted staging
-    if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') && vars.SECRETARY_PREVIEW_ENABLED == 'true' && !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106'
-    needs: [staging, hosted-staging-preflight, backend]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    environment: staging
-    permissions:
-      contents: read
-      pull-requests: read
-    concurrency:
-      group: phishlens-hosted-staging
-      cancel-in-progress: false
-      # Serialize hosted staging while preserving queued PR candidates.
-      queue: max
-    env:
-      STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
-      STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
-    steps:
-      - name: Fail instead of skipping when an eligible staging prerequisite failed
-        env:
-          STAGING_INTEGRATION_RESULT: ${{ needs.staging.result }}
-          PREFLIGHT_RESULT: ${{ needs.hosted-staging-preflight.result }}
-          PREFLIGHT_CURRENT: ${{ needs.hosted-staging-preflight.outputs.current }}
-          BACKEND_RESULT: ${{ needs.backend.result }}
-          MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
-        run: |
-          python - <<'PY'
-          import os
-          checks = {
-              'Staging integration': os.environ.get('STAGING_INTEGRATION_RESULT'),
-              'Hosted staging preflight': os.environ.get('PREFLIGHT_RESULT'),
-              'current PR head': os.environ.get('PREFLIGHT_CURRENT'),
-              'Backend checks': os.environ.get('BACKEND_RESULT'),
-          }
-          failures = [f'{name}={value}' for name, value in checks.items()
-                      if value != ('true' if name == 'current PR head' else 'success')]
-          if not os.environ.get('MIGRATION_REVISION', '').strip():
-              failures.append('backend migration revision is missing')
-          if failures:
-              raise SystemExit('Hosted staging prerequisites failed: ' + ', '.join(failures))
-          PY
-      - name: Read trusted controller code only
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-        with:
-          node-version: '24'
-          package-manager-cache: false
-      - name: Recheck PR head immediately before deployment
-        id: staging-final-preflight
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          STAGING_PR: ${{ github.event.pull_request.number }}
-        run: |
-          python - <<'PY'
-          import os
-          from scripts.secretary.github_api import APIError, GitHub
-
-          number = int(os.environ['STAGING_PR'])
-          expected = os.environ['STAGING_PR_HEAD_SHA']
-          skip_reason = None
-          try:
-              current = GitHub().request(f'pulls/{number}')
-              labels = {label.get('name') for label in current.get('labels', [])
-                        if isinstance(label, dict)}
-              is_current = (current['state'] == 'open'
-                            and current['head']['sha'] == expected
-                            and not current.get('draft', False)
-                            and 'needs-hosted-staging' in labels)
-          except APIError as error:
-              is_current = False
-              skip_reason = f'GitHub could not confirm the current PR head ({error}); deployment remains blocked.'
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'current={str(is_current).lower()}\n')
-          if is_current:
-              print(f'PR #{number} is still at the expected head {expected}.')
-          else:
-              print(f'PR #{number} staging run is superseded; deployment skipped.')
-              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-                  reason = skip_reason or f'PR #{number} is closed, a draft, has a different head than `{expected}`, or no longer has the `needs-hosted-staging` label.'
-                  summary.write(f'Staging skipped before deployment: {reason} The latest PR run owns staging.\n')
-              if skip_reason:
-                  raise SystemExit(1)
-          PY
-      - name: Check out exact PR merge candidate
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.sha }}
-          path: pr-source
-          persist-credentials: false
-
-      - name: Verify isolated Neon branch and Render database mapping before deployment
-        id: neon-preflight
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
-          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
-          STAGING_NEON_BRANCH_ID: ${{ vars.STAGING_NEON_BRANCH_ID }}
-          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
-          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
-          STAGING_NEON_SCHEMA_ONLY_ATTESTATION: ${{ vars.STAGING_NEON_SCHEMA_ONLY_ATTESTATION }}
-          STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
-          PRODUCTION_NEON_EXPECTED_HOST: ${{ vars.PRODUCTION_NEON_EXPECTED_HOST }}
-          SECRETARY_STAGING_DB_HOST: ${{ vars.SECRETARY_STAGING_DB_HOST }}
-          SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
-          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
-          STAGING_RENDER_DATABASE_CONFIG_ATTESTATION: ${{ vars.STAGING_RENDER_DATABASE_CONFIG_ATTESTATION }}
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/phishlens-hosted-staging"
-          python - <<'PY'
-          import os, re
-          def normalized(host):
-              return re.sub(r'-pooler(?=\.)', '', host.strip().rstrip('.').lower())
-          required = (
-              'NEON_API_KEY', 'STAGING_NEON_PROJECT_ID', 'PRODUCTION_NEON_PROJECT_ID',
-              'STAGING_NEON_BRANCH_ID',
-              'PRODUCTION_NEON_BRANCH_ID', 'STAGING_NEON_EXPECTED_HOST',
-              'PRODUCTION_NEON_EXPECTED_HOST', 'SECRETARY_STAGING_DB_HOST',
-              'SECRETARY_PRODUCTION_DB_HOST',
-          )
-          if any(not os.environ.get(key, '').strip() for key in required):
-              raise SystemExit('Hosted staging is blocked: isolated Neon/Render identity is not fully configured.')
-          if os.environ.get('STAGING_NEON_PARENT_ID', ''):
-              raise SystemExit('Hosted staging requires an independent Neon root branch.')
-          if os.environ.get('STAGING_NEON_SCHEMA_ONLY_ATTESTATION') != 'true':
-              raise SystemExit('Hosted staging requires a schema-only Neon branch attestation.')
-          if os.environ.get('STAGING_NEON_PRODUCTION_ROWS_PRESENT') != 'false':
-              raise SystemExit('Hosted staging must attest that production rows are absent.')
-          if os.environ.get('STAGING_RENDER_DATABASE_CONFIG_ATTESTATION') != 'current':
-              raise SystemExit('Hosted staging Render-to-Neon mapping has not been privately verified.')
-          staging = normalized(os.environ['STAGING_NEON_EXPECTED_HOST'])
-          render_staging = normalized(os.environ['SECRETARY_STAGING_DB_HOST'])
-          production = normalized(os.environ['PRODUCTION_NEON_EXPECTED_HOST'])
-          render_production = normalized(os.environ['SECRETARY_PRODUCTION_DB_HOST'])
-          if os.environ['STAGING_NEON_PROJECT_ID'] == os.environ['PRODUCTION_NEON_PROJECT_ID']:
-              raise SystemExit('Hosted staging must use a Neon project separate from production.')
-          if not staging.startswith('ep-') or not staging.endswith('.aws.neon.tech') or staging != render_staging:
-              raise SystemExit('Hosted staging Render database host does not match the Neon branch endpoint.')
-          if not production.startswith('ep-') or not production.endswith('.aws.neon.tech') or production != render_production or staging == production:
-              raise SystemExit('Hosted staging and production Neon endpoints are not distinct and verified.')
-          PY
-          python pr-source/scripts/verify_neon_release_branch.py \
-            --expected-host "$STAGING_NEON_EXPECTED_HOST" \
-            > "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json"
-          branch_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["branch_id"])' "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json")"
-          endpoint_host="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["endpoint_host"])' "$RUNNER_TEMP/phishlens-hosted-staging/neon-branch.json")"
-          {
-            echo "branch_id=$branch_id"
-            echo "endpoint_host=$endpoint_host"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build and verify the exact-candidate staging extension package
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        env:
-          STAGING_COMMIT: ${{ github.sha }}
-          PRODUCTION_AUTH_URL: ${{ vars.PHISHLENS_PRODUCTION_AUTH_URL }}
-          PRODUCTION_AUTH_DATABASE: ${{ vars.PHISHLENS_PRODUCTION_AUTH_DATABASE }}
-          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
-          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
-        run: |
-          set -euo pipefail
-          python pr-source/scripts/package_release_extension.py \
-            --expected-sha "$STAGING_COMMIT" \
-            --production-auth-url "$PRODUCTION_AUTH_URL" \
-            --production-auth-database "$PRODUCTION_AUTH_DATABASE" \
-            --staging-auth-url "$STAGING_AUTH_URL" \
-            --staging-auth-database "$STAGING_AUTH_DATABASE" \
-            --output "$RUNNER_TEMP/phishlens-hosted-staging/PhishLens-Staging-Extension.zip" \
-            --evidence "$RUNNER_TEMP/phishlens-hosted-staging/extension-evidence.json"
-          python -m scripts.release_readiness verify-release-extension \
-            --archive "$RUNNER_TEMP/phishlens-hosted-staging/PhishLens-Staging-Extension.zip" \
-            --evidence "$RUNNER_TEMP/phishlens-hosted-staging/extension-evidence.json" \
-            --expected-sha "$STAGING_COMMIT"
-        working-directory: pr-source
-
-      - name: Install exact-candidate browser acceptance dependencies
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        working-directory: pr-source
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-
-      - name: Recheck PR head immediately before staging deploy
-        id: staging-deploy-preflight
-        if: steps.staging-final-preflight.outputs.current == 'true'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          STAGING_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          STAGING_PR: ${{ github.event.pull_request.number }}
-        run: |
-          python - <<'PY'
-          import os
-          from scripts.secretary.github_api import APIError, GitHub
-          number = int(os.environ['STAGING_PR'])
-          expected = os.environ['STAGING_PR_HEAD_SHA']
-          try:
-              current = GitHub().request(f'pulls/{number}')
-          except APIError as error:
-              raise SystemExit(f'GitHub could not confirm the current PR head; staging deployment blocked ({error}).') from None
-          labels = {label.get('name') for label in current.get('labels', []) if isinstance(label, dict)}
-          is_current = (current.get('state') == 'open' and current.get('head', {}).get('sha') == expected
-                        and not current.get('draft', False) and 'needs-hosted-staging' in labels)
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
-              output.write(f'current={str(is_current).lower()}\n')
-          if is_current:
-              print(f'PR #{number} remains at the approved staging candidate head.')
-          else:
-              print(f'PR #{number} changed while staging was prepared; deployment skipped.')
-          PY
-
-      - name: Verify Render staging Auth mode and exact database mapping
-        if: steps.staging-deploy-preflight.outputs.current == 'true'
-        env:
-          RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
-          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
-          SECRETARY_STAGING_DB_HOST: ${{ vars.SECRETARY_STAGING_DB_HOST }}
-          SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
-          STAGING_NEON_BRANCH_ID: ${{ steps.neon-preflight.outputs.branch_id }}
-          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
-          STAGING_NEON_EXPECTED_HOST: ${{ vars.STAGING_NEON_EXPECTED_HOST }}
-          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
-          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
-          PRODUCTION_NEON_EXPECTED_HOST: ${{ vars.PRODUCTION_NEON_EXPECTED_HOST }}
-        run: |
-          python - <<'PY'
-          import json, os, re
-          from scripts.secretary.preview import render_request, verify_environment, verify_service
-          config = json.loads(open('.github/secretary.json', encoding='utf-8').read())
-          service_id = os.environ['RENDER_STAGING_SERVICE_ID']
-          if service_id != config['staging_service'] or service_id == config['production_service']:
-              raise SystemExit('Hosted staging is not the allowlisted Render staging service.')
-          service = render_request(f'services/{service_id}')
-          verify_service(service, config)
-          rows = render_request(f'services/{service_id}/env-vars?limit=100')
-          report_auth_mode = verify_environment(rows, require_authenticated=True)
-          values = {row['envVar']['key']: row['envVar']['value'] for row in rows}
-          def normalized(host):
-              return re.sub(r'-pooler(?=\.)', '', host.strip().rstrip('.').lower())
-          expected = {
-              'STAGING_NEON_BRANCH_ID': os.environ['STAGING_NEON_BRANCH_ID'],
-              'STAGING_NEON_PROJECT_ID': os.environ['STAGING_NEON_PROJECT_ID'],
-              'PRODUCTION_NEON_BRANCH_ID': os.environ['PRODUCTION_NEON_BRANCH_ID'],
-              'PRODUCTION_NEON_PROJECT_ID': os.environ['PRODUCTION_NEON_PROJECT_ID'],
-          }
-          for key, value in expected.items():
-              if values.get(key) != value:
-                  raise SystemExit(f'Render staging {key} does not match the verified Neon branch.')
-          for key in ('STAGING_NEON_EXPECTED_HOST', 'STAGING_DATABASE_HOST', 'PRODUCTION_NEON_EXPECTED_HOST'):
-              if not values.get(key):
-                  raise SystemExit(f'Render staging is missing required branch mapping setting {key}.')
-          if normalized(values['STAGING_NEON_EXPECTED_HOST']) != normalized(os.environ['STAGING_NEON_EXPECTED_HOST']):
-              raise SystemExit('Render staging Neon host does not match the verified branch endpoint.')
-          if normalized(values['STAGING_DATABASE_HOST']) != normalized(os.environ['STAGING_NEON_EXPECTED_HOST']):
-              raise SystemExit('Render staging runtime host does not match the verified Neon branch endpoint.')
-          if normalized(values['PRODUCTION_NEON_EXPECTED_HOST']) != normalized(os.environ['PRODUCTION_NEON_EXPECTED_HOST']):
-              raise SystemExit('Render staging production-host guard does not match the production allowlist.')
-          if report_auth_mode != 'neon':
-              raise SystemExit('Hosted staging requires Neon Auth before any deployment.')
-          print('Render staging is privately mapped to the verified isolated branch and Neon Auth.')
-          PY
-
-      - name: Deploy PR merge commit using the trusted legacy script
-        if: steps.staging-deploy-preflight.outputs.current == 'true'
-        env:
-          RENDER_STAGING_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
-          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
-          SECRETARY_STAGING_DB_HOST: ${{ vars.SECRETARY_STAGING_DB_HOST }}
-          SECRETARY_PRODUCTION_DB_HOST: ${{ vars.SECRETARY_PRODUCTION_DB_HOST }}
-          STAGING_COMMIT: ${{ github.sha }}
-        run: python scripts/deploy_staging.py
-
-      - name: Run authenticated extension and persistent CRUD acceptance
-        id: staging-product-acceptance
-        if: steps.staging-deploy-preflight.outputs.current == 'true'
-        continue-on-error: true
-        working-directory: pr-source
-        env:
-          STAGING_ACCEPTANCE_ENABLED: ${{ vars.STAGING_ACCEPTANCE_ENABLED }}
-          STAGING_ACCEPTANCE_MODE: pr-source
-          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
-          RELEASE_SOURCE_SHA: ${{ github.sha }}
-          STAGING_EXPECTED_BACKEND_SHA: ${{ github.sha }}
-          RELEASE_EXTENSION_ZIP: ${{ runner.temp }}/phishlens-hosted-staging/PhishLens-Staging-Extension.zip
-          RELEASE_EXTENSION_EVIDENCE: ${{ runner.temp }}/phishlens-hosted-staging/extension-evidence.json
-          STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
-          STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
-          STAGING_AUTH_TRUSTED_CHROME_ORIGIN: ${{ vars.STAGING_AUTH_TRUSTED_CHROME_ORIGIN }}
-          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
-          STAGING_NEON_BRANCH_ID: ${{ steps.neon-preflight.outputs.branch_id }}
-          STAGING_NEON_BRANCH_KIND: schema-only
-          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
-          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
-          STAGING_MIGRATION_REVISION: ${{ needs.backend.outputs.migration_revision }}
-          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
-          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
-          STAGING_AUTH_USER_A_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
-          STAGING_AUTH_USER_A_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
-          STAGING_AUTH_USER_B_EMAIL: ${{ secrets.STAGING_AUTH_USER_B_EMAIL }}
-          STAGING_AUTH_USER_B_PASSWORD: ${{ secrets.STAGING_AUTH_USER_B_PASSWORD }}
-          STAGING_ACCEPTANCE_OUTPUT: ${{ runner.temp }}/phishlens-hosted-staging/staging-evidence.json
-        run: node scripts/staging_extension_acceptance.mjs
-
-      - name: Require authenticated CRUD/UX product evidence; keep model quality separate
-        if: always() && steps.staging-deploy-preflight.outputs.current == 'true'
-        working-directory: pr-source
-        env:
-          STAGING_EVIDENCE: ${{ runner.temp }}/phishlens-hosted-staging/staging-evidence.json
-          EXTENSION_ZIP: ${{ runner.temp }}/phishlens-hosted-staging/PhishLens-Staging-Extension.zip
-          EXTENSION_EVIDENCE: ${{ runner.temp }}/phishlens-hosted-staging/extension-evidence.json
-          EXPECTED_SHA: ${{ github.sha }}
-          STAGING_BRANCH_ID: ${{ steps.neon-preflight.outputs.branch_id }}
-        run: |
-          set -euo pipefail
-          python -m scripts.release_readiness verify-pr-staging \
-            --evidence "$STAGING_EVIDENCE" \
-            --extension-zip "$EXTENSION_ZIP" \
-            --extension-evidence "$EXTENSION_EVIDENCE" \
-            --expected-sha "$EXPECTED_SHA" \
-            --branch-id "$STAGING_BRANCH_ID" \
-            | tee "$RUNNER_TEMP/phishlens-hosted-staging/acceptance-verification.json"
-          echo 'Authenticated staging product acceptance passed for the exact candidate. Model-quality approval is separate; the release remains NO-GO until the AI owner approves the holdout policy and evidence.' >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Preserve hosted staging acceptance evidence and extension
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: PhishLens-Staging-Extension
-          path: ${{ runner.temp }}/phishlens-hosted-staging/
-          if-no-files-found: warn
-          retention-days: 7
-

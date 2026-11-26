@@ -1,5 +1,10 @@
 # Release record — 2026-11-20
 
+> Historical snapshot. Service identities and control-plane state were
+> refreshed on November 21 in the
+> [current release record](release-record-2026-11-21.md). Keep this dated
+> evidence as history; do not use it as current deployment state.
+
 ## Decision
 
 **NO-GO.** This record fixes the product scope and refreshes current main and

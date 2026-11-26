@@ -89,6 +89,7 @@ def build(*, expected_sha: str, production_auth_url: str, production_auth_databa
         origin = urlsplit(str(config["authUrl"])).scheme + "://" + str(urlsplit(str(config["authUrl"])).hostname)
         config["origin"] = origin
         hosts.append(origin + "/*")
+    staging.update(transport="https-bridge", bridgeUrl=STAGING_API + "/auth/bridge")
     if len(hosts) != len(set(hosts)):
         raise ValueError("Production and staging host permissions must be distinct")
 

@@ -11,11 +11,12 @@ The web/Vercel client is deferred. Frontend contributions use inaki3023; backend
 contributions use xxTrixia. Never merge into main automatically.
 
 Use the current supported Neon Auth client flow for email/password signup,
-email-verification OTP, password sign-in, session restoration/renewal and logout.
-Returning sign-in must not request OTP on every login. Password recovery and
-verification resend need UI handling. The prototype's raw cookie fetches are not
-proof of supported extension sessions. Confirm trusted extension origin, cookie
-behavior and the installed SDK version in regular Chrome before wiring the UI.
+password sign-in, session restoration/renewal and logout. Email verification is
+not required for signup, sign-in or saved-report access; do not expose a signup
+verification-code screen. Password recovery remains a separate provider flow.
+The prototype's raw cookie fetches are not proof of supported extension sessions.
+Confirm trusted extension origin, cookie behavior and the installed SDK version
+in regular Chrome before treating hosted sessions as accepted.
 
 Neon's current JWT documentation recommends obtaining the JWT through the SDK's
 getSession result. The adapter must return the signed JWT, not assume an opaque
@@ -25,25 +26,37 @@ logs, URLs or localStorage. See https://neon.com/docs/auth/guides/plugins/jwt.
 The existing createAnalysisClient getAccessToken hook obtains a current token
 for each CRUD operation and sends Authorization: Bearer <JWT>. Model identity
 and idempotency headers stay intact. No owner ID is sent. Backend requests go to
-FastAPI; the client never connects to Postgres. Authentication calls go to the
-configured Neon Auth service, not to a database connection URL.
+FastAPI; the client never connects to Postgres. Authentication calls use the
+API's HTTPS `/api/auth` proxy. It accepts only the release extension's pinned
+Chrome origin, forwards to the configured Neon Auth URL with the API's trusted
+HTTPS origin, and relays the session cookie back with `Path=/api/auth`,
+`Secure`, and `SameSite=None`. The matching API HTTPS origin must be in Neon
+Auth's trusted domains. Hosted staging checks that Render's
+`NEON_AUTH_BASE_URL` exactly matches the isolated Auth URL used to package the
+extension before it deploys.
 
 ## Backend rollout and ownership
 
 REPORT_AUTH_MODE=demo preserves the current shared demo API during rollout
-(also the compatibility default). It is NOT personal storage or a production
-authentication guarantee. REPORT_AUTH_MODE=neon requires authentication for all
-five /api/analyses operations: POST, list GET, detail GET, PATCH and DELETE.
+(also the local-development compatibility default). It is NOT personal storage
+or a production authentication guarantee. On Render, set REPORT_AUTH_MODE
+explicitly; if it is missing, saved-report routes fail closed with HTTP 503
+instead of silently falling back to demo mode. The value must be set in the
+Render service environment; a bundled `.env` file does not satisfy this
+requirement. REPORT_AUTH_MODE=neon requires authentication for all five
+/api/analyses operations: POST, list GET, detail
+GET, PATCH and DELETE.
 An unknown mode fails closed. Do not expose demo mode as a parallel fallback
 on a personal-report deployment. Existing health/model endpoints stay public.
 
 Configure NEON_AUTH_BASE_URL to the exact auth-enabled test branch's HTTPS Auth
 URL. JWKS is loaded from that URL plus /.well-known/jwks.json; issuer and audience
 must match its origin (not its full path). The server accepts EdDSA only, requires
-subject, expiry, issued-at, issuer and audience, and requires
-`emailVerified=true` and `banned=false`; missing or malformed account-status
-claims fail closed. Tokens are not taken from request bodies or URLs. Missing,
-invalid and expired tokens return 401; unverified/banned users return 403; key
+subject, expiry, issued-at, issuer and audience, and requires an explicit
+`banned=false` claim. Email verification is not an authorization condition; the
+signed subject, not the email address, determines report ownership. Tokens are
+not taken from request bodies or URLs. Missing, invalid and expired tokens return
+401; banned or missing/malformed banned-status claims return 403; key
 service/configuration outages return 503. Neon documents these account-status
 fields in its signed JWT payload and a fixed 15-minute access-token lifetime
 (see [Neon's JWT guide](https://neon.com/docs/auth/guides/plugins/jwt)). The

@@ -1,5 +1,7 @@
 # Demo-day readiness matrix — 2026-11-20
 
+> Historical snapshot — superseded by [the November 21 readiness matrix](demo-day-readiness-2026-11-21.md).
+
 This maps the ten checks in *Engineering AI-Native Products*, p. 140,
 “end-term · demo day readiness,” to evidence available on November 20, 2026.
 Statuses describe evidence, not planned work. `N/A` is used only for the

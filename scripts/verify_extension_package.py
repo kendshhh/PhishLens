@@ -10,6 +10,7 @@ from zipfile import BadZipFile, ZipFile
 ASSETS = {
     "manifest.json", "popup.html", "css/popup.css", "js/api.js", "js/config.js",
     "js/history.js", "js/popup.js", "js/account-session.js", "js/account-ui.js", "js/account-popup.js",
+    "js/neon-bridge-client.js",
     "js/neon-accounts.js", "js/neon-integration.js", "js/auth-config.js", "vendor/neon/sdk.mjs", "vendor/neon/THIRD_PARTY_NOTICES.txt",
     "background.js", "popup.js", "popup.css",
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
@@ -88,7 +89,7 @@ def verify(archive, evidence_path, expected_source):
             if name in pinned_models and hashes[name] != pinned_models[name]:
                 raise ValueError("Model bytes differ from pinned asset manifest")
         manifest = json.loads(package.read("manifest.json"))
-        config = package.read("js/config.js").decode("utf-8")
+        config = package.read("js/config.js").decode("utf-8").replace("\r\n", "\n")
     if not isinstance(manifest, dict) or manifest.get("manifest_version") != 3:
         raise ValueError("Expected a Manifest V3 object")
     if manifest.get("version") != evidence.get("extension_version"):

@@ -1,6 +1,74 @@
 # Pipeline Metrics
 
-## Current delivery sample — 2026-11-20 13:45 UTC
+## Current service identity refresh — 2026-11-21
+
+This read-only refresh records service identity and endpoint behavior, not a
+performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
+from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
+and `/model-info` returned HTTP 200; analysis is disabled
+(`analysis_enabled=false`, `provider_mode=disabled`). GitHub `main` later
+advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; this record does not
+verify a later production deploy. Staging serves
+`ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
+`dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
+TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
+No inference, database write, or production smoke workflow run was made.
+An earlier workstation smoke attempt timed out on staging `/health`. GET-only
+smokes at 08:15 and about 08:35 UTC passed `/health`, `/ready`, and anonymous
+history authentication (`401 Bearer`) using review-branch code. The later run
+used the mainline-synchronized smoke helper. Neither run checked
+`/version`, deployed PR identity, or authenticated CRUD, and it is not a
+performance sample. Treat the deployment identity above as the 07:31 UTC
+control-plane observation.
+
+Render metadata reports auto-deploy disabled for both services. Production's
+latest deployment record nevertheless has trigger `new_commit`; this discrepancy
+is unresolved. See the [current environment map](environment-map-2026-11-21.md)
+and [release record](release-record-2026-11-21.md). The November 20
+delivery sample below remains the latest performance measurement; its service
+identity is historical.
+
+## Latest measured delivery sample — 2026-11-20 17:05 UTC
+
+The four latest successful `CI` push runs available at the 17:05 UTC cutoff
+covered successive `main` commits through
+`811980c2cbf70d9957146bf329627f0826a018f1`. Workflow wall time from run start
+to completion had median **1.30 minutes**, nearest-rank p90 **1.90 minutes**,
+and range **1.10–1.90 minutes** (`n=4`). The latest [CI run
+44779598624](https://github.com/kendshhh/PhishLens/actions/runs/44779598624)
+passed Backend and Extension checks. Associated [AI evaluation
+44779598647](https://github.com/kendshhh/PhishLens/actions/runs/44779598647),
+[workflow lint 44779598943](https://github.com/kendshhh/PhishLens/actions/runs/44779598943),
+[dependency security 44779598600](https://github.com/kendshhh/PhishLens/actions/runs/44779598600)
+and [CodeQL 44779598763](https://github.com/kendshhh/PhishLens/actions/runs/44779598763)
+also passed on that SHA. The scheduled [Production drift run
+44812619162](https://github.com/kendshhh/PhishLens/actions/runs/44812619162)
+passed source-SHA, health and readiness checks.
+
+This is a historical performance sample, not the current main check result.
+Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`. Its latest
+CI run [44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
+failed in packaged-extension Chromium browser acceptance; Backend passed.
+Workflow lint [44885148613](https://github.com/kendshhh/PhishLens/actions/runs/44885148613)
+and dependency security [44885148629](https://github.com/kendshhh/PhishLens/actions/runs/44885148629)
+passed. Those current statuses are not included in the timing sample above.
+
+Render's 20 most recent production deploy records through November 20 17:05 UTC
+showed one live deploy, 19 deactivated deploys and no failed statuses. Deployment
+duration median was **74.1525 seconds**, nearest-rank p90 **93.142 seconds**,
+and range **60.299–408.027 seconds** (`n=20`). At the November 21 07:31 UTC
+service refresh, production remained Live on `811980c`; staging was Live on
+`ba0b6c5`. Their deployment identities do not establish an accepted package or
+staging promotion.
+
+The timing sample is descriptive, not a before/after experiment. It excludes
+queue time before workflow start, PR protected-environment waits, merge-to-live,
+user-flow latency, inference cost and recovery. No speed improvement is
+established. Do not present these workflow or deploy durations as extension
+journey performance. No production inference or product data reads were part of
+this metric refresh.
+
+## Previous measured delivery sample — 2026-11-20 13:45 UTC
 
 The latest four completed `CI` push runs to `main`, through PR #256, all
 succeeded. Their workflow wall-time median was **66 seconds**, p90 **82
@@ -37,7 +105,7 @@ workflow and check set over a sufficiently broad sample. No production
 inference was sent. Do not present health/readiness timing as extension journey
 latency or report AI cost without a verified inference path.
 
-## Current 28-day delivery snapshot — 2026-11-14 03:12 UTC
+## 28-day delivery snapshot — 2026-11-14 03:12 UTC
 
 Reporting window: **2026-10-17 00:00 UTC through 2026-11-14 03:12 UTC**.
 Sources are the GitHub Actions `CI` workflow API, the GitHub merged-PR API, and
