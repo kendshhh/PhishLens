@@ -112,29 +112,46 @@ class SecretaryWorkflowTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
         self.assertNotIn("github.event.pull_request.head.sha", workflow)
 
-    def test_ci_runs_packaged_browser_and_staging_saved_report_checks(self):
+    def test_ci_required_hosted_staging_runs_exact_authenticated_extension_acceptance(self):
         workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-        controller = (ROOT / "scripts/secretary/preview.py").read_text(encoding="utf-8")
+        start = workflow.index("  hosted-staging:\n")
+        hosted = workflow[start:]
+
+        self.assertIn("name: Hosted staging", hosted)
+        self.assertIn("Run authenticated extension and persistent CRUD acceptance", hosted)
+        self.assertIn("node scripts/staging_extension_acceptance.mjs", hosted)
+        self.assertIn("--expected-sha \"$EXPECTED_SHA\"", hosted)
+        self.assertIn("verify-pr-staging", hosted)
+        self.assertIn("STAGING_AUTH_USER_A_EMAIL", hosted)
+        self.assertIn("STAGING_AUTH_USER_B_EMAIL", hosted)
+        self.assertIn("STAGING_NEON_BRANCH_KIND: schema-only", hosted)
+        self.assertIn("Authenticated Hosted staging did not pass", (ROOT / "scripts/secretary/hosted_status.py").read_text(encoding="utf-8"))
+        self.assertNotIn("staging_smoke.mjs", hosted)
+        self.assertNotIn("verify_crud.mjs", hosted)
+        self.assertIn("set -euo pipefail", hosted)
+        self.assertIn("if: always() && steps.staging-acceptance-preflight.outputs.current == 'true'", hosted)
+
+
+    def test_ci_runs_packaged_browser_and_read_only_auth_staging_checks(self):
+        workflow = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        hosted_start = workflow.index("  hosted-staging:\n")
+        hosted = workflow[hosted_start:]
+        finalizer_start = hosted.index("      - name: Verify PR-head identity and package staging assets")
+        finalizer_end = hosted.index("      - name: Run authenticated extension and persistent CRUD acceptance", finalizer_start)
+        finalizer = hosted[finalizer_start:finalizer_end]
 
         self.assertIn("npm run test:browser", workflow)
         self.assertIn("Extension-Browser-Acceptance", workflow)
-        self.assertIn("Verify saved report synthetic AI and CRUD checklist", workflow)
-        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", workflow)
-        self.assertIn("scripts/verify_crud.mjs", workflow)
-        self.assertIn("node pr-source/scripts/verify_crud.mjs", workflow)
-        self.assertIn("name: Check out exact-head staging smoke and synthetic acceptance scripts", workflow)
-        self.assertIn("scripts/staging_smoke.mjs", workflow)
-        self.assertIn("node pr-source/scripts/staging_smoke.mjs --github-output", workflow)
-        self.assertNotIn("node scripts/staging_smoke.mjs --github-output", workflow)
-        self.assertIn("name: Validate hosted history acceptance mode", workflow)
-        self.assertIn('case "$HISTORY_ACCESS_MODE" in', workflow)
-        self.assertIn("Hosted smoke did not produce a supported history access mode.", workflow)
-        self.assertIn("steps.history-mode.outputs.mode == 'anonymous'", workflow)
-        self.assertIn("steps.history-mode.outputs.mode == 'auth_required'", workflow)
-        self.assertIn("Authenticated saved-report history and CRUD were not run", workflow)
-        self.assertIn("analysisProvenance:", (ROOT / "scripts/verify_crud.mjs").read_text(encoding="utf-8"))
-        self.assertIn("Real AI acceptance is not checked", workflow)
-        self.assertIn("verify_saved_report(config[\"staging_origin\"], staging_sha)", controller)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", hosted)
+        self.assertIn("smoke(config['staging_origin'], deploy_sha, report_auth_mode='neon')", finalizer)
+        self.assertIn("('/auth/bridge', 'text/html')", finalizer)
+        self.assertIn("('/auth/bridge/client.js', 'javascript')", finalizer)
+        self.assertIn("('/auth/bridge/sdk.mjs', 'javascript')", finalizer)
+        self.assertIn("'application_crud_writes_performed': False", finalizer)
+        self.assertIn("'saved_report_crud': {'result': 'not_run'}", finalizer)
+        self.assertIn("endpoint preflight uses GET requests only", finalizer)
+        self.assertNotIn("scripts/verify_crud.mjs", hosted)
+        self.assertNotIn("--allow-writes", finalizer)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ def render_staging_environment_rows(**overrides):
         "STAGING_MIGRATION_DATABASE_URL": f"postgresql://neondb_owner:synthetic@{STAGING_HOST}/phishlens_dev",
         "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
         "STAGING_DATABASE_HOST": STAGING_HOST,
+        "NEON_AUTH_BASE_URL": "https://ep-test.neonauth.c-4.ap-southeast-1.aws.neon.tech/phishlens_dev/auth",
         "APP_ENV": "staging",
         "AI_MODE": "mock",
     }

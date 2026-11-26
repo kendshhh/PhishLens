@@ -121,7 +121,12 @@ class PreviewNeonPackageTests(unittest.TestCase):
                 json.loads(archive.read("manifest.json"))["host_permissions"],
                 [CONFIG["staging_origin"] + "/*"],
             )
-            self.assertIn(b"AUTH_CONFIG = null", archive.read("js/auth-config.js"))
+            auth_config = archive.read("js/auth-config.js")
+            self.assertIn(
+                b"AUTH_CONFIGS = Object.freeze({ production: null, staging: null })",
+                auth_config,
+            )
+            self.assertIn(b"AUTH_CONFIG = AUTH_CONFIGS.production", auth_config)
         api.request.assert_any_call("git/blobs/" + sdk_sha)
 
     def test_missing_config_integration_or_sdk_is_detected(self):
