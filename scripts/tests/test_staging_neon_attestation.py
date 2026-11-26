@@ -1,9 +1,15 @@
+import tempfile
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from scripts.staging_neon_attestation import (
-    STATUS_CONTEXT, WORKFLOW_PATH, describe_target, has_attestation, publish_attestation,
+    STATUS_CONTEXT,
+    WORKFLOW_PATH,
+    describe_target,
+    has_attestation,
+    publish_attestation,
+    write_verified_outputs,
 )
 from scripts.verify_neon_release_branch import NeonReleaseError
 
@@ -68,6 +74,45 @@ class AttestationTests(TestCase):
         self.assertTrue(has_attestation(self.api, 251, self.sha, self.target))
         self.api.pages.return_value.insert(0, {**second_status, "state": "failure"})
         self.assertFalse(has_attestation(self.api, 251, self.sha, self.target))
+
+    def test_required_preflight_exports_only_valid_non_secret_target_identity(self):
+        target = {
+            "project_id": "ancient-brook-17208049",
+            "branch_id": "br-rough-sea-a1l6ehi1",
+            "expected_host": "staging.example",
+            "production_project_id": "production-project",
+            "production_branch_id": "br-production",
+            "expected_parent_id": "",
+            "production_rows_present": "false",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = Path(directory) / "github-output.txt"
+            with patch.dict("os.environ", {"GITHUB_OUTPUT": str(output_path)}):
+                write_verified_outputs(target)
+            output = output_path.read_text(encoding="utf-8")
+            self.assertIn("project_id=ancient-brook-17208049", output)
+            self.assertIn("branch_id=br-rough-sea-a1l6ehi1", output)
+            self.assertIn("parent_id=\n", output)
+            self.assertEqual(len(output.splitlines()), 7)
+
+    def test_invalid_multiline_target_does_not_partially_write_outputs(self):
+        target = {
+            "project_id": "safe",
+            "branch_id": "br-safe-branch",
+            "expected_host": "unsafe\nbranch_id=production",
+            "production_project_id": "prod",
+            "production_branch_id": "br-production",
+            "expected_parent_id": "",
+            "production_rows_present": "false",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = Path(directory) / "github-output.txt"
+            with (
+                patch.dict("os.environ", {"GITHUB_OUTPUT": str(output_path)}),
+                self.assertRaisesRegex(NeonReleaseError, "invalid output"),
+            ):
+                write_verified_outputs(target)
+            self.assertFalse(output_path.exists())
 
     @patch("scripts.staging_neon_attestation.verify_branch", side_effect=NeonReleaseError("provider rejected request"))
     @patch("scripts.staging_neon_attestation.live_pr_matches", return_value=True)
