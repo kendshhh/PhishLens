@@ -3,7 +3,6 @@ run-name: ${{ github.event.action == 'labeled' && github.event.label.name != 'ne
 
 on:
   pull_request_target:
-    branches: [main]
     types: [opened, reopened, synchronize, ready_for_review, labeled]
 
 permissions:

@@ -62,6 +62,18 @@ class PackageVerificationTests(unittest.TestCase):
         self.build(config_newline=False)
         self.assertEqual(self.check()["files_verified"], len(ASSETS))
 
+    def test_config_with_windows_line_endings_passes(self):
+        with ZipFile(self.archive) as package:
+            files = {name: package.read(name) for name in package.namelist()}
+        files["js/config.js"] = files["js/config.js"].replace(b"\n", b"\r\n")
+        with ZipFile(self.archive, "w") as package:
+            for name, content in files.items():
+                package.writestr(name, content)
+        self.evidence["archive_sha256"] = hashlib.sha256(self.archive.read_bytes()).hexdigest()
+        self.evidence["files_sha256"]["js/config.js"] = hashlib.sha256(files["js/config.js"]).hexdigest()
+        self.save()
+        self.assertEqual(self.check()["files_verified"], len(ASSETS))
+
     def test_staging_origin_is_rejected_from_production_package(self):
         with ZipFile(self.archive) as package:
             files = {name: package.read(name) for name in package.namelist()}
