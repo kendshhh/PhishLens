@@ -610,6 +610,8 @@ These observations do not prove an optimization trend.
 
 ## Documentation and Remaining Verification
 
+Current release and staging instructions are in [PR #296](https://github.com/kendshhh/PhishLens/pull/296); the dated snapshot above is historical.
+
 See [metrics.md](docs/devops/metrics.md) for dated measurements and
 [runbook.md](docs/devops/runbook.md) for delivery and recovery steps. Remaining
 evidence includes installed-Chrome behavior, production persistence after refresh

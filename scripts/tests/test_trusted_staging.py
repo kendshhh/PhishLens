@@ -185,6 +185,18 @@ class TrustedStagingTests(unittest.TestCase):
                 patch.object(trusted_staging, "ROOT", self.root):
             trusted_staging.wait_for_required_checks(timeout=0, api=api)
 
+    def test_live_pr_api_error_blocks_staging_with_diagnostic(self):
+        checks = [passing_check("Backend checks", 15368), passing_check("CodeQL", 57789)]
+        api = self.api(checks=checks)
+        api.request.side_effect = [PR, trusted_staging.APIError("GitHub HTTP 502")]
+
+        with self.assertRaisesRegex(
+            SystemExit, "GitHub could not confirm the live PR; staging is blocked"
+        ):
+            self.run_inspect(api, checks=checks)
+
+        self.assertEqual(api.request.call_count, 2)
+
     def test_workflow_run_identity_is_required_for_deployment_context(self):
         from scripts.deploy_staging import requested_pr_identity
 
