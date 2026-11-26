@@ -1,124 +1,122 @@
-# PhishLens staging acceptance
+# Staging and candidate acceptance
 
-**Current state (2026-11-21):** PR #266 contains the candidate authenticated
-acceptance path. No current live Auth/CRUD evidence is accepted. The workflow
-must fail before deploying until the separate staging Neon project and its
-Render/Auth mapping are provisioned and verified. Historical staging records
-below other documents do not establish acceptance for the current candidate.
+**Status as of November 25, 2026:** authenticated staging acceptance has not
+passed for a current release candidate. The release remains **NO-GO**. The
+trusted-controller changes described below are in the DevOps review branch and
+do not become the default-branch workflow until merged.
 
-## PR-required Hosted staging
+## Credential boundary
 
-The stable `Hosted staging` job runs for a same-repository, non-draft runtime PR
-with the `needs-hosted-staging` label and `SECRETARY_PREVIEW_ENABLED=true`. It
-retains the existing check name. Its eligibility and prerequisite logic is
-fail-closed: if backend checks, isolated integration, or exact-head preflight
-fails, the job fails rather than being treated as a successful skipped job.
+The pull-request CI workflow must run only build, test, lint, and security
+checks. It must not request the `staging` or `release-staging` environment and
+must not reference Render, Neon, or staging-account credentials. The protected
+staging controller runs from the default branch after CI completes. It resolves
+the source PR and exact head SHA from GitHub, requires the `needs-hosted-staging`
+label, and waits for every predeployment check in `.github/secretary.json` to
+pass on that SHA.
 
-Before any deployment or product-data write, the job:
+The controller uses separate jobs and environments:
 
-- confirms the PR is still open at the queued exact head and still labeled;
-- requires staging and production Neon project IDs to differ;
-- verifies the configured staging branch is a root branch, differs from the
-  production branch, has the expected endpoint, and has a protected schema-only
-  attestation;
-- requires the staging Render runtime mapping to match that endpoint and
-  requires enabled Neon Auth;
-- refuses a changed or superseded PR head immediately before deployment.
+- `staging-neon-preflight` verifies the isolated Neon project and branch and
+  emits only verified, non-secret identities.
+- `release-staging` runs trusted default-branch deployment code with the
+  Render credential. It checks the live PR head immediately before requesting
+  a deploy. It never checks out or executes PR-authored files.
+- `staging` performs acceptance for the deployed candidate. It checks out
+  default-branch verification code and the exact PR source separately. The
+  candidate source is used only for migration-graph inspection and building
+  the extension ZIP; the browser acceptance script and its npm dependencies
+  come from the default branch. It gets only the synthetic Auth test-account
+  credentials; the Render and Neon deployment credentials are not mapped to
+  this job.
+- The final `Secretary staging` status becomes green only when inspection,
+  protected deployment, and authenticated product acceptance all pass. Any
+  failed, skipped, stale, or missing stage produces failure for a runtime PR.
+  The workflow-run mirror publishes non-runtime N/A and pre-staging failures;
+  it publishes nothing for an eligible runtime PR, so it cannot overwrite the
+  trusted controller's final result.
 
-Do not enable this run against `pr-58-staging` (`br-delicate-paper-b381z98i`),
-any production-derived branch, or the restored production snapshot. A root branch
-in the production project is not sufficient isolation: use a separate Neon
-project. The current workflow intentionally blocks until that project, branch,
-Auth configuration, runtime mapping, and attestations are ready.
+The live `staging` environment now permits deployments from `main` only. This
+prevents a PR-authored workflow from requesting its environment secrets. The
+existing `RENDER_STAGING_API_KEY` secret is still stored in that environment,
+but PR refs are denied by the environment policy. The trusted workflow instead
+expects a separately provisioned `RENDER_STAGING_API_KEY` in the main-only
+`release-staging` environment. Its non-secret variables now identify the
+approved isolated Neon/Auth target, but it has no secrets, so deployment still
+fails closed until a new Render key and required Neon migration credentials are
+provisioned there. Do not copy a masked value through chat or logs.
 
-After preflight, CI packages the extension from the exact PR merge candidate,
-checks its archive digest and Auth/API origins, deploys that exact candidate to
-the allowlisted Render staging service, and installs the package in Chromium.
-Two dedicated synthetic users exercise sign-in, saved-report create/list/read/
-update/delete, persistence after reload, user isolation, ownership checks,
-cleanup, anonymous-history rejection, and loading/success/auth/API/timeout UI
-states. The test blocks production API/Auth and unexpected external requests.
-Persistent acceptance uses the live staging API and Neon Auth; mock results do
-not satisfy it. The workflow captures sanitized evidence bound to the extension
-ZIP, backend SHA, project/branch, and service identity.
+These changes preserve the required context name `Secretary staging`; they do
+not add or rename required checks. The main branch still must use the same
+eight-context strict contract in classic protection and ruleset #27733591.
+`PIPELINE.md` and the live settings should be rechecked after the controller is
+merged.
 
-The model gate is reported separately. Product CRUD evidence may identify
-`model_quality=blocked`, but that cannot authorize release. Release staging and
-production promotion require an approved representative held-out evaluation,
-an AI/model-owner-approved numeric policy, immutable model/provider identity,
-and the exact accepted model in staging. The checked-in policy remains pending
-approval. A missing, disabled, unavailable, mocked, or unapproved model leaves
-the release NO-GO.
+## Exact-candidate acceptance
 
-## Secretary staging status
+The protected staging run is for a same-repository, non-draft runtime PR with
+the opt-in label. Before deployment it requires the current CI run, exact source
+SHA, current open PR state, correct base branch, approved staging target, and
+the configured security, AI-regression, workflow, integration, backend, and
+extension checks. It refuses forks and stale PR heads.
 
-`Secretary staging` remains the stable required context. The new trusted
-`workflow_run` bridge checks out default-branch code only and mirrors success for
-a runtime PR only after the same latest CI run has passed Backend checks,
-Extension checks, Staging integration, and Hosted staging. It does not deploy or
-receive Render/Neon credentials. Missing, skipped, failed, stale, or pending
-Hosted staging produces a non-green status. Documentation-only changes can be
-marked not applicable only after ordinary CI succeeds.
+After the exact candidate is live, the acceptance job verifies `/version`,
+`/health`, `/ready`, the anonymous Auth challenge, Auth bridge assets, and the
+extension identity. It builds the extension ZIP from the exact PR head and
+tests sign-in and persistent saved-report create/list/read/update/delete,
+reload persistence, cross-user isolation, ownership, cleanup, and visible
+loading/success/auth/API/timeout states. It uses synthetic staging accounts and
+records redacted evidence with source, backend, package, Neon branch, and
+migration identities. No production rows are used. Mock responses and
+health-only checks cannot satisfy acceptance.
 
-GitHub executes `workflow_run` definitions from the default branch. Until a
-reviewed bridge is on `main`, the branch cannot activate this new status logic.
-Do not manually write a green status to bypass that boundary. Hosted staging
-remains a direct required check and no live acceptance is claimed by this PR.
+This product-acceptance gate is separate from AI model-quality approval. The
+reported historical English evaluation (190/200 phishing detections, one false
+alert in 1,000 legitimate messages, and 1,200 valid outputs) supports advisory
+use on that historical cohort only. It is not a current-source holdout or proof
+for the release model. Until the AI owner approves a representative, reviewed
+holdout and numeric thresholds and the exact model/provider passes them, the
+release remains **NO-GO**.
 
-## Release promotion and production
+## Artifact promotion boundary
 
-`.github/workflows/release-promotion.yml` is manual-only. It builds one backend
-image and one extension ZIP, records their immutable digests, tests those same
-artifacts in a protected staging environment, and requires a distinct protected
-production approval before promotion. It verifies the production SHA, provider,
-health, readiness, exact image digest, manifest, version tag, and changelog
-before publishing. Production is never deployed by PR acceptance.
+The existing `release-promotion.yml` builds an immutable backend image and
+extension ZIP once, and binds them to a release manifest. However, Render's
+current production and staging services are Git-backed Python services. No
+current evidence shows a backend image digest deployed to staging and promoted
+unchanged to production. The release workflow rejects these Git-backed targets.
+The same-artifact criterion remains blocked until an administrator provisions
+or safely transitions to supported image-backed services, configures the
+protected environments, and verifies digest identity in both environments.
+Do not switch production during PR review.
 
-Render production `srv-db7eap25b2lc73fkelpg` is Git-backed with auto-deploy off;
-staging `srv-db92irlg1s2s739404i0` is also Git-backed. That read-only metadata
-was checked on 2026-11-21. The release workflow refuses Git-backed targets, so
-no digest promotion is possible yet. Changing Render's backing source triggers
-a deploy; an administrator must schedule and approve a safe transition or
-provision an image-backed replacement. No production setting was changed and no
-production deployment was triggered by this work.
+## Preconditions still required for a hosted run
 
-## Required external setup
+1. Confirm the selected isolated Neon target remains project
+   `ancient-brook-17208049`, root branch `br-rough-sea-a1l6ehi1`, with no
+   production-derived data. The environment attestation is not proof of the
+   Render runtime or migration connection strings.
+2. Privately align Render runtime and migration database URLs, database name,
+   branch, app/owner roles, and Neon Auth URL with the selected target. Keep
+   credentials out of logs and reports. The deploy preflight must verify the
+   mapping before Render is changed.
+3. Confirm migrations and grants are safe and compatible with the current
+   backend. The selected database previously had no application tables or
+   Alembic history; migration setup is a staging-only operation.
+4. Provision a newly issued Render staging key and the remaining protected
+   migration/AI/account secrets in `release-staging`. Keep the environment
+   restricted to `main` and require independent review with self-review disabled.
+5. The GitHub `staging` and `release-staging` variables now point at the
+   approved Neon Auth endpoint, database, extension origin, and project/branch.
+   `STAGING_RENDER_DATABASE_CONFIG_ATTESTATION` is `pending` until the masked
+   Render runtime and migration settings are privately verified. Confirm the
+   two synthetic accounts belong to the approved Auth project, not the older
+   `hidden-shadow` project.
+6. Run the trusted workflow for the current PR head. A prior head, a queued
+   stale deployment, or a previous run's artifact is not evidence for the
+   current candidate.
 
-Complete through protected GitHub/Render/Neon settings, not committed secrets:
-
-1. Provision a Neon project separate from production, with a schema-only root
-   branch, current migrations, Neon Auth, and no production rows.
-2. Privately verify the Render staging service's runtime and migration URLs,
-   database, branch, Auth mode, and separate least-privilege roles. Record the
-   project IDs, branch IDs, endpoint hosts, and attestations in protected GitHub
-   variables. Use a separate owner credential for migrations and an app role for
-   runtime.
-3. Create two empty synthetic Auth accounts and trust the extension ID as the
-   Chrome origin. Configure protected `staging` reviewers and prevent self-review.
-4. Set `SECRETARY_PREVIEW_ENABLED=true` only once all isolation and mapping
-   checks are current. Keep production database URLs and credentials out of the
-   staging environment.
-5. Configure `release-staging` and `production` protected environments. The
-   production approval must be independent of the source author.
-6. Have the AI/model owner approve the quality-policy thresholds and a reviewed
-   held-out report. Do not invent the approval or turn on production analysis to
-   make the check green.
-7. Schedule the Render Git-to-image source transition or a replacement service;
-   switching the existing source can deploy, so it requires an approved
-   maintenance/release window.
-
-See [controlled release](controlled-release.md) for exact variables, gates, and
-manifest contents. Never store secret values in source or evidence artifacts.
-
-## Local and CI verification
-
-Offline checks validate the workflow decision and evidence parsers; they do not
-prove hosted Auth, persistent CRUD, provider quality, or production promotion.
-Use the latest exact-head Actions run and its sanitized artifact for hosted
-evidence. A previous PR's artifact or a different backend SHA cannot satisfy the
-current candidate.
-
-The older point-in-time records in this directory document their own historical
-SHA and environment. They must not be described as acceptance for current main,
-PR #266, or a later release unless the exact identity matches and the run is
-repeated.
+No staging deployment, migration, account write, production data access, or
+production deployment is claimed by this document. Offline tests verify the
+controller logic; only a successful exact-head hosted run can establish the
+live product path.

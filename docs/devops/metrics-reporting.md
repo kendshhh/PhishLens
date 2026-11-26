@@ -1,5 +1,20 @@
 # Replay consultation metrics offline
 
+For the current PhishLens DORA 4+1 snapshot, see
+[the 2026-11-25 report](dora-report-2026-11-25.md) and its redacted source
+metadata. Reproduce it from the repository root with GitHub CLI and the
+authenticated Render CLI:
+
+```powershell
+./scripts/collect_dora_evidence.ps1 -OutputPath docs/devops/evidence/dora-source-2026-11-25.json
+python -m scripts.report_dora_metrics docs/devops/evidence/dora-source-2026-11-25.json docs/devops/dora-report-2026-11-25.md
+```
+
+The DORA report keeps change-failure rate, failed-deployment recovery time,
+deployment rework, and comparable optimization explicitly unmeasured when the
+required linked evidence is absent. It does not infer them from CI failures or
+from zero observed incidents.
+
 Related: #40 and #41, verified Week 2 DevOps metrics/reporting responsibilities.
 This command works independently of PR #55 and does not contact GitHub, Render,
 the database or an AI provider. It creates a summary from existing observer data.
