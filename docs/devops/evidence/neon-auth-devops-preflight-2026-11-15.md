@@ -53,7 +53,7 @@ These are counts and a fixed synthetic-row match only; report bodies and credent
 
 ## Startup and rollback notes
 
-[`scripts/start_staging.py`](../../scripts/start_staging.py) applies `alembic upgrade head` using the separate migration credential, then runs the seeder and API with the restricted runtime URL. [`scripts/seed_demo.py`](../../scripts/seed_demo.py) can insert missing synthetic demo rows or correct the fixed report's subject. It refuses to seed if the demo user is linked to Auth or the fixed report belongs to another user.
+[`scripts/start_staging.py`](../../../scripts/start_staging.py) applies `alembic upgrade head` using the separate migration credential, then runs the seeder and API with the restricted runtime URL. [`scripts/seed_demo.py`](../../../scripts/seed_demo.py) can insert missing synthetic demo rows or correct the fixed report's subject. It refuses to seed if the demo user is linked to Auth or the fixed report belongs to another user.
 
 Keep migration `0004_neon_auth_subject` in place for rollback: its downgrade drops the subject column and unique constraint. A rollback should use the previously approved app revision and explicit demo mode, without downgrading this migration or changing database grants.
 

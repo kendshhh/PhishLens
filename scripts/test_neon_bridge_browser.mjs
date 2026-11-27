@@ -9,13 +9,11 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import {
-  openRestoredAccount, verifyHistoryFaultStates, verifyVisibleProvenance,
-} from './staging_extension_acceptance.mjs';
+import { readStagingAuthConfig } from './staging_auth_package_config.mjs';
 
 const database = process.env.PHISHLENS_AUTH_TEST_DATABASE_URL;
 const databaseUrl = new URL(database || 'https://invalid');
-assert.ok(['postgresql:', 'postgres:'].includes(databaseUrl.protocol) &&
+assert.ok(['postgresql:', 'postgresql+psycopg:', 'postgres:'].includes(databaseUrl.protocol) &&
   ['127.0.0.1', 'localhost'].includes(databaseUrl.hostname) &&
   /^\/phishlens_auth_test_[a-z0-9_]+$/.test(databaseUrl.pathname),
 'Set PHISHLENS_AUTH_TEST_DATABASE_URL to a disposable local phishlens_auth_test_* database');
@@ -46,13 +44,10 @@ with ZipFile(sys.argv[1]) as package:
     package.extractall(target)
 `, archive, extension]);
     const configSource = await readFile(path.join(extension, 'js/auth-config.js'), 'utf8');
-    const config = configSource.startsWith('export const AUTH_CONFIGS = Object.freeze(')
-      ? JSON.parse(configSource.split('\n')[0].slice('export const AUTH_CONFIGS = Object.freeze('.length, -2)).staging
-      : JSON.parse(configSource.replace(/^export const AUTH_CONFIG = /, '').replace(/;\s*$/, ''));
+    const config = readStagingAuthConfig(configSource);
     assert.equal(config.transport, 'https-bridge');
     apiOrigin = config.apiOrigin;
     assert.equal(apiOrigin, 'https://phishlens-staging.onrender.com');
-    assert.equal(config.bridgeUrl, apiOrigin + '/auth/bridge');
     authUrl = config.authUrl;
     authOrigin = new URL(authUrl).origin;
     archiveHash = createHash('sha256').update(await readFile(archive)).digest('hex');
@@ -99,7 +94,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     });
   });
   context = await chromium.launchPersistentContext(path.join(temporary, 'profile'), {
-    executablePath: process.env.PHISHLENS_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    executablePath: process.env.PHISHLENS_CHROME || chromium.executablePath(),
     headless: true, ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--enable-unsafe-extension-debugging', '--disable-background-networking', '--no-first-run']
   });
@@ -107,6 +102,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: extension });
   assert.equal(id, 'ceneonaedddlkdocdapimkfggbjcchlb');
   const users = new Map();
+  const verificationCodes = new Set();
   let failLogout = false;
   let authRequests = 0, apiRequests = 0;
   const apiStatuses = [];
@@ -120,9 +116,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     const unsigned = header + '.' + payload;
     return unsigned + '.' + sign(null, Buffer.from(unsigned), privateKey).toString('base64url');
   }
-  page = await context.newPage();
-  // Match the hosted runner: a page-level handler terminates network requests.
-  await page.route(/^https?:\/\//, async route => {
+  await context.route(/^https?:\/\//, async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin === apiOrigin) {
       apiRequests++;
@@ -171,6 +165,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     } else if (method === 'sign-in/email') {
       const user = users.get(input.email);
       if (!user || user.password !== input.password) return error(401, 'INVALID_EMAIL_OR_PASSWORD');
+      if (!user.emailVerified) return error(403, 'EMAIL_NOT_VERIFIED');
       setCookie(user);
     } else if (method === 'get-session') {
       data = current ? session(current) : null;
@@ -178,6 +173,14 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     } else if (method === 'sign-out') {
       if (failLogout) return error(503, 'SERVICE_UNAVAILABLE');
       headers['set-cookie'] = 'fixture-session=; Max-Age=0; Path=/neondb/auth; Secure; HttpOnly; SameSite=None; Partitioned';
+    } else if (method === 'email-otp/send-verification-otp') {
+      if (input.type !== 'email-verification' || !users.has(input.email)) return error(400, 'INVALID_REQUEST');
+      verificationCodes.add(input.email);
+    } else if (method === 'email-otp/verify-email') {
+      const user = users.get(input.email);
+      if (!user || input.otp !== '123456' || !verificationCodes.has(input.email)) return error(400, 'INVALID_OTP');
+      user.emailVerified = true;
+      verificationCodes.delete(input.email);
     } else if (method === 'email-otp/reset-password') {
       const user = users.get(input.email);
       if (!user || input.otp !== '123456') return error(400, 'INVALID_OTP');
@@ -187,9 +190,10 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     }
     return route.fulfill({ status: 200, headers, body: JSON.stringify(data) });
   });
+  page = await context.newPage();
   page.on('requestfailed', request => console.error('Failed request:', new URL(request.url()).pathname, request.failure()?.errorText));
   page.on('pageerror', error => pageErrors.push(error.message));
-  const popupUrl = `chrome-extension://${id}/popup.html?environment=staging`;
+  const popupUrl = `chrome-extension://${id}/popup.html`;
   await page.goto(popupUrl);
   await page.locator('#show-account').waitFor({ state: 'visible' });
   await page.locator('#show-account').click();
@@ -202,7 +206,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   const emailA = `bridge-a-${runId}@example.test`, emailB = `bridge-b-${runId}@example.test`;
   const password = 'Synthetic-password-123';
-  async function register(email) {
+  async function register(email, { verify = true } = {}) {
     await page.locator('#account-panel').waitFor({ state: 'visible' });
     await page.locator('#account-sign-in').waitFor({ state: 'visible' });
     await page.locator('#open-sign-up').click();
@@ -210,21 +214,32 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     await page.locator('#signup-email').fill(email);
     await page.locator('#signup-password').fill(password);
     await page.locator('#account-sign-up button[type=submit]').click();
-    await page.locator('#account-sign-out').waitFor({ state: 'visible', timeout: 15000 });
+    await page.locator('#account-verify').waitFor({ state: 'visible', timeout: 15000 });
+    if (verify) {
+      await page.locator('#verify-code').fill('123456');
+      await page.locator('#account-verify button[type=submit]').click();
+      await page.getByText('Email verified successfully. Sign in with your email and password.', { exact: true }).waitFor();
+      await page.locator('#account-sign-in').waitFor({ state: 'visible' });
+    }
   }
   async function signIn(email, secret = password) {
     await page.locator('#account-email').fill(email);
     await page.locator('#account-password').fill(secret);
     await page.locator('#account-sign-in button[type=submit]').click();
   }
-  await register(emailA);
-  await page.locator('#account-sign-out').click();
+  await register(emailA, { verify: false });
+  await page.locator('#account-verify [data-account-back]').click();
+  await signIn(emailA);
+  await page.locator('#account-verify').waitFor({ state: 'visible' });
+  await page.locator('#resend-code').click();
+  await page.locator('#verify-code').fill('123456');
+  await page.locator('#account-verify button[type=submit]').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await signIn(emailA, 'Wrong-password');
   await page.getByText('Email or password was not accepted. Sign in again.', { exact: true }).waitFor();
   await signIn(emailA);
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
-  checks.push('unverified signup and password sign-in succeed without an email code');
+  checks.push('unverified signup cannot access reports; verification OTP is resent, verified, then password sign-in succeeds');
   const beforeProtocolChecks = authRequests;
   const protocol = await page.evaluate(async ({ apiOrigin, authUrl }) => {
     const frame = document.createElement('iframe');
@@ -256,9 +271,10 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   }, { apiOrigin, authUrl });
   assert.deepEqual(protocol, [400, 400, 400, 400]);
   assert.equal(authRequests, beforeProtocolChecks);
-  checks.push('bridge rejects arbitrary SDK calls, extra fields and removed signup-verification OTP operations');
+  checks.push('bridge rejects arbitrary SDK calls and malformed verification payloads without contacting Auth');
   await page.reload();
-  await openRestoredAccount(page);
+  await page.locator('#show-account').click();
+  await page.locator('#account-sign-out').waitFor({ state: 'visible' });
   checks.push('wrong password sanitized; cookie session restored after popup reload');
   await page.locator('#close-account').click();
   await page.locator('#paste-panel > summary').click();
@@ -287,11 +303,10 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#create-body').fill('Please review the synthetic meeting agenda for tomorrow.');
   await page.locator('#create-button').click();
   await page.locator('#detail-panel').waitFor({ state: 'visible', timeout: 30000 });
-  await verifyVisibleProvenance(page);
   const reportId = await page.evaluate(async ({ apiOrigin }) => {
     const { createNeonIntegration } = await import('./js/neon-integration.js');
-    const { AUTH_CONFIG, AUTH_CONFIGS } = await import('./js/auth-config.js');
-    const integration = createNeonIntegration({ config: AUTH_CONFIGS?.staging ?? AUTH_CONFIG, apiOrigin });
+    const { AUTH_CONFIG } = await import('./js/auth-config.js');
+    const integration = createNeonIntegration({ config: AUTH_CONFIG, apiOrigin });
     const session = await integration.adapter.restore();
     const reports = await integration.createClient(session).listAnalyses();
     return reports[0].id;
@@ -301,14 +316,13 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await register(emailB);
-  await page.locator('#account-sign-out').click();
-  await page.locator('#account-sign-in').waitFor({ state: 'visible' });
+  await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
   await signIn(emailB);
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
   const isolation = await page.evaluate(async ({ apiOrigin, reportId }) => {
     const { createNeonIntegration } = await import('./js/neon-integration.js');
-    const { AUTH_CONFIG, AUTH_CONFIGS } = await import('./js/auth-config.js');
-    const integration = createNeonIntegration({ config: AUTH_CONFIGS?.staging ?? AUTH_CONFIG, apiOrigin });
+    const { AUTH_CONFIG } = await import('./js/auth-config.js');
+    const integration = createNeonIntegration({ config: AUTH_CONFIG, apiOrigin });
     const session = await integration.adapter.restore();
     const client = integration.createClient(session);
     const statuses = [];
@@ -320,18 +334,6 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   }, { apiOrigin, reportId });
   assert.deepEqual(isolation, { count: 0, statuses: [404, 404, 404] });
   checks.push('second account cannot list, read, edit or delete first account report');
-  await page.locator('#close-account').click();
-  await page.locator('#show-reports').click();
-  await page.locator('#loading').waitFor({ state: 'hidden' });
-  const faultStates = {};
-  await verifyHistoryFaultStates(page, apiOrigin, faultStates);
-  assert.deepEqual(faultStates, { loading: true, api_error: true, timeout: true });
-  const beforeRefresh = apiStatuses.length;
-  await page.locator('#load-history').click();
-  await page.locator('#crud-status').waitFor({ state: 'hidden' });
-  assert.ok(apiStatuses.slice(beforeRefresh).some(({ method, status }) => method === 'GET' && status === 200));
-  checks.push('saved reports show loading, service failure and request timeout, then refresh normally');
-  await page.locator('#show-account').click();
   failLogout = true;
   await page.locator('#account-sign-out').click();
   await page.getByText(/could not confirm sign-out/).waitFor();

@@ -1,14 +1,44 @@
 # Pipeline Metrics
 
-## Current service identity refresh — 2026-11-21
+## Current DORA and production probe — 2026-11-27
+
+The reproducible 28-day DORA snapshot is in
+[dora-report-2026-11-27.md](dora-report-2026-11-27.md), with its redacted
+[source data](evidence/dora-source-2026-11-27.json). The report gives a
+merge-to-live median of 3.66 minutes (`n=60` matched of 142 merged PRs),
+63 successful production deploy records (2.25/day), and a supplemental main-CI
+median of 66 seconds (`n=117`, 115 successes and 2 failures). Change fail rate,
+failed-deployment recovery time, deployment rework, and comparable optimization
+remain not measured; missing evidence is not reported as zero.
+
+Read-only Render metadata at 2026-11-27 07:14 UTC identifies the latest
+production deploy as `dep-dc1716etlv9c73b8nl0g`, source
+`811980c2cbf70d9957146bf329627f0826a018f1`, created 2026-11-22T04:33:29Z.
+The service is a Git-backed Python service on `main` with Auto Deploy off.
+Production `GET /model-info` returned HTTP 200 around 07:16 UTC with analysis
+disabled, provider disabled, and TF-IDF reports not accepted. `GET /health`,
+`/ready`, and `/version` each timed out after 15 seconds from this client. These
+are read-only public probes; no product data or credentials were accessed.
+Production readiness and the end-user journey are therefore not verified.
+
+Render metadata marks the Production environment unprotected; the service is a
+public API with allowlist `0.0.0.0/0` and network isolation disabled. Public
+client access is expected for the extension API; this is not evidence that
+deployment credentials are exposed. It is separate from GitHub's protected
+`production` deployment environment, which currently requires `inaki3023`,
+prevents self-review, allows only protected branches, and disallows admin
+bypass. No production setting was changed in this audit.
+
+## Historical service identity refresh — 2026-11-21 (superseded)
 
 This read-only refresh records service identity and endpoint behavior, not a
 performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
 from Render deploy `dep-dc07rs67bikc73fjgjq0`. `/version`, `/health`, `/ready`
 and `/model-info` returned HTTP 200; analysis is disabled
 (`analysis_enabled=false`, `provider_mode=disabled`). GitHub `main` later
-advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`; this record does not
-verify a later production deploy. Staging serves
+advanced through `06f89d7a0b5b9dec316dfa11f2846767a32086c5` to
+`95975cd47dceeac74ea36054610956f0a1db1fa9`; this record does not verify a later
+production deploy. Staging serves
 `ba0b6c5475eb6a8f99c509c40384020d292e17e6` from deploy
 `dep-dc0im3h7lnhs738pncng`; the same four GET endpoints returned 200 with
 TF-IDF mode. Anonymous `/api/analyses` returned 401 with a Bearer challenge.
@@ -20,6 +50,59 @@ used the mainline-synchronized smoke helper. Neither run checked
 `/version`, deployed PR identity, or authenticated CRUD, and it is not a
 performance sample. Treat the deployment identity above as the 07:31 UTC
 control-plane observation.
+
+CI evidence is not a performance metric. PR #265 merged to main at
+`95975cd47dceeac74ea36054610956f0a1db1fa9`; its CI and CodeQL passed in runs
+44889931821 and 44889931096. On PR #268 head
+`2e26327254c71b6cb7d655181cffb21e8dd1ee9b` at 10:14 UTC, Backend, Extension,
+migration source preflight, Staging integration, hosted preflight, workflow
+lint, dependency security, Dependency graph review and deterministic evaluation
+passed. Hosted staging job 136807616481 ended with conclusion success, but its
+final freshness guard blocked deployment, smoke, CRUD and artifact steps after
+the request label was removed at 09:54 UTC. The job summary says blocked, not
+hosted acceptance. The separate required `Secretary staging` status failed in
+[run 44892082807](https://github.com/kendshhh/PhishLens/actions/runs/44892082807).
+No current PR CodeQL check appeared;
+the prior `7dbebfd` CodeQL run failed because Actions hit installation API rate
+limits. Dependency graph review passes after
+graph enablement, while 15 existing Dependabot alerts (12 high, 3 moderate)
+remain open. The latest checks are [CI 44891131201](https://github.com/kendshhh/PhishLens/actions/runs/44891131201),
+[workflow lint 44891131261](https://github.com/kendshhh/PhishLens/actions/runs/44891131261),
+[dependency checks 44891131162](https://github.com/kendshhh/PhishLens/actions/runs/44891131162),
+and [evaluation 44891131190](https://github.com/kendshhh/PhishLens/actions/runs/44891131190).
+See the [release record](release-record-2026-11-21.md) and [staging evidence](evidence/2026-11-21-staging-neon-auth-smoke.md).
+Do not include these workflow outcomes in CI duration or deployment
+performance samples below.
+
+On the 11:08 UTC PR #268 head `a151585ff92d55f21e0364e9838287a9cf04a68d`,
+Backend and migration preflight passed, while packaged `Extension checks`
+failed the Saved reports view keyboard-focus assertion in
+`scripts/browser_acceptance.mjs:700` ([CI
+44897548076](https://github.com/kendshhh/PhishLens/actions/runs/44897548076)).
+Workflow lint [44897548088](https://github.com/kendshhh/PhishLens/actions/runs/44897548088),
+dependency security/graph [44897548010](https://github.com/kendshhh/PhishLens/actions/runs/44897548010),
+deterministic evaluation [44897548070](https://github.com/kendshhh/PhishLens/actions/runs/44897548070),
+and the Secretary report [44897544530](https://github.com/kendshhh/PhishLens/actions/runs/44897544530)
+passed. Staging integration and hosted checks were skipped, and required
+`Secretary staging` failed in [44897660167](https://github.com/kendshhh/PhishLens/actions/runs/44897660167).
+No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+These workflow outcomes are not performance samples.
+
+The 11:21 completed PR-head workflow snapshot was docs-only SHA `dffdc4c`
+([CI 44898467208](https://github.com/kendshhh/PhishLens/actions/runs/44898467208)): Backend, Extension, migration preflight and Staging integration passed. Hosted staging/preflight were skipped; required `Secretary staging` failed in [44898698685](https://github.com/kendshhh/PhishLens/actions/runs/44898698685) because the hosted request label and exact-head verification were absent. The docs-only sync after that snapshot needs separate checks. No Render deploy or authenticated CRUD occurred; this status sample is not a performance measurement.
+
+The following completed docs-only head, `f79098cc075784563d2022cbca87d7abe8f0a635`,
+also passed Backend, Extension, migration preflight and Staging integration in
+[CI 44899191736](https://github.com/kendshhh/PhishLens/actions/runs/44899191736).
+Workflow lint [44899191771](https://github.com/kendshhh/PhishLens/actions/runs/44899191771),
+dependency security/graph [44899191710](https://github.com/kendshhh/PhishLens/actions/runs/44899191710),
+deterministic evaluation [44899191787](https://github.com/kendshhh/PhishLens/actions/runs/44899191787),
+and the Secretary report [44899190365](https://github.com/kendshhh/PhishLens/actions/runs/44899190365)
+passed. Hosted staging/preflight were skipped; required `Secretary staging`
+failed in [44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899423134).
+No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
+This is a check snapshot, not a performance sample; the next docs-only sync
+needs its own checks.
 
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy
@@ -46,9 +129,12 @@ also passed on that SHA. The scheduled [Production drift run
 passed source-SHA, health and readiness checks.
 
 This is a historical performance sample, not the current main check result.
-Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`. Its latest
-CI run [44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
-failed in packaged-extension Chromium browser acceptance; Backend passed.
+Main later advanced to `06f89d7a0b5b9dec316dfa11f2846767a32086c5`, then to
+`95975cd47dceeac74ea36054610956f0a1db1fa9`. The CI failure at packaged-extension
+Chromium browser acceptance on `06f89d7` in
+[44885148600](https://github.com/kendshhh/PhishLens/actions/runs/44885148600)
+is historical; the merged `95975cd` snapshot passed its complete CI and CodeQL
+checks. The `06f89d7` Backend passed.
 Workflow lint [44885148613](https://github.com/kendshhh/PhishLens/actions/runs/44885148613)
 and dependency security [44885148629](https://github.com/kendshhh/PhishLens/actions/runs/44885148629)
 passed. Those current statuses are not included in the timing sample above.
@@ -522,3 +608,19 @@ cache-hit comparison.
 
 The current PR branch now uses the same pinned uv setup and cache dependency
 globs. Its new-head CI must pass before treating the updated PR head as verified.
+
+### PR #268 follow-up — 2026-11-21 11:42 UTC
+
+The next exact-head check on `e9451cc20928fefa7c0a6ded4803cebbad24ef42` passed Backend, Extension, migration preflight, Staging integration, workflow lint, dependency security/graph review, deterministic evaluation, and the Secretary report. Hosted staging preflight and Hosted staging were skipped. Required `Secretary staging` remains failed because the `needs-hosted-staging` label and exact-head hosted verification are absent. No current PR CodeQL result, Render deployment or authenticated CRUD was observed. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md) for run links. The release remains **NO-GO**; the descriptive DevOps evidence score remains 41/100.
+
+### PR #268 retarget follow-up — 2026-11-21 11:57 UTC
+
+PR #268 is now based on `main`; review branch head `77c0ed00e607c5580cedffadd031fe40ad71771b` includes the current `main` history. GitHub reports the PR open and mergeable, while the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. Exact-head CI passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security/graph review, deterministic evaluation, DevOps Secretary report and CodeQL. Hosted preflight/deployment were skipped; required `Secretary staging` remains failed because the hosted request label and exact-head hosted verification are absent. No Render deployment or authenticated hosted CRUD occurred. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md). Release remains **NO-GO** and the 41/100 descriptive evidence score is unchanged.
+
+### PR #268 exact-head snapshot — 2026-11-21 12:02 UTC
+
+Retargeted PR #268 head `1fa2e7827cfe84de425afcc7885743bd55b2a382` passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security and graph review, deterministic evaluation, DevOps Secretary report, and all three CodeQL analyses. [CI run 44901642617](https://github.com/kendshhh/PhishLens/actions/runs/44901642617) completed at 12:02 UTC. Hosted staging preflight and Hosted staging were skipped. The required `Secretary staging` status failed because the `needs-hosted-staging` label and exact-head hosted verification were absent ([assessment 44901931269](https://github.com/kendshhh/PhishLens/actions/runs/44901931269)); no Render deployment or authenticated hosted CRUD occurred. GitHub reports the PR open and mergeable on `main`; the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. The release remains **NO-GO**, and 41/100 is a descriptive evidence-progress score only. This documentation-only evidence update requires fresh exact-head CI before merge. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
+
+### PR #268 main-sync snapshot — 2026-11-21 12:14 UTC
+
+PR #268 now includes current `main` through `31e86c7` in merge head `aee49fe5a11da37ed441464c80ad9a09e0b9dda8`. Exact-head CI run [44902645800](https://github.com/kendshhh/PhishLens/actions/runs/44902645800) passed Backend, Extension, Staging integration and migration preflight. Workflow lint [44902645811](https://github.com/kendshhh/PhishLens/actions/runs/44902645811), dependency security/graph [44902645851](https://github.com/kendshhh/PhishLens/actions/runs/44902645851), deterministic evaluation [44902645832](https://github.com/kendshhh/PhishLens/actions/runs/44902645832), and CodeQL [44902643383](https://github.com/kendshhh/PhishLens/actions/runs/44902643383) passed. The exact-head DevOps Secretary report was cancelled during the branch sync ([44902644757](https://github.com/kendshhh/PhishLens/actions/runs/44902644757)); the Secretary preview assessment reports required `Secretary staging` failure because the `needs-hosted-staging` label and exact-head hosted verification are absent ([44902874550](https://github.com/kendshhh/PhishLens/actions/runs/44902874550)). Hosted preflight/deployment were skipped; no Render deploy or authenticated CRUD occurred. GitHub shows PR #268 open, mergeable on `main`, with review decision `CHANGES_REQUESTED`. Release remains **NO-GO**; 41/100 is descriptive evidence progress, not completion. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).

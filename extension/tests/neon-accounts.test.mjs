@@ -36,7 +36,7 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
     if (path.endsWith('/sign-in/email')) { active = true; return Response.json(session('opaque-cookie-token')); }
     if (path.endsWith('/get-session')) return Response.json(active ? session('opaque-cookie-token') : null,
       { headers: active ? { 'set-auth-jwt': token } : {} });
-    if (/\/(sign-up\/email|forget-password\/email-otp|email-otp\/reset-password)$/.test(path)) {
+    if (/\/(sign-up\/email|forget-password\/email-otp|email-otp\/reset-password|email-otp\/verify-email|email-otp\/send-verification-otp)$/.test(path)) {
       return Response.json({ success: true });
     }
     assert.fail('Unexpected SDK path: ' + path);
@@ -62,16 +62,17 @@ test('actual bundled SDK uses credentialed bounded requests and injects current 
     assert.equal(requests.filter(r => new URL(r.url).pathname.startsWith('/api/analyses')).length, apiCalls.length);
     token = jwt();
     await adapter.signUp({ name: user.name, email: user.email, password: 'Synthetic-password-only' });
-    assert.equal(adapter.verifyEmail, undefined);
-    assert.equal(adapter.resend, undefined);
+    await adapter.resend({ email: user.email });
     assert.equal((await adapter.signIn({ email: user.email, password: 'Synthetic-password-only' })).user.id, user.id);
+    assert.equal(await adapter.verifyEmail({ email: user.email, code: '123456' }), true);
     await adapter.recover({ email: user.email });
     await adapter.resetPassword({ email: user.email, code: '123456', password: 'Synthetic-password-only' });
     assert.equal(await adapter.restore(), null);
     await adapter.signIn({ email: user.email, password: 'Synthetic-password-only' });
     await adapter.signOut();
     assert.equal(await adapter.getAccessToken(user.id), null);
-    assert.equal(requests.some(r => /\/(email-otp\/verify-email|email-otp\/send-verification-otp)$/.test(new URL(r.url).pathname)), false);
+    assert.equal(requests.some(r => /\/email-otp\/verify-email$/.test(new URL(r.url).pathname)), true);
+    assert.equal(requests.some(r => /\/email-otp\/send-verification-otp$/.test(new URL(r.url).pathname)), true);
   } finally { globalThis.fetch = original; }
 });
 
@@ -83,33 +84,74 @@ test('rejects opaque, expired, or mismatched tokens without returning them', asy
   }
 });
 
-test('signup and sign-in establish sessions without an email verification code', async () => {
+test('unverified sign-up and sign-in never create a report session; OTP verification precedes sign-in', async () => {
   let active = false;
-  const unverifiedUser = { ...user, emailVerified: false };
+  let currentUser = { ...user, emailVerified: false };
   const sdk = {
-    signUp: { email: async () => { active = true; return { data: { user: unverifiedUser } }; } },
-    signIn: { email: async () => { active = true; return { data: { user: unverifiedUser } }; } },
-    getSession: async () => ({ data: active ? { user: unverifiedUser,
+    signUp: { email: async () => { active = true; return { data: { user: currentUser } }; } },
+    signIn: { email: async () => { active = true; return { data: { user: currentUser } }; } },
+    emailOtp: {
+      sendVerificationOtp: async ({ email, type }) => {
+        assert.equal(email, user.email); assert.equal(type, 'email-verification');
+        return { data: { success: true } };
+      },
+      verifyEmail: async ({ email, otp }) => {
+        assert.equal(email, user.email); assert.equal(otp, '123456');
+        currentUser = { ...currentUser, emailVerified: true };
+        return { data: { success: true } };
+      }
+    },
+    getSession: async () => ({ data: active ? { user: currentUser,
       session: { expiresAt: new Date(Date.now() + 60000).toISOString(), token: jwt(user.id) } } : null }),
     signOut: async () => { active = false; return { data: { success: true } }; }
   };
   const adapter = createNeonAccounts(sdk);
   const created = await adapter.signUp({ name: user.name, email: user.email, password: 'synthetic-password' });
-  assert.equal(created.user.emailVerified, false);
+  assert.equal(created, null);
+  assert.equal(active, false, 'sign-up session is revoked until the email is verified');
+  await assert.rejects(adapter.signIn({ email: user.email, password: 'synthetic-password' }),
+    { status: 403, code: 'EMAIL_NOT_VERIFIED' });
+  assert.equal(active, false, 'unverified password sign-in is revoked');
+  assert.equal(await adapter.verifyEmail({ email: user.email, code: '123456' }), false);
   assert.equal((await adapter.signIn({ email: user.email, password: 'synthetic-password' })).user.id, user.id);
+});
+
+test('email verification that creates a provider session keeps restoration blocked until explicit sign-out', async () => {
+  let blocked = false, active = true;
+  const adapter = createNeonAccounts({
+    emailOtp: { verifyEmail: async () => ({ data: { success: true } }) },
+    getSession: async () => ({ data: active ? session(jwt()) : null }),
+    signOut: async () => { active = false; return { data: { success: true } }; }
+  }, { signOutStorage: {
+    async isBlocked() { return blocked; },
+    async setBlocked(value) { blocked = value; }
+  } });
+  assert.equal(await adapter.verifyEmail({ email: user.email, code: '123456' }), true);
+  assert.equal(blocked, true);
+  assert.equal(await adapter.restore(), null);
+  assert.equal(await adapter.getAccessToken(user.id), null);
+  await adapter.signOut();
+  assert.equal(active, false);
+  assert.equal(await adapter.restore(), null);
 });
 
 test('actual SDK HTTP failures preserve safe sign-in, duplicate and recovery-code errors', async () => {
   const original = globalThis.fetch;
   const errors = [
     [401, 'INVALID_EMAIL_OR_PASSWORD', 401, /Email or password/, 'signIn'],
+    [403, 'EMAIL_NOT_VERIFIED', 403, /Verify your email/, 'signIn'],
     [422, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', 409, /Try signing in/, 'signUp'],
     [400, 'OTP_EXPIRED', 400, /This code expired/, 'resetPassword'],
     [429, 'TOO_MANY_REQUESTS', 429, /Too many attempts/, 'signIn']
   ];
   try {
     for (const [status, code, expectedStatus, message, method] of errors) {
-      globalThis.fetch = async () => Response.json({ code, message: 'private-provider-value' }, { status });
+      globalThis.fetch = async url => {
+        if (code === 'EMAIL_NOT_VERIFIED' && new URL(String(url)).pathname.endsWith('/sign-out')) {
+          return Response.json({ success: true });
+        }
+        return Response.json({ code, message: 'private-provider-value' }, { status });
+      };
       const { adapter } = createNeonIntegration({ apiOrigin,
         config: { enabled: true, authUrl, database: 'test', apiOrigin },
         hostPermissions: [origin + '/*', apiOrigin + '/*'] });

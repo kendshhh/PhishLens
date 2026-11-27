@@ -2,7 +2,7 @@ export function sessionError(message = 'Sign in to view your saved reports.') {
   return Object.assign(new Error(message), { code: 'session_required', status: 401 });
 }
 
-// The adapter owns credentials and refresh. This boundary only holds a valid provider session in memory.
+// The adapter owns credentials and refresh. This boundary only holds a verified session in memory.
 export function createAccountSession({ adapter, createClient, onChange = () => {}, now = Date.now,
   schedule = setTimeout, cancel = clearTimeout }) {
   let session = null, client = null, revision = 0, timer, disposed = false;
@@ -26,6 +26,10 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     if (!next.user?.id || !next.user.email ||
         !Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
       publish('expired', 'Your session expired. Sign in again.');
+      return false;
+    }
+    if (next.user.emailVerified !== true) {
+      publish('verification-required', 'Verify your email before signing in to saved reports.');
       return false;
     }
     // Clear old account state before allowing a request for the next account.
@@ -54,6 +58,9 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
       if (!next || next.user?.id !== session.user.id) {
         await clear('expired', 'Your account changed or signed out. Sign in again.');
         return;
+      }
+      if (next.user.emailVerified !== true) {
+        await clear('verification-required', 'Verify your email before signing in to saved reports.'); return;
       }
       if (!Number.isFinite(next.expiresAt) || next.expiresAt <= now()) {
         await clear('expired', 'Your session expired. Sign in again.'); return;
@@ -95,19 +102,26 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
     ready, refresh, client: guarded, get state() { return current; },
     subscribe(listener) { listeners.add(listener); listener(current); return () => listeners.delete(listener); },
     signIn: input => authenticate('signIn', input),
-    signUp: input => authenticate('signUp', input),
+    // Email verification confirms ownership only; it never installs an account session.
+    verifyEmail: input => adapter.verifyEmail(input),
+    signUp: input => adapter.signUp(input),
+    resend: input => adapter.resend(input),
     recover: input => adapter.recover(input),
     async resetPassword(input) {
       await adapter.resetPassword(input);
       await clear();
     },
+    // Resolves true only when the account service confirmed sign-out. Local access is
+    // removed either way; callers that must know the provider session ended check the result.
     async signOut() {
       const clearing = clear();
       const version = revision;
       const [local, remote] = await Promise.allSettled([clearing, adapter.signOut()]);
-      if (version === revision && (local.status === 'rejected' || remote.status === 'rejected')) {
+      const confirmed = local.status === 'fulfilled' && remote.status === 'fulfilled';
+      if (!confirmed && version === revision) {
         publish('signed-out', 'The account service could not confirm sign-out. Try signing out again after signing in.');
       }
+      return confirmed;
     },
     dispose() { disposed = true; ++revision; cancel(timer); listeners.clear(); session = null; client = null; }
   };
@@ -116,6 +130,6 @@ export function createAccountSession({ adapter, createClient, onChange = () => {
 export const unavailableAccounts = {
   async restore() { return null; },
   async signOut() {},
-  ...Object.fromEntries(['signIn', 'signUp', 'recover', 'resetPassword'].map(name =>
+  ...Object.fromEntries(['signIn', 'signUp', 'verifyEmail', 'resend', 'recover', 'resetPassword'].map(name =>
     [name, async () => { throw new Error('Account sign-in is not connected yet. Local scanning is still available.'); }]))
 };

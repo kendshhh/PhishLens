@@ -5,24 +5,27 @@ const sdk = createAuthClient(authUrl, { adapter: BetterAuthVanillaAdapter({ fetc
   credentials: 'include', redirect: 'error', timeout: 10000, retry: 0
 } }) });
 
-// Keep the RPC surface limited to signup, sign-in, password recovery and sessions.
+// Keep the RPC surface limited to account lifecycle operations and sessions.
 const actions = {
   getSession: () => sdk.getSession({ fetchOptions: { headers: { 'X-Force-Fetch': 'true' } } }),
   signIn: input => sdk.signIn.email(input),
   signUp: input => sdk.signUp.email(input),
+  verifyEmail: input => sdk.emailOtp.verifyEmail({ email: input.email, otp: input.code }),
+  resend: input => sdk.emailOtp.sendVerificationOtp({ email: input.email, type: 'email-verification' }),
   recover: input => sdk.forgetPassword.emailOtp(input),
   resetPassword: input => sdk.emailOtp.resetPassword(input),
   signOut: () => sdk.signOut()
 };
 const fields = {
   getSession: [], signOut: [], signIn: ['email', 'password'], signUp: ['name', 'email', 'password'],
+  verifyEmail: ['email', 'code'], resend: ['email'],
   recover: ['email'],
   resetPassword: ['email', 'otp', 'password']
 };
 let channel;
 function safeError(error) {
   const details = error?.error && typeof error.error === 'object' ? error.error : error;
-  const code = ['OTP_EXPIRED', 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'].includes(details?.code)
+  const code = ['EMAIL_NOT_VERIFIED', 'OTP_EXPIRED', 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL'].includes(details?.code)
     ? details.code : undefined;
   return { error: { status: Number(details?.status) || Number(error?.status) || 503, code } };
 }
@@ -41,7 +44,10 @@ globalThis.addEventListener('message', async event => {
     const expected = fields[method];
     if (input && typeof input === 'object' && !Array.isArray(input) &&
         Object.keys(input).length === expected.length &&
-        expected.every(key => typeof input[key] === 'string' && input[key].length <= 320)) {
+        expected.every(key => typeof input[key] === 'string' && input[key].length <= 320) &&
+        (!['signIn', 'signUp', 'verifyEmail', 'resend', 'recover', 'resetPassword'].includes(method) ||
+          /^[^\s@]+@[^\s@]+$/.test(input.email || '')) &&
+        (method !== 'verifyEmail' || /^\d{6}$/.test(input.code || ''))) {
       try {
         const response = await actions[method](input);
         // Provider error messages and an opaque session-cookie token must never
