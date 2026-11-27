@@ -133,6 +133,18 @@ class TrustedStagingTests(unittest.TestCase):
         self.run_inspect(api, files=[{"filename": "docs/README.md"}])
         self.assertIn("disposition=not-applicable", self.output_path.read_text(encoding="utf-8"))
 
+    def test_closed_pr_candidate_is_not_applicable_without_status_or_deploy(self):
+        api = self.api()
+        closed = dict(PR, state="closed")
+        self.run_inspect(api, pr=closed)
+
+        self.assertIn("disposition=not-applicable", self.output_path.read_text(encoding="utf-8"))
+        api.pull_request_files.assert_not_called()
+        self.assertFalse(any(
+            call.args and isinstance(call.args[0], str) and call.args[0].startswith("statuses/")
+            for call in api.request.call_args_list
+        ))
+
     def test_final_status_fails_for_any_skipped_stage_and_passes_only_all_success(self):
         api = self.api()
         with patch.dict(os.environ, self.environment, clear=True), \

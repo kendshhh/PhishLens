@@ -63,6 +63,12 @@ class AIAnalysisResult(AIAnalysisPayload):
     alert_threshold_score: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     model_alert: bool | None = None
     assessment: str | None = Field(default=None, max_length=1000)
+    # Provider usage is internal telemetry and must never appear in API responses.
+    input_tokens: int | None = Field(default=None, ge=0, exclude=True, repr=False)
+    output_tokens: int | None = Field(default=None, ge=0, exclude=True, repr=False)
+    estimated_cost_usd: str | None = Field(
+        default=None, pattern=r"^\d+\.\d{6}$", exclude=True, repr=False
+    )
 
 
 class AnalysisRequest(BaseModel):
@@ -116,7 +122,7 @@ class AnalysisValidationErrorResponse(BaseModel):
 
 
 class AnalysisFailureBody(BaseModel):
-    code: Literal["inference_failed", "analysis_unavailable"]
+    code: Literal["inference_failed", "analysis_unavailable", "rate_limited"]
     message: str
 
 

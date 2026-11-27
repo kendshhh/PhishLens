@@ -1,6 +1,6 @@
 # PhishLens Pipeline
 
-## Delivery and acceptance evidence snapshot — November 27, 2026 07:48 UTC
+## Delivery and acceptance evidence snapshot — November 27, 2026 08:22 UTC
 
 This is a timestamped evidence snapshot. The release remains **NO-GO**; a 10/10
 rubric result is not supported by the current evidence. See the current
@@ -12,22 +12,28 @@ rubric result is not supported by the current evidence. See the current
 
 ### Main, PRs, and acceptance
 
-`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. Earlier PR #268 head
-`63b000e17631f9514d8763c4c88d054cbcfc2e24` and PR #282 head
-`7551e4077e4f71f2768a3d090b7ce437d727eb60` passed trusted staging Auth, CRUD,
-isolation, cleanup, and extension UX. Those runs are historical for the newer
-heads. Current PR #268 head is `554fd223ec98852acb12ebca01812530a84fde2d` and
-current PR #282 head is `3131dae6f09c30b267ca4aa7b864694a44fd744c`; their CI
-and Neon preflights pass, but neither has current exact-head authenticated
-acceptance. Both still block AI quality and have no backend image digest.
+`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. Current PR heads are
+#268 `9039d1a490d283cc7bcca9243aa02b705036a7dd`, #281
+`0c48cbf240b963a35b5e4669417e118d5ea6573b`, and #282
+`3131dae6f09c30b267ca4aa7b864694a44fd744c`. PR #268 now includes the latest
+#281 and #282 heads in that order; no PR changed migration files. The full
+dependency and resolution record is in the [PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
 
-PR #281 head `27859a31674f99f17a5e26454104b3e6719493a7` has passing Backend,
-Extension, local Staging integration, migration source preflight, workflow
-lint, CodeQL, dependency checks, and deterministic AI evaluation. Its exact-head
-protected Neon preflight run `45956687871` is waiting for `xxTrixia`. Trusted
-controller run `45957149389` failed closed because no successful exact-head
-preflight attestation existed; the required `Secretary staging` result failed.
-No hosted acceptance is claimed for this head. Older protected runs are stale.
+Trusted staging acceptance passed on the prior #268 SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` in run
+[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400):
+Auth sign-in, persistent saved-report CRUD, reload persistence, ownership,
+two-account isolation, cleanup, and extension UX passed. Its ZIP SHA-256 is
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. This
+does not apply to integrated SHA `9039d1a` or its successor. On `9039d1a`,
+Backend, Extension, migration preflight, Workflow lint, CodeQL, dependency
+security, and deterministic AI CI passed, and trusted Neon preflight passed
+([45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015)).
+Staging integration failed because `test_hosted_staging_gate.py` referenced
+undefined `ROOT`; a focused path correction is included in this PR update and
+passes its six focused local tests. Fresh exact-head GitHub checks are pending.
+No hosted acceptance is claimed for `9039d1a` or its successor. The earlier accepted run also blocked
+AI quality and has no backend image digest.
 
 Current branch-head relationships and merge-tree results are in the
 [PR alignment record](docs/devops/pr-alignment-2026-11-27.md).

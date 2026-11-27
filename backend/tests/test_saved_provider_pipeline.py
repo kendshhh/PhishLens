@@ -62,6 +62,9 @@ def test_gemini_output_is_validated_mapped_and_persisted(monkeypatch):
         "get_ai_config",
         lambda: ("gemini", "synthetic-test-key", "gemini-test-model"),
     )
+    monkeypatch.setattr(saved_create, "estimate_gemini_request_cost", lambda *_a: None)
+    monkeypatch.setattr(saved_create, "reserve_ai_request_quota", lambda *_a, **_k: None)
+    monkeypatch.setattr(saved_create, "attach_ai_quota_observation", lambda *_a, **_k: None)
 
     record_id = uuid4()
     user_id = uuid4()

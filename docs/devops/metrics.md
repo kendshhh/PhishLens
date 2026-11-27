@@ -1,3 +1,95 @@
+## Staging acceptance addendum — 2026-11-27 08:22 UTC
+
+Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
+passed the authenticated staging journey for prior PR #268 source/backend SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` and extension ZIP SHA-256
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It verified
+Neon Auth sign-in, persistent saved-report CRUD, reload persistence,
+ownership/isolation, cleanup, and extension UX. It recorded zero production
+requests/writes, AI quality blocked (`approval_not_provided`), and no backend
+image digest. This is product-acceptance evidence for that SHA only; it is not a
+production deployment and must not be added to the production DORA denominator.
+
+The integrated PR #268 SHA `9039d1a490d283cc7bcca9243aa02b705036a7dd` passed
+trusted Neon preflight but its initial staging integration failed on an
+undefined test `ROOT`, so no hosted acceptance ran on that SHA. A correction is
+included in the current PR update. Fresh checks and protected staging must pass
+before current-candidate acceptance is reported.
+
+## Current audit and metric reconciliation — 2026-11-23
+
+This dated refresh retains the partial 28-day DORA reconstruction below and adds exact candidate evidence. GitHub main is `0338ad163a4892987a6a682aed29b95c22c322da`; main protection was rechecked and still requires eight status contexts plus one approval, latest-push approval, and stale-review dismissal, while blocking force-push and deletion.
+
+PR #282 candidate `48ead208487408b04f3eed9f8643631454d6cc83`: the ordinary CI jobs, Workflow lint, Dependency security/Gitleaks, Deterministic AI Evaluation, CodeQL, and Secretary report/label passed. The user-approved Render staging deploy failed `update_failed`; the overall CI workflow therefore failed, and the required Secretary staging context says “CI did not succeed; staging not deployed.” PR review remains required.
+
+Read-only probes after the failed staging update returned HTTP 200 from staging `/version`, `/health`, `/ready`, and `/model-info` for prior SHA `05bd559744ab96357b74a96404a4d4c8a6d070eb`. A fresh production probe at 13:12 UTC timed out/failed on `/version`, `/health`, `/ready`, and `/model-info`; the last successful `/model-info` at 12:24 UTC reported analysis disabled. Neither service served candidate `48ead20`. No production deployment or paid AI call occurred.
+
+GitHub still lists 15 open Dependabot alerts, while main manifests contain patched pins `pyasn1==0.6.5` and `opentelemetry-api==1.45.2`; the 15 alert records were last updated Oct 31 or Nov 14. Gitleaks now passes inside the required Dependency security context on the candidate. Private key scopes, alert-state refresh, and live Render-to-Neon permissions remain to be verified.
+
+## Exact-candidate delivery status — 2026-11-23 13:05 UTC
+
+PR #282 candidate `48ead208487408b04f3eed9f8643631454d6cc83` passed Backend checks in CI, Extension, disposable Staging integration, migration source preflight, Workflow lint, Dependency security/Gitleaks, Deterministic AI Evaluation and CodeQL. The user-approved Render staging deployment failed with `update_failed`; the subsequent `Secretary staging` required context failed because CI did not succeed. No production deployment occurred, so this does not change the production DORA window or denominator. The current DORA figures below remain historical partials; CFR and time to restore remain unknown, not zero.
+
+This evidence describes `48ead20` at the audit cutoff. The audit documentation is being committed as a descendant; these results do not establish checks, review, or staging approval for that new head.
+
+### DORA measures: refreshed rolling window — 2026-11-23
+
+Reporting window: **2026-10-26 03:21:57 UTC through 2026-11-23 03:21:57 UTC**.
+This is a **partial, cross-source reconstruction**, not a complete DORA report.
+The historical [Render export](evidence/production-deploys-2026-11-14.csv) has
+61 records in the window, ending at 2026-11-13 14:10:46.873935 UTC. The current
+[Render production deploy inventory](https://dashboard.render.com/web/srv-db7eap25b2lc73fkelpg/deploys)
+showed 30 later records from 2026-11-14 14:34:07.916606 UTC through
+2026-11-22 04:33:29.899220 UTC. Both sources showed successful/live deployment
+statuses for all 91 observed records. The evidence has a **24h 23m 21s gap**
+between the sources (26.9838 covered days out of 28); do not treat the absence
+of rows in that gap as zero deployments.
+
+| DORA measure | Refreshed evidence | Audit status |
+|---|---|---|
+| Deployment frequency | 91 successful/live deployment records observed in the 28-day window: 61 in the CSV plus 30 in the current dashboard. The raw full-window ratio is **at least 3.25 records/day**; the rate over covered time is 3.37/day. There are 86 distinct commit SHAs (five repeated records); one SHA was already deployed before the window. | **Partial.** The 24.39-hour source gap and mixed inventory/CSV sources prevent an exact complete count. Raw deployment records also include same-SHA redeploys and an environment update; publish the qualifying production-release rule before treating this as the DORA rate. |
+| Lead time for changes | **85 first production deployments** of distinct merged PR SHAs were matched (57 from the historical CSV and 28 from the current dashboard plus GitHub merge timestamps). Mean **5.09 min**, median **3.78 min**, nearest-rank p90 **8.61 min**. Current dashboard finish times are derived from the UI deployment timestamp plus its displayed duration; the historical export provides finished_at_utc. | **Partial.** Useful refreshed sample, but the same source gap can hide deployments and the newest segment uses a duration-derived finish time. The complete merged-change cohort and unmatched count were not reconciled, so coverage percentage is unknown. |
+| Change failure rate | No failed deployment status was present in the 91 observed records. Project history records repeated exact-SHA production AI-smoke failures on November 14–15 because provider mode was unavailable; the underlying feature gap was observed across several deployed revisions. | **Unknown, not zero.** The production feature gap is confirmed, but its onset, customer impact, and link to any specific change are not. On November 20, analysis was deliberately disabled as a safety kill switch. No attributable failure numerator or reconciled production-release denominator is available. See the event reconciliation below and [incident record](incidents.md#2026-11-14-onward-production-ai-feature-acceptance-gap). |
+| Time to restore service | The production AI feature gap was observed on November 14–15; analysis was deliberately disabled on November 20 and remained disabled on November 21 and 23. No successful enabled-feature restoration or complete incident-to-restoration interval is recorded (**n=0 measured durations**). | **Unknown, not zero.** The intentional disabled state did not restore the feature. Actual onset, impact start, and verified restoration time remain unknown; the historical drills below do not supply a production service-restoration duration. |
+
+#### Project-history event reconciliation for CFR and restore time
+
+The current window contains a production feature-acceptance failure that the
+previous draft did not link into its DORA discussion. The history below uses the
+project's dated records. It separates deployed production outcomes from drills,
+CI simulations, and database-provider timings; those are not interchangeable
+DORA samples.
+
+| Date and event | Recorded result | DORA treatment |
+|---|---|---|
+| Nov 14–15 — production AI acceptance | Exact-SHA smoke checks failed before inference because provider mode was unavailable across deployed revisions `2c293f3`, `591a2be`, `76551f6`, `623ede5`, and `205ec26`. Health/readiness passed; recorded runs made zero analyses, paid calls, or database writes. On Nov 20, the owner intentionally set `AI_ANALYSIS_ENABLED=false`; Nov 21 and 23 confirmed analysis disabled. | One unresolved in-window production feature gap seen across several SHA checks, not a separate failure per smoke. Its onset, impact, and causal link to a deployment are unknown. The Nov 20 kill switch is an intentional safety state, not proof of successful feature restoration. No confirmed CFR numerator or verified restoration is recorded. See [incident record](incidents.md#2026-11-14-onward-production-ai-feature-acceptance-gap). |
+| Nov 14 — production database restore rehearsal | A Neon restore branch became ready about 10 seconds after the snapshot timestamp; `finalize=true` changed the project default/topology. Render stayed attached to its existing endpoint and subsequent health/readiness probes passed; no application writes or outage duration were recorded. | Production recovery-control deviation, not an application deployment. The 10 seconds is branch provisioning, not service MTTR. No production service impact or restoration interval is established. See [reliability acceptance](reliability-acceptance-2026-11-14.md). |
+| Nov 8 — staging app rollback and restore | Render staging rollback reached Live in 40.352 seconds; restoring the original SHA reached Live in 86.593 seconds. Version, health, readiness, and model checks passed. | Staging-only rehearsal, not a production failure or production MTTR sample. See [runbook](runbook.md#candidate-compatible-staging-rollback--2026-11-08). |
+| Oct 14 — planned production rollback drill | Rollback to `717334d` succeeded in 35.7 seconds. The first restoration attempt to `8a8634e` timed out its health/port check; a controlled retry reached Live and public health passed. No customer outage was established; full restoration duration is unknown. | Outside this reporting window and a planned drill. The failed attempt is useful recovery evidence, but it is not a confirmed customer-impacting change failure and does not provide MTTR. See [incident record](incidents.md#2026-10-14-restoration-timeout-during-rollback-drill). |
+| Nov 20 — isolated Neon restore | A separate restore branch became ready one second after the restore request; it was not finalized or cut over to production. Integrity checks passed on the small dataset. | Isolated database-provider timing only; not production service MTTR or proof the approved RTO/RPO targets were met. See [recovery drill](recovery-drill-2026-11-20.md). |
+
+Deterministic CI failure injection and failed PR checks are pipeline evidence,
+not production incidents. The event record still does not supply a confirmed
+change-attributed production failure count or a completed service-recovery
+interval. Therefore the defensible conclusion is **CFR unknown and MTTR unknown**,
+with one unresolved in-window production acceptance failure—not zero failures.
+
+The previous 69-record / 64-match snapshot remains historical and should not be
+used as the current window. Keep the 2026-11-20 optimization experiment separate
+from DORA: cached uv Backend median 50.92 s versus 61.52 s baseline, n=2 each,
+while the staging-cache whole-job median increased 3.5 s. These small samples do
+not establish a reliable end-to-end improvement; the optimization criterion
+remains **not met**.
+
+To close the DORA evidence gap, export the complete production deployment list
+for the full window (including the missing interval), identify and deduplicate
+qualifying production releases, and retain the merge SHA and actual deployment
+finish timestamp for each. For every qualifying deployment, record whether it
+caused an incident, rollback, or hotfix under a documented observation window.
+For each incident, record detection/impact start and verified service-restoration
+timestamps. Update this log on a fixed cadence; unknown must remain distinct from
+zero.
+
 # Pipeline Metrics
 
 ## Current DORA and production probe — 2026-11-27
@@ -107,6 +199,11 @@ needs its own checks.
 Render metadata reports auto-deploy disabled for both services. Production's
 latest deployment record nevertheless has trigger `new_commit`; this discrepancy
 is unresolved. See the [current environment map](environment-map-2026-11-21.md)
+
+A later November 23 Render dashboard view showed production Auto-Deploy enabled
+on `main`; production still serves `811980c...`, behind current main. This
+supersedes the November 21 metadata observation that reported it disabled.
+Configured auto-deploy is not proof of exact merge-to-live behavior. See the [current environment map](environment-map-2026-11-21.md)
 and [release record](release-record-2026-11-21.md). The November 20
 delivery sample below remains the latest performance measurement; its service
 identity is historical.

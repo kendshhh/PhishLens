@@ -1,6 +1,6 @@
 # DevOps evidence and release records
 
-**Evidence snapshot at November 27, 2026 07:48 UTC. Release decision: NO-GO.** This index names
+**Evidence snapshot at November 27, 2026 08:22 UTC. Release decision: NO-GO.** This index names
 the current evidence set and its limits. Historical records stay dated and
 retain their original findings; successor links may be added, but do not treat old
 service IDs, workflow settings or deployment observations as current.
@@ -14,25 +14,26 @@ read-only `/health`, `/ready`, and `/version` probes timed out from this client.
 See the [current DORA report](dora-report-2026-11-27.md) and
 [pipeline snapshot](../../PIPELINE.md).
 
-Earlier PR #268 head `63b000e17631f9514d8763c4c88d054cbcfc2e24` passed
-protected authenticated staging in [run 45950870589](https://github.com/kendshhh/PhishLens/actions/runs/45950870589).
-Earlier PR #282 head `7551e4077e4f71f2768a3d090b7ce437d727eb60` passed in
-[run 45949708542](https://github.com/kendshhh/PhishLens/actions/runs/45949708542).
-Those reports bind Auth, CRUD, isolation, UX, exact backend source SHA, and
-extension ZIP SHA, but apply only to those older heads. Current #268 head is
-`554fd223ec98852acb12ebca01812530a84fde2d`; current #282 head is
-`3131dae6f09c30b267ca4aa7b864694a44fd744c`. Both pass CI and Neon preflight;
-neither has current exact-head authenticated acceptance. The old reports also
-explicitly blocked AI quality and recorded no backend image digest.
+Current coordinated PR heads are #268 `9039d1a490d283cc7bcca9243aa02b705036a7dd`,
+#281 `0c48cbf240b963a35b5e4669417e118d5ea6573b`, and #282
+`3131dae6f09c30b267ca4aa7b864694a44fd744c`, all based on main
+`11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. #268 now integrates the current
+#281 and #282 heads. Its first exact integrated check run found a test import
+error (`ROOT` was undefined in `test_hosted_staging_gate.py`); the fix and fresh
+checks belong to the successor candidate, not the failing SHA.
 
-PR #281 head `27859a31674f99f17a5e26454104b3e6719493a7` passes source/local
-checks. Its exact-head protected Neon preflight
-([run 45956687871](https://github.com/kendshhh/PhishLens/actions/runs/45956687871))
-is waiting for xxTrixia. Trusted controller run
-[45957149389](https://github.com/kendshhh/PhishLens/actions/runs/45957149389)
-failed closed because the exact-head preflight had not completed; therefore
-`Secretary staging` failed and no hosted Auth/CRUD acceptance is claimed for
-this head. See the [current PR alignment record](pr-alignment-2026-11-27.md).
+Authenticated product acceptance passed for the prior #268 SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` in trusted run
+[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400).
+It covered Neon Auth sign-in, persistent CRUD, reload, ownership/isolation,
+cleanup, and extension UX. The bound extension ZIP SHA-256 is
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. The
+report is [redacted and archived](evidence/2026-11-27-staging-acceptance-554fd223.md).
+It explicitly blocks AI quality, has no backend image digest, and does not
+transfer to integrated head `9039d1a` or any later SHA. On `9039d1a`, trusted
+Neon preflight passed, while `Staging integration` and `Secretary staging`
+failed following the test import error. No Auth/CRUD acceptance is claimed for
+that integrated head. See the [current PR alignment record](pr-alignment-2026-11-27.md).
 Release #153 stays **NO-GO**.
 Historical PR snapshots below remain for their named revisions only.
 

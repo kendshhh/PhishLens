@@ -75,6 +75,17 @@ test('invalid tokens stop before fetch without exposing their contents', async (
     }
 });
 
+test('accepts RFC 6750 tilde characters in bearer tokens', async () => {
+    let authorization;
+    const client = createAnalysisClient('https://example.test', async (_url, options) => {
+        authorization = options.headers.Authorization;
+        return { ok: true, status: 200, json: async () => ({ items: [] }) };
+    }, { getAccessToken: () => 'synthetic~token' });
+
+    assert.deepEqual(await client.listAnalyses(), []);
+    assert.equal(authorization, 'Bearer synthetic~token');
+});
+
 test('token lookup failures are redacted and do not become anonymous requests', async () => {
     const client = createAnalysisClient('https://example.test', () => assert.fail('Unexpected fetch'), {
         getAccessToken() { throw new Error('private-token-value'); }

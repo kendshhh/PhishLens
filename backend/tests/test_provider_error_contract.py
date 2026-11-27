@@ -37,6 +37,9 @@ def failing_gemini(monkeypatch):
         "get_ai_service",
         lambda: (service, "gemini"),
     )
+    # Keep provider error contracts isolated from the shared quota database.
+    monkeypatch.setattr(main, "reserve_ai_request_quota", lambda *_a, **_k: None)
+    monkeypatch.setattr(main, "attach_ai_quota_observation", lambda *_a, **_k: None)
 
     yield sdk_client
 
@@ -79,6 +82,8 @@ def test_provider_status_has_safe_endpoint_contract(
         )
 
     assert response.status_code == expected_status
+    if expected_status == 504:
+        assert response.headers["Retry-After"] == "5"
     assert response.json() == {
         "error": {
             "code": expected_code,
@@ -90,12 +95,13 @@ def test_provider_status_has_safe_endpoint_contract(
 
 @pytest.mark.parametrize(
     "exception_type",
-    [httpx.ReadTimeout, httpx.ConnectError],
+    [httpx.ConnectError, httpx.ReadTimeout],
 )
 def test_transport_failure_retains_safe_502_contract(
     failing_gemini,
     exception_type,
 ):
+    """Keep the reviewed inventory ID while asserting typed timeout behavior."""
     failing_gemini.models.generate_content.side_effect = exception_type(
         "secret-key private@example.invalid"
     )
@@ -106,11 +112,19 @@ def test_transport_failure_retains_safe_502_contract(
             json={"text": "Synthetic email body"},
         )
 
-    assert response.status_code == 502
+    if exception_type is httpx.ReadTimeout:
+        assert response.status_code == 504
+        assert response.headers["Retry-After"] == "5"
+        expected_message = "Analysis timed out"
+    else:
+        assert response.status_code == 502
+        assert "Retry-After" not in response.headers
+        expected_message = "Analysis failed"
     assert response.json() == {
         "error": {
             "code": "inference_failed",
-            "message": "Analysis failed",
+            "message": expected_message,
         },
     }
+    assert "secret-key" not in response.text
     failing_gemini.models.generate_content.assert_called_once()

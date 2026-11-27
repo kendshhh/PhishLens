@@ -531,6 +531,21 @@ def test_gemini_failure_has_no_row_and_same_key_can_recover(
     monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "1")
     monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1")
     monkeypatch.setenv("GEMINI_COST_MODEL_ID", "gemini-test")
+    # This test isolates provider failure mapping and persistence behavior.
+    # Shared quota reservation is covered independently in test_ai_request_quota;
+    # don't make this provider contract depend on per-run quota credentials/state.
+    monkeypatch.setattr(
+        saved_create,
+        "reserve_ai_request_quota",
+        lambda *args, **kwargs: SimpleNamespace(
+            input_token_upper_bound=1,
+            output_token_upper_bound=1,
+            cost_upper_bound_usd="0.01",
+            daily_cost_reserved_usd="0.01",
+            daily_spend_cap_usd="1.00",
+            daily_budget_fraction="0.01",
+        ),
+    )
 
     def inline_inference(*, deadline, **kwargs):
         deadline.inference_remaining()
