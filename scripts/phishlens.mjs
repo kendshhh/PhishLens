@@ -19,9 +19,10 @@ const analyzer = createLocalAnalyzer({
 
 async function modelCheck() {
   const model = await read('extension/ai/tfidf_v12a.json');
-  if (hash(model) !== MODEL_SHA256) throw Error('Model hash differs from the frozen v12a artifact.');
+  if (hash(model) !== MODEL_SHA256) throw Error('Model hash differs from the pinned TF-IDF artifact.');
   const expected = {
-    'core.mjs': 'fbef6d86cc179c960b38307b6e9d72462c454ccdbdad688f7e353193f8b0b447',
+    'core.mjs': '73d5b810f0c371cd9ebffaeb879d5e800615c0f5e81cbfd0c8c6cb7f786ce182',
+    'context-policy.mjs': 'f4ba637358a5efccc784ab25f81c147c324ddc3edac7366090d3886082ffa726',
     'observations.mjs': '97d25c61cc8975e89a5d3de9072374534d8b0a6b9099f07a537f440e6bead3c4'
   };
   for (const [file, sha] of Object.entries(expected)) {

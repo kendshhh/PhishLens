@@ -1,24 +1,26 @@
 # AI classification contract and runtime
 
-TF-IDF v12a is the primary PhishLens classifier. The extension scores selected
-text locally. For a saved report, the backend scores the submitted body again
-and stores its own classification, risk, evidence and model revision.
+The context-aware TF-IDF model is the primary PhishLens classifier in this
+build. The extension scores selected text locally. For a saved report, the
+backend scores the submitted body again and stores its own classification, risk,
+evidence and model revision.
 
 ## TF-IDF contract
 
 - Set `AI_MODE=tfidf` for the matching backend. The bundled model is
-  `word_plus_char_wb_C1p0`, SHA-256
-  `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`.
+  `word_plus_char_wb_context_v1`, SHA-256
+  `adace5ad3cfb281a15b7bc85774ef158126800dc3f78c942f46547dfde33dc27`.
   See the [artifact attribution and source rights](../extension/ai/ATTRIBUTION.md).
   The backend scorer runs on CPU with the bundled JSON artifact.
 - The scorer uses the visible body, masks email local parts, phone-like patterns
   and long numbers, and collapses whitespace. After cleaning, long input is
   reduced to the first 2,000 and last 300 Unicode code points. The backend accepts
   a subject and sender, which do not contribute to the TF-IDF score.
-- Word and within-word character features produce a raw margin. A margin at or
-  above zero triggers a phishing alert. The frozen sigmoid maps that boundary
-  to a displayed phishing score of about 88.71%. The score is tied to the study
-  mixture. TF-IDF emits two labels: `phishing` and `legitimate` (below the
+- Word and within-word character features produce a raw margin. An adjustment
+  fitted on development data weighs sensitive requests and routine account
+  notices. A margin at or above zero triggers a phishing alert. The sigmoid
+  displays that boundary as a model score of about 88.71%. TF-IDF emits two
+  labels, `phishing` and `legitimate` (below the
   threshold). It does not emit `spam` or a predicted-class confidence.
 - The backend maps the label to risk and validates quoted evidence against the
   request. Word-feature contributions are partial statistical explanations.
@@ -35,7 +37,7 @@ A mismatched model returns `503 analysis_unavailable` before database setup.
 
 ```sh
 python scripts/ai_smoke.py --mode tfidf
-python scripts/verify_tfidf_evaluation.py
+node scripts/phishlens.mjs model-check
 ```
 
 The [sprint verification handoff](ai/tfidf-sprint-closeout.md) records local

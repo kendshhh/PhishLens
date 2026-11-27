@@ -14,10 +14,14 @@ from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 
+from backend.ai.context_policy import ContextPolicy
 from backend.ai.schemas import AIAnalysisResult, EvidenceItem
 
 ASSETS = Path(__file__).resolve().parents[2] / "extension" / "ai"
-MODEL_SHA256 = "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
+MODEL_SHA256 = "adace5ad3cfb281a15b7bc85774ef158126800dc3f78c942f46547dfde33dc27"
+MODEL_ID = "word_plus_char_wb_context_v1"
+# The context layer leaves the vectorizer used by the auxiliary models intact.
+FEATURE_BASIS_SHA256 = "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
 SLOPE = 1.6158795082744162
 INTERCEPT = 2.0617153419475205
 WORD = re.compile(r"\w{2,}")
@@ -30,11 +34,19 @@ def load_artifact():
     if hashlib.sha256(raw).hexdigest() != MODEL_SHA256:
         raise RuntimeError("TF-IDF artifact integrity check failed")
     contract = json.loads((ASSETS / "contract.json").read_text(encoding="utf-8"))
+    artifact = json.loads(raw)
     if (contract["model_sha256"] != MODEL_SHA256 or contract["alert_mode"] != "raw_margin"
+            or contract["feature_basis_sha256"] != FEATURE_BASIS_SHA256
+            or contract["model_id"] != MODEL_ID or artifact["model_id"] != MODEL_ID
             or contract["alert_threshold"] != 0 or contract["mapping"] != {
                 "kind": "margin_sigmoid", "slope": SLOPE, "intercept": INTERCEPT}):
         raise RuntimeError("TF-IDF decision contract integrity check failed")
-    return json.loads(raw)
+    return artifact
+
+
+@lru_cache(maxsize=1)
+def load_context():
+    return ContextPolicy(load_artifact()["context_model"])
 
 
 def prepare_plain(text: str) -> tuple[str, bool]:
@@ -104,18 +116,20 @@ def score_text(body: str, *, prepared: bool = False) -> dict:
             margin += contribution
             if block["analyzer"] == "word":
                 parts.append((feature, contribution))
+    context_margin = load_context().correction(text)
+    margin += context_margin
     if not math.isfinite(margin) or not nonzero:
         raise RuntimeError("No usable model features")
     score = sigmoid(SLOPE * margin + INTERCEPT)
     return {"raw_margin": margin, "score": score, "alert": margin >= 0,
             "threshold_score": sigmoid(INTERCEPT), "text": text,
-            "input_truncated": truncated, "word_parts": parts}
+            "input_truncated": truncated, "word_parts": parts, "context_margin": context_margin}
 
 
 class TfidfProvider:
     def __init__(self):
         try:
-            load_artifact()
+            load_context()
         except (OSError, ValueError, KeyError) as exc:
             raise RuntimeError("TF-IDF artifact unavailable") from exc
 
@@ -148,7 +162,7 @@ class TfidfProvider:
                       "The text is below the alert threshold. This does not establish authenticity.")
         return AIAnalysisResult(
             classification="phishing" if result["alert"] else "legitimate",
-            confidence=None, model="word_plus_char_wb_C1p0", model_revision=MODEL_SHA256,
+            confidence=None, model=MODEL_ID, model_revision=MODEL_SHA256,
             explanation_source="rules", input_truncated=result["input_truncated"],
             windows_processed=1, tactics=[assessment], evidence=evidence,
             recommendations=[

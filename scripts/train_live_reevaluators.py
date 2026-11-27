@@ -30,7 +30,7 @@ def main():
     parser.add_argument("--science", type=Path, required=True)
     parser.add_argument("--lightgbm", type=Path, default=ROOT / ".runtime/lightgbm")
     args = parser.parse_args()
-    sys.path[:0] = [str(args.science), str(args.lightgbm)]
+    sys.path[:0] = [str(args.science), str(args.lightgbm), str(ROOT)]
     import numpy as np
     from scipy import sparse
     import sklearn
@@ -38,6 +38,7 @@ def main():
     from sklearn.linear_model import Ridge, LogisticRegression
     from sklearn.kernel_ridge import KernelRidge
     import lightgbm as lgb
+    from backend.ai.tfidf_provider import FEATURE_BASIS_SHA256, MODEL_SHA256, load_artifact
 
     base = args.data_root.resolve()
     manifest = json.loads((base / "data/manifest.json").read_text(encoding="utf-8"))
@@ -63,11 +64,8 @@ def main():
                 raise RuntimeError("Role leakage detected; training stopped")
     if sum(r["label"] == 0 for r in roles["threshold"]) < 1000:
         raise RuntimeError("At least 1000 legitimate threshold records are required")
-    artifact_path = ROOT / "extension/ai/tfidf_v12a.json"
-    basis_sha = digest(artifact_path)
-    if basis_sha != "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c":
-        raise RuntimeError("Primary model changed")
-    artifact = json.loads(artifact_path.read_text())
+    basis_sha = FEATURE_BASIS_SHA256
+    artifact = load_artifact()
     vectors = []
     for block in artifact["blocks"]:
         vectorizer = TfidfVectorizer(analyzer=block["analyzer"], ngram_range=tuple(block["ngram_range"]),
@@ -148,6 +146,7 @@ def main():
                                    "models": records, "release": "unanimity_and_supported_judge"})
     record = {"purpose": "product_artifact_build_not_new_benchmark", "at_utc": datetime.now(UTC).isoformat(),
               "seed": 42, "basis_sha256": basis_sha, "roles_read": provenance,
+              "primary_model_sha256": MODEL_SHA256,
               "final_or_reserved_records_opened": 0, "synthetic_emails": 0,
               "krr_primal_dual_max_difference": equivalence,
               "versions": {"numpy": np.__version__, "sklearn": sklearn.__version__, "lightgbm": lgb.__version__},

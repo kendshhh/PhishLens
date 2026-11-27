@@ -238,7 +238,7 @@ def test_tfidf_saved_post_runs_supervised_provider_and_persists_contract(
     )
     assert saved["explanation"]
     assert saved["analysis_provenance"]["provider_mode"] == "tfidf"
-    assert saved["analysis_provenance"]["model"] == "word_plus_char_wb_C1p0"
+    assert saved["analysis_provenance"]["model"] == "word_plus_char_wb_context_v1"
     assert saved["analysis_provenance"]["model_revision"] == MODEL_SHA256
     assert saved["analysis_provenance"]["explanation_source"] == "rules"
     assert saved["analysis_provenance"]["prompt_version"] is None
