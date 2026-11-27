@@ -312,10 +312,12 @@ jobs:
           project_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_id"])' "$RUNNER_TEMP/neon-branch.json")"
           production_project_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["production_project_id"])' "$RUNNER_TEMP/neon-branch.json")"
           production_branch_id="$PRODUCTION_NEON_BRANCH_ID"
-          echo "branch_id=$branch_id" >> "$GITHUB_OUTPUT"
-          echo "project_id=$project_id" >> "$GITHUB_OUTPUT"
-          echo "production_project_id=$production_project_id" >> "$GITHUB_OUTPUT"
-          echo "production_branch_id=$production_branch_id" >> "$GITHUB_OUTPUT"
+          {
+            echo "branch_id=$branch_id"
+            echo "project_id=$project_id"
+            echo "production_project_id=$production_project_id"
+            echo "production_branch_id=$production_branch_id"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Migrate only the attested schema-only staging branch
         id: migrate-staging
