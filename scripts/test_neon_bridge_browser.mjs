@@ -13,7 +13,7 @@ import { readStagingAuthConfig } from './staging_auth_package_config.mjs';
 
 const database = process.env.PHISHLENS_AUTH_TEST_DATABASE_URL;
 const databaseUrl = new URL(database || 'https://invalid');
-assert.ok(['postgresql:', 'postgres:'].includes(databaseUrl.protocol) &&
+assert.ok(['postgresql:', 'postgresql+psycopg:', 'postgres:'].includes(databaseUrl.protocol) &&
   ['127.0.0.1', 'localhost'].includes(databaseUrl.hostname) &&
   /^\/phishlens_auth_test_[a-z0-9_]+$/.test(databaseUrl.pathname),
 'Set PHISHLENS_AUTH_TEST_DATABASE_URL to a disposable local phishlens_auth_test_* database');
