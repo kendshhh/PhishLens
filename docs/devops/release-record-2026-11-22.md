@@ -113,7 +113,19 @@ exact candidate SHA before any protected environment approval.
 The workflow expects these existing GitHub variables to describe the same
 approved target: `STAGING_NEON_PROJECT_ID`, `STAGING_NEON_BRANCH_ID`,
 `STAGING_NEON_EXPECTED_HOST`, `SECRETARY_STAGING_DB_HOST`,
-`PHISHLENS_STAGING_AUTH_URL`, `PHISHLENS_ST## Current PR verification and merge boundary
+`PHISHLENS_STAGING_AUTH_URL`, `PHISHLENS_STAGING_AUTH_DATABASE`,
+`STAGING_BASE_URL`, `STAGING_AUTH_TRUSTED_CHROME_ORIGIN`,
+`STAGING_NEON_SCHEMA_ONLY_ATTESTATION`,
+`STAGING_NEON_PRODUCTION_ROWS_PRESENT`, and
+`STAGING_RENDER_DATABASE_CONFIG_ATTESTATION`. The Render service must use
+`DATABASE_URL`, `STAGING_MIGRATION_DATABASE_URL`,
+`STAGING_APP_DATABASE_ROLE`, `STAGING_DATABASE_HOST`,
+`STAGING_NEON_EXPECTED_HOST`, `STAGING_NEON_PROJECT_ID`,
+`STAGING_NEON_BRANCH_ID`, `NEON_AUTH_BASE_URL`, and
+`REPORT_AUTH_MODE=neon`. Verify names and masked identities privately; do not
+copy values into this record.
+
+## Current PR verification and merge boundary
 
 PR #281 targets `main` at `d2057e1c747efd97b7232c82e18d5445b49a9307`, the
 selected #251-based mainline. Its verified code revision is
