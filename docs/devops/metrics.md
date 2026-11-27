@@ -178,6 +178,10 @@ No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 This is a check snapshot, not a performance sample; the next docs-only sync
 needs its own checks.
 
+Render metadata reports auto-deploy disabled for both services. Production's
+latest deployment record nevertheless has trigger `new_commit`; this discrepancy
+is unresolved. See the [current environment map](environment-map-2026-11-21.md)
+
 A later November 23 Render dashboard view showed production Auto-Deploy enabled
 on `main`; production still serves `811980c...`, behind current main. This
 supersedes the November 21 metadata observation that reported it disabled.
