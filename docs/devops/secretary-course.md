@@ -1,5 +1,10 @@
 # Inspection and course evidence — October 19, 2026
 
+> Historical course/project report. Its service-setting and rollout statements
+> are not a current control-plane snapshot. See the
+> [current DevOps evidence index](README.md) and
+> [Secretary verification record](secretary-verification.md).
+
 Repository inspected: [kendshhh/PhishLens](https://github.com/kendshhh/PhishLens).
 The request's repository placeholder was resolved from the existing Git remote.
 Branch for implementation: `feat/devops-secretary`, based on main `dcdac37`.

@@ -1,0 +1,42 @@
+{
+  "format": "phishlens-staging-acceptance-evidence-v1",
+  "observed_at_utc": "2026-11-27T07:57:01Z",
+  "repository": "kendshhh/PhishLens",
+  "pull_request": 268,
+  "workflow_run_id": 45958860400,
+  "workflow_run_url": "https://github.com/kendshhh/PhishLens/actions/runs/45958860400",
+  "source_sha": "554fd223ec98852acb12ebca01812530a84fde2d",
+  "backend_source_sha": "554fd223ec98852acb12ebca01812530a84fde2d",
+  "deployed_staging_sha": "554fd223ec98852acb12ebca01812530a84fde2d",
+  "backend_image_digest": null,
+  "extension_zip_sha256": "7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd",
+  "database": {
+    "neon_project_id": "ancient-brook-17208049",
+    "branch_id": "br-rough-sea-a1l6ehi1",
+    "branch_kind": "schema-only",
+    "production_rows_present": false,
+    "migration_revision": "0005_ai_request_quota"
+  },
+  "product_acceptance": {
+    "status": "passed",
+    "auth_mode": "neon-auth",
+    "sign_in": true,
+    "saved_report_create_list_read_update_delete": true,
+    "persistence_after_reload": true,
+    "ownership_checks": true,
+    "cross_user_isolation": true,
+    "cleanup": true,
+    "cleanup_pending": 0,
+    "extension_user_experience": "passed",
+    "unexpected_external_requests": 0
+  },
+  "ai_quality": {
+    "status": "blocked",
+    "reason_code": "approval_not_provided",
+    "provider": "tfidf",
+    "model_revision": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
+  },
+  "production_requests": 0,
+  "production_writes": 0,
+  "release_decision": "no-go"
+}

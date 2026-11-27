@@ -74,7 +74,7 @@ def service_context(monkeypatch):
     )
 
 
-def _create(context):
+def _create(context, *, provider_usage=None):
     return asyncio.run(
         analysis_service.create_saved_analysis(
             context.request,
@@ -82,6 +82,7 @@ def _create(context):
             api_key=None,
             model=None,
             deadline=context.deadline,
+            provider_usage=provider_usage,
         )
     )
 
@@ -107,6 +108,22 @@ def test_create_reuses_one_deadline(service_context):
         deadline=context.deadline,
         idempotency_key=None,
     )
+
+
+def test_create_copies_provider_token_counts_to_internal_usage_sink(service_context):
+    context = service_context
+    context.result.input_tokens = 17
+    context.result.output_tokens = 9
+    context.result.estimated_cost_usd = "0.000280"
+    usage = {}
+
+    _create(context, provider_usage=usage)
+
+    assert usage == {
+        "input_tokens": 17,
+        "output_tokens": 9,
+        "estimated_cost_usd": "0.000280",
+    }
 
 
 def test_create_forwards_idempotency_key(service_context):

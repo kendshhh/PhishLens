@@ -24,6 +24,9 @@ from backend.app import main
 )
 def test_invalid_model_output_never_becomes_a_verdict(monkeypatch, model_output):
     class FakeProvider:
+        def estimate_request(self, _email_text):
+            return None  # request-level budget is mocked below
+
         def analyze(self, email_text):
             return model_output
 
@@ -32,6 +35,8 @@ def test_invalid_model_output_never_becomes_a_verdict(monkeypatch, model_output)
         "get_ai_service",
         lambda: (AIService(FakeProvider()), "gemini"),
     )
+    monkeypatch.setattr(main, "reserve_ai_request_quota", lambda *_a, **_k: None)
+    monkeypatch.setattr(main, "attach_ai_quota_observation", lambda *_a, **_k: None)
 
     with TestClient(main.app) as client:
         response = client.post(

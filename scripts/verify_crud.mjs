@@ -252,6 +252,19 @@ async function requireAnonymousRejection(target) {
         'Anonymous rejection must include a Bearer challenge');
 }
 
+async function deleteAndConfirmReportRemoved(client, reportId) {
+    try {
+        await client.deleteAnalysis(reportId);
+    } catch (error) {
+        if (error.status !== 404) throw error;
+    }
+    await assert.rejects(
+        client.getAnalysis(reportId),
+        error => error.status === 404,
+        'Deleted report must return HTTP 404 to its owner'
+    );
+}
+
 async function verifyTwoAccountCrud(target, options, getAccessTokenA, getAccessTokenB) {
     const clientA = createAnalysisClient(target.baseUrl, target.safeFetch, {
         getAccessToken: getAccessTokenA
@@ -346,9 +359,9 @@ async function verifyTwoAccountCrud(target, options, getAccessTokenA, getAccessT
         assert.equal(clearedB.feedback, 'false_positive');
         assertReportMatches(clearedB, createdB);
 
-        await clientA.deleteAnalysis(createdA.id);
+        await deleteAndConfirmReportRemoved(clientA, createdA.id);
         createdA = null;
-        await clientB.deleteAnalysis(createdB.id);
+        await deleteAndConfirmReportRemoved(clientB, createdB.id);
         createdB = null;
         result = {
             result: 'passed',
@@ -384,11 +397,11 @@ async function verifyTwoAccountCrud(target, options, getAccessTokenA, getAccessT
     ]) {
         if (!report) continue;
         try {
-            await client.deleteAnalysis(report.id);
+            await deleteAndConfirmReportRemoved(client, report.id);
         } catch (error) {
-            if (error.status !== 404) {
-                cleanupErrors.push(new Error('Synthetic account ' + account + ' report cleanup failed.'));
-            }
+            cleanupErrors.push(new Error(
+                'Synthetic account ' + account + ' report cleanup could not be verified.'
+            ));
         }
     }
     if (failure && cleanupErrors.length) {

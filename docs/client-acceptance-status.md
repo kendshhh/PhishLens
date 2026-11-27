@@ -1,5 +1,12 @@
 # Client acceptance status
 
+> Historical reconciliation snapshot (November 10, 2026). The current shared
+> staging/authentication and release gate status is in the
+> [November 21 DevOps evidence index](devops/README.md) and
+> [release record](devops/release-record-2026-11-21.md). Keep this file's
+> source-specific test outcomes as dated evidence; they are not current hosted
+> acceptance.
+
 ## Current reconciliation — November 10, 2026
 
 Main source checked: `fa9a23fbb5d1d60c45d0fc06333c50415d04d57e`.

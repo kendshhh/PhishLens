@@ -1,5 +1,10 @@
 # Release verification
 
+> Historical task audit. Current release state is **NO-GO** in the
+> [November 21 release record](devops/release-record-2026-11-21.md) and
+> [DevOps evidence index](devops/README.md). Retain the dated test results below
+> as history; they do not establish acceptance for the current candidate.
+
 Current reconciliation: [November 7 client integration audit](client-integration-audit.md).
 The dated sections below retain their historical status. PRs #99, #103, #106 and #125 are now merged;
 their former open-review statements are not current blockers. Later TF-IDF staging CRUD and synthetic

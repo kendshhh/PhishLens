@@ -252,9 +252,11 @@ queue/approval treatment over adequate samples.
 Render deployments with `deactivated` status were previously live and later
 superseded. Deployment frequency counts successful deploy records, including
 repeat deploys of the same SHA; change lead time deduplicates by merged SHA.
-Current production is on `{snapshot.get('production_sha', 'not included in this snapshot')}`;
-the report's deploy history does not imply that the current main commit has been
-released. No production user data or inference telemetry is included.
+Render's latest deploy record marked `live` is
+`{snapshot.get('production_sha', 'not included in this snapshot')}`. This is
+deployment metadata, not a successful HTTP version or user-flow check, and does
+not imply that the current main commit has been released. No production user
+data or inference telemetry is included.
 """
 
 

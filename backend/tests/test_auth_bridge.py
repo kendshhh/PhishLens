@@ -39,6 +39,13 @@ def test_bridge_uses_server_configuration_and_only_explicit_assets(client):
     assert client.post("/auth/bridge", json={"password": "synthetic"}).status_code == 405
 
 
+def test_bridge_verification_rpc_is_narrow_and_pins_email_verification_purpose(client):
+    script = client.get("/auth/bridge/client.js").text
+    assert "sdk.emailOtp.verifyEmail({ email: input.email, otp: input.code })" in script
+    assert "sdk.emailOtp.sendVerificationOtp({ email: input.email, type: 'email-verification' })" in script
+    assert "verifyEmail: ['email', 'code'], resend: ['email']" in script
+
+
 @pytest.mark.parametrize("name,value", [
     ("REPORT_AUTH_MODE", "demo"), ("REPORT_AUTH_MODE", "invalid"),
     ("NEON_AUTH_BASE_URL", "https://[invalid"),

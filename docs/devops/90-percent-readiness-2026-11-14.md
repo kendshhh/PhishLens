@@ -2,6 +2,9 @@
 
 > This report records the November 14 snapshot and is superseded for current
 > source/deployment state by the [November 15 Kendra DevOps status](kendra-devops-status-2026-11-15.md).
+> For current service evidence and the seven-area readiness map, see the
+> [November 21 release record](release-record-2026-11-21.md) and
+> [November 21 readiness scorecard](release-readiness-scorecard-2026-11-21.md).
 
 This is a revision-linked DevOps handoff for the work that can move release
 readiness forward. It is not a course grade or a claim that the project is 90%

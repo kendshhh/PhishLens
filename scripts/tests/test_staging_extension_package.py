@@ -5,11 +5,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from zipfile import ZipFile
 
 from scripts.package_staging_extension import (
     IN_ARCHIVE_EVIDENCE,
     auth_settings,
+    assert_clean_extension_checkout,
     build as build_package,
     checkout_revision,
     chrome_extension_id,
@@ -40,6 +42,11 @@ class StagingPackageVerificationTests(unittest.TestCase):
         self.manifest_key = VALID_TEST_PUBLIC_KEY
         self.build()
 
+    def test_staging_packager_rejects_modified_extension_inputs(self):
+        with patch("scripts.package_staging_extension.git", return_value=" M extension/js/popup.js"):
+            with self.assertRaisesRegex(RuntimeError, "modified or untracked extension inputs"):
+                assert_clean_extension_checkout(Path(__file__).resolve().parents[2])
+
     def build(self, *, hosts=None, config_origin=STAGING_ORIGIN, extra=None, auth_enabled=False):
         files = {name: f"asset:{name}".encode() for name in ASSETS}
         auth_url = "https://ep-soft-fog-b3orfa8a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
@@ -56,14 +63,18 @@ class StagingPackageVerificationTests(unittest.TestCase):
             **({"key": self.manifest_key} if auth_enabled else {}),
         }).encode()
         files["js/config.js"] = (
-            f'export const API_BASE_URL = "{config_origin}";\n'.encode()
+            ('export const API_BASE_URLS = Object.freeze({production:"' + config_origin + '",staging:"'
+             + config_origin + '"});\nexport const API_BASE_URL = API_BASE_URLS.staging;\n').encode()
         )
         files["js/auth-config.js"] = (
-            ("export const AUTH_CONFIG = " + json.dumps({
+            ("export const AUTH_CONFIGS = Object.freeze({production:null,staging:" + json.dumps({
                 "enabled": True, "authUrl": auth_url, "database": auth_database,
                 "apiOrigin": STAGING_ORIGIN,
-            }, separators=(",", ":")) + ";\n").encode()
-            if auth_enabled else b"export const AUTH_CONFIG = null;\n"
+            }, separators=(",", ":")) + "});\nexport const AUTH_CONFIG = AUTH_CONFIGS.staging;\n").encode()
+            if auth_enabled else (
+                b"export const AUTH_CONFIGS = Object.freeze({production:null,staging:null});\n"
+                b"export const AUTH_CONFIG = AUTH_CONFIGS.production;\n"
+            )
         )
         self.evidence = {
             "environment": "staging",
@@ -299,6 +310,7 @@ class StagingPackageVerificationTests(unittest.TestCase):
             verified = verify(archive, evidence, sha)
             with ZipFile(archive) as package:
                 config = package.read("js/auth-config.js")
+                api_config = package.read("js/config.js")
                 manifest = json.loads(package.read("manifest.json"))
                 embedded = json.loads(package.read(IN_ARCHIVE_EVIDENCE))
             self.assertTrue(built["auth_enabled"])
@@ -308,10 +320,15 @@ class StagingPackageVerificationTests(unittest.TestCase):
             self.assertEqual(embedded["source_commit"], sha)
             self.assertEqual(verified["chrome_extension_id"], chrome_extension_id(manifest_key))
             self.assertEqual(config, (
-                "export const AUTH_CONFIG = " + json.dumps({
+                "export const AUTH_CONFIGS = Object.freeze({production:null,staging:" + json.dumps({
                     "enabled": True, "authUrl": auth_url, "database": "neondb",
                     "apiOrigin": STAGING_ORIGIN,
-                }, separators=(",", ":")) + ";\n"
+                }, separators=(",", ":")) + "});\nexport const AUTH_CONFIG = AUTH_CONFIGS.staging;\n"
+            ).encode())
+            self.assertEqual(api_config, (
+                "export const API_BASE_URLS = Object.freeze({production:"
+                + json.dumps(STAGING_ORIGIN) + ",staging:" + json.dumps(STAGING_ORIGIN) + "});\n"
+                "export const API_BASE_URL = API_BASE_URLS.staging;\n"
             ).encode())
             self.assertEqual(manifest["host_permissions"], [
                 STAGING_ORIGIN + "/*",

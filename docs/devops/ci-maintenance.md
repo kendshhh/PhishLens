@@ -1,7 +1,9 @@
 # CI runtime and package-cache maintenance
 
 > This page includes historical October maintenance notes. Current deployment
-> and security state is summarized in the [November 15 DevOps status](kendra-devops-status-2026-11-15.md).
+> state is summarized in the [November 21 release record](release-record-2026-11-21.md)
+> and [environment map](environment-map-2026-11-21.md); older deployment notes
+> below are dated snapshots.
 
 ## Current pinned Actions — 2026-11-15
 
@@ -51,6 +53,16 @@ requires this context. The obsolete `DEPENDENCY_REVIEW_ENABLED` variable was
 removed; neither current job uses `warn-only` or an opt-in gate. Check the Actions
 result on every PR rather than treating a skipped job as a clean scan.
 
+On 2026-11-21, the repository's dependency graph and vulnerability alerts were
+enabled after Dependency Review reported that the graph was unavailable. The
+rerun of PR #268's Dependency graph review passed on
+[`0d3818e`](https://github.com/kendshhh/PhishLens/commit/0d3818e95715cdd1dba2d4a3b6572a029c6fc1c),
+`def5e9b` ([run 44890690295](https://github.com/kendshhh/PhishLens/actions/runs/44890690295)),
+and PR head `f79098c` ([run 44899191710](https://github.com/kendshhh/PhishLens/actions/runs/44899191710)).
+GitHub reported 15 existing Dependabot alerts on the default branch (12 high,
+3 moderate); these are tracked in [the dependency audit record](dependency-audits.md)
+and were not dismissed. They remain open security work.
+
 ## Validation and review
 
 - Local backend lint and tests must pass before publishing.
@@ -61,3 +73,19 @@ result on every PR rather than treating a skipped job as a clean scan.
 - Required Backend checks and teammate approval remain necessary before merge.
 - The original runtime/cache update did not change application features,
   hosting plan, secrets or branch protection.
+
+### PR #268 follow-up — 2026-11-21 11:42 UTC
+
+The next exact-head check on `e9451cc20928fefa7c0a6ded4803cebbad24ef42` passed Backend, Extension, migration preflight, Staging integration, workflow lint, dependency security/graph review, deterministic evaluation, and the Secretary report. Hosted staging preflight and Hosted staging were skipped. Required `Secretary staging` remains failed because the `needs-hosted-staging` label and exact-head hosted verification are absent. No current PR CodeQL result, Render deployment or authenticated CRUD was observed. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md) for run links. The release remains **NO-GO**; the descriptive DevOps evidence score remains 41/100.
+
+### PR #268 retarget follow-up — 2026-11-21 11:57 UTC
+
+PR #268 is now based on `main`; review branch head `77c0ed00e607c5580cedffadd031fe40ad71771b` includes the current `main` history. GitHub reports the PR open and mergeable, while the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. Exact-head CI passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security/graph review, deterministic evaluation, DevOps Secretary report and CodeQL. Hosted preflight/deployment were skipped; required `Secretary staging` remains failed because the hosted request label and exact-head hosted verification are absent. No Render deployment or authenticated hosted CRUD occurred. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md). Release remains **NO-GO** and the 41/100 descriptive evidence score is unchanged.
+
+### PR #268 exact-head snapshot — 2026-11-21 12:02 UTC
+
+Retargeted PR #268 head `1fa2e7827cfe84de425afcc7885743bd55b2a382` passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security and graph review, deterministic evaluation, DevOps Secretary report, and all three CodeQL analyses. [CI run 44901642617](https://github.com/kendshhh/PhishLens/actions/runs/44901642617) completed at 12:02 UTC. Hosted staging preflight and Hosted staging were skipped. The required `Secretary staging` status failed because the `needs-hosted-staging` label and exact-head hosted verification were absent ([assessment 44901931269](https://github.com/kendshhh/PhishLens/actions/runs/44901931269)); no Render deployment or authenticated hosted CRUD occurred. GitHub reports the PR open and mergeable on `main`; the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. The release remains **NO-GO**, and 41/100 is a descriptive evidence-progress score only. This documentation-only evidence update requires fresh exact-head CI before merge. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).
+
+### PR #268 main-sync snapshot — 2026-11-21 12:14 UTC
+
+PR #268 now includes current `main` through `31e86c7` in merge head `aee49fe5a11da37ed441464c80ad9a09e0b9dda8`. Exact-head CI run [44902645800](https://github.com/kendshhh/PhishLens/actions/runs/44902645800) passed Backend, Extension, Staging integration and migration preflight. Workflow lint [44902645811](https://github.com/kendshhh/PhishLens/actions/runs/44902645811), dependency security/graph [44902645851](https://github.com/kendshhh/PhishLens/actions/runs/44902645851), deterministic evaluation [44902645832](https://github.com/kendshhh/PhishLens/actions/runs/44902645832), and CodeQL [44902643383](https://github.com/kendshhh/PhishLens/actions/runs/44902643383) passed. The exact-head DevOps Secretary report was cancelled during the branch sync ([44902644757](https://github.com/kendshhh/PhishLens/actions/runs/44902644757)); the Secretary preview assessment reports required `Secretary staging` failure because the `needs-hosted-staging` label and exact-head hosted verification are absent ([44902874550](https://github.com/kendshhh/PhishLens/actions/runs/44902874550)). Hosted preflight/deployment were skipped; no Render deploy or authenticated CRUD occurred. GitHub shows PR #268 open, mergeable on `main`, with review decision `CHANGES_REQUESTED`. Release remains **NO-GO**; 41/100 is descriptive evidence progress, not completion. See the [dated evidence record](evidence/2026-11-21-staging-neon-auth-smoke.md).

@@ -17,6 +17,24 @@ class AIService:
     ) -> None:
         self.provider = provider
 
+    def estimate_request(
+        self,
+        *,
+        subject: str | None,
+        sender: str | None,
+        body: str,
+    ):
+        """Return a provider's conservative estimate without making a call."""
+        estimator = getattr(self.provider, "estimate_request", None)
+        if not callable(estimator):
+            raise TypeError("The configured provider cannot estimate a request")
+        if not body.strip() or len(body) > 30_000:
+            raise ValueError("Email body must contain 1 to 30000 characters")
+        if any(value is not None and len(value) > 320 for value in (subject, sender)):
+            raise ValueError("Subject and sender must not exceed 320 characters")
+        email_text = self._prepare_email(subject=subject, sender=sender, body=body)
+        return estimator(email_text)
+
     def analyze_email(
         self,
         *,

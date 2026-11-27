@@ -1,5 +1,11 @@
 # Consultation 2 preparation
 
+> Historical preparation record dated October 21, 2026; this is not a current
+> deployment, attendance or acceptance record. Use the
+> [November 21 DevOps evidence index](README.md) for current service state and
+> release blockers. Any automatic-deployment or acceptance goals below are
+> planned demonstration criteria, not evidence that they passed.
+
 Issue: [#41](https://github.com/kendshhh/PhishLens/issues/41). Prepared October 21,
 2026, Asia/Shanghai; consultation target October 22, time unconfirmed.
 Source: [CSP221A course guide](https://csp221a.vercel.app/), read October 21.
