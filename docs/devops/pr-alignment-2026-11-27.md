@@ -1,4 +1,4 @@
-# Coordinated release PR alignment — November 27, 2026 08:22 UTC
+# Coordinated release PR alignment — November 27, 2026 08:45 UTC
 
 This snapshot covers the coordinated release PR set, not every unrelated open
 PR. All three target `main` at `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` and
@@ -11,7 +11,7 @@ integration check. Full file inventories remain linked from each PR.
 |---|---|---|---|---|
 | [#281](https://github.com/kendshhh/PhishLens/pull/281/files) | `codex/reconcile-staging-merge-order-20261122` @ `0c48cbf240b963a35b5e4669417e118d5ea6573b` | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 59 files in the captured PR diff; no migration files or `backend/alembic.ini` | Release-hardening parent. Exact current head is merged into the #268 integration branch by `1002b20`; its own review remains changes requested. Do not assume PR status transfers from the integration run. |
 | [#282](https://github.com/kendshhh/PhishLens/pull/282/files) | `codex/devops-evidence-go-20261123` @ `3131dae6f09c30b267ca4aa7b864694a44fd744c` | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 101 files in the captured PR diff; no migration files or `backend/alembic.ini` | Intentionally built on an older #281 head and reconciled with #268. Current #282 head is integrated after #281 by `e8016db`; review remains changes requested. Do not retarget or rewrite the stack merely to simplify the graph. |
-| [#268](https://github.com/kendshhh/PhishLens/pull/268/files) | `codex/devops-staging-closeout-20261121` @ `9039d1a490d283cc7bcca9243aa02b705036a7dd` (last remotely verified) | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 114 files in the captured PR review; no migration files or `backend/alembic.ini` | Integration branch. It contains current #281, then current #282, then its prior #268 base. The exact-head run failed a Python test import; see checks below. A focused correction is being prepared. Keep this PR open and unmerged until fresh required checks, independent review, and current-head staging pass. |
+| [#268](https://github.com/kendshhh/PhishLens/pull/268/files) | `codex/devops-staging-closeout-20261121` @ `d77491d8fd91252190755714df8e5fa475e9c13b` | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 114 files in captured integration review plus correction/evidence docs; no migration files or `backend/alembic.ini` | Integration branch. It contains current #281, then current #282, then its prior #268 base. Exact-head CI, trusted staging acceptance, and PR review passed on `d77491d`. The PR remains open and unmerged; this evidence update will be a docs-only descendant and needs fresh required checks/review. |
 
 ## Actual ordered integration
 
@@ -34,46 +34,48 @@ The current #268 commit is still a candidate only; it has not been merged to
 The three PR diffs do not modify `backend/migrations/` or
 `backend/alembic.ini`; no child introduces a new revision or down-revision and
 there is no PR-set migration ordering dependency. The actual combined diff
-retains the existing migration-lineage guard. The protected staging acceptance
-on old SHA `554fd223` reported revision `0005_ai_request_quota`; this does not
-prove the integrated candidate's migration result, which must be checked again
-after its CI and staging run.
+retains the existing migration-lineage guard. Protected staging acceptance on
+exact #268 SHA `d77491d` reported revision `0005_ai_request_quota`; the
+candidate introduces no new migration revision, and both migration-graph and
+live staging revision checks passed.
 
 The shared workflow and DevOps evidence files overlap. The integration keeps
 the trusted staging controller, current quota-ordering changes, current DORA
-source/report, and the existing stable required check names. The only exact-head
-runtime failure found so far is the undefined `ROOT` in
-`scripts/tests/test_hosted_staging_gate.py`; it is fixed in this PR update and
-covered by the focused tests. No duplicated migration work or dependency-update
-conflict was found in this set.
+source/report, and the existing stable required check names. The undefined
+`ROOT` in `scripts/tests/test_hosted_staging_gate.py` was fixed; exact-head
+Staging integration now passes. No duplicated migration work or
+dependency-update conflict was found in this set.
 
-## Checks and evidence identity
+## Latest exact-head CI and acceptance
 
-For last remotely verified integrated SHA `9039d1a`:
+PR #268 exact head `d77491d8fd91252190755714df8e5fa475e9c13b` passed CI
+[45966131065](https://github.com/kendshhh/PhishLens/actions/runs/45966131065),
+Workflow lint [45966130957](https://github.com/kendshhh/PhishLens/actions/runs/45966130957),
+Dependency security [45966131061](https://github.com/kendshhh/PhishLens/actions/runs/45966131061),
+Deterministic AI Evaluation [45966131179](https://github.com/kendshhh/PhishLens/actions/runs/45966131179),
+CodeQL [45966123755](https://github.com/kendshhh/PhishLens/actions/runs/45966123755),
+and Trusted staging Neon [45966125445](https://github.com/kendshhh/PhishLens/actions/runs/45966125445).
+Backend, Extension, Staging integration, and migration source preflight passed;
+the unrelated Issue 90 package job was skipped by its exact path filter.
 
-- CI [run 45963431013](https://github.com/kendshhh/PhishLens/actions/runs/45963431013)
-  passed Backend, Extension, and migration preflight but failed Staging
-  integration because `CI_WORKFLOW = ROOT / ...` referenced an undefined
-  `ROOT`. This made required `Secretary staging` fail closed. The Issue 90
-  package job was skipped by its exact-branch filter.
-- Trusted Neon preflight [run 45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015)
-  passed. Workflow lint [45963431058](https://github.com/kendshhh/PhishLens/actions/runs/45963431058),
-  Deterministic AI Evaluation [45963430986](https://github.com/kendshhh/PhishLens/actions/runs/45963430986),
-  Dependency security [45963431195](https://github.com/kendshhh/PhishLens/actions/runs/45963431195),
-  and CodeQL analysis [140386566053](https://github.com/kendshhh/PhishLens/runs/140386566053)
-  passed.
-- Authenticated staging acceptance passed earlier on exact SHA
-  `554fd223` only: trusted run
-  [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400).
-  It passed sign-in, CRUD, persistence, ownership/isolation, cleanup and
-  extension UX; ZIP SHA-256 was
-  `7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It
-  reported AI quality blocked and no backend image digest. Do not treat it as
-  evidence for `9039d1a` or a successor.
-- The full local `scripts/tests` suite passed after the path correction under
-  the repo Python 3.12 virtual environment: 347 tests passed, 9 expected skips.
-  The focused hosted-gate tests also passed. These local results do not replace
-  fresh required GitHub checks.
+Trusted hosted run
+[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
+passed exact PR inspection, isolated Neon verification, controlled Render
+staging deployment, exact-package authenticated acceptance, and the required
+`Secretary staging` status. PR review was APPROVED on this SHA. Live staging
+and backend source SHA matched. The run reported migration revision
+`0005_ai_request_quota` and extension ZIP SHA-256
+`495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
+Sign-in, persistent CRUD, reload persistence, ownership, two-account isolation,
+cleanup, and extension loading/success/auth/API/timeout behavior passed. The
+record shows zero production requests or writes. See the
+[redacted evidence record](evidence/2026-11-27-staging-acceptance-d77491d.md).
+
+The run explicitly reports AI quality **BLOCKED** (`approval_not_provided`)
+and backend image digest `null`; it is not production promotion. The earlier
+`9039d1a` test failure was fixed and the current Staging integration check
+passes. The full local Python 3.12 `scripts/tests` suite passed after the fix:
+347 passed and 9 expected skips.
 
 ## DORA and release decision
 

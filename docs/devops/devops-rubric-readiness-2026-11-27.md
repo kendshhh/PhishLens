@@ -1,4 +1,4 @@
-# DevOps rubric readiness — 2026-11-27 08:22 UTC
+# DevOps rubric readiness — 2026-11-27 08:45 UTC
 
 ## Decision
 
@@ -13,68 +13,78 @@ criterion.
 
 | Rubric criterion | Max | Current evidence | Gap to Excellent |
 |---|---:|---|---|
-| Pipeline design and coverage | 15 | **Partial.** CI covers backend, extension, migration source, security, CodeQL, workflow lint, deterministic AI checks, and a trusted staging controller. | On integrated PR #268 SHA `9039d1a`, CI Staging integration failed because a test imported an undefined `ROOT`; the correction is in this PR update and needs fresh exact-head CI. Production image promotion and automatic exact-SHA post-deploy acceptance are not live. |
-| Automation and quality gates | 10 | **Partial.** Main has eight required contexts, strict checks and independent review requirements in the latest captured settings. The trusted controller fails closed; Neon preflight passed for `9039d1a`. | The new SHA did not pass its first staging integration run, and its `Secretary staging` status failed accordingly. The controlled failure-to-block-merge experiment is not evidenced. Fresh checks and reviewer approval are required after the fix. |
-| Optimization with measured results | 20 | **Partial.** The reproducible 28-day report records a 3.66-minute merge-to-live proxy median (`60/142` matched), 63 successful deploy records, and CI median 66 seconds (`115/117` successful). | No comparable before/after result establishes a downward trend in end-to-end pipeline time and failure rate. Change failure rate, failed-deployment restore time, and deployment rework are not measured; no score is inferred from unknowns. |
-| Environments and secrets | 10 | **Partial.** GitHub staging credentials are isolated by protected environments; the successful 554fd run verified the isolated Neon branch through real staging acceptance without exposing values. | Render production and staging remain Git-backed; same-digest deployment is absent. Current release-promotion migration credential/config attestations remain incomplete. Recheck the masked Render-to-Neon/Auth mapping for the integrated head. |
-| AI-aware pipeline practices | 10 | **Partial.** Deterministic AI regression checks pass in CI. The hosted acceptance record explicitly marks quality blocked when no approval is supplied. | The policy is pending. No approved, representative holdout report bound to the exact release model exists; historical English evaluation is advisory only. Current model/provider acceptance and durable budget/alert evidence are missing. |
-| Release and rollback | 10 | **Partial / below Excellent.** Versioned manifest, gated workflow, staged artifact checks, and rollback documentation are implemented in the candidate. Production Auto Deploy is off. | Render is not image-backed; no identical backend digest was promoted, no production tag/release/changelog exists, and no current-schema-compatible production rollback has been rehearsed. |
-| Reliability and incident handling | 10 | **Partial.** Isolated staging CRUD passed for SHA `554fd223`; CI and recovery/runbook controls exist. | This does not demonstrate the integrated SHA or production availability. Current alert delivery, named backup responder, alert-to-recovery drill, application rollback, restore, and measured RTO/RPO are not proven. |
-| Metrics, documentation, and reporting | 10 | **Partial.** Dated DORA source/report, current PR integration record, and redacted exact-SHA staging evidence are published. Unknown values remain explicitly unknown. | CFR, restore time, rework, comparable end-to-end improvement, and a full current weekly/sprint metric log remain unmeasured. |
-| Live performance | 5 | **Partial.** Protected staging Auth/CRUD and extension UX passed on `554fd223` with ZIP SHA-256 `7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. | That run is stale for integrated `9039d1a`; its preflight passed, but CI integration failed before hosted acceptance. No approved AI result or production journey/performance demonstration exists. |
+| Pipeline design and coverage | 15 | **Strong, not Excellent.** On PR #268 head `d77491d8fd91252190755714df8e5fa475e9c13b`, Backend, Extension, Staging integration, migration preflight, Workflow lint, Dependency security, deterministic AI evaluation, CodeQL, trusted Neon preflight, and post-acceptance Secretary status all passed. | Production remains Git-backed; same-digest production promotion and exact-SHA production acceptance have not run. |
+| Automation and quality gates | 10 | **Strong, not Excellent.** The exact-head required checks and protected staging controller passed; PR review is approved on `d77491d`; unrelated Issue 90 staging job was explicitly skipped by its path filter. | A deliberately failing required check has not been shown to block merge. This documentation follow-up will create a new head and require fresh exact-head review/checks. |
+| Optimization with measured results | 20 | **Partial.** The reproducible 28-day report records a 3.66-minute merge-to-live proxy median (`60/142` matched), 63 successful deploy records, and CI median 66 seconds (`115/117` successful). | No comparable before/after result establishes a downward trend in end-to-end pipeline time and failure rate. Change failure rate, failed-deployment restore time, and deployment rework are not measured. |
+| Environments and secrets | 10 | **Strong for staging; partial overall.** Exact-head staging acceptance verified the isolated Neon project/branch, Auth bridge, migration revision, and staging service identity; the evidence records zero production requests or writes. | Production service/environment mapping is not privately re-attested; both Render services are Git-backed, and same-digest promotion is absent. |
+| AI-aware pipeline practices | 10 | **Partial.** Deterministic AI regression checks pass in CI, and the hosted acceptance gate records model quality as blocked when approval is absent. | No AI-owner-approved representative holdout report or threshold is bound to the candidate model. Current model acceptance and scheduled live inference smoke are blocked; historical English evidence is advisory only. |
+| Release and rollback | 10 | **Partial / below Excellent.** Versioned manifest validation, gated workflow, staging artifacts, and rollback documentation exist in the candidate. Production Auto Deploy is off. | Render is not image-backed; backend image digest is `null`, so identical-digest promotion is unproven. No production tag/release/changelog or current-schema-compatible rollback rehearsal exists. |
+| Reliability and incident handling | 10 | **Partial.** Exact-candidate staging sign-in, persistent CRUD, account isolation, cleanup, and extension UX passed. | Current alert delivery, named backup responder, alert-to-recovery drill, application rollback, database restore, and measured RTO/RPO are not proven. Staging acceptance is not production availability. |
+| Metrics, documentation, and reporting | 10 | **Partial.** A dated reproducible DORA report, refreshed cross-PR evidence, and redacted current staging proof are published. | Change failure rate, failed-deployment recovery time, deployment rework, a comparable end-to-end optimization, and a full current sprint metric log remain unmeasured. |
+| Live performance | 5 | **Strong staging demonstration; not full Excellent evidence.** The protected controller deployed and accepted the exact extension/backend candidate on isolated staging. | No production release/demo was performed; AI acceptance is blocked and the rubric's live verbal walkthrough cannot be established from repository evidence. |
 
-## Exact staging evidence
+## Current exact-head evidence — 2026-11-27 08:45 UTC
 
-- Historical PR #268 head `63b000e17631f9514d8763c4c88d054cbcfc2e24` passed run
-  [45950870589](https://github.com/kendshhh/PhishLens/actions/runs/45950870589).
-  Backend source SHA matched; extension ZIP SHA-256 was
-  `f1ec77033373fde07cb4bd2fc45c34ea3e530fae6b2afc3d3e9176d3483d56b4`.
-- Historical PR #282 head `7551e4077e4f71f2768a3d090b7ce437d727eb60` passed run
-  [45949708542](https://github.com/kendshhh/PhishLens/actions/runs/45949708542).
-  Backend source SHA matched; extension ZIP SHA-256 was
-  `d1225eb823f6453ddd6b0c90778759c663ad9a4831b61c2138ed0d7e39087c01`.
-- Both runs verified sign-in, create/list/read/update/delete, reload
-  persistence, ownership, user isolation, cleanup, and loading/success/auth/API/
-  timeout UI states against isolated Neon branch `br-rough-sea-a1l6ehi1`. Both
-  report `backend_image_digest: null`, `ai_quality_status: blocked`, and
-  `release_decision: no-go`. They are exact candidate acceptance evidence, not
-  a production release.
-- Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
-  passed on PR #268 SHA `554fd223ec98852acb12ebca01812530a84fde2d`, with backend
-  and deployed SHA matching, extension ZIP SHA-256
-  `7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`, Neon
-  project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, and migration
-  revision `0005_ai_request_quota`. It passed sign-in, persistent CRUD, reload,
-  ownership/isolation, cleanup, and extension UX. AI quality was blocked and
-  backend image digest was absent.
-- Current integrated #268 head `9039d1a490d283cc7bcca9243aa02b705036a7dd`
-  passed trusted Neon preflight [45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015).
-  Its first CI run [45963431013](https://github.com/kendshhh/PhishLens/actions/runs/45963431013)
-  failed one test import (`ROOT` undefined), causing `Secretary staging` to
-  fail. The issue is fixed in this PR update, but the next exact-head checks and
-  protected Auth/CRUD run have not completed. No acceptance is claimed for
-  `9039d1a` or its successor until then.
+PR #268 head `d77491d8fd91252190755714df8e5fa475e9c13b` passed exact-head CI
+run [45966131065](https://github.com/kendshhh/PhishLens/actions/runs/45966131065),
+Workflow lint [45966130957](https://github.com/kendshhh/PhishLens/actions/runs/45966130957),
+Dependency security [45966131061](https://github.com/kendshhh/PhishLens/actions/runs/45966131061),
+Deterministic AI Evaluation [45966131179](https://github.com/kendshhh/PhishLens/actions/runs/45966131179),
+CodeQL [45966123755](https://github.com/kendshhh/PhishLens/actions/runs/45966123755),
+and trusted Neon preflight [45966125445](https://github.com/kendshhh/PhishLens/actions/runs/45966125445).
+The trusted hosted controller [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
+passed exact-PR inspection, Neon isolation, controlled staging deployment,
+authenticated acceptance, and `Secretary staging`. The PR review decision is
+APPROVED on this exact SHA. The Issue 90 package job was skipped by its explicit
+path filter; it is not a substitute for the required checks.
+
+The live staging `/version` SHA and backend source SHA both equal `d77491d`.
+The candidate extension ZIP SHA-256 is
+`495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
+On isolated Neon project `ancient-brook-17208049`, branch
+`br-rough-sea-a1l6ehi1`, migration revision `0005_ai_request_quota`, the run
+passed sign-in, persistent create/list/read/update/delete, reload persistence,
+ownership, two-account isolation, cleanup, and loading/success/auth/API/timeout
+UX checks. It records zero production requests, writes, or Auth requests.
+The redacted JSON and review record are in
+[`evidence/2026-11-27-staging-acceptance-d77491d.md`](evidence/2026-11-27-staging-acceptance-d77491d.md).
+
+AI quality remains **BLOCKED** (`approval_not_provided`) for TF-IDF revision
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`;
+`backend_image_digest` is `null`; `release_decision` is `no-go`. This successful
+staging product acceptance does not constitute AI-quality acceptance or
+production release evidence.
 
 The current dependency and merge-tree evidence is in the
 [PR alignment record](pr-alignment-2026-11-27.md).
 
 ## Required closure evidence
 
-1. Re-run CI on the corrected integrated #268 head, then obtain xxTrixia's
-   approval for that exact protected staging run. Reject or ignore stale heads.
-2. Reconfirm the isolated Neon/Render runtime mapping and least-privilege
-   migration settings without publishing values.
-3. Obtain AI owner approval for the policy and representative holdout report;
-   require the exact provider/model identity and quality status before release.
-4. Configure a supported immutable image deployment for Render, promote the
-   same backend digest and extension ZIP, then require exact-SHA production
-   smoke and product acceptance before creating a tag/release.
-5. Harden Render production access through the service owner’s reviewed change;
-   exercise current-compatible application rollback and isolated data restore.
-   Record alert delivery, backup responder, and measured RTO/RPO.
-6. Link incident/rework classifications to deployment SHAs and run a
-   like-for-like optimization study with adequate samples. Keep metrics marked
-   “not measured” until authoritative records exist.
+1. Obtain the AI/model owner's reviewed policy decision and a representative,
+   permissioned, independently labeled holdout report bound to the exact model
+   revision. Require its numeric threshold status before enabling inference or
+   production release. Wilbert's historical English result remains advisory.
+2. Move Render to an approved immutable-image path, retaining one backend image
+   digest and extension ZIP across staging and production. Supply the missing
+   protected release configuration and require exact-SHA production smoke.
+   Do not enable production promotion until the image service, credentials,
+   mappings, independent reviewer, and deployment controls are verified.
+3. Rehearse rollback to a schema/config-compatible application artifact and
+   restore a fresh backup into an isolated Neon branch. Record measured RTO,
+   RPO, recovery-point age, operator, and integrity checks; verify alert
+   delivery and name the backup responder.
+4. Complete the five-metric DORA dataset: reconcile the production deployment
+   denominator, classify failed changes, record failed-deployment recovery,
+   and identify deployment rework. Run a like-for-like before/after optimization
+   study with adequate samples and publish calculations. Keep unknowns as
+   unknown rather than scoring them as zero.
+5. Demonstrate that a deliberately failing required check blocks merge. The
+   exact candidate's checks and staging acceptance passed, but no negative
+   merge-gate experiment is recorded.
+6. This evidence update is documentation-only; after it is pushed, obtain a
+   fresh exact-head review and required checks. Do not merge or publish a
+   release while the AI, image-promotion, production smoke, and recovery gates
+   above remain unresolved.
 
 The full current metrics and source methodology are in
 [the DORA report](dora-report-2026-11-27.md); current service observations are

@@ -1,71 +1,72 @@
 # PhishLens Pipeline
 
-## Delivery and acceptance evidence snapshot — November 27, 2026 08:22 UTC
+## Delivery and acceptance evidence snapshot — November 27, 2026 08:45 UTC
 
-This is a timestamped evidence snapshot. The release remains **NO-GO**; a 10/10
-rubric result is not supported by the current evidence. See the current
+The staging product path now has exact-head acceptance evidence, but release
+remains **NO-GO** and a 10/10 rubric result is not supported. The latest
 [DevOps rubric crosswalk](docs/devops/devops-rubric-readiness-2026-11-27.md),
 [environment map](docs/devops/environment-map-2026-11-27.md),
 [controlled-release record](docs/devops/controlled-release.md),
 [DORA report](docs/devops/dora-report-2026-11-27.md), and
-[redacted DORA source](docs/devops/evidence/dora-source-2026-11-27.json).
+[redacted DORA source](docs/devops/evidence/dora-source-2026-11-27.json) detail
+the remaining evidence gaps.
 
 ### Main, PRs, and acceptance
 
-`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. Current PR heads are
-#268 `9039d1a490d283cc7bcca9243aa02b705036a7dd`, #281
-`0c48cbf240b963a35b5e4669417e118d5ea6573b`, and #282
-`3131dae6f09c30b267ca4aa7b864694a44fd744c`. PR #268 now includes the latest
-#281 and #282 heads in that order; no PR changed migration files. The full
-dependency and resolution record is in the [PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
-
-Trusted staging acceptance passed on the prior #268 SHA
-`554fd223ec98852acb12ebca01812530a84fde2d` in run
-[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400):
-Auth sign-in, persistent saved-report CRUD, reload persistence, ownership,
-two-account isolation, cleanup, and extension UX passed. Its ZIP SHA-256 is
-`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. This
-does not apply to integrated SHA `9039d1a` or its successor. On `9039d1a`,
-Backend, Extension, migration preflight, Workflow lint, CodeQL, dependency
-security, and deterministic AI CI passed, and trusted Neon preflight passed
-([45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015)).
-Staging integration failed because `test_hosted_staging_gate.py` referenced
-undefined `ROOT`; a focused path correction is included in this PR update and
-passes its six focused local tests. Fresh exact-head GitHub checks are pending.
-No hosted acceptance is claimed for `9039d1a` or its successor. The earlier accepted run also blocked
-AI quality and has no backend image digest.
-
-Current branch-head relationships and merge-tree results are in the
+`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. PR #268 head is
+`d77491d8fd91252190755714df8e5fa475e9c13b`; it integrates current PR #281
+`0c48cbf240b963a35b5e4669417e118d5ea6573b`, current PR #282
+`3131dae6f09c30b267ca4aa7b864694a44fd744c`, and its earlier #268 history in
+the recorded order. None of the three changes migration files. See the
 [PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
+
+The exact-head CI, security, CodeQL, workflow-lint, deterministic AI, and
+trusted Neon checks passed on #268 `d77491d` (run links and check names are in
+the [rubric report](docs/devops/devops-rubric-readiness-2026-11-27.md)). The
+protected controller [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
+then verified the isolated Neon target, deployed the exact SHA to staging,
+installed the exact extension package, and passed authenticated sign-in,
+persistent CRUD, two-account isolation, cleanup, and extension UX. The
+required `Secretary staging` status was emitted only after acceptance passed.
+The staging evidence is bound to source/backend SHA
+`d77491d8fd91252190755714df8e5fa475e9c13b` and ZIP SHA-256
+`495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
+It records zero production API/Auth requests and writes.
+
+That run reports TF-IDF model quality **BLOCKED** (`approval_not_provided`),
+`backend_image_digest: null`, and `release_decision: no-go`. It proves the
+staging product path for that exact candidate; it does not prove AI quality,
+immutable backend promotion, production availability, or production release.
 
 ### Production and service control
 
-Read-only Render metadata at 2026-11-27 07:14 UTC reports production service
-`srv-db7eap25b2lc73fkelpg` still using the Git-backed Python runtime on `main`,
-with Auto Deploy off. Its latest live deployment is `dep-dc1716etlv9c73b8nl0g`
-on `811980c2cbf70d9957146bf329627f0826a018f1`, created at
-2026-11-22T04:33:29Z. Render metadata marks the Production environment
-unprotected and network-wide (`0.0.0.0/0`, network isolation off); the separate
-GitHub `production` environment does require independent review and disallows
-admin bypass. Around 07:16 UTC, `/model-info` returned HTTP 200 with analysis
-disabled; `/health`, `/ready`, and `/version` timed out after 15 seconds from
-this client. Product availability therefore is not verified.
+The latest read-only Render metadata check in this snapshot was at 2026-11-27
+07:14 UTC. It reported production service `srv-db7eap25b2lc73fkelpg` using the
+Git-backed Python runtime on `main` with Auto Deploy off, live SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`. Render metadata reported the
+Production environment unprotected and network-wide (`0.0.0.0/0`, network
+isolation off); GitHub's separate `production` environment requires independent
+review and disallows admin bypass. Around 07:16 UTC `/model-info` returned HTTP
+200 with analysis disabled; `/health`, `/ready`, and `/version` timed out from
+this client. The later staging controller did not query production. Production
+health and current settings remain unverified after that read-only snapshot.
 
-Render staging is also a Git-backed Python service with Auto Deploy off. The
-image-backed same-digest promotion and exact-SHA production smoke have not run.
-The privately verified Render-to-Neon mapping, migration credential, approved
-AI holdout and policy, compatible current rollback, isolated restore with
-measured RTO/RPO, and tested alert delivery are still release blockers. Keep
-issue #153 at NO-GO and do not claim a production release.
+Render staging is also Git-backed. Same-digest promotion, exact-SHA production
+smoke, approved AI holdout/policy, current-schema-compatible rollback, isolated
+restore with measured RTO/RPO, and tested alert delivery remain release
+blockers. Keep issue #153 at NO-GO and do not create a release tag.
 
 ### Delivery metrics
 
-The 28-day DORA report collected 2026-11-27 reports merge-to-live median
-3.66 minutes (`n=60` matched of 142 merged PRs), 63 successful deploy records
-(2.25/day), and supplemental main-CI median 66 seconds (`n=117`, 115 pass,
-2 fail). Change fail rate, failed-deployment recovery time, deployment rework,
-and a current comparable optimization result remain **not measured**. See the
-[report](docs/devops/dora-report-2026-11-27.md) for denominators and limits.
+The reproducible 28-day DORA report collected on 2026-11-27 records a
+merge-to-live proxy median of 3.66 minutes (`n=60` matched of 142 merged PRs),
+63 successful production deploy records (2.25/day), and a supplemental main-CI
+median of 66 seconds (`n=117`, 115 pass, 2 fail). Change failure rate,
+failed-deployment recovery time, deployment rework, and comparable
+before/after optimization results remain **not measured**. The staging run above
+is not added to production DORA counts. See the
+[report](docs/devops/dora-report-2026-11-27.md) for source data, formulas,
+denominators, and limitations.
 
 ## Historical delivery and acceptance snapshot — November 21, 2026
 

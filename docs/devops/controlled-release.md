@@ -1,21 +1,20 @@
 # Controlled PhishLens release path
 
-Status snapshot at 2026-11-27 08:22 UTC: issue #153 remains **NO-GO**. Trusted
-hosted Auth/CRUD and extension acceptance passed on prior PR #268 SHA
-`554fd223ec98852acb12ebca01812530a84fde2d` in run
-`45958860400`; redacted evidence is in
-[the acceptance record](evidence/2026-11-27-staging-acceptance-554fd223.md).
-It reported AI quality blocked and no backend image digest. Current integrated
-PR #268 SHA `9039d1a490d283cc7bcca9243aa02b705036a7dd` passed trusted Neon
-preflight, but its initial `Staging integration` run failed because
-`test_hosted_staging_gate.py` referenced undefined `ROOT`; `Secretary staging`
-failed as a result. The path correction is part of this PR update, and fresh
-exact-head checks plus protected staging are still required. Current #281 is
-`0c48cbf240b963a35b5e4669417e118d5ea6573b`, current #282 is
-`3131dae6f09c30b267ca4aa7b864694a44fd744c`; both are integrated in order into
-#268. No production release, version tag, or authorization exists. Render Auto
-Deploy is off, but both services remain Git-backed and no tested image has been
-promoted. Do not dispatch production promotion.
+Status snapshot at 2026-11-27 08:45 UTC: issue #153 remains **NO-GO**. Exact
+PR #268 head `d77491d8fd91252190755714df8e5fa475e9c13b` passed CI, required
+security/quality checks, trusted isolated Neon preflight, and protected hosted
+Auth/CRUD plus extension acceptance in run
+[`45966647832`](https://github.com/kendshhh/PhishLens/actions/runs/45966647832).
+The acceptance verified live staging SHA, Auth bridge, migration revision,
+sign-in, CRUD, persistence, isolation, cleanup, and extension UX; it recorded
+zero production requests/writes. Evidence is in
+[`the exact-head acceptance record`](evidence/2026-11-27-staging-acceptance-d77491d.md).
+It explicitly blocks AI quality (`approval_not_provided`) and has no backend
+image digest. Current #281 is `0c48cbf240b963a35b5e4669417e118d5ea6573b`,
+current #282 is `3131dae6f09c30b267ca4aa7b864694a44fd744c`; both are integrated
+in order into #268. No production release, version tag, or release authorization
+exists. Render Auto Deploy is off, but both services remain Git-backed and no
+tested image has been promoted. Do not dispatch production promotion.
 
 See the current [environment map](environment-map-2026-11-27.md),
 [rubric crosswalk](devops-rubric-readiness-2026-11-27.md), and
