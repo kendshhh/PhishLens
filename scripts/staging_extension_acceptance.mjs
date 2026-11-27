@@ -402,15 +402,13 @@ async function observePage(observedPage) {
     const entry = { service, route, status };
     attempt.responses.push(entry);
     if (status >= 400) {
-      const task = (async () => {
-        let payload = null;
-        try {
-          payload = await response.json();
-        } catch {
-          // Keep the status evidence; never retain or log an unparsed response body.
-        }
-        Object.assign(entry, authResponseEvidence({ service, route, status, payload }));
-      })();
+      // The helper bounds this body read; route and status were recorded above.
+      const task = authResponseEvidence({
+        service,
+        route,
+        status,
+        readPayload: () => response.json(),
+      }).then(diagnostic => Object.assign(entry, diagnostic));
       pendingAuthEvidence.add(task);
       void task.then(
         () => pendingAuthEvidence.delete(task),
