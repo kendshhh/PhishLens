@@ -358,4 +358,3 @@ export const stagingAuthDefaults = Object.freeze({
     authDatabase: DEFAULT_AUTH_DATABASE,
     stagingBaseUrl: STAGING_BASE_URL
 });
-

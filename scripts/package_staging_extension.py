@@ -191,12 +191,21 @@ def build(source_root, archive_path, evidence_path, expected_staging, *, auth_ur
                 manifest.pop("optional_host_permissions", None)
                 data = json.dumps(manifest, indent=2).encode("utf-8")
             elif asset == "js/config.js":
-                data = ("export const API_BASE_URL = " + json.dumps(STAGING_ORIGIN) + ";\n").encode("utf-8")
+                data = (
+                    "export const API_BASE_URLS = Object.freeze({production:" + json.dumps(STAGING_ORIGIN)
+                    + ",staging:" + json.dumps(STAGING_ORIGIN) + "});\n"
+                    "export const API_BASE_URL = API_BASE_URLS.staging;\n"
+                ).encode("utf-8")
             elif asset == "js/auth-config.js" and auth:
                 data = (
-                    "export const AUTH_CONFIG = "
+                    "export const AUTH_CONFIGS = Object.freeze({production:null,staging:"
                     + json.dumps(auth["config"], separators=(",", ":"))
-                    + ";\n"
+                    + "});\nexport const AUTH_CONFIG = AUTH_CONFIGS.staging;\n"
+                ).encode("utf-8")
+            elif asset == "js/auth-config.js":
+                data = (
+                    "export const AUTH_CONFIGS = Object.freeze({production:null,staging:null});\n"
+                    "export const AUTH_CONFIG = AUTH_CONFIGS.production;\n"
                 ).encode("utf-8")
             archive.writestr(asset, data)
             file_hashes[asset] = hashlib.sha256(data).hexdigest()

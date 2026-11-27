@@ -83,6 +83,9 @@ jobs:
           TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run test:browser
 
+      - name: Test preview account UI in Chromium
+        run: npm run test:accounts
+
       - name: Require browser acceptance report and evidence
         run: |
           set -euo pipefail
@@ -482,7 +485,7 @@ jobs:
     name: Staging integration
     needs: [extension, backend]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:17
@@ -517,6 +520,31 @@ jobs:
           package-manager-cache: false
       - name: Install runtime dependencies
         run: python -m pip install -r backend/requirements.txt
+      - name: Install browser acceptance dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run synthetic Auth bridge browser acceptance
+        env:
+          PHISHLENS_AUTH_TEST_DATABASE_URL: postgresql+psycopg://phishlens:ci-only-password@localhost:5432/phishlens_auth_test_ci
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit, urlunsplit
+          import psycopg
+          from psycopg import sql
+
+          database_url = os.environ["PHISHLENS_AUTH_TEST_DATABASE_URL"]
+          admin_url = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+          parsed = urlsplit(admin_url)
+          admin_url = urlunsplit(parsed._replace(path="/postgres"))
+          with psycopg.connect(admin_url, autocommit=True) as connection:
+              connection.execute(
+                  sql.SQL("CREATE DATABASE {}").format(sql.Identifier("phishlens_auth_test_ci"))
+              )
+          PY
+          DATABASE_URL="$PHISHLENS_AUTH_TEST_DATABASE_URL" python -m alembic -c backend/alembic.ini upgrade head
+          node scripts/test_neon_bridge_browser.mjs
       - name: Test hosted history authentication smoke
         run: node --test scripts/tests/staging_history.test.mjs
       - name: Test shared staging Auth and CRUD helpers

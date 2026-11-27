@@ -1,6 +1,6 @@
 export function initializeAccountUI(accounts, doc = document, { preview = false } = {}) {
   const $ = id => doc.getElementById(id);
-  const screens = ['sign-in', 'sign-up', 'recover', 'reset'];
+  const screens = ['sign-in', 'sign-up', 'verify', 'recover', 'reset'];
   let busy = false;
   const visible = (id, value) => $(id).classList.toggle('hidden', !value);
   function message(value, error = false) {
@@ -8,7 +8,7 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     $('account-status').setAttribute('role', error ? 'alert' : 'status');
   }
   function clearSecrets() {
-    for (const id of ['account-password', 'signup-password', 'reset-password', 'reset-code']) $(id).value = '';
+    for (const id of ['account-password', 'signup-password', 'reset-password', 'verify-code', 'reset-code']) $(id).value = '';
   }
   function screen(name, focus = true) {
     clearSecrets();
@@ -50,19 +50,51 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   }
   function submit(id, action) { $(id).addEventListener('submit', event => { event.preventDefault(); return run(action); }); }
   submit('account-sign-in', async () => {
-    if (await accounts.signIn({ email: $('account-email').value.trim(), password: $('account-password').value })) {
+    const email = $('account-email').value.trim();
+    let signedIn;
+    try {
+      signedIn = await accounts.signIn({ email, password: $('account-password').value });
+    } catch (error) {
+      // Never interpret a generic access-denied response as an email-verification
+      // prompt; the adapter uses this explicit code only for unverified accounts.
+      if (error?.code !== 'EMAIL_NOT_VERIFIED') throw error;
+      $('verify-email').value = email;
+      screen('verify');
+      message(preview ? 'Verify your email to finish signing in. Demo code: 123456. No email was sent.'
+        : 'Verify your email to finish signing in. Enter the code sent to your email, or request a new code.');
+      return;
+    }
+    if (signedIn) {
       message(preview ? 'Signed in to the demo account. No live account was used.' : 'Signed in.');
       screen(null);
     }
   });
   submit('account-sign-up', async () => {
-    const email = $('signup-email').value.trim();
-    if (await accounts.signUp({ name: $('signup-name').value.trim(), email, password: $('signup-password').value })) {
-      screen(null); message(preview ? 'Signed in to the demo account. No live account was used.' : 'Account created and signed in.');
-    } else {
-      $('account-email').value = email;
-      screen('sign-in'); message('Account created. Sign in with your email and password.');
-    }
+    await accounts.signUp({ name: $('signup-name').value.trim(), email: $('signup-email').value.trim(), password: $('signup-password').value });
+    $('verify-email').value = $('signup-email').value.trim();
+    screen('verify'); message(preview ? 'Demo only: enter 123456. No email was sent.' : 'Check your email for the verification code.');
+  });
+  submit('account-verify', async () => {
+    const email = $('verify-email').value.trim();
+    // Agreed flow: Sign up → Verify → "verified" → Sign in → signed in. Verification and
+    // sign-in stay separate steps, so if the provider starts a session on verification,
+    // end it and still ask for the password.
+    const startedSession = await accounts.verifyEmail({ email, code: $('verify-code').value.trim() });
+    // Retry once; if the provider session still can't be ended, say so instead of
+    // reporting success, because reopening PhishLens could restore that session.
+    const ended = !startedSession || await accounts.signOut() || await accounts.signOut();
+    $('account-email').value = email;
+    screen('sign-in');
+    if (ended) message('Email verified successfully. Sign in with your email and password.');
+    else message('Your email is verified, but PhishLens could not end the session the account service started. ' +
+      'If PhishLens shows you as signed in when you reopen it, sign out from Account, then sign in with your password.', true);
+  });
+  $('resend-code').addEventListener('click', () => {
+    if (!$('verify-email').reportValidity()) return;
+    return run(async () => {
+      await accounts.resend({ email: $('verify-email').value.trim() });
+      message(preview ? 'Demo verification code: 123456. No email was sent.' : 'If eligible, a new verification code has been sent.');
+    });
   });
   submit('account-recover', async () => {
     await accounts.recover({ email: $('recovery-email').value.trim() });
@@ -81,8 +113,10 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     visible('account-sign-out', signedIn);
     visible('reports-account-gate', !signedIn);
     visible('personal-reports', signedIn);
-    message(state.message, state.status === 'expired');
-    if (state.status === 'expired') { visible('account-panel', true); screen('sign-in'); }
+    message(state.message, state.status === 'expired' || state.status === 'verification-required');
+    if (state.status === 'expired' || state.status === 'verification-required') {
+      visible('account-panel', true); screen('sign-in');
+    }
     if (signedIn) screen(null, false);
   });
   visible('account-preview-notice', preview);
