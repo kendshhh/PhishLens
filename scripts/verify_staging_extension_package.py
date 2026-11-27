@@ -153,7 +153,14 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
             raise ValueError("Manifest public key does not match the recorded key hash and Chrome ID")
     elif "key" in manifest:
         raise ValueError("Auth-disabled staging package must not carry an unverified extension key")
-    expected_config = "export const API_BASE_URL = " + json.dumps(STAGING_ORIGIN) + ";\n"
+    expected_config = (
+        "export const API_BASE_URLS = Object.freeze({production:"
+        + json.dumps(STAGING_ORIGIN)
+        + ",staging:"
+        + json.dumps(STAGING_ORIGIN)
+        + "});\n"
+        "export const API_BASE_URL = API_BASE_URLS.staging;\n"
+    )
     if config != expected_config:
         raise ValueError("Extension API configuration does not target only staging")
     if any(PRODUCTION_HOST.encode("ascii") in data.lower() for data in contents.values()):
@@ -182,14 +189,20 @@ def verify(archive_path, evidence_path, expected_staging, staging_evidence_path=
                 raise ValueError("HTTPS Auth bridge does not match the staging API origin")
             auth_configuration.update(transport=transport, bridgeUrl=STAGING_ORIGIN + "/auth/bridge")
         expected_auth_config = (
-            "export const AUTH_CONFIG = "
+            "export const AUTH_CONFIGS = Object.freeze({production:null,staging:"
             + json.dumps(auth_configuration, separators=(",", ":"))
-            + ";\n"
+            + "});\n"
+            "export const AUTH_CONFIG = AUTH_CONFIGS.staging;\n"
         )
         if auth_config != expected_auth_config:
             raise ValueError("Packaged Auth configuration does not match its evidence")
-    elif "AUTH_CONFIG = null" not in auth_config:
-        raise ValueError("Disabled staging package unexpectedly enables Auth")
+    else:
+        expected_auth_config = (
+            "export const AUTH_CONFIGS = Object.freeze({production:null,staging:null});\n"
+            "export const AUTH_CONFIG = AUTH_CONFIGS.production;\n"
+        )
+        if auth_config != expected_auth_config:
+            raise ValueError("Disabled staging package unexpectedly enables Auth")
 
     embedded_expected = {
         "format": "phishlens-staging-package-v1",
