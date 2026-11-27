@@ -1,12 +1,71 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 21, 2026
+## Delivery and acceptance evidence snapshot — November 27, 2026 07:48 UTC
 
-This section supersedes the dated snapshots below. Release remains **NO-GO**.
-See the current [release record](docs/devops/release-record-2026-11-21.md),
-[environment map](docs/devops/environment-map-2026-11-21.md),
-[scorecard](docs/devops/release-readiness-scorecard-2026-11-21.md), and
-[production smoke notes](docs/devops/production-deploy-smoke.md).
+This is a timestamped evidence snapshot. The release remains **NO-GO**; a 10/10
+rubric result is not supported by the current evidence. See the current
+[DevOps rubric crosswalk](docs/devops/devops-rubric-readiness-2026-11-27.md),
+[environment map](docs/devops/environment-map-2026-11-27.md),
+[controlled-release record](docs/devops/controlled-release.md),
+[DORA report](docs/devops/dora-report-2026-11-27.md), and
+[redacted DORA source](docs/devops/evidence/dora-source-2026-11-27.json).
+
+### Main, PRs, and acceptance
+
+`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. Earlier PR #268 head
+`63b000e17631f9514d8763c4c88d054cbcfc2e24` and PR #282 head
+`7551e4077e4f71f2768a3d090b7ce437d727eb60` passed trusted staging Auth, CRUD,
+isolation, cleanup, and extension UX. Those runs are historical for the newer
+heads. Current PR #268 head is `554fd223ec98852acb12ebca01812530a84fde2d` and
+current PR #282 head is `3131dae6f09c30b267ca4aa7b864694a44fd744c`; their CI
+and Neon preflights pass, but neither has current exact-head authenticated
+acceptance. Both still block AI quality and have no backend image digest.
+
+PR #281 head `27859a31674f99f17a5e26454104b3e6719493a7` has passing Backend,
+Extension, local Staging integration, migration source preflight, workflow
+lint, CodeQL, dependency checks, and deterministic AI evaluation. Its exact-head
+protected Neon preflight run `45956687871` is waiting for `xxTrixia`. Trusted
+controller run `45957149389` failed closed because no successful exact-head
+preflight attestation existed; the required `Secretary staging` result failed.
+No hosted acceptance is claimed for this head. Older protected runs are stale.
+
+Current branch-head relationships and merge-tree results are in the
+[PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
+
+### Production and service control
+
+Read-only Render metadata at 2026-11-27 07:14 UTC reports production service
+`srv-db7eap25b2lc73fkelpg` still using the Git-backed Python runtime on `main`,
+with Auto Deploy off. Its latest live deployment is `dep-dc1716etlv9c73b8nl0g`
+on `811980c2cbf70d9957146bf329627f0826a018f1`, created at
+2026-11-22T04:33:29Z. Render metadata marks the Production environment
+unprotected and network-wide (`0.0.0.0/0`, network isolation off); the separate
+GitHub `production` environment does require independent review and disallows
+admin bypass. Around 07:16 UTC, `/model-info` returned HTTP 200 with analysis
+disabled; `/health`, `/ready`, and `/version` timed out after 15 seconds from
+this client. Product availability therefore is not verified.
+
+Render staging is also a Git-backed Python service with Auto Deploy off. The
+image-backed same-digest promotion and exact-SHA production smoke have not run.
+The privately verified Render-to-Neon mapping, migration credential, approved
+AI holdout and policy, compatible current rollback, isolated restore with
+measured RTO/RPO, and tested alert delivery are still release blockers. Keep
+issue #153 at NO-GO and do not claim a production release.
+
+### Delivery metrics
+
+The 28-day DORA report collected 2026-11-27 reports merge-to-live median
+3.66 minutes (`n=60` matched of 142 merged PRs), 63 successful deploy records
+(2.25/day), and supplemental main-CI median 66 seconds (`n=117`, 115 pass,
+2 fail). Change fail rate, failed-deployment recovery time, deployment rework,
+and a current comparable optimization result remain **not measured**. See the
+[report](docs/devops/dora-report-2026-11-27.md) for denominators and limits.
+
+## Historical delivery and acceptance snapshot — November 21, 2026
+
+This section preserves the observations available on November 21. It is
+superseded by the November 27 snapshot above; the SHAs, service states, PRs,
+check results, and links below are historical evidence only.
 
 ### Source and candidate
 

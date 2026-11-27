@@ -1,15 +1,29 @@
 # Controlled PhishLens release path
 
-Status as of 2026-11-27: issue #153 remains NO-GO. The controlled-release
+Status snapshot at 2026-11-27 07:48 UTC: issue #153 remains NO-GO. The controlled-release
 workflow is manual-only and this workflow hardening is under review; no
 production release, version tag, or release authorization exists. Trusted
-hosted acceptance completed for PR #282 head `7551e407` in run
-`45949708542`, but that is PR evidence, not acceptance of a merged release
-candidate. PR #268's latest hosted run `45950870589` is still waiting on its
-protected staging approval. The earlier PR #281 acceptance run covered head
-`6d07ccd3`; any later source change requires a new exact-head acceptance run.
-Keep issue #153 at NO-GO. Do not dispatch production promotion until the
+hosted acceptance completed on earlier PR #268 head
+`63b000e17631f9514d8763c4c88d054cbcfc2e24` in run `45950870589` and earlier PR
+#282 head `7551e4077e4f71f2768a3d090b7ce437d727eb60` in run `45949708542`.
+Those results prove authenticated staging CRUD and extension UX only for those
+historical SHAs; both reports block AI quality and have no backend image
+digest. Current #268 (`554fd223ec98852acb12ebca01812530a84fde2d`) and #282
+(`3131dae6f09c30b267ca4aa7b864694a44fd744c`) have passing CI and Neon
+preflight but no current exact-head authenticated acceptance. PR #281 head
+`27859a31674f99f17a5e26454104b3e6719493a7` has passing source/local CI; its
+protected Neon preflight run `45956687871` is waiting for xxTrixia, and trusted
+controller run `45957149389` failed closed because the matching attestation was
+not yet available. Its required `Secretary staging` result failed; no hosted
+acceptance is claimed. Older PR #281 runs are stale. Production Auto Deploy is
+currently off, but Render remains Git-backed and has not promoted a tested
+image. Keep issue #153 at NO-GO. Do not dispatch production promotion until the
 external setup below is complete.
+
+See the current [environment map](environment-map-2026-11-27.md),
+[rubric crosswalk](devops-rubric-readiness-2026-11-27.md), and
+[PR alignment record](pr-alignment-2026-11-27.md) for live identities, current
+branch relationships, and remaining criteria.
 
 ## What the workflow does
 
@@ -92,24 +106,28 @@ published evidence supports GO.
 ## External setup required
 
 These service settings are not changed by this pull request. A read-only Render
-check on 2026-11-25 found production service
+check on 2026-11-27 found production service
 `srv-db7eap25b2lc73fkelpg` Git-backed to `main` with
-`autoDeploy=no` / `autoDeployTrigger=off`; staging service
-`srv-db92irlg1s2s739404i0` is also Git-backed with auto-deploy off. The
-production auto-deploy stop is verified, but it is an interim control, not
-proof of digest-based promotion. The release preflight refuses Git-backed
-targets, so promotion remains blocked until both services are configured for
-the image-backed path. GitHub settings were rechecked and the required
+`autoDeploy=no` / `autoDeployTrigger=off`; its live deploy is still SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`. Staging service
+`srv-db92irlg1s2s739404i0` is also Git-backed with auto-deploy off and is live
+on PR #268's SHA `63b000e17631f9514d8763c4c88d054cbcfc2e24`. The production
+auto-deploy stop is verified, but it is an interim control, not proof of
+digest-based promotion. The release preflight refuses Git-backed targets, so
+promotion remains blocked until both services are configured for the
+image-backed path. GitHub settings were rechecked and the required
 non-secret staging variables were aligned on 2026-11-27 without printing
 values. `staging-neon-preflight` has the selected Neon target identities,
 database/role names, and metadata key, but no migration URL secret.
 `release-staging` has its Render key and an explicit `pending` mapping
-attestation, but no approved model identity. `staging` has the two Auth test
-accounts and its acceptance flag/origin, but no AI approval report. The current
-Render services are still Git-backed, so no
-image promotion or production release is possible. Do not treat a queued or
-historical run as current acceptance. Render values remain private. Render
-must be changed by an administrator, without deploying:
+attestation; provider and model revision variables are empty. `staging` has the
+two Auth test accounts and its acceptance flag/origin, but no AI approval
+report. The GitHub `production` environment has no variables/secrets; the
+production Render key, service ID, release enable flag, and production
+configuration attestation are not provisioned. The current Render services are
+still Git-backed, so no image promotion or production release is possible. Do
+not treat a queued or historical run as current acceptance. Render values
+remain private. Render must be changed by an administrator, without deploying:
 
 1. Keep production Git auto-deploy off. Convert staging and production to
    prebuilt-image services configured for `ghcr.io/kendshhh/phishlens-api` and
@@ -200,12 +218,11 @@ and held-out report have been reviewed. The acceptance job receives no Neon
 API key, migration URL, or Render deploy key; it gets verified Neon identities
 and the migration revision only as outputs from the completed preflight job.
 
-The staging environment also contains a duplicate `RENDER_STAGING_API_KEY` for
-the existing trusted PR acceptance controller. The release-promotion workflow
-uses the key only in `release-staging`. Keep the existing copy only while
-another trusted workflow depends on it, then remove it after verifying that
-dependency. Never expose secret values in logs, screenshots, evidence JSON, or
-repository history.
+The redundant `RENDER_STAGING_API_KEY` copy has been removed from `staging`
+after checking all repository workflows. The key remains in `release-staging`,
+where both trusted Render deployment workflows consume it; the authenticated
+acceptance environment receives no Render deploy credential. This narrows the
+credential scope without changing the key or triggering a deployment.
 
 In `production`:
 
@@ -223,7 +240,13 @@ GitHub-protected environment secrets:
 - `release-staging`: `RENDER_STAGING_API_KEY` (present).
 - `staging`: synthetic Auth account email/password pairs (present) and
   `STAGING_AI_APPROVAL_JSON` (missing; requires the AI-owner-approved report).
-- `production`: `RENDER_PRODUCTION_API_KEY`.
+- `production`: `RENDER_PRODUCTION_API_KEY` (missing as of 2026-11-27).
+
+The `production` GitHub environment currently has no variables or secrets;
+repository variables also lack `RENDER_PRODUCTION_SERVICE_ID`,
+`RELEASE_PROMOTION_ENABLED`, and `PRODUCTION_RELEASE_CONFIG_ATTESTATION`.
+Provision these only after the production image-backed path and its independent
+approval are ready; do not enable promotion to the current Git-backed service.
 
 The release workflow remains fail-closed while any listed configuration or
 approval evidence is missing. Do not move credentials between scopes by
@@ -257,11 +280,13 @@ digests and branch/service identities, not passwords, bearer tokens, email
 addresses, or report bodies. The staged report records only account subject
 hashes and synthetic row IDs are not emitted.
 
-No accepted staging evidence or production promotion has been generated in this
-pull request. CI tests validate gate logic, archive identity and an unpublished
-backend image build only. They are not a substitute for a live staging run.
-Until the protected staging flow passes live Auth and persistent CRUD, criterion
-pp. 3/49 remains blocked. That product pass alone does not approve model quality
-or authorize a release. The release remains NO-GO until the AI owner approves the
-quality policy/report, the protected release workflow accepts it, and Render is
-image-backed for digest promotion.
+No accepted staging evidence or production promotion has been generated by PR
+#281's new release-promotion workflow. Separate trusted hosted runs passed live
+Auth, persistent CRUD, isolation, and extension UX for the exact PR #268 and #282
+heads; those reports explicitly block AI quality, have no backend image digest,
+and do not represent a merged production candidate. CI tests validate the new
+gate logic and unpublished backend image build, not promotion or production
+acceptance. The release remains NO-GO until the AI owner approves the
+quality policy/report, PR #281's protected release workflow passes for the
+current exact candidate, Render supports image-digest promotion, and production
+post-deploy verification passes.

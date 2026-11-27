@@ -1,6 +1,35 @@
 # Pipeline Metrics
 
-## Current service identity refresh — 2026-11-21
+## Current DORA and production probe — 2026-11-27
+
+The reproducible 28-day DORA snapshot is in
+[dora-report-2026-11-27.md](dora-report-2026-11-27.md), with its redacted
+[source data](evidence/dora-source-2026-11-27.json). The report gives a
+merge-to-live median of 3.66 minutes (`n=60` matched of 142 merged PRs),
+63 successful production deploy records (2.25/day), and a supplemental main-CI
+median of 66 seconds (`n=117`, 115 successes and 2 failures). Change fail rate,
+failed-deployment recovery time, deployment rework, and comparable optimization
+remain not measured; missing evidence is not reported as zero.
+
+Read-only Render metadata at 2026-11-27 07:14 UTC identifies the latest
+production deploy as `dep-dc1716etlv9c73b8nl0g`, source
+`811980c2cbf70d9957146bf329627f0826a018f1`, created 2026-11-22T04:33:29Z.
+The service is a Git-backed Python service on `main` with Auto Deploy off.
+Production `GET /model-info` returned HTTP 200 around 07:16 UTC with analysis
+disabled, provider disabled, and TF-IDF reports not accepted. `GET /health`,
+`/ready`, and `/version` each timed out after 15 seconds from this client. These
+are read-only public probes; no product data or credentials were accessed.
+Production readiness and the end-user journey are therefore not verified.
+
+Render metadata marks the Production environment unprotected; the service is a
+public API with allowlist `0.0.0.0/0` and network isolation disabled. Public
+client access is expected for the extension API; this is not evidence that
+deployment credentials are exposed. It is separate from GitHub's protected
+`production` deployment environment, which currently requires `inaki3023`,
+prevents self-review, allows only protected branches, and disallows admin
+bypass. No production setting was changed in this audit.
+
+## Historical service identity refresh — 2026-11-21 (superseded)
 
 This read-only refresh records service identity and endpoint behavior, not a
 performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`

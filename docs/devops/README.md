@@ -1,23 +1,40 @@
 # DevOps evidence and release records
 
-**Current as of November 21, 2026. Release decision: NO-GO.** This index names
+**Evidence snapshot at November 27, 2026 07:48 UTC. Release decision: NO-GO.** This index names
 the current evidence set and its limits. Historical records stay dated and
 retain their original findings; successor links may be added, but do not treat old
 service IDs, workflow settings or deployment observations as current.
 
-## PR #268 check snapshot — 2026-11-21 13:45 UTC
+## Current snapshot — 2026-11-27
 
-At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`
-targeted `main` at `31e86c78523cbdcfb6da83f99d331c86409bf0fa`; PR #265 had
-merged and GitHub reported the PR mergeable. Backend, Extension, Staging
-integration, migration preflight, workflow lint, dependency security/graph
-review, deterministic evaluation, CodeQL and the Secretary report passed on
-that exact head. Hosted staging preflight passed; Hosted staging is waiting at
-the protected `staging` environment and has not started. This head fixes the
-retired `pr-58-staging` endpoint pin. Exact-head hosted verification is pending;
-the documentation refresh triggers a new exact-head check run. No hosted
-acceptance is claimed for PR #268 yet. Release #153 remains **NO-GO**. Older PR
-summaries below are historical snapshots for their named heads.
+`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`; latest production Render
+deploy metadata remains on `811980c2cbf70d9957146bf329627f0826a018f1`.
+Production analysis is disabled; `/model-info` is available, while the
+read-only `/health`, `/ready`, and `/version` probes timed out from this client.
+See the [current DORA report](dora-report-2026-11-27.md) and
+[pipeline snapshot](../../PIPELINE.md).
+
+Earlier PR #268 head `63b000e17631f9514d8763c4c88d054cbcfc2e24` passed
+protected authenticated staging in [run 45950870589](https://github.com/kendshhh/PhishLens/actions/runs/45950870589).
+Earlier PR #282 head `7551e4077e4f71f2768a3d090b7ce437d727eb60` passed in
+[run 45949708542](https://github.com/kendshhh/PhishLens/actions/runs/45949708542).
+Those reports bind Auth, CRUD, isolation, UX, exact backend source SHA, and
+extension ZIP SHA, but apply only to those older heads. Current #268 head is
+`554fd223ec98852acb12ebca01812530a84fde2d`; current #282 head is
+`3131dae6f09c30b267ca4aa7b864694a44fd744c`. Both pass CI and Neon preflight;
+neither has current exact-head authenticated acceptance. The old reports also
+explicitly blocked AI quality and recorded no backend image digest.
+
+PR #281 head `27859a31674f99f17a5e26454104b3e6719493a7` passes source/local
+checks. Its exact-head protected Neon preflight
+([run 45956687871](https://github.com/kendshhh/PhishLens/actions/runs/45956687871))
+is waiting for xxTrixia. Trusted controller run
+[45957149389](https://github.com/kendshhh/PhishLens/actions/runs/45957149389)
+failed closed because the exact-head preflight had not completed; therefore
+`Secretary staging` failed and no hosted Auth/CRUD acceptance is claimed for
+this head. See the [current PR alignment record](pr-alignment-2026-11-27.md).
+Release #153 stays **NO-GO**.
+Historical PR snapshots below remain for their named revisions only.
 
 ## Historical PR snapshots
 
@@ -84,15 +101,25 @@ following docs-only sync needs a new exact-head run.
 
 ## Current source of truth
 
+- [2026-11-27 DevOps rubric crosswalk](devops-rubric-readiness-2026-11-27.md):
+  current evidence against all nine rows in the supplied 100-point rubric.
+- [2026-11-27 environment map](environment-map-2026-11-27.md):
+  Render, GitHub, Neon, Auth, and extension identities with current secret scopes.
+- [2026-11-27 PR alignment record](pr-alignment-2026-11-27.md): current heads,
+  migration status, pairwise merge-tree results, and integration order.
+- [Current DORA 4+1 report](dora-report-2026-11-27.md) and
+  [redacted input snapshot](evidence/dora-source-2026-11-27.json):
+  reproducible window, denominators, and unmeasured reliability metrics.
+- [Controlled release record](controlled-release.md): exact staging outcomes,
+  promotion architecture, and current external blockers.
 - [Release record](release-record-2026-11-21.md): candidate identities,
-  decision, exact blockers and next acceptance evidence.
-- [Environment and secret map](environment-map-2026-11-21.md): service and
-  database targets, non-secret settings, and unverified secret/mapping controls.
-- [Readiness scorecard](release-readiness-scorecard-2026-11-21.md): seven
-  release areas, evidence needed for a full pass, and scoring status.
+  historical decision and evidence; superseded by the current records above.
+- [Environment and secret map](environment-map-2026-11-21.md): historical
+  service/database targets and unverified controls; recheck before using.
+- [Readiness scorecard](release-readiness-scorecard-2026-11-21.md): historical
+  seven-area audit; use the 2026-11-27 rubric crosswalk above for current gaps.
 - [Staging Neon Auth smoke evidence](evidence/2026-11-21-staging-neon-auth-smoke.md):
-  supplied failure, current live observations, code/workflow mismatch and fix
-  acceptance plan.
+  historical failure and fix plan; later exact-head acceptance is recorded above.
 - [Reusable closeout prompt](devops-evidence-closeout-prompt-2026-11-21.md):
   an evidence-first instruction for resolving the remaining gaps safely.
 - [CI maintenance and dependency-review setup](ci-maintenance.md) and
@@ -108,8 +135,9 @@ following docs-only sync needs a new exact-head run.
 The November 20 isolated Neon recovery drill is on upstream `main` at commit
 [`811980c`](https://github.com/kendshhh/PhishLens/blob/811980c2cbf70d9957146bf329627f0826a018f1/docs/devops/recovery-drill-2026-11-20.md).
 It verified an isolated restore's schema and aggregate integrity. Its one-
-second branch-ready time is not service RTO, RPO was not measured, and the
-temporary snapshot/restore branch expire November 27.
+temporary snapshot/restore branch were scheduled to expire November 27; current
+availability was not verified here. Do not rely on them as the present recovery
+point without checking Neon.
 
 ## Evidence rules
 
@@ -128,41 +156,39 @@ temporary snapshot/restore branch expire November 27.
 5. Mark a criterion `Pass` only when all of its approved evidence requirements
    are satisfied for one candidate. Otherwise keep it `Open` and list the exact
    missing proof and accountable owner.
-6. Do not report a percentage until the team/instructor approve weights and a
-   scoring rule. Do not label an unapproved score as 100% or imply that a code
-   change can manufacture external decisions, human test results, or live
+6. The supplied 100-point rubric provides criterion weights and qualitative
+   bands. Its partial-credit method and the gaps between bands are unspecified;
+   do not invent an aggregate point total. Use the current crosswalk to show
+   evidence and gaps, and never label a blocked criterion Excellent or imply
+   that code can manufacture owner approvals, human test results, or live
    evidence.
 7. Push, merge, deploy, change service/secret settings, write shared databases,
-   or perform destructive recovery only with explicit authorization. This
-   closeout is prepared on `codex/devops-staging-closeout-20261121`, based on
-   `3c858f7` (descended from `811980c`). The branch includes the CI/smoke fix
-   and reconciled records; it is not merged into `main`. The original dirty
-   checkout is preserved.
+   or perform destructive recovery only with explicit authorization. Current
+   code changes are on PR #281 branch
+   `codex/reconcile-staging-merge-order-20261122`; no merge or production
+   deployment has occurred. The original dirty checkout is preserved.
 
-## Before proposing merge or release
+## Current merge and release gates
 
-- Review the complete diff on `codex/devops-staging-closeout-20261121`, based
-  on `3c858f7df51666e0545dea1a6dd5997574c16d43`. The original dirty checkout
-  remains preserved; this closeout branch is not merged into `main`.
-- Merge the smoke and fail-closed CI guard correction into the trusted workflow
-  path only after review and required checks pass.
-- Land the authenticated staging acceptance correction in the trusted workflow path;
-  add a safe test identity/session and make the CRUD runner authenticate without
-  weakening authorization. Prove the complete flow on an isolated staging
-  target, including cleanup.
-- Reconcile Render's auto-deploy setting and observed deployment trigger; verify
-  the private Render-to-Neon branch and role mapping and GitHub environment
-  protections without exposing secret values.
-- Verify effective required checks on GitHub; establish an approved exact
-  extension/backend/model/Auth candidate; pass installed-extension and
-  authenticated persistence/isolation acceptance.
-- Obtain approved model-quality evidence, compatible application rollback,
-  measured recovery objectives, named responders, actual participant records,
-  and owner/instructor sign-off.
+- Complete independent protected review and exact-head staging for PR #281 head
+  `27859a31674f99f17a5e26454104b3e6719493a7`; stale approvals are not valid.
+- Privately verify Render runtime/migration/Auth settings against the selected
+  isolated Neon project and provision a new migration-only credential. Keep the
+  release mapping attestation `pending` until then.
+- Obtain the AI owner's approved representative holdout report and policy for
+  the exact immutable provider/model. Historical English evaluation is not the
+  current release-quality gate.
+- Configure a supported image-backed Render path and production GitHub variables
+  and credentials only after review. Build once, promote the same digests, and
+  require exact-SHA production smoke and product acceptance before tagging.
+- Rehearse application rollback and isolated restore; measure RTO/RPO, verify
+  alert delivery and backup responder, and complete the DORA failure/recovery/
+  rework records plus a comparable optimization study.
+- Keep issue #153 **NO-GO** until each criterion is linked to current evidence.
 
-Until the [scorecard](release-readiness-scorecard-2026-11-21.md) is fully
-evidenced and the responsible reviewers accept one candidate, the release stays
-**NO-GO**.
+The [2026-11-27 crosswalk](devops-rubric-readiness-2026-11-27.md) is the current
+rubric view. The 10/10 result is not supported while the gates above remain
+open.
 
 ### PR #268 follow-up — 2026-11-21 11:42 UTC
 
