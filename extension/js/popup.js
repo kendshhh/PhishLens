@@ -20,6 +20,29 @@ const providerLabels = new Map([
   ["mock", "Mock provider"], ["gemini", "Gemini"], ["local", "Local model"], ["tfidf", "TF-IDF"]
 ]);
 
+function screeningLabel(prediction) {
+    if (prediction === 'legitimate') return 'No strong warning signs';
+    if (prediction === 'uncertain') return 'Uncertain — check before acting';
+    return classificationLabels.get(prediction) ||
+        (prediction == null ? 'Not analyzed yet' : 'Classification unavailable');
+}
+
+function screeningTone(prediction) {
+    if (prediction === 'phishing') return 'suspicious';
+    if (prediction === 'uncertain' || prediction === 'spam') return 'uncertain';
+    return prediction === 'legitimate' ? 'below' : 'neutral';
+}
+
+function initialScreeningSummary(prediction) {
+    if (prediction === 'legitimate') return 'Initial screening found no strong warning signs.';
+    if (prediction === 'phishing') return 'Initial screening flagged this email as phishing.';
+    return '';
+}
+
+function hasUncertainReview(record) {
+    return record.review_status === 'uncertain' || record.analysis_provenance?.local_review?.status === 'uncertain';
+}
+
 function node(doc, tag, className, text) {
   const element = doc.createElement(tag);
   if (className) element.className = className;
@@ -31,17 +54,17 @@ function show(element, visible) {
   element.classList.toggle("hidden", !visible);
 }
 
-export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {}, onDetailShown = () => {} } = {}) {
+export function createPopupController(client, doc = document, { onBusyChange = () => {}, onDeleted = async () => {},
+    onDetailShown = () => {} } = {}) {
   const $ = id => doc.getElementById(id);
   const ui = {
     status: $("crud-status"), list: $("history-list"), empty: $("empty"),
-    loading: $("loading"), createForm: $("create-form"), subject: $("create-subject"),
-    body: $("create-body"), detail: $("detail-panel"), detailHeading: $("detail-heading"),
+    loading: $("loading"), detail: $("detail-panel"), detailHeading: $("detail-heading"),
     detailContent: $("detail-content"), deleteHeading: $("delete-heading"),
     editForm: $("edit-form"), notes: $("edit-notes"), feedback: $("edit-feedback"),
     deleteConfirm: $("delete-confirm"), deleteSubject: $("delete-subject"),
     deleteButton: $("confirm-delete"), cancelDelete: $("cancel-delete"),
-    cancelEdit: $("cancel-edit"), saveEdit: $("save-edit"), createButton: $("create-button"),
+    cancelEdit: $("cancel-edit"), saveEdit: $("save-edit"),
     listView: $("reports-list-view"), search: $("report-search"), count: $("report-count"),
     noMatches: $("no-report-matches"), back: $("back-to-reports"), historyHeading: $("history-heading"),
     modeWarning: $("report-mode-warning"), correction: $("edit-correction"),
@@ -64,18 +87,15 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 
   function setBusy(value) {
     busy = value;
-    onBusyChange(value);
     if (value) { ++detailRequest; ++listRequest; show(ui.loading, false); ui.list.setAttribute('aria-busy', 'false'); }
-    ui.subject.disabled = value;
-    ui.body.disabled = value;
     ui.notes.disabled = value;
     ui.feedback.disabled = value;
-    for (const button of [ui.createButton, ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete, ui.back]) {
+    for (const button of [ui.saveEdit, ui.cancelEdit, ui.deleteButton, ui.cancelDelete, ui.back]) {
       button.disabled = value;
     }
-    ui.createButton.textContent = value ? "Analyzing and saving…" : "Analyze and save";
     ui.saveEdit.textContent = value ? "Saving…" : "Save changes";
     ui.deleteButton.textContent = value ? "Deleting…" : "Delete report";
+    onBusyChange(value);
   }
 
   function revealDetail() {
@@ -84,19 +104,12 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     onDetailShown();
   }
 
-  function predictionLabel(record) {
-    if (record.review_status === "uncertain" || record.analysis_provenance?.local_review?.status === "uncertain") {
-      return "Uncertain — review needed";
-    }
-    if (record.prediction === "legitimate") return "No strong warning signs";
-    return classificationLabels.get(record.prediction) ||
-      (record.prediction == null ? "Not analyzed yet" : "Classification unavailable");
-  }
-
   function renderDetail(record, { reveal = true } = {}) {
     ui.detailContent.replaceChildren();
     ui.detailHeading.textContent = record.subject || 'Untitled report';
     const analyzed = classificationLabels.has(record.prediction);
+    const uncertain = hasUncertainReview(record);
+    const prediction = uncertain ? 'uncertain' : record.prediction;
     const provenance = record.analysis_provenance && typeof record.analysis_provenance === "object"
       ? record.analysis_provenance : {};
     const provenanceLines = [provenanceLabels.get(record.analysis_mode) || "Analysis source unknown"];
@@ -130,7 +143,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       ["Summary", record.explanation || (analyzed
         ? "No explanation was returned. Review the available indicators and verify independently."
         : "Unavailable because this report has not been analyzed.")],
-      ["Assessment", predictionLabel(record)],
+      ["Assessment", screeningLabel(prediction)],
       ["Reported risk", record.risk_level || (analyzed ? "Not provided" : "Not assessed (analysis not completed)")],
       ["Reported score", record.confidence == null
         ? "Not provided; no confidence estimate is available."
@@ -145,13 +158,15 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     ];
     for (const [label, value] of values) {
       const collapsed = ['Email text', 'Reported risk', 'Reported score', 'Wording observations', 'About this result'].includes(label);
-      const tone = predictionLabel(record).startsWith('Uncertain') ? 'uncertain' : record.prediction === 'phishing' ? 'suspicious' : 'neutral';
+      const tone = screeningTone(prediction);
       const section = node(doc, collapsed ? "details" : "div", `detail-field${label === 'Assessment' ? ` report-assessment ${tone}` : ''}${label === 'Your notes' ? ' notes-field' : ''}`);
       section.append(node(doc, collapsed ? "summary" : "h4", "", label),
         node(doc, "p", label === 'Email text' ? 'report-email-content' : '', value));
       if (label === 'Report title') section.append(node(doc, 'p', 'saved-date', 'Saved ' + new Date(record.created_at).toLocaleString(undefined,
         { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })));
-      if (label === 'Assessment') section.append(node(doc, 'p', 'field-help', 'Text screening is advisory. Verify unexpected requests independently.'));
+      if (label === 'Assessment') section.append(node(doc, 'p', 'field-help', uncertain
+        ? initialScreeningSummary(record.prediction) || 'The local review did not confirm a finding.'
+        : 'Text screening is advisory. Verify unexpected requests independently.'));
       ui.detailContent.append(section);
     }
     const edit = node(doc, "button", "secondary", "Edit notes");
@@ -188,16 +203,20 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       const item = node(doc, "li", "history-item");
       const title = node(doc, "strong", "", record.subject || "Untitled analysis");
       const meta = node(doc, "div", "history-meta");
-      const uncertain = record.review_status === 'uncertain' || record.analysis_provenance?.local_review?.status === 'uncertain';
-      const assessment = node(doc, 'span', `assessment-badge ${uncertain ? 'uncertain' : record.prediction === 'phishing' ? 'suspicious' : 'neutral'}`,
-        predictionLabel(record));
+      const uncertain = hasUncertainReview(record);
+      const prediction = uncertain ? 'uncertain' : record.prediction;
+      const tone = screeningTone(prediction);
+      const assessment = node(doc, 'span', `assessment-badge ${tone}`, screeningLabel(prediction));
       const date = node(doc, 'time', 'history-date', new Date(record.created_at).toLocaleDateString(undefined,
         { month: 'short', day: 'numeric', year: 'numeric' }));
       date.setAttribute('datetime', record.created_at);
       const preview = record.explanation?.trim() || record.threat_indicators?.[0]?.detail ||
         'Open this report to read the email and your notes.';
       meta.append(assessment, date, node(doc, 'p', 'history-preview', preview));
-      item.setAttribute('data-tone', uncertain ? 'uncertain' : record.prediction === 'phishing' ? 'suspicious' : 'neutral');
+      if (uncertain && initialScreeningSummary(record.prediction)) {
+        meta.append(node(doc, 'p', 'field-help', initialScreeningSummary(record.prediction)));
+      }
+      item.setAttribute('data-tone', tone);
       const open = node(doc, "button", "link-button report-open", "Open report →");
       open.type = "button";
       open.setAttribute("aria-label", `View ${record.subject || "untitled analysis"}`);
@@ -262,7 +281,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     }
   }
 
-  async function loadDetail(id, { announce = true, focus = announce } = {}) {
+  async function loadDetail(id, { announce = true, focus = announce, isCurrent = () => true } = {}) {
     if (busy) return;
     const request = ++detailRequest;
     selected = null;
@@ -274,7 +293,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     if (announce) setStatus("Loading analysis details…", "info");
     try {
       const result = await client.getAnalysis(id);
-      if (request !== detailRequest) return;
+      if (request !== detailRequest || !isCurrent()) return;
       selected = result;
       renderDetail(selected);
       show(ui.editForm, false);
@@ -282,7 +301,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
       if (focus) ui.detailHeading.focus();
       if (announce) setStatus('');
     } catch (error) {
-      if (request !== detailRequest) return;
+      if (request !== detailRequest || !isCurrent()) return;
       setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned malformed analysis details."
         : `Unable to load details: ${error.message}`, "error");
@@ -305,37 +324,34 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     ui.deleteHeading.focus();
   }
 
-  ui.createForm.addEventListener("submit", async event => {
-    event.preventDefault();
-    if (busy) return;
-    const input = { subject: ui.subject.value.trim(), body: ui.body.value.trim() };
-    if (!input.body) {
-      setStatus("Enter the email body before saving.", "error");
-      ui.body.focus();
-      return;
-    }
+  async function saveServerReport(input, { isCurrent = () => true, onError = () => {} } = {}) {
+    if (busy || !input.body) return false;
     invalidatePendingDetail();
     const operationVersion = accountVersion;
     setBusy(true);
     let created;
     try {
       created = await client.createAnalysis(input);
-      if (operationVersion !== accountVersion) return;
+      if (operationVersion !== accountVersion) return false;
       records = [created, ...records.filter(record => record.id !== created.id)];
       renderList();
-      ui.subject.value = "";
-      ui.body.value = "";
       const refreshed = await refresh();
-      if (operationVersion !== accountVersion) return;
+      if (operationVersion !== accountVersion) return false;
       if (refreshed) setStatus("Analysis saved successfully.", "success");
     } catch (error) {
-      if (operationVersion !== accountVersion) return;
-      setStatus(error instanceof SyntaxError || /Invalid/.test(error.message)
+      if (operationVersion !== accountVersion) return false;
+      const message = error instanceof SyntaxError || /Invalid/.test(error.message)
         ? "The server returned a malformed result. Your input is still here."
-        : `Could not save analysis: ${error.message}. Your input is still here.`, "error");
-    } finally { if (operationVersion === accountVersion) setBusy(false); }
-    if (created) await loadDetail(created.id, { announce: false, focus: true });
-  });
+        : `Could not save analysis: ${error.message}. Your input is still here.`;
+      setStatus(message, "error");
+      if (isCurrent()) onError(message);
+      return false;
+    } finally {
+      if (operationVersion === accountVersion) setBusy(false);
+    }
+    if (isCurrent()) await loadDetail(created.id, { announce: false, focus: true, isCurrent });
+    return created;
+  }
 
   ui.editForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -421,13 +437,13 @@ export function createPopupController(client, doc = document, { onBusyChange = (
     ui.list.replaceChildren(); ui.detailContent.replaceChildren();
     ui.detailHeading.textContent = 'Report details'; ui.deleteSubject.textContent = '';
     ui.count.textContent = ''; ui.modeWarning.textContent = ''; ui.correction.open = false;
-    for (const input of [ui.subject, ui.body, ui.notes, ui.search]) input.value = '';
+    for (const input of [ui.notes, ui.search]) input.value = '';
     ui.feedback.value = 'none';
     for (const panel of [ui.detail, ui.editForm, ui.deleteConfirm, ui.loading, ui.empty, ui.noMatches, ui.count]) show(panel, false);
     show(ui.listView, true);
     setStatus(''); setBusy(false);
   }
-  return { refresh, loadDetail, acceptSavedReport, showLibrary, reset,
+  return { refresh, loadDetail, acceptSavedReport, showLibrary, reset, saveServerReport,
     openSavedReport(id) {
       if (selected?.id === id) { revealDetail(); ui.detailHeading.focus(); return; }
       return loadDetail(id);
@@ -441,9 +457,7 @@ export function createPopupController(client, doc = document, { onBusyChange = (
 export function initializePopup({ documentImpl = document, chromeImpl = globalThis.chrome,
     fetchImpl = fetch, clientImpl = null, canAccessReports = () => true, reportAccessReady = Promise.resolve(),
     locationImpl = globalThis.location, preview = false, apiOrigin = API_BASE_URL } = {}) {
-    // popup.html serves both the right-click action popup and the toolbar side panel. The
-    // manifest opens the popup as popup.html?surface=popup; a popup sizes itself from its
-    // content, so it keeps a fixed width, while the side panel fills its width.
+    // Preserve fixed sizing for legacy popup URLs.
     if (new globalThis.URLSearchParams(locationImpl?.search ?? '').get('surface') === 'popup') {
         documentImpl.documentElement?.classList.add('popup-surface');
     }
@@ -453,11 +467,13 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     let savedReport = null;
     let reportBusy = false;
     let reportSaveState = 'unsaved';
+    let serverRequest;
     const controller = createPopupController(client, documentImpl, {
-        onDetailShown() { selectView('reports'); $('server-create').open = false; },
+        onDetailShown() { selectView('reports'); },
         onBusyChange(value) {
             reportBusy = value;
             updateSaveControls();
+            updateScanControls();
         },
         async onDeleted(id) {
             if (savedReport?.id === id) {
@@ -481,16 +497,77 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     const text = (id, value) => { $(id).textContent = value; };
     show('reports-preview-notice', preview);
     function updateSaveControls() {
+        const signedIn = canAccessReports();
         const alreadySaved = Boolean(state?.scanId && savedReport?.scanId === state.scanId);
-        for (const id of ['save-report', 'report-subject', 'save-consent']) $(id).disabled = reportBusy || alreadySaved || !canAccessReports();
+        $('save-report').disabled = reportBusy || alreadySaved || !signedIn;
+        $('report-subject').disabled = reportBusy || alreadySaved || !signedIn;
+        $('save-consent').disabled = reportBusy || alreadySaved || !signedIn;
         $('view-saved-report').disabled = reportBusy;
-        show('report-save-state', !alreadySaved);
-        text('report-save-state', reportSaveState === 'unknown'
-            ? 'Save not confirmed. Check Saved reports before trying again.'
-            : reportBusy ? 'Saving your report. Please wait for confirmation.'
-                : 'Not saved yet. This result has no confirmed copy in Saved reports.');
-        $('save-report').textContent = reportBusy ? 'Saving report…' : alreadySaved ? 'Report saved' : 'Save report';
+        show('save-options', signedIn && !alreadySaved);
+        show('save-sign-in', !signedIn);
+        show('local-save-consent', state?.source !== 'server');
+        text('report-save-state', alreadySaved ? 'Saved to your account.'
+            : reportSaveState === 'unknown' ? 'Save not confirmed. Check Saved reports before trying again.'
+                : reportBusy ? 'Saving your report…' : 'This result has not been saved.');
     }
+
+    function abortServerRequest() {
+        serverRequest?.abort();
+        serverRequest = undefined;
+    }
+
+    function hasUsableResult(check) {
+        const result = check?.result;
+        return check?.status === 'success' && (check.source === 'server' ||
+            (result?.valid && result.model_sha256 === MODEL_SHA256 && Number.isFinite(result.score) &&
+                result.verification?.quote_spans_valid));
+    }
+
+    function canUseServerFallback(check) {
+        const body = check?.selectedText?.trim();
+        return (check?.status === 'error' || check?.status === 'success') && !hasUsableResult(check) &&
+            Boolean(body) && body.length <= 30000;
+    }
+
+    async function startServerScan() {
+        if (serverRequest || reportBusy || submittingScan || !canUseServerFallback(state)) return;
+        const body = state.selectedText.trim();
+        const subject = state.subject;
+        const request = new globalThis.AbortController();
+        serverRequest = request;
+        ++stateGeneration;
+        const check = { source: 'server', selectedText: body, subject };
+        render({ ...check, status: 'loading' });
+        try {
+            // Retire the failed device check so it cannot reappear on reopening the panel.
+            const cleared = await chromeImpl.runtime.sendMessage({ type: 'phishlens-clear-analysis' });
+            if (serverRequest !== request) return;
+            if (!cleared?.ok) throw new Error('Could not retire the previous check');
+            const response = await fetchImpl(apiOrigin.replace(/\/+$/, '') + '/analyses', {
+                method: 'POST', redirect: 'error',
+                headers: { 'Content-Type': 'application/json', 'X-Require-Provider': 'tfidf' },
+                body: JSON.stringify({ text: body }),
+                signal: AbortSignal.any([request.signal, AbortSignal.timeout(15000)]),
+            });
+            if (!response.ok) throw new Error('Server check failed');
+            const result = await response.json();
+            if (result.mode !== 'tfidf' || result.model_revision !== MODEL_SHA256 ||
+                typeof result.model_alert !== 'boolean' ||
+                result.classification !== (result.model_alert ? 'phishing' : 'legitimate')) {
+                throw new Error('Incompatible screening result');
+            }
+            if (serverRequest === request) {
+                render({ ...check, status: 'success', scanId: globalThis.crypto.randomUUID(), result });
+            }
+        } catch {
+            if (serverRequest === request) {
+                render({ ...check, status: 'error', error: 'Server screening is unavailable. Your text is still here.' });
+            }
+        } finally {
+            if (serverRequest === request) serverRequest = undefined;
+        }
+    }
+
     $('view-saved-report').addEventListener('click', () => {
         if (savedReport) return controller.openSavedReport(savedReport.id);
     });
@@ -508,6 +585,8 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     $('start-new-check').addEventListener('click', () => { selectView('check'); $('show-check').focus(); });
     let scanDraftGeneration = 0;
     let draftWrites = Promise.resolve();
+    let submittingScan = false;
+    let scanSubmission = 0;
     function storeScanDraft() {
         const body = $('scan-body').value;
         draftWrites = draftWrites.catch(() => {}).then(() =>
@@ -523,52 +602,70 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             $('scan-body').value = data.phishlensScanDraft;
         }
     }).catch(() => text('scan-status', 'The previous draft could not be restored. You can paste text to start a new scan.'));
-    let submittingScan = false;
-    let scanSubmission = 0;
-    function setScanBusy(value) {
-        for (const id of ['scan-button', 'retry-scan', 'resume-scan']) $(id).disabled = value;
-    }
-    async function startLocalScan(body, { keepDraft = false } = {}) {
-        if (submittingScan || state?.status === 'loading') return;
-        if (!body.trim() || (keepDraft && body.length > 30000)) {
-            text('scan-status', 'Enter email text up to 30,000 characters.');
-            $('scan-body').focus(); return;
+
+    function updateScanControls() {
+        const busy = submittingScan || state?.status === 'loading' || reportBusy;
+        for (const id of ['scan-button', 'retry-scan', 'resume-scan', 'scan-body', 'scan-subject']) {
+            $(id).disabled = busy;
         }
+        $('retry-scan').disabled = busy || !state?.selectedText;
+        $('server-fallback-button').disabled = busy || !canUseServerFallback(state);
+    }
+    async function startLocalScan(body, { subject = '', keepDraft = false } = {}) {
+        if (submittingScan || reportBusy || state?.status === 'loading') return;
+        abortServerRequest();
+        if (state?.source === 'server') render(undefined);
         const submission = ++scanSubmission;
         submittingScan = true;
-        setScanBusy(true);
-        text('scan-status', 'Starting the local scan…');
+        updateScanControls();
+        text('scan-status', 'Starting the on-device check…');
         try {
-            if (keepDraft) await storeScanDraft();
-            const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-analyze-text', text: body });
+            if (keepDraft) void storeScanDraft().catch(() => {});
+            const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-analyze-text', text: body,
+                ...(subject ? { subject } : {}) });
             if (submission !== scanSubmission) return;
-            text('scan-status', response?.ok ? 'Local scan finished. Review the outcome below.' :
-                'The local scan could not start. Your text is retained; try again.');
+            if (!response?.ok) throw new Error('Could not start check');
+            text('scan-status', '');
         } catch {
             if (submission !== scanSubmission) return;
-            text('scan-status', 'The local scan could not start. Your text is retained; try again.');
-            if (state?.status === 'error') text('error-message', 'The check could not restart. Your text is retained; try again.');
+            render({ status: 'error', selectedText: body, subject, error: 'The on-device check could not start. Your text is retained.' });
+            text('scan-status', 'The on-device check could not start. Your text is retained.');
         } finally {
-            if (submission === scanSubmission) { submittingScan = false; setScanBusy(false); }
+            if (submission === scanSubmission) { submittingScan = false; updateScanControls(); }
         }
     }
     $('scan-form').addEventListener('submit', async event => {
         event.preventDefault();
-        await startLocalScan($('scan-body').value, { keepDraft: true });
+        const body = $('scan-body').value;
+        const subject = $('scan-subject').value.trim();
+        if (!body.trim() || body.length > 30000) {
+            text('scan-status', 'Enter an email body up to 30,000 characters.');
+            $('scan-body').focus();
+            return;
+        }
+        await startLocalScan(body, { subject, keepDraft: true });
     });
+    $('server-fallback-button').addEventListener('click', startServerScan);
     for (const id of ['retry-scan', 'resume-scan']) $(id).addEventListener('click', () => {
-        if (state?.selectedText) return startLocalScan(state.selectedText);
+        if (!state?.selectedText) return;
+        return startLocalScan(state.selectedText, { subject: state.subject });
     });
     $('cancel-scan').addEventListener('click', async () => {
+        if (state?.source === 'server') {
+            abortServerRequest();
+            render({ ...state, status: 'cancelled' });
+            return;
+        }
         $('cancel-scan').disabled = true;
         try {
             const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-cancel-analysis' });
             if (!response?.ok) throw new Error('Cancel failed');
             ++scanSubmission;
             submittingScan = false;
-            setScanBusy(false);
-        } catch { text('cancel-status', 'The check could not be cancelled. Try again or clear the local scan.'); }
-        finally { $('cancel-scan').disabled = false; }
+            updateScanControls();
+        } catch {
+            text('cancel-status', 'The check could not be cancelled. Try again or clear the check.');
+        } finally { $('cancel-scan').disabled = false; }
     });
     function rows(id, values) {
         $(id).replaceChildren();
@@ -592,92 +689,156 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         }
     }
     function render(current) {
-        const stateBeforeRender = state;
-        const changed = state?.scanId !== current?.scanId || state?.status !== current?.status;
+        const previous = state;
+        const changed = previous?.scanId !== current?.scanId || previous?.status !== current?.status ||
+            previous?.source !== current?.source;
         state = current;
-        show('clear-button', Boolean(current));
-        show('selection-instructions', !current);
+        const server = current?.source === 'server';
         const selectedText = typeof current?.selectedText === 'string' ? current.selectedText : '';
+        show('clear-button', Boolean(current));
+        show('server-fallback', canUseServerFallback(current));
+        show('empty-state', !current);
         show('selection-preview', Boolean(selectedText));
         text('selection-content', selectedText);
-        if (selectedText !== stateBeforeRender?.selectedText) $('selection-content').scrollTop = 0;
-        text('selection-heading', current?.status === 'success' ? 'Analyzed email text' :
-            current?.status === 'loading' ? 'Email text being checked' : 'Selected email text');
-        for (const name of ['empty', 'loading', 'cancelled', 'error', 'result']) show(name + '-state', false);
+        if (selectedText !== previous?.selectedText) {
+            $('selection-content').scrollTop = 0;
+            $('selection-preview').open = false;
+        }
+        for (const name of ['loading-state', 'cancelled-state', 'error-state', 'result-state', 'save-panel']) show(name, false);
         if (changed) {
-            text('save-status', ''); $('save-consent').checked = false;
+            text('save-status', '');
+            $('save-consent').checked = false;
             $('save-status').setAttribute('data-kind', 'info');
             $('save-status').setAttribute('role', 'status');
             reportSaveState = 'unsaved';
             if (savedReport?.scanId !== current?.scanId) { savedReport = null; show('view-saved-report', false); }
         }
         updateSaveControls();
-        setScanBusy(current?.status === 'loading');
-        $('retry-scan').disabled = !selectedText || current?.status === 'loading';
-        if (changed && current?.scanId !== stateBeforeRender?.scanId) $('report-subject').value = '';
+        updateScanControls();
         if (!current) {
-            show('empty-state', true);
-            if (stateBeforeRender) $('show-check').focus();
+            $('scan-editor').open = true;
+            text('scan-heading', 'Paste an email to check');
+            if (previous && !$('check-view').classList.contains('hidden')) $('show-check').focus();
             return;
         }
+        text('scan-heading', 'Check another email');
         if (current.status === 'loading') {
             selectView('check');
-            $('paste-panel').open = false;
+            if (changed) {
+                $('scan-editor').open = false;
+                $('analysis-details').open = false;
+                $('save-panel').open = false;
+                text('scan-status', '');
+            }
             const stage = (current.stage || '').toLowerCase();
-            const progress = /load|download|initial|gpu/.test(stage) ? 'Preparing the local review…' :
+            const progress = server ? 'Waiting for PhishLens server screening…' :
+                /load|download|initial|gpu/.test(stage) ? 'Preparing the on-device review…' :
                 /judge|llm/.test(stage) ? 'Reviewing the email’s wording…' :
-                /reeval|classifier|krr|lightgbm/.test(stage) ? 'Comparing the checks…' : 'Checking the selected text…';
+                /reeval|classifier|krr|lightgbm/.test(stage) ? 'Comparing the checks…' : 'Checking the email text…';
+            text('loading-heading', server ? 'Checking on server…' : 'Checking on this device…');
             text('workflow-progress', progress + (Number.isFinite(current.progress)
                 ? ' ' + Math.round(Math.max(0, Math.min(1, current.progress)) * 100) + '%' : ''));
             text('cancel-status', '');
-            show('loading-state', true); return;
+            show('loading-state', true);
+            return;
         }
         if (current.status === 'cancelled') { show('cancelled-state', true); return; }
-        const r = current.result;
-        if (current.status !== 'success' || !r?.valid || r.model_sha256 !== MODEL_SHA256 ||
-            !Number.isFinite(r.score) || !r.verification?.quote_spans_valid) {
-            text('error-message', current.error || 'Invalid local scan. Reload the extension and scan again.');
-            show('error-state', true); return;
+        const result = current.result;
+        if (!hasUsableResult(current)) {
+            text('error-message', current.error || 'The check did not return a usable result. Try again.');
+            show('error-state', true);
+            return;
         }
-        $('result-state').setAttribute('data-tone', !r.workflow?.released ? 'uncertain' : r.alert ? 'suspicious' : 'below');
-        text('classification', r.workflow?.released ? (r.alert ? 'Suspicious — review before acting' : 'No strong warning signs') : 'Uncertain — check before acting');
+        if (changed) {
+            $('report-subject').value = current.subject || '';
+            $('scan-editor').open = false;
+        }
+        const workflow = result.workflow;
+        const localAlert = workflow?.primary_alert ?? result.alert;
+        const screening = server ? result.classification :
+            typeof localAlert === 'boolean' ? (localAlert ? 'phishing' : 'legitimate') :
+                result.verdict === 'uncertain' ? 'uncertain' : null;
+        const reviewUncertain = !server && workflow?.released !== true;
+        const prediction = reviewUncertain ? 'uncertain' : screening;
+        $('result-state').setAttribute('data-tone', screeningTone(prediction));
+        text('analysis-source', server ? 'Server screening' : 'On-device review');
+        text('classification', !server && prediction === 'phishing' ? 'Suspicious — review before acting' :
+            prediction ? screeningLabel(prediction) : 'Screening unavailable');
         const incompleteReason = {
-            model_assets_missing: 'The local review model isn’t installed or its files could not be opened.',
-            webgpu_unavailable: 'Chrome could not access the graphics support needed for the local review.',
-            webgpu_fp16_unavailable: 'The graphics support available in Chrome cannot run the local review model.',
-            judge_timeout: 'The local review took too long to finish.',
-            judge_input_too_long_without_truncation: 'This selection is too long for the local review. Try checking a shorter section.',
-            local_judge_failed: 'The local review could not start or finish in Chrome.',
-            judge_service_unavailable: 'Chrome could not start the local review service.',
-        }[r.workflow?.judge?.code];
-        text('assessment', !r.workflow?.released
-            ? (incompleteReason ? `${incompleteReason} This check is incomplete. Verify the email independently before taking action.`
-                : r.workflow?.judge?.valid
-                    ? 'The checks did not reach an agreed result. Verify the email independently before taking action.'
-                    : 'The local review did not return a usable result. This check is incomplete. Verify the email independently before taking action.')
-            : r.alert ? 'The wording raises warning signs. Avoid links or requests in this email until you verify them through a trusted contact.'
-                : 'The wording checks did not find strong warning signs. This does not confirm the email is genuine; verify unexpected requests independently.');
-        text('coverage', r.input_truncated ? 'Only part of this long email was checked. The result may miss details elsewhere in the text.' : '');
-        if (r.evidence.length) observationRows('evidence', r.evidence.slice(0, 3));
-        else rows('evidence', ['No specific wording observation was established. This is not proof that the email is genuine.']);
-        observationRows('additional-evidence', r.evidence.slice(3));
-        show('more-observations', r.evidence.length > 3);
-        text('next-action', r.actions[0] || 'Verify unexpected requests through a trusted contact before taking action.');
-        rows('recommendations', r.actions.slice(1)); rows('limitations', r.limitations);
+            model_assets_missing: 'The review model files could not be opened.',
+            webgpu_unavailable: 'Chrome could not access the graphics support needed for the review.',
+            webgpu_fp16_unavailable: 'Chrome’s graphics support could not run the review model.',
+            judge_timeout: 'The review took too long to finish.',
+            judge_input_too_long_without_truncation: 'This text is too long for the additional review.',
+        }[workflow?.judge?.code];
+        const initialScreening = initialScreeningSummary(screening);
+        const reviewIncomplete = reviewUncertain && workflow?.judge?.valid !== true;
+        const assessment = reviewIncomplete
+            ? `Local review incomplete.${incompleteReason ? ' ' + incompleteReason : ''}`
+            : reviewUncertain ? 'The local review couldn’t confirm the initial screening.'
+                : prediction === 'phishing' ? 'Avoid links and requests in this email until you verify them.'
+                    : prediction === 'legitimate'
+                        ? 'The screening found few warning signs. Verify unexpected requests independently.'
+                        : 'Verify the email independently before taking action.';
+        text('assessment', assessment);
+        $('review-state').setAttribute('data-kind', 'uncertain');
+        text('review-state', reviewUncertain ? initialScreening || '' : '');
+        show('review-state', reviewUncertain && Boolean(initialScreening));
+        text('coverage', result.input_truncated ? 'Only part of this long email was checked.' : '');
+        const evidence = server ? [] : result.evidence;
+        show('observations', evidence.length > 0);
+        observationRows('evidence', evidence.slice(0, 3));
+        observationRows('additional-evidence', evidence.slice(3));
+        show('more-observations', evidence.length > 3);
+        const actions = server ? [] : result.actions;
+        text('next-action', actions[0] || 'Verify unexpected requests through a website or contact method you already know.');
+        rows('recommendations', actions.slice(1));
+        rows('limitations', ['Screening assesses email text. The sender, hidden links, and attachments remain unverified.']);
         show('result-state', true);
-        if (stateBeforeRender?.status === 'loading') $('classification').focus();
+        show('save-panel', Boolean(screening));
+        if (previous?.status === 'loading') $('classification').focus();
     }
     $('load-history').addEventListener('click', controller.refresh);
     $('clear-button').addEventListener('click', async () => {
+        if (state?.source === 'server') {
+            abortServerRequest();
+            render(undefined);
+            return;
+        }
         const response = await chromeImpl.runtime.sendMessage({ type: 'phishlens-clear-analysis' }).catch(() => null);
-        if (!response?.ok) { text('error-message', 'Local scan could not be cleared. Reload the extension.'); show('error-state', true); }
+        if (!response?.ok) render({ ...state, status: 'error', error: 'The check could not be cleared. Try again.' });
     });
     $('save-report').addEventListener('click', async () => {
         const snapshot = state;
         const saveEpoch = accountEpoch;
         if (!canAccessReports()) { text('save-status', 'Sign in to save a personal report. Your local scan stays on this device.'); return; }
-        if (snapshot?.status !== 'success' || !snapshot.result?.valid) return;
-        if (savedReport?.scanId === snapshot.scanId) return;
+        if (snapshot?.status !== 'success' || savedReport?.scanId === snapshot.scanId) return;
+        if (snapshot.source === 'server') {
+            const input = { subject: $('report-subject').value.trim(), body: snapshot.selectedText };
+            const saved = await controller.saveServerReport(input, {
+                isCurrent: () => state === snapshot && accountEpoch === saveEpoch,
+                onError(message) {
+                    $('save-status').setAttribute('data-kind', 'error');
+                    $('save-status').setAttribute('role', 'alert');
+                    text('save-status', message);
+                    $('save-status').focus();
+                }
+            });
+            if (saved && state === snapshot && accountEpoch === saveEpoch) {
+                if (!$('check-view').classList.contains('hidden')) {
+                    savedReport = { scanId: snapshot.scanId, id: saved.id };
+                    $('save-status').setAttribute('data-kind', 'success');
+                    text('save-status', 'Report saved. Open it to retry loading the details.');
+                    show('view-saved-report', true);
+                    updateSaveControls();
+                    $('view-saved-report').focus();
+                    return;
+                }
+                render(undefined);
+            }
+            return;
+        }
+        if (!snapshot.result?.valid) return;
         if (!$('save-consent').checked) {
             $('save-status').setAttribute('data-kind', 'error');
             $('save-status').setAttribute('role', 'alert');
@@ -761,7 +922,11 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
     });
     chromeImpl.storage.onChanged.addListener((changes, area) => {
         if (area === 'session' && changes.veriqoAnalysis) {
-            ++stateGeneration; render(changes.veriqoAnalysis.newValue);
+            const next = changes.veriqoAnalysis.newValue;
+            if (state?.source === 'server' && !next) return;
+            abortServerRequest();
+            ++stateGeneration;
+            render(next);
         }
     });
     chromeImpl.storage.session.get('veriqoAnalysis').then(async data => {
@@ -791,9 +956,13 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         if (stateGeneration === 0) render({ status: 'error', error: 'Local state could not be read. Reload the extension.' });
     });
     return { loadHistory: controller.refresh, render, openDetail: controller.loadDetail, updateAccountAccess: updateSaveControls,
-        resetReports() {
+        resetReports({ preserveServerDraft = false } = {}) {
             ++accountEpoch;
             controller.reset();
+            if (!preserveServerDraft && state?.source === 'server') {
+                abortServerRequest();
+                render(undefined);
+            }
             savedReport = null; reportSaveState = 'unsaved';
             show('view-saved-report', false);
             text('save-status', '');

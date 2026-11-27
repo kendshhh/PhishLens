@@ -1,4 +1,5 @@
 import {observations} from './observations.mjs';
+import { loadContextPolicy } from './context-policy.mjs';
 
 const PYSPACE=/[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/u;
 const PYSPACES=/[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/gu;
@@ -38,8 +39,10 @@ export function rawScore(text,artifact){
   norm=Math.sqrt(norm);
   for(const [i,value] of values){const contribution=value/norm*block.coefficient[i];margin+=contribution;parts.push({block:b,index:i,contribution});nonzero++;}
  }
+ const contextMargin = artifact.context_model ? loadContextPolicy(artifact.context_model)(text) : 0;
+ margin += contextMargin;
  if(!Number.isFinite(margin))throw Error('Nonfinite classifier output.');
- return {margin,parts,nonzero};
+ return {margin, parts, nonzero, contextMargin};
 }
 export function mapScore(margin,mapping){
  let x=margin;
@@ -72,11 +75,12 @@ export function analyzePrepared(text,artifact,system){
  const modelMs=performance.now()-inferenceStart;
  const evidence=observations(text),drivers=modelDrivers(text,artifact,raw.parts),actions=[...new Set(evidence.map(e=>e.action))].slice(0,3);
  if(!actions.length)actions.push('Verify an unexpected sensitive request using a website or contact method you already know.');
- const limitations=['This assessment covers the supplied text, not authenticated sender identity or unseen attachments.','The percentage is a research-calibrated model score; it is not a guarantee of your inbox probability.'];
+ const limitations=['This assessment covers the supplied text, not authenticated sender identity or unseen attachments.','The percentage is a model score and does not establish inbox probability.'];
  let assessment=alert?'The classifier flags this text for review.':'The classifier does not cross its alert threshold. This does not establish that the email is genuine.';
  assessment+=evidence.length?' Review the observations and their context before acting.':' A specific deceptive request was not independently established from the available text.';
  for(const item of [...evidence,...drivers])if(text.slice(item.start,item.end)!==item.quote)throw Error('Unsupported evidence span.');
- const result={schema_version:'phishlens-tfidf-v12a-1',system:system.system,model_id:system.model_id,model_sha256:system.model_sha256,valid:true,alert,verdict:alert?'suspicious':'no_strong_indicators',raw_margin:raw.margin,attribution_sum:artifact.intercept+raw.parts.reduce((sum,p)=>sum+p.contribution,0),score,risk_percent:score*100,alert_threshold:system.alert_threshold,alert_threshold_space:system.alert_mode,assessment,evidence,model_drivers:drivers,actions,limitations,explanation_origin:'deterministic_local_software_observations_and_exact_linear_contributions',analysis_text:text,verification:{schema_valid:true,quote_spans_valid:true,evidence_checked:evidence.length,model_feature_quotes_checked:drivers.length,sender_authenticated:false},matched_features:raw.nonzero,model_ms:modelMs};
+ const result={schema_version:'phishlens-tfidf-v12a-1',system:system.system,model_id:system.model_id,model_sha256:system.model_sha256,valid:true,alert,verdict:alert?'suspicious':'no_strong_indicators',raw_margin:raw.margin,attribution_sum:artifact.intercept+raw.parts.reduce((sum,p)=>sum+p.contribution,0)+raw.contextMargin,score,risk_percent:score*100,alert_threshold:system.alert_threshold,alert_threshold_space:system.alert_mode,assessment,evidence,model_drivers:drivers,actions,limitations,explanation_origin:'deterministic_local_software_observations_and_exact_linear_contributions',analysis_text:text,verification:{schema_valid:true,quote_spans_valid:true,evidence_checked:evidence.length,model_feature_quotes_checked:drivers.length,sender_authenticated:false},matched_features:raw.nonzero,model_ms:modelMs};
+ result.context_margin = raw.contextMargin;
  result.alert_threshold_score=system.alert_mode==='raw_margin'?mapScore(system.alert_threshold,system.mapping):system.alert_threshold;
  result.workflow_ms=performance.now()-started;return result;
 }

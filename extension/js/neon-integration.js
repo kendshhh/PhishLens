@@ -1,6 +1,6 @@
 import { createAuthClient, BetterAuthVanillaAdapter } from '../vendor/neon/sdk.mjs';
 import { createNeonAccounts } from './neon-accounts.js';
-import { createNeonBridgeClient } from './neon-bridge-client.js';
+import { AUTH_BRIDGE_REQUEST_MS, AUTH_BRIDGE_STARTUP_MS, createNeonBridgeClient } from './neon-bridge-client.js';
 import { createAnalysisClient } from './api.js';
 import { MODEL_SHA256 } from '../ai/local-analyzer.mjs';
 
@@ -52,7 +52,12 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
       else await storage.remove(key);
     }
   };
-  const adapter = createNeonAccounts(sdk, { signOutStorage });
+  const accountOptions = { signOutStorage };
+  if (config.transport === 'https-bridge') {
+    // The bridge owns the startup and dispatch timeouts.
+    accountOptions.timeoutMs = AUTH_BRIDGE_STARTUP_MS + AUTH_BRIDGE_REQUEST_MS + 1000;
+  }
+  const adapter = createNeonAccounts(sdk, accountOptions);
   return { adapter, createClient: session => createAnalysisClient(apiOrigin, fetchImpl, {
     requiredModel: MODEL_SHA256, getAccessToken: () => adapter.getAccessToken(session.user.id)
   }) };

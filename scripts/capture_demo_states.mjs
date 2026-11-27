@@ -62,7 +62,7 @@ try {
 
   await page.locator('#empty-state').waitFor({ state: 'visible' });
   await capture('01-ready.png', 'Ready before a check',
-    (await page.locator('#empty-state h2').innerText()).trim());
+    (await page.locator('#empty-state').innerText()).trim());
 
   await analyze(SYNTHETIC_EMAIL);
   // The loading screenshot is required. Only a timeout means the state was missed, and that
@@ -81,7 +81,7 @@ try {
     'The check completed during the loading screenshot; rerun the capture');
   await page.locator('#result-state').waitFor({ state: 'visible', timeout: 120000 });
   const label = (await page.locator('#classification').innerText()).trim();
-  assert.match(label, /Suspicious|No strong warning signs|Uncertain/);
+  assert.match(label, /Suspicious — review before acting|No strong warning signs|Uncertain — check before acting/);
   assert.doesNotMatch(label, /\b(safe|genuine|legitimate)\b/i);
   await capture('03-result.png', 'Local result with its stated limits', label);
 

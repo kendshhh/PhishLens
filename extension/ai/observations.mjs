@@ -42,7 +42,7 @@ export function observations(text){
   const reported=REPORTED.test(s.text);
   const protect=/\b(?:do\s+not|don['’]t|never|should\s+not|must\s+not|not\s+to)\s+(?:[a-z]+\s+){0,3}(?:share|disclose|send|tell|reveal|forward|give)\b[^.!?;]{0,65}\b(?:password|pin|code|passcode|credentials?|card details|account details)\b/i.exec(s.text);
   if(protect)add('protective',s,protect);
-  const request=/\b(?:send|share|reply\s+with|provid(?:e|ing)|disclos(?:e|ing)|tell|reveal|forward|enter(?:ing)?|submit|give)\b[^.!?;]{0,70}\b(?:password|pin|verification\s+code|security\s+code|one[- ]time\s+(?:code|passcode)|passcode|credentials?|card\s+(?:number|details)|account\s+(?:number|details))\b/ig;
+  const request=/\b(?:confirm\s+(?:your\s+)?(?:password|pin|credentials?)(?=\s+at\s+https?:\/\/)|(?:send|share|reply\s+with|provid(?:e|ing)|disclos(?:e|ing)|tell|reveal|forward|enter(?:ing)?|submit|give)\b[^.!?;]{0,70}\b(?:password|pin|verification\s+code|security\s+code|one[- ]time\s+(?:code|passcode)|passcode|credentials?|card\s+(?:number|details)|account\s+(?:number|details)))\b/ig;
   let m;
   while((m=request.exec(s.text))){
    const before=s.text.slice(0,m.index);

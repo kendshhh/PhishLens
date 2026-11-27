@@ -45,7 +45,7 @@ try {
   await page.locator('#reports-account-gate').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#personal-reports').isVisible(), false);
   await page.getByRole('button', { name: 'Check email', exact: true }).click();
-  await page.getByRole('heading', { name: 'Highlight. Right-click. Check.', exact: true }).waitFor();
+  await page.locator('#empty-state').getByText('Analyze selection with PhishLens', { exact: true }).waitFor();
   checks.push('guest report gate and right-click-first local scanning instructions');
   await page.locator('#account-password').fill('Discarded-demo-password');
   await page.locator('#close-account').click();

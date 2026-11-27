@@ -52,9 +52,11 @@ async function popup(fetchImpl = async () => { throw Error('Unexpected API call'
   const app = initializePopup({ documentImpl: { getElementById: id => elements.get(id), documentElement,
     createElement: () => new Element(), createTextNode: value => ({ textContent: value }) }, chromeImpl, fetchImpl,
   locationImpl: overrides.location ?? { search: '' } });
-  await settle(); return { app, dom: elements, shared, documentElement };
+  await settle();
+  const emit = newValue => onChanged({ veriqoAnalysis: { newValue } }, 'session');
+  return { app, dom: elements, shared, documentElement, emit };
 }
-test('the right-click popup keeps a fixed size while the side panel stays fluid', async () => {
+test('legacy popup URLs keep a fixed size while the side panel stays fluid', async () => {
   const popupSurface = await popup(undefined, undefined, { location: { search: '?surface=popup' } });
   assert.equal(popupSurface.documentElement.classList.contains('popup-surface'), true);
   const sidePanel = await popup(undefined, undefined, { location: { search: '' } });
@@ -67,12 +69,12 @@ test('opening popup and showing a scan makes no network request', async () => {
   assert.equal(dom.has('threshold'), false);
   assert.equal(dom.has('analysis-text'), false);
   assert.equal(dom.get('coverage').textContent, '');
-  assert.match(dom.get('report-save-state').textContent, /Not saved yet/);
+  assert.match(dom.get('report-save-state').textContent, /has not been saved/);
   assert.match(dom.get('evidence').textContent, /protective|not to disclose/i);
   assert.doesNotMatch(dom.get('evidence').textContent, /undefined/);
   assert.equal(dom.get('selection-content').textContent, scan.selectedText);
   assert.equal(dom.get('selection-preview').classList.contains('hidden'), false);
-  assert.equal(dom.get('selection-instructions').classList.contains('hidden'), true);
+  assert.equal(dom.get('empty-state').classList.contains('hidden'), true);
 });
 
 test('a new highlighted selection shows its original text during loading, failure and completion', async () => {
@@ -83,7 +85,7 @@ test('a new highlighted selection shows its original text during loading, failur
     assert.equal(dom.get('selection-content').textContent, text);
     assert.equal(dom.get('selection-preview').classList.contains('hidden'), false);
   }
-  assert.equal(dom.get('paste-panel').open, false);
+  assert.equal(dom.get('scan-editor').open, false);
   app.render(undefined);
   assert.equal(dom.get('selection-preview').classList.contains('hidden'), true);
   assert.equal(dom.get('selection-content').textContent, '');
@@ -107,13 +109,35 @@ test('result summaries explain uncertainty and below-threshold outcomes without 
   const { app, dom } = await popup();
   app.render({ ...scan, result: { ...r, alert: false, workflow: { ...r.workflow, released: true } } });
   assert.equal(dom.get('classification').textContent, 'No strong warning signs');
-  assert.match(dom.get('assessment').textContent, /does not confirm.*genuine/);
+  assert.match(dom.get('assessment').textContent, /few warning signs/);
+  assert.equal(dom.get('result-state')['data-tone'], 'below');
   app.render({ ...scan, result: { ...r, input_truncated: true } });
   assert.match(dom.get('coverage').textContent, /Only part.*was checked/);
-  app.render({ ...scan, result: { ...r, workflow: { ...r.workflow, released: false,
+  app.render({ ...scan, result: { ...r, workflow: { ...r.workflow, released: false, primary_alert: true,
     judge: { valid: false, code: 'model_assets_missing' } } } });
-  assert.match(dom.get('classification').textContent, /Uncertain/);
-  assert.match(dom.get('assessment').textContent, /isn’t installed.*incomplete/);
+  assert.equal(dom.get('classification').textContent, 'Uncertain — check before acting');
+  assert.match(dom.get('assessment').textContent, /Local review incomplete.*files could not be opened/);
+  assert.equal(dom.get('review-state').textContent, 'Initial screening flagged this email as phishing.');
+  assert.equal(dom.get('server-fallback').classList.contains('hidden'), true);
+  assert.equal(dom.get('result-state')['data-tone'], 'uncertain');
+});
+
+test('a completed but inconclusive local review takes priority over either initial screening label', async () => {
+  const { app, dom } = await popup();
+  for (const [alert, summary] of [
+    [false, 'Initial screening found no strong warning signs.'],
+    [true, 'Initial screening flagged this email as phishing.'],
+  ]) {
+    app.render({ ...scan, result: { ...r, alert: null, verdict: 'uncertain',
+      workflow: { ...r.workflow, primary_alert: alert, released: false, judge: { valid: true } } } });
+    assert.equal(dom.get('classification').textContent, 'Uncertain — check before acting');
+    assert.equal(dom.get('result-state')['data-tone'], 'uncertain');
+    assert.equal(dom.get('analysis-source').textContent, 'On-device review');
+    assert.equal(dom.get('review-state').textContent, summary);
+    assert.equal(dom.get('review-state').classList.contains('hidden'), false);
+    assert.equal(dom.get('save-panel').classList.contains('hidden'), false);
+    assert.equal(dom.get('server-fallback').classList.contains('hidden'), true);
+  }
 });
 test('history is explicit, keeps untrusted strings as text and opens detail', async () => {
   const calls = []; const { dom } = await popup(async (url, options) => {
@@ -133,13 +157,15 @@ test('malformed history is a visible error and does not hide local results', asy
 });
 
 for (const prediction of ['phishing', 'legitimate']) {
-  test('uncertain history overrides the primary ' + prediction + ' label', async () => {
+  test('history shows uncertainty and preserves the initial screening for ' + prediction, async () => {
     const uncertain = { ...record, prediction, review_status: 'uncertain' };
     const { dom } = await popup(async () => ok({ items: [uncertain] }));
     await dom.get('load-history').click();
     const button = dom.get('history-list').children[0].children[1];
-    assert.match(button.textContent, /Uncertain — review needed/);
-    assert.doesNotMatch(button.textContent, /phishing|legitimate|below threshold/i);
+    assert.equal(button.children[0].textContent, 'Uncertain — check before acting');
+    assert.match(button.textContent, prediction === 'phishing'
+      ? /Initial screening flagged this email as phishing/ : /Initial screening found no strong warning signs/);
+    assert.equal(dom.get('history-list').children[0]['data-tone'], 'uncertain');
   });
 }
 test('save requires explicit consent and blocks incompatible service without sending text', async () => {
@@ -321,7 +347,7 @@ test('a confirmed save is displayed even when persisting its local marker fails'
   assert.equal(dom.get('detail-panel').classList.contains('hidden'), false);
 });
 
-test('saving a local scan blocks manual creation until the shared operation finishes', async () => {
+test('saving a local scan blocks a new check until the shared operation finishes', async () => {
   let releaseCapability;
   const calls = [];
   const { dom } = await popup(async (url, options = {}) => {
@@ -333,41 +359,83 @@ test('saving a local scan blocks manual creation until the shared operation fini
   dom.get('save-consent').checked = true;
   const saving = dom.get('save-report').click();
   await settle();
-  assert.equal(dom.get('create-body').disabled, true);
+  assert.equal(dom.get('scan-body').disabled, true);
   assert.equal(dom.get('report-subject').disabled, true);
   assert.equal(dom.get('save-consent').disabled, true);
-  dom.get('create-body').value = 'Do not submit while the scan is being saved.';
-  await dom.get('create-form').fire('submit');
+  dom.get('scan-body').value = 'Do not submit while the scan is being saved.';
+  await dom.get('scan-form').fire('submit');
   assert.equal(calls.filter(([, options]) => options.method === 'POST').length, 0);
   releaseCapability(ok({ provider_mode: 'tfidf', accepts_tfidf_reports: true,
     accepts_local_reviews: true, model_sha256: MODEL_SHA256 }));
   await saving;
   assert.equal(calls.filter(([, options]) => options.method === 'POST').length, 1);
-  assert.equal(dom.get('create-body').disabled, false);
+  assert.equal(dom.get('scan-body').disabled, false);
   assert.equal(dom.get('report-subject').disabled, true);
   assert.equal(dom.get('save-consent').disabled, true);
   assert.equal(dom.get('save-report').disabled, true);
 });
 
-test('manual creation uses the matching model and blocks a concurrent local save', async () => {
+test('server screening uses the initial classifier and only persists on explicit save', async () => {
   let releaseCreate;
   const calls = [];
-  const { dom } = await popup(async (url, options = {}) => {
+  const { app, dom } = await popup(async (url, options = {}) => {
     calls.push([url, options]);
-    if (options.method === 'POST') return new Promise(resolve => { releaseCreate = resolve; });
+    if (url.endsWith('/api/analyses') && options.method === 'POST') {
+      return new Promise(resolve => { releaseCreate = resolve; });
+    }
+    if (url.endsWith('/analyses') && options.method === 'POST') {
+      return ok({ classification: 'legitimate', model_alert: false, mode: 'tfidf', model_revision: MODEL_SHA256 });
+    }
     return ok(url.endsWith(record.id) ? record : { items: [record] });
   });
-  dom.get('create-body').value = 'Manually entered synthetic text.';
-  const saving = dom.get('create-form').fire('submit');
-  dom.get('save-consent').checked = true;
-  await dom.get('save-report').click();
+  assert.equal(dom.get('review-state').textContent, 'Initial screening found no strong warning signs.');
+  assert.equal(dom.get('server-fallback').classList.contains('hidden'), true);
+  await dom.get('server-fallback-button').click();
+  assert.equal(calls.length, 0, 'A completed local screening never offers or starts a server check');
+
+  app.render({ status: 'error', selectedText: scan.selectedText, subject: 'Optional title' });
+  assert.equal(dom.get('server-fallback').classList.contains('hidden'), false);
+  assert.equal(calls.length, 0, 'A local failure does not upload text by itself');
+  dom.get('scan-body').value = 'New draft, never included in the fallback or save';
+  await dom.get('server-fallback-button').click();
+  assert.equal(dom.get('classification').textContent, 'No strong warning signs');
+  assert.equal(dom.get('analysis-source').textContent, 'Server screening');
+  assert.equal(dom.get('review-state').classList.contains('hidden'), true);
+  assert.equal(dom.get('local-save-consent').classList.contains('hidden'), true);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0][1].headers['X-PhishLens-Model'], MODEL_SHA256);
-  assert.deepEqual(JSON.parse(calls[0][1].body), { subject: '', body: 'Manually entered synthetic text.' });
+  assert.match(calls[0][0], /(?<!\/api)\/analyses$/);
+  assert.deepEqual(JSON.parse(calls[0][1].body), { text: scan.selectedText });
+  assert.equal(calls[0][1].headers['X-Require-Provider'], 'tfidf');
+  assert.equal(dom.get('report-subject').value, 'Optional title');
+
+  const saving = dom.get('save-report').click();
+  await dom.get('save-report').click();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1][1].headers['X-PhishLens-Model'], MODEL_SHA256);
+  assert.deepEqual(JSON.parse(calls[1][1].body), { subject: 'Optional title', body: scan.selectedText });
   releaseCreate(ok(record, 201));
   await saving;
-  assert.equal(dom.get('result-state').classList.contains('hidden'), false);
-  assert.equal(dom.get('save-report').disabled, false);
+  assert.equal(dom.get('detail-panel').classList.contains('hidden'), false);
+});
+
+test('a new highlighted check replaces an in-flight server check and ignores its late result', async () => {
+  let resolve;
+  let signal;
+  const { app, dom, emit } = await popup(async (_, options) => {
+    signal = options.signal;
+    return new Promise(done => { resolve = done; });
+  });
+  app.render({ status: 'error', selectedText: 'Failed local check' });
+  const pending = dom.get('server-fallback-button').click();
+  await settle();
+  assert.equal(dom.get('result-state').classList.contains('hidden'), true);
+  emit({ ...scan, status: 'loading' });
+  assert.equal(signal.aborted, true);
+  emit(scan);
+  resolve(ok({ classification: 'phishing', model_alert: true, mode: 'tfidf', model_revision: MODEL_SHA256 }));
+  await pending;
+  assert.equal(dom.get('analysis-source').textContent, 'On-device review');
+  assert.equal(dom.get('classification').textContent, 'Uncertain — check before acting');
 });
 
 test('late history and detail reads cannot replace a newly saved local report', async () => {
@@ -396,13 +464,14 @@ test('late history and detail reads cannot replace a newly saved local report', 
   assert.equal(dom.get('loading').classList.contains('hidden'), true);
 });
 
-test('saved detail preserves Uncertain and browser-attributed review provenance', async () => {
+test('saved detail presents an uncertain assessment alongside the initial screening', async () => {
   const uncertain = { ...record, prediction: 'phishing', review_status: 'uncertain',
     analysis_provenance: { ...record.analysis_provenance, local_review: { status: 'uncertain' } } };
   const { app, dom } = await popup(async () => ok(uncertain));
   await app.openDetail(record.id);
   const fields = dom.get('detail-content').children;
-  assert.equal(fields[3].children[1].textContent, 'Uncertain — review needed');
+  assert.equal(fields[3].children[1].textContent, 'Uncertain — check before acting');
+  assert.match(fields[3].textContent, /Initial screening flagged this email as phishing/);
   assert.match(dom.get('detail-content').textContent, /local review was reported by the browser/);
   assert.doesNotMatch(dom.get('detail-content').textContent, /Alert threshold|Research model score/);
 });

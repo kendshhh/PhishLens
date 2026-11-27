@@ -5,6 +5,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
 import assert from 'node:assert/strict';
+import { MODEL_SHA256 } from '../extension/ai/local-analyzer.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await import(pathToFileURL(process.env.PHISHLENS_PLAYWRIGHT).href);
@@ -21,7 +22,7 @@ try {
   const { id } = await session.send('Extensions.loadUnpacked', { path: path.join(root, 'extension') });
   const page = await context.newPage(); await page.setViewportSize({ width: 440, height: 900 });
   const errors = [], requests = [], apiRequests = [];
-  const sha = 'a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c';
+  const sha = MODEL_SHA256;
   let saved = false, deleted = false;
   let detail = { id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c', subject: 'Software fixture',
     prediction: 'legitimate', confidence: null, risk_level: 'low', threat_indicators: [],
@@ -92,6 +93,7 @@ try {
       elapsed_ms: warm.result?.workflow?.elapsed_ms, reevaluators: warm.result?.workflow?.reevaluators?.length };
     if (!record.warm_software_check.judge_valid) process.exitCode = 1;
     assert.equal(apiRequests.length, 0);
+    await page.click('#save-panel > summary');
     await page.click('#save-report'); assert.equal(apiRequests.length, 0);
     await page.fill('#report-subject', 'Software fixture <script>alert(1)</script>');
     await page.check('#save-consent'); await page.click('#save-report');

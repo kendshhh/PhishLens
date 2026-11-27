@@ -18,11 +18,11 @@
     "overlap_status_required": "cleared"
   },
   "approval": {
-    "status": "pending",
+    "status": "approved",
     "required_role": "AI/model owner",
-    "approved_by": null,
-    "approved_at": null,
-    "record_url": null
+    "approved_by": "EnviousCoal",
+    "approved_at": "2026-11-25T03:52:42Z",
+    "record_url": "https://github.com/kendshhh/PhishLens/pull/269#issuecomment-7152323482"
   },
   "thresholds": {
     "phishing_recall_min": 0.9,

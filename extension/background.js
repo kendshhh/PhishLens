@@ -2,8 +2,6 @@ import { analyzeWithReview } from './ai/live-workflow.mjs';
 import { cancelJudge } from './ai/judge-client.mjs';
 
 const MENU_ID = 'phishlens-analyze-selection';
-// Right-click results open in this popup; ?surface=popup keeps its fixed popup layout.
-const SELECTION_POPUP = 'popup.html?surface=popup';
 let analysisGeneration = 0;
 let stateUpdates = Promise.resolve();
 let activeJob;
@@ -34,7 +32,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!job) { sendResponse({ ok: true }); return; }
     activeJob = undefined;
     cancelJudge();
-    updateAnalysis(++analysisGeneration, { status: 'cancelled', selectedText: job.selectedText,
+    updateAnalysis(++analysisGeneration, { status: 'cancelled', selectedText: job.selectedText, subject: job.subject,
       result: null, error: null }, '').then(
       () => sendResponse({ ok: true }), () => sendResponse({ ok: false })
     );
@@ -52,20 +50,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'phishlens-judge-progress') {
     if (activeJob?.jobId === message.jobId) {
       updateAnalysis(activeJob.generation, { status: 'loading', selectedText: activeJob.selectedText,
-        stage: message.stage, progress: Number.isFinite(message.value) ? message.value : null,
+        subject: activeJob.subject, stage: message.stage, progress: Number.isFinite(message.value) ? message.value : null,
         result: null, error: null }, '...').catch(() => {});
     }
     sendResponse({ ok: true }); return;
   }
   if (message?.type === 'phishlens-analyze-text' && typeof message.text === 'string') {
-    analyzeSelectedText(message.text).then(
+    const subject = typeof message.subject === 'string' ? message.subject.slice(0, 320) : '';
+    analyzeSelectedText(message.text, subject).then(
       () => sendResponse({ ok: true }), () => sendResponse({ ok: false })
     );
     return true;
   }
 });
 
-// Read the visible selection before the popup takes focus. Context-menu text
+// Read the visible selection before opening the side panel. Context-menu text
 // can flatten paragraph breaks; accept the page value only for the same words.
 async function readSelectedText(info, tab) {
   if (!Number.isInteger(tab?.id)) return info.selectionText;
@@ -95,34 +94,28 @@ async function readSelectedText(info, tab) {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === MENU_ID && typeof info.selectionText === 'string') {
     const request = ++analysisGeneration;
-    const selectedText = await readSelectedText(info, tab);
+    const selection = readSelectedText(info, tab);
+    const panelTarget = Number.isInteger(tab?.windowId) ? { windowId: tab.windowId }
+      : Number.isInteger(tab?.id) ? { tabId: tab.id } : null;
+    // The native side panel must be opened during the context-menu user gesture.
+    if (panelTarget) {
+      void chrome.sidePanel.open(panelTarget).catch(() => {
+        console.warn('Open PhishLens from the toolbar to view this scan.');
+      });
+    }
+    const selectedText = await selection;
     if (request !== analysisGeneration) return;
-    return analyzeSelectedText(selectedText, { onStarted: async () => {
-      // The manifest defines no default_popup, because a popup would take priority over
-      // the toolbar's side panel. Configure the popup only for this tab, open it, then
-      // clear it so the toolbar button keeps opening the side panel.
-      const popupTarget = Number.isInteger(tab?.id) ? { tabId: tab.id } : {};
-      try {
-        await chrome.action.setPopup({ ...popupTarget, popup: SELECTION_POPUP });
-        await chrome.action.openPopup(Number.isInteger(tab?.windowId) ? { windowId: tab.windowId } : {});
-      } catch {
-        console.warn('PhishLens could not open the popup. Open the side panel from the toolbar to view this scan.');
-      } finally {
-        await chrome.action.setPopup({ ...popupTarget, popup: '' }).catch(() => {});
-      }
-    } }).catch(() => {
+    return analyzeSelectedText(selectedText).catch(() => {
       console.error('PhishLens could not save the local scan state.');
     });
   }
 });
 
-async function analyzeSelectedText(selectedText, { onStarted } = {}) {
+async function analyzeSelectedText(selectedText, subject = '') {
   const generation = ++analysisGeneration;
   cancelJudge();
-  const jobId = crypto.randomUUID(); activeJob = { generation, jobId, selectedText };
-  await updateAnalysis(generation, { status: 'loading', selectedText, stage: 'TF-IDF v12a', result: null, error: null }, '...');
-  if (generation !== analysisGeneration) return;
-  if (onStarted) await onStarted();
+  const jobId = crypto.randomUUID(); activeJob = { generation, jobId, selectedText, subject };
+  await updateAnalysis(generation, { status: 'loading', selectedText, subject, stage: 'TF-IDF v12a', result: null, error: null }, '...');
   if (generation !== analysisGeneration) return;
   try {
     const debug = await chrome.storage.session.get('phishlensDebugFailNext');
@@ -132,15 +125,15 @@ async function analyzeSelectedText(selectedText, { onStarted } = {}) {
     }
     const result = await analyzeWithReview(selectedText, { jobId,
       isCurrent: () => generation === analysisGeneration,
-      onProgress: stage => updateAnalysis(generation, { status: 'loading', selectedText, stage, result: null, error: null }, '...')
+      onProgress: stage => updateAnalysis(generation, { status: 'loading', selectedText, subject, stage, result: null, error: null }, '...')
     });
     await updateAnalysis(generation, {
-      status: 'success', selectedText, result, error: null,
+      status: 'success', selectedText, subject, result, error: null,
       scanId: crypto.randomUUID(), recordedAt: new Date().toISOString()
     }, result.workflow?.released ? (result.alert ? '!' : '·') : '?');
   } catch (error) {
     await updateAnalysis(generation, {
-      status: 'error', selectedText, result: null,
+      status: 'error', selectedText, subject, result: null,
       error: error instanceof Error ? error.message : 'Unable to assess. Reload the extension and retry.'
     }, '?');
   } finally {
@@ -153,7 +146,7 @@ chrome.storage.session.get('veriqoAnalysis').then(data => {
   if (analysisGeneration === 0 && data.veriqoAnalysis?.status === 'loading') {
     cancelJudge();
     return updateAnalysis(++analysisGeneration, { status: 'error', result: null,
-      selectedText: data.veriqoAnalysis.selectedText,
+      selectedText: data.veriqoAnalysis.selectedText, subject: data.veriqoAnalysis.subject,
       error: 'The previous local review was interrupted. Scan again to retry.' }, '?');
   }
 }).catch(() => {});

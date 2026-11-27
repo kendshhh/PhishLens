@@ -30,7 +30,7 @@ NEON_AUTH_ASSETS = (
 )
 LOCAL_SCANNER_ASSETS = (
     "js/report-client.js", "js/report-workflow.js", "ai/contract.json",
-    "ai/core.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
+    "ai/core.mjs", "ai/context-policy.mjs", "ai/observations.mjs", "ai/local-analyzer.mjs",
     "ai/tfidf_v12a.json", "ai/ATTRIBUTION.md", "offscreen.html", "offscreen.js",
     "ai/judge-client.mjs", "ai/judge-contract.mjs", "ai/judge-worker.mjs",
     "ai/live-workflow.mjs", "ai/reevaluators.mjs", "ai/judge-assets.json",
@@ -269,7 +269,7 @@ def package(api, sha, number, config, output):
         api = PinnedExtensionGitHub(
             repo=api.repo, token=api.token, sha=sha,
             asset_limits={asset: ASSET_SIZE_LIMITS.get(asset, 512_000)
-                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS},
+                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS + ("js/ghost.js",)},
         )
     files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
     worker = files["background.js"].decode()
@@ -282,6 +282,9 @@ def package(api, sha, number, config, output):
     if b"./js/account-popup.js" in files["popup.js"]:
         for asset in ACCOUNT_UI_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
+    # Decorative side-panel companion; present in sources after the sidebar redesign.
+    if b"./js/ghost.js" in files["popup.js"]:
+        files["js/ghost.js"] = read_extension_asset(api, sha, "js/ghost.js")
     if any(marker in files["popup.js"] for marker in (b"./js/neon-integration.js", b"./js/auth-config.js")):
         for asset in NEON_AUTH_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
