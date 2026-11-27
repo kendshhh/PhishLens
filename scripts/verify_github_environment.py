@@ -18,6 +18,9 @@ def validate_environment(
     expected_name: str,
     deployment_branch_policies: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    supported = {"staging-neon-preflight", "release-staging", "staging", "production"}
+    if expected_name not in supported:
+        raise EnvironmentGateError("Unsupported GitHub deployment environment")
     if payload.get("name") != expected_name:
         raise EnvironmentGateError("GitHub deployment environment identity does not match")
     if payload.get("can_admins_bypass") is not False:
@@ -35,22 +38,26 @@ def validate_environment(
     if rule.get("prevent_self_review") is not True:
         raise EnvironmentGateError("Environment must prevent self-review")
     branch_policy = payload.get("deployment_branch_policy")
-    if expected_name == "release-staging":
+    if expected_name == "production":
+        if branch_policy != {"protected_branches": True, "custom_branch_policies": False}:
+            raise EnvironmentGateError("Production must be limited to protected branches")
+    else:
         if branch_policy != {"protected_branches": False, "custom_branch_policies": True}:
-            raise EnvironmentGateError("Release staging must use explicit custom branch restrictions")
+            raise EnvironmentGateError(f"{expected_name} must use explicit custom branch restrictions")
         rows = (deployment_branch_policies or {}).get("branch_policies")
         names = [row.get("name") for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
         if names != ["main"]:
-            raise EnvironmentGateError("Release staging must allow only the main branch")
-    elif branch_policy != {"protected_branches": True, "custom_branch_policies": False}:
-        raise EnvironmentGateError("Production must be limited to protected branches")
+            raise EnvironmentGateError(f"{expected_name} must allow only the main branch")
     return {"name": expected_name, "required_reviewers": len(rule["reviewers"]),
             "prevent_self_review": True, "can_admins_bypass": False}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("environment", choices=("release-staging", "production"))
+    parser.add_argument(
+        "environment",
+        choices=("staging-neon-preflight", "release-staging", "staging", "production"),
+    )
     parser.add_argument("--input", type=Path, default=Path("-"))
     parser.add_argument("--branch-policies", type=Path)
     args = parser.parse_args()

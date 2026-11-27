@@ -1,9 +1,22 @@
 # Staging and candidate acceptance
 
-**Status as of November 25, 2026:** authenticated staging acceptance has not
-passed for a current release candidate. The release remains **NO-GO**. The
-trusted-controller changes described below are in the DevOps review branch and
-do not become the default-branch workflow until merged.
+**Status as of November 27, 2026 08:22 UTC:** authenticated staging acceptance
+passed on prior PR #268 SHA `554fd223ec98852acb12ebca01812530a84fde2d` in
+[trusted run 45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400).
+It verified Auth sign-in, persistent saved-report CRUD, reload persistence,
+ownership, two-account isolation, cleanup, and the exact extension UX. Its
+redacted evidence is in
+[the 554fd223 record](evidence/2026-11-27-staging-acceptance-554fd223.md).
+
+PR #268 now includes the latest #281 and #282 heads at integrated SHA
+`9039d1a490d283cc7bcca9243aa02b705036a7dd`. That SHA's initial Staging
+integration and `Secretary staging` checks failed because
+`test_hosted_staging_gate.py` referenced an undefined `ROOT`; no hosted
+acceptance ran for it. A correction is included in this PR update, but the
+resulting exact head still needs fresh CI, protected Neon preflight, reviewer
+approval, and hosted authenticated acceptance. The historical pass does not
+transfer to that new head. Release remains **NO-GO** because AI-quality approval
+and production promotion/recovery gates remain open.
 
 ## Credential boundary
 
@@ -36,21 +49,21 @@ The controller uses separate jobs and environments:
   it publishes nothing for an eligible runtime PR, so it cannot overwrite the
   trusted controller's final result.
 
-The live `staging` environment now permits deployments from `main` only. This
-prevents a PR-authored workflow from requesting its environment secrets. The
-existing `RENDER_STAGING_API_KEY` secret is still stored in that environment,
-but PR refs are denied by the environment policy. The trusted workflow instead
-expects a separately provisioned `RENDER_STAGING_API_KEY` in the main-only
-`release-staging` environment. Its non-secret variables now identify the
-approved isolated Neon/Auth target, but it has no secrets, so deployment still
-fails closed until a new Render key and required Neon migration credentials are
-provisioned there. Do not copy a masked value through chat or logs.
+The live `staging` and `release-staging` environments permit deployments from
+`main` only and do not allow administrator bypass. Both have required reviewers
+`xxTrixia` and `kendshhh`; self-review prevention is enabled, so the deployment
+author cannot approve their own run. The `staging` environment retains its
+non-production Auth test credentials, while `release-staging` contains the
+`RENDER_STAGING_API_KEY` secret name. Secret values were not read. Presence is
+not proof the key works; only a successful protected deploy can establish that.
+Do not copy a masked value through chat or logs.
 
-These changes preserve the required context name `Secretary staging`; they do
-not add or rename required checks. The main branch still must use the same
-eight-context strict contract in classic protection and ruleset #27733591.
-`PIPELINE.md` and the live settings should be rechecked after the controller is
-merged.
+These controls preserve the required context name `Secretary staging`; they do
+not add or rename required checks. The latest GitHub ruleset read shows active
+strict ruleset #27733591 requires the eight CI/staging contexts. Ruleset
+#26782191 requires one review and approval of the latest push. Classic branch
+protection was not independently verified. `PIPELINE.md` and live settings
+should be refreshed whenever these controls change.
 
 ## Exact-candidate acceptance
 
@@ -90,33 +103,31 @@ or safely transitions to supported image-backed services, configures the
 protected environments, and verifies digest identity in both environments.
 Do not switch production during PR review.
 
-## Preconditions still required for a hosted run
+## Preconditions still required for the integrated candidate
 
-1. Confirm the selected isolated Neon target remains project
+1. Use the approved isolated Neon target project
    `ancient-brook-17208049`, root branch `br-rough-sea-a1l6ehi1`, with no
-   production-derived data. The environment attestation is not proof of the
-   Render runtime or migration connection strings.
+   `ancient-brook-17208049`, root branch `br-rough-sea-a1l6ehi1`; prior trusted
+   run 45958860400 confirmed this schema-only branch and reported no production
+   rows for its exact candidate. Reconfirm on the new head.
 2. Privately align Render runtime and migration database URLs, database name,
    branch, app/owner roles, and Neon Auth URL with the selected target. Keep
    credentials out of logs and reports. The deploy preflight must verify the
    mapping before Render is changed.
-3. Confirm migrations and grants are safe and compatible with the current
-   backend. The selected database previously had no application tables or
-   Alembic history; migration setup is a staging-only operation.
-4. Provision a newly issued Render staging key and the remaining protected
-   migration/AI/account secrets in `release-staging`. Keep the environment
-   restricted to `main` and require independent review with self-review disabled.
-5. The GitHub `staging` and `release-staging` variables now point at the
-   approved Neon Auth endpoint, database, extension origin, and project/branch.
-   `STAGING_RENDER_DATABASE_CONFIG_ATTESTATION` is `pending` until the masked
-   Render runtime and migration settings are privately verified. Confirm the
-   two synthetic accounts belong to the approved Auth project, not the older
-   `hidden-shadow` project.
+3. Confirm migrations and grants remain safe and compatible with the
+   integrated backend. The accepted prior candidate reported migration
+   revision `0005_ai_request_quota`; verify the exact new head before acceptance.
+4. Current protected workflow configuration must require independent
+   xxTrixia approval and `main`-only deployment refs. Confirm that this is
+   still true for the new run; never approve a stale SHA.
+5. Keep secret values private. The prior successful run proves its test
+   accounts authenticated against the selected staging Auth path, but does not
+   validate production credentials or imply model-quality approval.
 6. Run the trusted workflow for the current PR head. A prior head, a queued
    stale deployment, or a previous run's artifact is not evidence for the
    current candidate.
 
-No staging deployment, migration, account write, production data access, or
-production deployment is claimed by this document. Offline tests verify the
-controller logic; only a successful exact-head hosted run can establish the
-live product path.
+The prior staging run did perform a staging deployment, migrations/validation,
+and synthetic-account CRUD; it reported zero pending cleanup and zero
+production requests or writes. No production data access or production deploy
+is claimed. A fresh exact-head run is required for the integrated candidate.

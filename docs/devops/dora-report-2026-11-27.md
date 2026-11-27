@@ -1,8 +1,8 @@
 # PhishLens DORA delivery report — 2026-11-27
 
 **Snapshot:** `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`<br>
-**Window:** 2026-10-30 05:58 UTC through 2026-11-27 05:58 UTC (28.00 days)<br>
-**Collected:** 2026-11-27T05:58:53.745515Z
+**Window:** 2026-10-30 07:14 UTC through 2026-11-27 07:14 UTC (28.00 days)<br>
+**Collected:** 2026-11-27T07:14:04.739580Z
 
 This report contains the four DORA delivery metrics and the current fifth metric,
 deployment rework rate. It also reports CI wall time as an internal pipeline
@@ -40,8 +40,6 @@ queue/approval treatment over adequate samples.
 Render deployments with `deactivated` status were previously live and later
 superseded. Deployment frequency counts successful deploy records, including
 repeat deploys of the same SHA; change lead time deduplicates by merged SHA.
-Render's latest deploy record marked `live` is
-`811980c2cbf70d9957146bf329627f0826a018f1`. This is
-deployment metadata, not a successful HTTP version or user-flow check, and does
-not imply that the current main commit has been released. No production user
-data or inference telemetry is included.
+Current production is on `811980c2cbf70d9957146bf329627f0826a018f1`;
+the report's deploy history does not imply that the current main commit has been
+released. No production user data or inference telemetry is included.

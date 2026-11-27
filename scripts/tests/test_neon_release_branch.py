@@ -18,7 +18,7 @@ class NeonReleaseBranchTests(unittest.TestCase):
 
     @patch.dict(os.environ, {"NEON_API_KEY": "test-token"})
     @patch("scripts.verify_neon_release_branch.urlopen")
-    def test_independent_root_is_accepted_when_production_rows_are_absent(self, urlopen):
+    def test_schema_only_root_is_accepted_when_production_rows_are_absent(self, urlopen):
         branch_id = "br-staging-12345678"
         host = "ep-staging.c-4.ap-southeast-1.aws.neon.tech"
         urlopen.side_effect = [
@@ -40,13 +40,13 @@ class NeonReleaseBranchTests(unittest.TestCase):
             branch_id=branch_id,
             production_project_id="production-project-123",
             production_branch_id="br-production-12345678",
-            schema_only_attestation="false",
+            schema_only_attestation="true",
             production_rows_present="false",
             expected_host=host,
         )
 
-        self.assertEqual(result["branch_kind"], "independent-root")
-        self.assertFalse(result["schema_only_attested"])
+        self.assertEqual(result["branch_kind"], "schema-only")
+        self.assertTrue(result["schema_only_attested"])
         self.assertEqual(result["endpoint_host"], host)
         self.assertEqual(urlopen.call_count, 2)
 
@@ -57,7 +57,7 @@ class NeonReleaseBranchTests(unittest.TestCase):
                 branch_id="br-staging-12345678",
                 production_project_id="production-project-123",
                 production_branch_id="br-production-12345678",
-                schema_only_attestation="false",
+                schema_only_attestation="true",
                 production_rows_present="true",
             )
 
@@ -88,7 +88,7 @@ class NeonReleaseBranchTests(unittest.TestCase):
         urlopen.assert_called_once()
 
     def test_schema_only_attestation_must_be_explicit_before_neon_request(self):
-        for attestation in ("", "unset"):
+        for attestation in ("", "unset", "false"):
             with patch("scripts.verify_neon_release_branch.urlopen") as urlopen, self.assertRaisesRegex(
                 NeonReleaseError, "schema-only"
             ):

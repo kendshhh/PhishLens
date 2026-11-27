@@ -751,6 +751,31 @@ class ReleaseReadinessTests(unittest.TestCase):
                 "branch_policies": [{"name": "refs/pull/*/merge", "type": "branch"}]
             })
 
+    def test_each_staging_scope_requires_the_approved_reviewer_and_main_only_ref(self):
+        for name in ("staging-neon-preflight", "release-staging", "staging"):
+            with self.subTest(environment=name):
+                payload = {
+                    "name": name,
+                    "can_admins_bypass": False,
+                    "deployment_branch_policy": {
+                        "protected_branches": False,
+                        "custom_branch_policies": True,
+                    },
+                    "protection_rules": [{
+                        "type": "required_reviewers",
+                        "reviewers": [{"type": "User", "id": 220726329}],
+                        "prevent_self_review": True,
+                    }],
+                }
+                policies = {"branch_policies": [{"name": "main", "type": "branch"}]}
+                self.assertEqual(validate_environment(payload, name, policies)["required_reviewers"], 1)
+                bad = json.loads(json.dumps(payload))
+                bad["deployment_branch_policy"]["custom_branch_policies"] = False
+                with self.assertRaisesRegex(EnvironmentGateError, "custom branch restrictions"):
+                    validate_environment(bad, name, policies)
+        with self.assertRaisesRegex(EnvironmentGateError, "Unsupported"):
+            validate_environment({}, "preview")
+
 
 if __name__ == "__main__":
     unittest.main()

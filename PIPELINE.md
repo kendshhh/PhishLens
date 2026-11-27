@@ -1,109 +1,77 @@
 # PhishLens Pipeline
 
-## Current delivery and acceptance snapshot — November 25, 2026
+## Delivery and acceptance evidence snapshot — November 27, 2026 08:22 UTC
 
-This section supersedes the dated snapshots below. The release remains **NO-GO**.
-See [PR #296](https://github.com/kendshhh/PhishLens/pull/296) for the release closeout, staging procedure, controlled release path, and current 28-day DORA report.
+This is a timestamped evidence snapshot. The release remains **NO-GO**; a 10/10
+rubric result is not supported by the current evidence. See the current
+[DevOps rubric crosswalk](docs/devops/devops-rubric-readiness-2026-11-27.md),
+[environment map](docs/devops/environment-map-2026-11-27.md),
+[controlled-release record](docs/devops/controlled-release.md),
+[DORA report](docs/devops/dora-report-2026-11-27.md), and
+[redacted DORA source](docs/devops/evidence/dora-source-2026-11-27.json).
 
-### Main branch, review branch, and merge gates
+### Main, PRs, and acceptance
 
-GitHub `main` is
-[`46f0298d8e3299afa74e02882081be56c1de4933`](https://github.com/kendshhh/PhishLens/commit/46f0298d8e3299afa74e02882081be56c1de4933).
-The DevOps hardening is being reviewed in PR #296; its changes are not active
-on `main` until approved and merged. Current required contexts in classic
-branch protection and active ruleset #27733591 match exactly: Backend checks,
-Extension checks, Staging integration, CodeQL, Secretary staging,
-Deterministic AI Evaluation, Dependency security, and Workflow lint. Strict
-up-to-date checks are enabled in both. One independent review is required,
-stale approvals are dismissed, latest-push approval is required, and admins
-cannot bypass the active rulesets. These settings were checked live on
-November 25; the current-PR tests still need to demonstrate a deliberately
-failing required check blocks merge.
+`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. Current PR heads are
+#268 `9039d1a490d283cc7bcca9243aa02b705036a7dd`, #281
+`0c48cbf240b963a35b5e4669417e118d5ea6573b`, and #282
+`3131dae6f09c30b267ca4aa7b864694a44fd744c`. PR #268 now includes the latest
+#281 and #282 heads in that order; no PR changed migration files. The full
+dependency and resolution record is in the [PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
 
-### Credential boundary and staging
+Trusted staging acceptance passed on the prior #268 SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` in run
+[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400):
+Auth sign-in, persistent saved-report CRUD, reload persistence, ownership,
+two-account isolation, cleanup, and extension UX passed. Its ZIP SHA-256 is
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. This
+does not apply to integrated SHA `9039d1a` or its successor. On `9039d1a`,
+Backend, Extension, migration preflight, Workflow lint, CodeQL, dependency
+security, and deterministic AI CI passed, and trusted Neon preflight passed
+([45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015)).
+Staging integration failed because `test_hosted_staging_gate.py` referenced
+undefined `ROOT`; a focused path correction is included in this PR update and
+passes its six focused local tests. Fresh exact-head GitHub checks are pending.
+No hosted acceptance is claimed for `9039d1a` or its successor. The earlier accepted run also blocked
+AI quality and has no backend image digest.
 
-On `main`, the legacy PR-triggered Hosted staging job remains in the workflow,
-but the protected `staging` environment now allows only `main` and requires
-xxTrixia's independent approval with self-review disabled. PR refs cannot
-request its secrets. PR #296 removes the deployment-capable job from PR CI and
-adds a default-branch `workflow_run` controller. In that design, only trusted
-controller code receives Render deployment credentials; the candidate source
-is used for migration inspection and package construction, while the browser
-acceptance script and dependencies come from the default branch. The runtime
-`Secretary staging` context is written only by the trusted controller after
-exact-candidate acceptance; non-runtime N/A and early CI failures are handled
-by the read-only mirror. This controller is pending review and has not yet
-produced a live acceptance run.
+Current branch-head relationships and merge-tree results are in the
+[PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
 
-The `release-staging` environment exists, is restricted to `main`, requires
-xxTrixia's independent approval, and prevents self-review. It currently has no
-secrets. Its non-secret values identify the approved isolated Neon target
-`ancient-brook-17208049` / `br-rough-sea-a1l6ehi1`; the mapping attestation
-remains `pending` because the masked Render runtime and migration connection
-settings have not been verified. That Neon target was last observed without
-application tables or migration history. Do not run migrations or CRUD checks
-until Render mapping, schema-only state, role grants, and Auth account mapping
-are privately confirmed. The two synthetic users were reported active on the
-selected Auth target, but a previous sign-in returned HTTP 401; no Auth
-acceptance is claimed.
+### Production and service control
 
-### Live services and release candidate
+Read-only Render metadata at 2026-11-27 07:14 UTC reports production service
+`srv-db7eap25b2lc73fkelpg` still using the Git-backed Python runtime on `main`,
+with Auto Deploy off. Its latest live deployment is `dep-dc1716etlv9c73b8nl0g`
+on `811980c2cbf70d9957146bf329627f0826a018f1`, created at
+2026-11-22T04:33:29Z. Render metadata marks the Production environment
+unprotected and network-wide (`0.0.0.0/0`, network isolation off); the separate
+GitHub `production` environment does require independent review and disallows
+admin bypass. Around 07:16 UTC, `/model-info` returned HTTP 200 with analysis
+disabled; `/health`, `/ready`, and `/version` timed out after 15 seconds from
+this client. Product availability therefore is not verified.
 
-Production Render service `srv-db7eap25b2lc73fkelpg` remains Git-backed and
-serves SHA `811980c2cbf70d9957146bf329627f0826a018f1`; `main` is ahead. The
-production auto-deploy setting is off. Staging Render service
-`srv-db92irlg1s2s739404i0` is also Git-backed, auto-deploy is off, and its
-latest live deploy is SHA `30743b077169357455620b55233f75806ea636aa`. These
-SHAs and settings do not establish a compatible staged release. No versioned
-release tag or GitHub Release has been published.
+Render staging is also a Git-backed Python service with Auto Deploy off. The
+image-backed same-digest promotion and exact-SHA production smoke have not run.
+The privately verified Render-to-Neon mapping, migration credential, approved
+AI holdout and policy, compatible current rollback, isolated restore with
+measured RTO/RPO, and tested alert delivery are still release blockers. Keep
+issue #153 at NO-GO and do not claim a production release.
 
-The controlled release workflow builds an immutable backend image and
-extension ZIP once, verifies digests and staging evidence, and refuses
-production promotion if Render is still Git-backed. The same image digest has
-not been deployed through staging and production. Do not change the production
-service during PR review or dispatch a production promotion.
+### Delivery metrics
 
-### Product acceptance and model quality
-
-No current exact-candidate authenticated extension/backend acceptance has
-passed. The historical English evaluation (190/200 phishing detected, one
-false alert in 1,000 legitimate messages, 1,200 valid outputs) supports
-advisory use on that historical cohort only. It is not an approved current-source
-holdout or a pass for the current release model. The approved representative
-holdout, numeric threshold decision, and exact-model release evidence remain
-open. Production's disabled analysis state is not product or AI acceptance.
-
-### Operations, recovery, and DORA evidence
-
-The refreshed 28-day DORA report records lead time from 62 exact merged-SHA to
-successful-deploy matches out of 130 merged PRs; deployment frequency of 68
-successful deploy records; and main CI wall time from 108 runs. Change fail
-rate, failed-deployment recovery time, and deployment rework rate remain
-unmeasured because incident linkage, verified recovery timestamps, and reviewed
-planned/unplanned classifications are missing. The current comparable
-optimization result is “no gain established”; earlier cache trials do not show
-an end-to-end improvement.
-
-A current-production-compatible rollback, isolated data restore with measured
-RTO/RPO, tested alert delivery, and named backup response remain unproven. The
-November 20 isolated Neon restore was not a current-production recovery drill.
-Keep issue #153 at NO-GO until the exact release candidate passes product and
-model acceptance, immutable artifact promotion and post-deploy verification,
-and the required operational recovery evidence.
-
-## Historical DevOps evidence snapshot — November 23, 2026
-
-The full matrix, compliance audit, and environment map for this date are recorded in [PR #282](https://github.com/kendshhh/PhishLens/pull/282).
-
-The evidence snapshot covers implementation candidate `48ead208487408b04f3eed9f8643631454d6cc83`, based on main `0338ad163a4892987a6a682aed29b95c22c322da`. Backend jobs, Extension, disposable staging integration, migration preflight, Workflow lint, Dependency security/Gitleaks, Deterministic AI Evaluation, CodeQL, and Secretary report/label passed. The overall CI workflow failed: the user-approved protected Render staging deployment returned `update_failed`, and the required Secretary staging context reports “CI did not succeed; staging not deployed.” PR #282 remained `REVIEW_REQUIRED` at the evidence cutoff. This documentation update is a descendant of that candidate; its exact-head checks, review, and any protected staging approval are still required. Release status is **NO-GO**.
-
-The 28-day production DORA reconstruction remains partial: 91 observed deployment records and 85 matched lead-time samples with a 24h 23m source gap; change failure rate and time to restore remain unknown, not zero. The 40-case synthetic AI evaluation completed but reported 18.75% phishing recall and 6.25% legitimate false-positive rate; this run is a contract/development gate, not release-quality approval. A fresh production probe timed out/failed on `/version`, `/health`, `/ready`, and `/model-info`; the last successful model-info reported analysis disabled. No production deployment or paid inference was performed.
-
-> This is a dated evidence record. The November 25 release snapshot above controls current status.
+The 28-day DORA report collected 2026-11-27 reports merge-to-live median
+3.66 minutes (`n=60` matched of 142 merged PRs), 63 successful deploy records
+(2.25/day), and supplemental main-CI median 66 seconds (`n=117`, 115 pass,
+2 fail). Change fail rate, failed-deployment recovery time, deployment rework,
+and a current comparable optimization result remain **not measured**. See the
+[report](docs/devops/dora-report-2026-11-27.md) for denominators and limits.
 
 ## Historical delivery and acceptance snapshot — November 21, 2026
 
-This is the November 21 historical release snapshot. The November 25 section above controls current status. The associated evidence remains in [PR #268](https://github.com/kendshhh/PhishLens/pull/268).
+This section preserves the observations available on November 21. It is
+superseded by the November 27 snapshot above; the SHAs, service states, PRs,
+check results, and links below are historical evidence only.
 
 ### Source and candidate
 
@@ -157,10 +125,9 @@ record contains the dated earlier service and CI snapshots.
 
 ### Controls and release gates
 
-At the November 21 snapshot, Render metadata reported auto-deploy off for both
-services. A November 23 dashboard refresh shows production Auto-Deploy enabled
-on `main`, while production still serves `811980c...`, behind main; exact
-merge-to-live behavior remains unproven. The latest repository
+Render metadata reports auto-deploy off for both services. Production's latest
+deployment record says trigger `new_commit`; staging's says `api`. This
+production setting/event discrepancy is unresolved. The latest repository
 record lists eight classic required checks as of November 20, but their effective
 current configuration was not rechecked in this audit. The staging Neon branch
 and migration revision `0004_neon_auth_subject` were inspected read-only; the
@@ -261,7 +228,7 @@ until all gates pass for one exact candidate.
 ## Historical delivery and acceptance snapshot — November 15, 2026
 
 > The following November 15 snapshot is preserved for history and is superseded
-> by the November 25 status above.
+> by the November 21 status above.
 
 The [November 15 Kendra DevOps status](docs/devops/kendra-devops-status-2026-11-15.md)
 and [November 15 staging acceptance](docs/devops/staging-acceptance-2026-11-15.md)
@@ -800,16 +767,16 @@ No optimization claim is made from changing durations or changing CI coverage.
 
 ### PR #268 follow-up — 2026-11-21 11:42 UTC
 
-The next exact-head check on `e9451cc20928fefa7c0a6ded4803cebbad24ef42` passed Backend, Extension, migration preflight, Staging integration, workflow lint, dependency security/graph review, deterministic evaluation, and the Secretary report. Hosted staging preflight and Hosted staging were skipped. Required `Secretary staging` remains failed because the `needs-hosted-staging` label and exact-head hosted verification are absent. No current PR CodeQL result, Render deployment or authenticated CRUD was observed. See the [PR #268 evidence](https://github.com/kendshhh/PhishLens/pull/268) for run links. The release remains **NO-GO**; the descriptive DevOps evidence score remains 41/100.
+The next exact-head check on `e9451cc20928fefa7c0a6ded4803cebbad24ef42` passed Backend, Extension, migration preflight, Staging integration, workflow lint, dependency security/graph review, deterministic evaluation, and the Secretary report. Hosted staging preflight and Hosted staging were skipped. Required `Secretary staging` remains failed because the `needs-hosted-staging` label and exact-head hosted verification are absent. No current PR CodeQL result, Render deployment or authenticated CRUD was observed. See the [dated evidence record](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md) for run links. The release remains **NO-GO**; the descriptive DevOps evidence score remains 41/100.
 
 ### PR #268 retarget follow-up — 2026-11-21 11:57 UTC
 
-PR #268 is now based on `main`; review branch head `77c0ed00e607c5580cedffadd031fe40ad71771b` includes the current `main` history. GitHub reports the PR open and mergeable, while the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. Exact-head CI passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security/graph review, deterministic evaluation, DevOps Secretary report and CodeQL. Hosted preflight/deployment were skipped; required `Secretary staging` remains failed because the hosted request label and exact-head hosted verification are absent. No Render deployment or authenticated hosted CRUD occurred. See the [PR #268 evidence](https://github.com/kendshhh/PhishLens/pull/268). Release remains **NO-GO** and the 41/100 descriptive evidence score is unchanged.
+PR #268 is now based on `main`; review branch head `77c0ed00e607c5580cedffadd031fe40ad71771b` includes the current `main` history. GitHub reports the PR open and mergeable, while the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. Exact-head CI passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security/graph review, deterministic evaluation, DevOps Secretary report and CodeQL. Hosted preflight/deployment were skipped; required `Secretary staging` remains failed because the hosted request label and exact-head hosted verification are absent. No Render deployment or authenticated hosted CRUD occurred. See the [dated evidence record](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md). Release remains **NO-GO** and the 41/100 descriptive evidence score is unchanged.
 
 ### PR #268 exact-head snapshot — 2026-11-21 12:02 UTC
 
-Retargeted PR #268 head `1fa2e7827cfe84de425afcc7885743bd55b2a382` passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security and graph review, deterministic evaluation, DevOps Secretary report, and all three CodeQL analyses. [CI run 44901642617](https://github.com/kendshhh/PhishLens/actions/runs/44901642617) completed at 12:02 UTC. Hosted staging preflight and Hosted staging were skipped. The required `Secretary staging` status failed because the `needs-hosted-staging` label and exact-head hosted verification were absent ([assessment 44901931269](https://github.com/kendshhh/PhishLens/actions/runs/44901931269)); no Render deployment or authenticated hosted CRUD occurred. GitHub reports the PR open and mergeable on `main`; the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. The release remains **NO-GO**, and 41/100 is a descriptive evidence-progress score only. This documentation-only evidence update requires fresh exact-head CI before merge. See the [PR #268 evidence](https://github.com/kendshhh/PhishLens/pull/268).
+Retargeted PR #268 head `1fa2e7827cfe84de425afcc7885743bd55b2a382` passed Backend, Extension, Staging integration, migration preflight, workflow lint, dependency security and graph review, deterministic evaluation, DevOps Secretary report, and all three CodeQL analyses. [CI run 44901642617](https://github.com/kendshhh/PhishLens/actions/runs/44901642617) completed at 12:02 UTC. Hosted staging preflight and Hosted staging were skipped. The required `Secretary staging` status failed because the `needs-hosted-staging` label and exact-head hosted verification were absent ([assessment 44901931269](https://github.com/kendshhh/PhishLens/actions/runs/44901931269)); no Render deployment or authenticated hosted CRUD occurred. GitHub reports the PR open and mergeable on `main`; the review decision remains `CHANGES_REQUESTED` pending collaborator re-review. The release remains **NO-GO**, and 41/100 is a descriptive evidence-progress score only. This documentation-only evidence update requires fresh exact-head CI before merge. See the [dated evidence record](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md).
 
 ### PR #268 main-sync snapshot — 2026-11-21 12:14 UTC
 
-PR #268 now includes current `main` through `31e86c7` in merge head `aee49fe5a11da37ed441464c80ad9a09e0b9dda8`. Exact-head CI run [44902645800](https://github.com/kendshhh/PhishLens/actions/runs/44902645800) passed Backend, Extension, Staging integration and migration preflight. Workflow lint [44902645811](https://github.com/kendshhh/PhishLens/actions/runs/44902645811), dependency security/graph [44902645851](https://github.com/kendshhh/PhishLens/actions/runs/44902645851), deterministic evaluation [44902645832](https://github.com/kendshhh/PhishLens/actions/runs/44902645832), and CodeQL [44902643383](https://github.com/kendshhh/PhishLens/actions/runs/44902643383) passed. The exact-head DevOps Secretary report was cancelled during the branch sync ([44902644757](https://github.com/kendshhh/PhishLens/actions/runs/44902644757)); the Secretary preview assessment reports required `Secretary staging` failure because the `needs-hosted-staging` label and exact-head hosted verification are absent ([44902874550](https://github.com/kendshhh/PhishLens/actions/runs/44902874550)). Hosted preflight/deployment were skipped; no Render deploy or authenticated CRUD occurred. GitHub shows PR #268 open, mergeable on `main`, with review decision `CHANGES_REQUESTED`. Release remains **NO-GO**; 41/100 is descriptive evidence progress, not completion. See the [PR #268 evidence](https://github.com/kendshhh/PhishLens/pull/268).
+PR #268 now includes current `main` through `31e86c7` in merge head `aee49fe5a11da37ed441464c80ad9a09e0b9dda8`. Exact-head CI run [44902645800](https://github.com/kendshhh/PhishLens/actions/runs/44902645800) passed Backend, Extension, Staging integration and migration preflight. Workflow lint [44902645811](https://github.com/kendshhh/PhishLens/actions/runs/44902645811), dependency security/graph [44902645851](https://github.com/kendshhh/PhishLens/actions/runs/44902645851), deterministic evaluation [44902645832](https://github.com/kendshhh/PhishLens/actions/runs/44902645832), and CodeQL [44902643383](https://github.com/kendshhh/PhishLens/actions/runs/44902643383) passed. The exact-head DevOps Secretary report was cancelled during the branch sync ([44902644757](https://github.com/kendshhh/PhishLens/actions/runs/44902644757)); the Secretary preview assessment reports required `Secretary staging` failure because the `needs-hosted-staging` label and exact-head hosted verification are absent ([44902874550](https://github.com/kendshhh/PhishLens/actions/runs/44902874550)). Hosted preflight/deployment were skipped; no Render deploy or authenticated CRUD occurred. GitHub shows PR #268 open, mergeable on `main`, with review decision `CHANGES_REQUESTED`. Release remains **NO-GO**; 41/100 is descriptive evidence progress, not completion. See the [dated evidence record](docs/devops/evidence/2026-11-21-staging-neon-auth-smoke.md).

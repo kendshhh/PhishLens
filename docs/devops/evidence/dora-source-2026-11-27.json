@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "repository": "kendshhh/PhishLens",
-  "collected_at_utc": "2026-11-27T05:58:53.745515Z",
+  "collected_at_utc": "2026-11-27T07:14:04.739580Z",
   "window_utc": {
-    "start": "2026-10-30T05:58:53.745515Z",
-    "end": "2026-11-27T05:58:53.745515Z",
+    "start": "2026-10-30T07:14:04.739580Z",
+    "end": "2026-11-27T07:14:04.739580Z",
     "duration_days": 28
   },
   "current_main_sha": "11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0",

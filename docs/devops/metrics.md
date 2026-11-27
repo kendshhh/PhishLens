@@ -1,3 +1,21 @@
+## Staging acceptance addendum — 2026-11-27 08:22 UTC
+
+Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
+passed the authenticated staging journey for prior PR #268 source/backend SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` and extension ZIP SHA-256
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It verified
+Neon Auth sign-in, persistent saved-report CRUD, reload persistence,
+ownership/isolation, cleanup, and extension UX. It recorded zero production
+requests/writes, AI quality blocked (`approval_not_provided`), and no backend
+image digest. This is product-acceptance evidence for that SHA only; it is not a
+production deployment and must not be added to the production DORA denominator.
+
+The integrated PR #268 SHA `9039d1a490d283cc7bcca9243aa02b705036a7dd` passed
+trusted Neon preflight but its initial staging integration failed on an
+undefined test `ROOT`, so no hosted acceptance ran on that SHA. A correction is
+included in the current PR update. Fresh checks and protected staging must pass
+before current-candidate acceptance is reported.
+
 ## Current audit and metric reconciliation — 2026-11-23
 
 This dated refresh retains the partial 28-day DORA reconstruction below and adds exact candidate evidence. GitHub main is `0338ad163a4892987a6a682aed29b95c22c322da`; main protection was rechecked and still requires eight status contexts plus one approval, latest-push approval, and stale-review dismissal, while blocking force-push and deletion.
@@ -74,7 +92,36 @@ zero.
 
 # Pipeline Metrics
 
-## Current service identity refresh — 2026-11-21
+## Current DORA and production probe — 2026-11-27
+
+The reproducible 28-day DORA snapshot is in
+[dora-report-2026-11-27.md](dora-report-2026-11-27.md), with its redacted
+[source data](evidence/dora-source-2026-11-27.json). The report gives a
+merge-to-live median of 3.66 minutes (`n=60` matched of 142 merged PRs),
+63 successful production deploy records (2.25/day), and a supplemental main-CI
+median of 66 seconds (`n=117`, 115 successes and 2 failures). Change fail rate,
+failed-deployment recovery time, deployment rework, and comparable optimization
+remain not measured; missing evidence is not reported as zero.
+
+Read-only Render metadata at 2026-11-27 07:14 UTC identifies the latest
+production deploy as `dep-dc1716etlv9c73b8nl0g`, source
+`811980c2cbf70d9957146bf329627f0826a018f1`, created 2026-11-22T04:33:29Z.
+The service is a Git-backed Python service on `main` with Auto Deploy off.
+Production `GET /model-info` returned HTTP 200 around 07:16 UTC with analysis
+disabled, provider disabled, and TF-IDF reports not accepted. `GET /health`,
+`/ready`, and `/version` each timed out after 15 seconds from this client. These
+are read-only public probes; no product data or credentials were accessed.
+Production readiness and the end-user journey are therefore not verified.
+
+Render metadata marks the Production environment unprotected; the service is a
+public API with allowlist `0.0.0.0/0` and network isolation disabled. Public
+client access is expected for the extension API; this is not evidence that
+deployment credentials are exposed. It is separate from GitHub's protected
+`production` deployment environment, which currently requires `inaki3023`,
+prevents self-review, allows only protected branches, and disallows admin
+bypass. No production setting was changed in this audit.
+
+## Historical service identity refresh — 2026-11-21 (superseded)
 
 This read-only refresh records service identity and endpoint behavior, not a
 performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
@@ -148,6 +195,10 @@ failed in [44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899
 No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 This is a check snapshot, not a performance sample; the next docs-only sync
 needs its own checks.
+
+Render metadata reports auto-deploy disabled for both services. Production's
+latest deployment record nevertheless has trigger `new_commit`; this discrepancy
+is unresolved. See the [current environment map](environment-map-2026-11-21.md)
 
 A later November 23 Render dashboard view showed production Auto-Deploy enabled
 on `main`; production still serves `811980c...`, behind current main. This
