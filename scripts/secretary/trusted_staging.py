@@ -172,6 +172,10 @@ def inspect_candidate(*, timeout=1200, interval=20, api=None, sleep=time.sleep):
     output("pr_number", number)
     output("source_sha", sha)
     output("ci_run_id", run.get("id", ""))
+    if pr.get("state") == "closed":
+        output("disposition", "not-applicable")
+        print("Pull request is closed; no staging deployment is applicable.")
+        return
     if not _is_current_pr(pr, number, sha, repository, config):
         raise SystemExit("PR is closed, stale, a draft, from a fork, or does not target main.")
 

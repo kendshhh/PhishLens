@@ -12,6 +12,9 @@ from backend.app import main
 
 def test_provider_failure_does_not_expose_private_details(monkeypatch):
     class FailingService:
+        def estimate_request(self, **_kwargs):
+            return None  # request-level budget is mocked below
+
         def analyze_email(self, *, subject, sender, body):
             raise RuntimeError(
                 "api_key=secret-key; email=private@example.invalid"
@@ -22,6 +25,8 @@ def test_provider_failure_does_not_expose_private_details(monkeypatch):
         "get_ai_service",
         lambda: (FailingService(), "gemini"),
     )
+    monkeypatch.setattr(main, "reserve_ai_request_quota", lambda *_a, **_k: None)
+    monkeypatch.setattr(main, "attach_ai_quota_observation", lambda *_a, **_k: None)
 
     with TestClient(main.app) as client:
         response = client.post(

@@ -129,6 +129,8 @@ def test_gemini_per_request_cap_blocks_before_paid_inference(google_client):
         api_key="synthetic-key", model="gemini-test", spend_policy=policy,
     )
     with pytest.raises(SpendLimitExceeded, match="request exceeds"):
+        provider.estimate_request('{"body":"Synthetic"}')
+    with pytest.raises(SpendLimitExceeded, match="request exceeds"):
         provider.analyze('{"body":"Synthetic"}')
     client.models.generate_content.assert_not_called()
     assert provider.requests_started == 0
@@ -235,7 +237,7 @@ def test_network_timeout_is_a_controlled_failure(google_client):
     provider = gemini_provider.GeminiProvider(
         api_key="synthetic-key", model="gemini-test", spend_policy=_test_spend_policy("gemini-test"),
     )
-    with pytest.raises(RuntimeError, match="connection failed or timed out"):
+    with pytest.raises(RuntimeError, match="connection timed out"):
         provider.analyze("Test")
 
 

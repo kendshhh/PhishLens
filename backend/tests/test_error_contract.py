@@ -25,6 +25,9 @@ def test_blank_text_has_structured_422_error():
 
 def test_inference_failure_has_structured_502_error(monkeypatch):
     class FailingService:
+        def estimate_request(self, **_kwargs):
+            return None  # request-level budget is mocked below
+
         def analyze_email(self, *, subject, sender, body):
             raise RuntimeError("private provider details")
 
@@ -33,6 +36,8 @@ def test_inference_failure_has_structured_502_error(monkeypatch):
         "get_ai_service",
         lambda: (FailingService(), "gemini"),
     )
+    monkeypatch.setattr(main, "reserve_ai_request_quota", lambda *_a, **_k: None)
+    monkeypatch.setattr(main, "attach_ai_quota_observation", lambda *_a, **_k: None)
 
     with TestClient(main.app) as client:
         response = client.post(

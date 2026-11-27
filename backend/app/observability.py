@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
@@ -17,6 +18,36 @@ logger = logging.getLogger("phishlens.api")
 def request_id() -> str:
     """Generate a server-owned correlation ID; never trust caller input."""
     return uuid.uuid4().hex
+
+
+def attach_ai_quota_observation(request: Request, reservation: Any) -> None:
+    """Attach privacy-safe quota estimates for the request access log."""
+    request.state.ai_quota_observation = {
+        "input_token_upper_bound": reservation.input_token_upper_bound,
+        "output_token_upper_bound": reservation.output_token_upper_bound,
+        "cost_upper_bound_usd": str(reservation.cost_upper_bound_usd),
+        "daily_cost_reserved_usd": str(reservation.daily_cost_reserved_usd),
+        "daily_spend_cap_usd": str(reservation.daily_spend_cap_usd),
+        "daily_budget_fraction": str(reservation.daily_budget_fraction),
+    }
+
+
+def attach_ai_usage_observation(request: Request, result: Any) -> None:
+    """Attach provider usage and configured-rate cost estimates, not content."""
+    usage: dict[str, int | str] = {}
+    for name in ("input_tokens", "output_tokens"):
+        value = result.get(name) if isinstance(result, dict) else getattr(result, name, None)
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            usage[name] = value
+    estimated_cost = (
+        result.get("estimated_cost_usd")
+        if isinstance(result, dict)
+        else getattr(result, "estimated_cost_usd", None)
+    )
+    if isinstance(estimated_cost, str) and re.fullmatch(r"\d+\.\d{6}", estimated_cost):
+        usage["estimated_cost_usd"] = estimated_cost
+    if usage:
+        request.state.ai_usage_observation = usage
 
 
 def set_ai_observation(
@@ -57,6 +88,36 @@ def set_ai_observation(
                 break
         if isinstance(value, str) and value:
             metadata[output_name] = value[:120]
+
+    for name in ("input_tokens", "output_tokens"):
+        value = None
+        for source in sources:
+            if isinstance(source, dict):
+                value = source.get(name)
+            elif source is not None:
+                value = getattr(source, name, None)
+            if value is not None:
+                break
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            metadata[name] = value
+
+    estimated_cost = None
+    for source in sources:
+        if isinstance(source, dict):
+            estimated_cost = source.get("estimated_cost_usd")
+        elif source is not None:
+            estimated_cost = getattr(source, "estimated_cost_usd", None)
+        if estimated_cost is not None:
+            break
+    if isinstance(estimated_cost, str) and re.fullmatch(r"\d+\.\d{6}", estimated_cost):
+        metadata["estimated_cost_usd"] = estimated_cost
+
+    if outcome == "success":
+        metadata.update({"validation_result": True, "retries": 0, "fallback_used": False})
+    for state_name in ("ai_quota_observation", "ai_usage_observation"):
+        context = getattr(request.state, state_name, None)
+        if isinstance(context, dict):
+            metadata.update(context)
     request.state.ai_observation = metadata
 
 
