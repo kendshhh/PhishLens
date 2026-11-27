@@ -20,8 +20,8 @@ test('keeps only allowlisted provider codes in acceptance evidence', () => {
   assert.equal(extractProviderErrorCode('INVALID_EMAIL_OR_PASSWORD'), null);
 });
 
-test('acceptance evidence includes only an allowlisted provider error code', () => {
-  const evidence = authResponseEvidence({
+test('acceptance evidence includes only an allowlisted provider error code', async () => {
+  const evidence = await authResponseEvidence({
     service: 'neon-auth',
     route: '/sign-in/email',
     status: 401,
@@ -38,7 +38,7 @@ test('acceptance evidence includes only an allowlisted provider error code', () 
   });
   assert.equal(JSON.stringify(evidence).includes('account-a@example.test'), false);
 
-  const unknown = authResponseEvidence({
+  const unknown = await authResponseEvidence({
     service: 'neon-auth',
     route: '/sign-in/email',
     status: 401,
@@ -46,4 +46,33 @@ test('acceptance evidence includes only an allowlisted provider error code', () 
   });
   assert.equal(unknown.provider_error_code, null);
   assert.equal(JSON.stringify(unknown).includes('raw provider detail'), false);
+});
+
+test('bounds a stalled Auth body read and preserves route and status', async () => {
+  let guard;
+  let evidence;
+  try {
+    evidence = await Promise.race([
+      authResponseEvidence({
+        service: 'neon-auth',
+        route: '/sign-in/email',
+        status: 401,
+        readPayload: () => new Promise(() => {}),
+        timeoutMs: 10,
+      }),
+      new Promise((_, reject) => {
+        guard = setTimeout(() => reject(new Error('Auth evidence read did not time out')), 3000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(guard);
+  }
+
+  assert.deepEqual(evidence, {
+    service: 'neon-auth',
+    route: '/sign-in/email',
+    status: 401,
+    provider_error_code: null,
+    provider_error_code_status: 'body_timeout',
+  });
 });
