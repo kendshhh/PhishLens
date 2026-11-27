@@ -9,6 +9,7 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { readStagingAuthConfig } from './staging_auth_package_config.mjs';
 
 const database = process.env.PHISHLENS_AUTH_TEST_DATABASE_URL;
 const databaseUrl = new URL(database || 'https://invalid');
@@ -43,9 +44,7 @@ with ZipFile(sys.argv[1]) as package:
     package.extractall(target)
 `, archive, extension]);
     const configSource = await readFile(path.join(extension, 'js/auth-config.js'), 'utf8');
-    const configMatch = /^export const AUTH_CONFIGS = Object\.freeze\((.*)\);\s*export const AUTH_CONFIG = AUTH_CONFIGS\.staging;\s*$/s.exec(configSource);
-    assert.ok(configMatch, 'staging archive must contain the popup environment maps');
-    const config = JSON.parse(configMatch[1]).staging;
+    const config = readStagingAuthConfig(configSource);
     assert.equal(config.transport, 'https-bridge');
     apiOrigin = config.apiOrigin;
     assert.equal(apiOrigin, 'https://phishlens-staging.onrender.com');
@@ -95,7 +94,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
     });
   });
   context = await chromium.launchPersistentContext(path.join(temporary, 'profile'), {
-    executablePath: process.env.PHISHLENS_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    executablePath: process.env.PHISHLENS_CHROME || chromium.executablePath(),
     headless: true, ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--enable-unsafe-extension-debugging', '--disable-background-networking', '--no-first-run']
   });
@@ -317,8 +316,7 @@ uvicorn.run(app, host="127.0.0.1", port=0, log_level="info")
   await page.locator('#account-sign-out').click();
   await page.locator('#account-sign-in').waitFor({ state: 'visible' });
   await register(emailB);
-  await page.locator('#account-sign-out').click();
-  await page.locator('#account-sign-in').waitFor({ state: 'visible' });
+  await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
   await signIn(emailB);
   await page.locator('#account-sign-out').waitFor({ state: 'visible' });
   const isolation = await page.evaluate(async ({ apiOrigin, reportId }) => {
