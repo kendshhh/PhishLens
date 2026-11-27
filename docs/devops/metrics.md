@@ -78,12 +78,16 @@ zero.
 
 The [28-day DORA report](dora-report-2026-11-27.md) and its redacted
 [source snapshot](evidence/dora-source-2026-11-27.json) were generated from
-GitHub and Render metadata at `2026-11-27T05:21:03Z`, against `main`
-`d2057e1c747efd97b7232c82e18d5445b49a9307`. The report records lead time and
-deployment frequency with explicit denominators, plus CI timing. Change failure
-rate, failed-deployment recovery time, deployment rework, and a comparable
-end-to-end optimization result remain unmeasured; see the report's limits.
-No application data, secret value, or AI inference content is included.
+GitHub and Render metadata at `2026-11-27T05:58:53Z`, against `main`
+`11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. The report records merge-to-live
+lead-time proxy median 3.66 minutes for 60/142 merged PRs, 63 successful deploy
+records in 28 days, and CI median 66 seconds across 117 runs (115 success, 2
+failure). Change failure rate, failed-deployment recovery time, deployment
+rework, and a comparable end-to-end optimization result remain unmeasured; see
+the report's limits. No application data, secret value, or AI inference content
+is included. Render's latest deploy record marked live is metadata, not a
+successful HTTP version or product-journey check; the Nov 27 `/version` request
+timed out.
 
 ## Historical service identity refresh — 2026-11-21
 
