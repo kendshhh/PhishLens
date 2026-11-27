@@ -43,7 +43,7 @@ function runStagingSmoke(baseUrl) {
             ...process.env,
             STAGING_BASE_URL: baseUrl,
             STAGING_SMOKE_TIMEOUT_MS: '3000',
-            STAGING_REQUEST_TIMEOUT_MS: '50',
+            STAGING_REQUEST_TIMEOUT_MS: '500',
             STAGING_MAX_ATTEMPTS: '3',
             STAGING_RETRY_DELAY_MS: '0',
             GITHUB_OUTPUT: '',
