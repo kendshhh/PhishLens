@@ -38,6 +38,26 @@ persistence, account isolation, cleanup, and extension UX. The run recorded AI
 quality blocked (`approval_not_provided`) and no backend image digest. The
 current documentation follow-up does not repeat staging or change that evidence.
 
+## Post-publication verification of this correction
+
+The correction commit `e665fdde1fabba9906a7e9170b5d80c0e5d39916` completed
+applicable CI in run
+[45982767567](https://github.com/kendshhh/PhishLens/actions/runs/45982767567):
+Backend, Extension, Staging integration, and migration source preflight passed;
+the Issue 90 package was skipped by its path filter. CodeQL
+([140450847115](https://github.com/kendshhh/PhishLens/runs/140450847115)),
+deterministic AI evaluation
+([45982767774](https://github.com/kendshhh/PhishLens/actions/runs/45982767774)),
+dependency security
+([45982767737](https://github.com/kendshhh/PhishLens/actions/runs/45982767737)),
+workflow lint
+([45982767583](https://github.com/kendshhh/PhishLens/actions/runs/45982767583)),
+and the migration/preflight job passed. The separate `verify-neon` and Issue 90
+jobs were skipped by their documented conditions. `Secretary staging` reported
+success with explicit N/A: no application/runtime changes; required CI passed.
+No Render staging deployment or authenticated acceptance was run on this
+documentation-only PR head. The PR remains open with changes requested.
+
 ## Current DORA evidence
 
 The reproducible 28-day snapshot refreshed at
