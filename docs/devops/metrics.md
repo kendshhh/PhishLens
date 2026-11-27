@@ -128,11 +128,13 @@ interval. Therefore the defensible conclusion is **CFR unknown and MTTR unknown*
 with one unresolved in-window production acceptance failure—not zero failures.
 
 The previous 69-record / 64-match snapshot remains historical and should not be
-used as the current window. Keep the 2026-11-20 optimization experiment separate
-from DORA: cached uv Backend median 50.92 s versus 61.52 s baseline, n=2 each,
-while the staging-cache whole-job median increased 3.5 s. These small samples do
-not establish a reliable end-to-end improvement; the optimization criterion
-remains **not met**.
+used as the current window. Keep optimization evidence separate from DORA:
+PR #119's cached-uv Backend job median was 50.92 s versus 61.52 s baseline
+(`n=2` each), and the change was merged to `main` on November 4. This is one
+implemented job-level improvement. The staging-cache whole-job median increased
+3.5 s. These small, job-scoped samples do not establish a reliable end-to-end
+improvement or a failure-rate trend; the rubric's multiple-optimization
+criterion remains **not met**.
 
 To close the DORA evidence gap, export the complete production deployment list
 for the full window (including the missing interval), identify and deduplicate
@@ -372,12 +374,12 @@ finished its ordinary jobs on October 20 and started the protected hosted job
 on October 25. This is operational delay that needs a queue/approval policy
 review; it is not a reason to omit the protected check.
 
-The snapshot is descriptive, not a before/after experiment. The existing cached
-uv backend comparison remains **n=2 baseline and n=2 candidate** and measures
-the Backend job only. Its candidate median was 50.92 s versus 61.52 s, but that
-small job-level sample does not establish a reliable end-to-end improvement.
-PR and main workflows also have different check sets and are not an equivalent
-optimization pair. No timing win is claimed.
+The snapshot is descriptive, not a before/after experiment. The cached-uv
+comparison is **n=2 baseline and n=2 candidate** and measures the Backend job
+only. Its candidate median was 50.92 s versus 61.52 s, and the approach was
+merged in PR #119; this is an observed job-level timing gain, not a whole-pipeline
+gain. PR and main workflows also have different check sets and are not an
+equivalent optimization pair. No end-to-end timing or failure-rate win is claimed.
 
 ## Historical observations
 
@@ -759,8 +761,11 @@ measured candidate, not a guarantee for every run. Earlier uncached and mixed
 uv trials remain separately reported above and are not included in this
 cache-hit comparison.
 
-The current PR branch now uses the same pinned uv setup and cache dependency
-globs. Its new-head CI must pass before treating the updated PR head as verified.
+PR #119's uv/cache change was approved and merged as
+`98dd0dc13136f16c1159a9aedee870a84be066a3` on November 4. Current `main` retains
+pinned uv and caching; PR #283 later updated the setup action from v10.3.3 to
+v10.4.0. The Nov 4 comparison is therefore an implemented, measured backend-job
+result, with the sample-size and end-to-end limitations above.
 
 ### PR #268 follow-up — 2026-11-21 11:42 UTC
 

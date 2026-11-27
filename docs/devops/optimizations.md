@@ -1,24 +1,31 @@
 # Pipeline optimization evidence
 
-## November 14 end-to-end review — no verified improvement
+## November 27 optimization status — one merged job-level improvement
 
-The current 28-day sample is in
-[metrics.md](metrics.md#current-28-day-delivery-snapshot--2026-11-14-0312-utc)
-with run-level source rows in
-[ci-runs-2026-11-14.csv](evidence/ci-runs-2026-11-14.csv). Completed PR
-workflow attempts have a 4.58-minute median but 175.87-minute mean and
-205.08-minute p90 because the protected `Hosted staging` job sometimes waits
-for days before starting. Main push CI has an 1.18-minute median (n=86). These
-are different workflows and are not a before/after comparison.
+The current 28-day delivery snapshot is in
+[dora-report-2026-11-27.md](dora-report-2026-11-27.md). It records a 66.50-second
+main-push CI median (`n=118`), 116 successes and 2 failures, alongside 63
+successful production deploy records. Those current totals describe delivery;
+they are not a before/after optimization comparison.
 
-The current implementation work adds checks and controls; it has not changed
-the production pipeline's execution path. Its effect on total workflow time is
-therefore unmeasured. The cached uv comparison remains two baseline and two
-candidate Backend job samples, not full PR workflows; do not extrapolate that
-result to end-to-end delivery. Next measurement should separate runner time
-from protected-environment queue time and compare the same event/check set
-before and after a specific queue-policy change. Preserve the protected staging
-acceptance gate while measuring it.
+PR [#119](https://github.com/kendshhh/PhishLens/pull/119) measured a like-for-like
+Backend checks job improvement before it was merged to `main` on November 4 as
+`98dd0dc13136f16c1159a9aedee870a84be066a3`. Two cached pip baseline jobs had a
+61.52-second median; two cached pinned-uv candidate jobs had a 50.92-second
+median, 10.61 seconds (17.2%) lower. Test commands remained unchanged, all four
+Backend jobs passed, and the uv/cache approach remains in current `main` (the
+setup action version was subsequently updated in PR #283). The exact sample
+records and limits are in
+[metrics.md](metrics.md#november-4-cached-uv-backend-job-comparison).
+
+This is evidence of one implemented backend-job improvement, not a full PR/main
+workflow speedup. The sample is small and does not show a failure-rate trend.
+Other measured attempts were neutral or slower: the staging-cache trial raised
+whole-job median from 40.5 to 44.0 seconds, while the extension-cache trial did
+not improve whole-job time. The rubric asks for multiple optimizations and a
+downward trend in pipeline time and failure rate, so this criterion remains
+partial. Keep runner time separate from approval/queue time and retain all
+required acceptance checks in future comparisons.
 
 ## October 21 measured staging-cache experiment
 
