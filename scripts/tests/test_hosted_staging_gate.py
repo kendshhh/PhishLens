@@ -8,7 +8,7 @@ WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.y
 
 def named_job(workflow_text, name):
     match = re.search(
-        rf"(?ms)^  {re.escape(name)}:\n(.*?)(?=^  [a-zA-Z0-9_-]+:|\\Z)",
+        rf"(?ms)^  {re.escape(name)}:\n(.*?)(?=^  [a-zA-Z0-9_-]+:|\Z)",
         workflow_text,
     )
     if not match:
@@ -18,7 +18,7 @@ def named_job(workflow_text, name):
 
 def named_step(job_text, name):
     match = re.search(
-        rf"(?ms)^      - name: {re.escape(name)}\n(.*?)(?=^      - (?:name:|uses:)|\\Z)",
+        rf"(?ms)^      - name: {re.escape(name)}\n(.*?)(?=^      - (?:name:|uses:)|\Z)",
         job_text,
     )
     if not match:
@@ -69,7 +69,7 @@ class HostedStagingGateTests(unittest.TestCase):
 
     def test_local_staging_cleans_up_process_and_prints_log_on_smoke_failure(self):
         staging_job = named_job(self.workflow_text, "staging")
-        self.assertIn('trap \'kill "$api_pid" 2>/dev/null || true\' EXIT', staging_job)
+        self.assertIn("trap 'kill \"$api_pid\" 2>/dev/null || true' EXIT", staging_job)
         self.assertIn("if ! node scripts/staging_smoke.mjs; then", staging_job)
         self.assertIn("cat /tmp/phishlens-staging.log", staging_job)
         self.assertIn("exit 1", staging_job)
