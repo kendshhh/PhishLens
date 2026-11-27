@@ -256,22 +256,23 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  staging:
-    name: Isolated staging product acceptance
-    needs: [preflight, build-candidate]
+  staging-neon:
+    name: Verify and migrate isolated staging database
+    needs: [preflight]
     outputs:
       neon_branch_id: ${{ steps.neon-branch.outputs.branch_id }}
+      neon_project_id: ${{ steps.neon-branch.outputs.project_id }}
+      production_project_id: ${{ steps.neon-branch.outputs.production_project_id }}
+      production_branch_id: ${{ steps.neon-branch.outputs.production_branch_id }}
+      migration_revision: ${{ steps.migrate-staging.outputs.migration_revision }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    environment: release-staging
+    timeout-minutes: 25
+    environment: staging-neon-preflight
     concurrency:
-      group: phishlens-release-staging
+      group: phishlens-release-neon-staging
       cancel-in-progress: false
     permissions:
       contents: read
-      actions: read
-      deployments: read
-      packages: read
     steps:
       - name: Check out exact candidate source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -279,24 +280,18 @@ jobs:
           ref: ${{ needs.preflight.outputs.source_sha }}
           persist-credentials: false
 
-      - name: Download the immutable candidate artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          name: phishlens-release-candidate
-          path: ${{ runner.temp }}/phishlens-candidate
-
-      - name: Verify GitHub staging environment protection rules
+      - name: Verify GitHub Neon preflight environment protection rules
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh api "repos/$GH_REPO/environments/release-staging" > "$RUNNER_TEMP/release-staging-environment.json"
-          gh api "repos/$GH_REPO/environments/release-staging/deployment-branch-policies" \
-            > "$RUNNER_TEMP/release-staging-branch-policies.json"
-          python -m scripts.verify_github_environment release-staging \
-            --input "$RUNNER_TEMP/release-staging-environment.json" \
-            --branch-policies "$RUNNER_TEMP/release-staging-branch-policies.json"
+          gh api "repos/$GH_REPO/environments/staging-neon-preflight" > "$RUNNER_TEMP/staging-neon-environment.json"
+          gh api "repos/$GH_REPO/environments/staging-neon-preflight/deployment-branch-policies" \
+            > "$RUNNER_TEMP/staging-neon-branch-policies.json"
+          python -m scripts.verify_github_environment staging-neon-preflight \
+            --input "$RUNNER_TEMP/staging-neon-environment.json" \
+            --branch-policies "$RUNNER_TEMP/staging-neon-branch-policies.json"
 
       - name: Verify isolated schema-only Neon branch metadata
         id: neon-branch
@@ -312,14 +307,15 @@ jobs:
           STAGING_NEON_SCHEMA_ONLY_ATTESTATION: ${{ vars.STAGING_NEON_SCHEMA_ONLY_ATTESTATION }}
         run: |
           set -euo pipefail
-          python -m scripts.verify_neon_release_branch > "$RUNNER_TEMP/phishlens-candidate/neon-branch.json"
-          branch_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["branch_id"])' "$RUNNER_TEMP/phishlens-candidate/neon-branch.json")"
+          python -m scripts.verify_neon_release_branch > "$RUNNER_TEMP/neon-branch.json"
+          branch_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["branch_id"])' "$RUNNER_TEMP/neon-branch.json")"
+          project_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_id"])' "$RUNNER_TEMP/neon-branch.json")"
+          production_project_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["production_project_id"])' "$RUNNER_TEMP/neon-branch.json")"
+          production_branch_id="$PRODUCTION_NEON_BRANCH_ID"
           echo "branch_id=$branch_id" >> "$GITHUB_OUTPUT"
-
-      - name: Require a private Render-to-Neon branch mapping attestation
-        env:
-          MAPPING_ATTESTATION: ${{ vars.STAGING_RENDER_DATABASE_CONFIG_ATTESTATION }}
-        run: test "$MAPPING_ATTESTATION" = current
+          echo "project_id=$project_id" >> "$GITHUB_OUTPUT"
+          echo "production_project_id=$production_project_id" >> "$GITHUB_OUTPUT"
+          echo "production_branch_id=$production_branch_id" >> "$GITHUB_OUTPUT"
 
       - name: Migrate only the attested schema-only staging branch
         id: migrate-staging
@@ -340,12 +336,83 @@ jobs:
           python -m pip install --disable-pip-version-check -r backend/requirements.txt
           python -m scripts.migrate_release_staging
 
+      - name: Retain redacted Neon target and migration evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phishlens-staging-database-evidence
+          path: ${{ runner.temp }}/neon-branch.json
+          if-no-files-found: error
+          retention-days: 90
+
+  deploy-staging:
+    name: Deploy immutable candidate to protected staging
+    needs: [preflight, build-candidate, staging-neon]
+    outputs:
+      provider: ${{ steps.model-identity.outputs.provider }}
+      model_revision: ${{ steps.model-identity.outputs.model_revision }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: release-staging
+    concurrency:
+      group: phishlens-release-staging
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      packages: read
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Verify GitHub release-staging environment protection rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/environments/release-staging" > "$RUNNER_TEMP/release-staging-environment.json"
+          gh api "repos/$GH_REPO/environments/release-staging/deployment-branch-policies" \
+            > "$RUNNER_TEMP/release-staging-branch-policies.json"
+          python -m scripts.verify_github_environment release-staging \
+            --input "$RUNNER_TEMP/release-staging-environment.json" \
+            --branch-policies "$RUNNER_TEMP/release-staging-branch-policies.json"
+
+      - name: Require privately verified Render-to-Neon mapping
+        env:
+          MAPPING_ATTESTATION: ${{ vars.STAGING_RENDER_DATABASE_CONFIG_ATTESTATION }}
+        run: test "$MAPPING_ATTESTATION" = current
+
       - name: Verify Render staging can accept this image digest
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_STAGING_API_KEY }}
           RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
           IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
         run: python scripts/release_render.py preflight --service-id "$RENDER_STAGING_SERVICE_ID" --image-repository "$IMAGE_REPOSITORY"
+
+      - name: Validate configured approved model identity
+        id: model-identity
+        env:
+          RELEASE_PROVIDER: ${{ vars.STAGING_RELEASE_PROVIDER }}
+          RELEASE_MODEL_REVISION: ${{ vars.STAGING_RELEASE_MODEL_REVISION }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re
+          provider = os.environ.get('RELEASE_PROVIDER', '').strip()
+          revision = os.environ.get('RELEASE_MODEL_REVISION', '').strip()
+          if provider.lower() in {'', 'disabled', 'unavailable', 'mock'}:
+              raise SystemExit('An explicitly approved staging provider identity is required.')
+          if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}', revision):
+              raise SystemExit('An immutable approved staging model revision is required.')
+          if revision.lower() in {'latest', 'stable', 'default'}:
+              raise SystemExit('Mutable model aliases cannot be promoted.')
+          print(f'provider={provider}')
+          print(f'model_revision={revision}')
+          PY
 
       - name: Deploy the exact backend image to staging and check service identity
         env:
@@ -354,16 +421,73 @@ jobs:
           IMAGE_REPOSITORY: ${{ needs.preflight.outputs.image_repository }}
           IMAGE_REF: ${{ needs.build-candidate.outputs.image_ref }}
           SOURCE_SHA: ${{ needs.preflight.outputs.source_sha }}
-          STAGING_AI_APPROVAL_JSON: ${{ secrets.STAGING_AI_APPROVAL_JSON }}
+          RELEASE_PROVIDER: ${{ steps.model-identity.outputs.provider }}
+          RELEASE_MODEL_REVISION: ${{ steps.model-identity.outputs.model_revision }}
         run: |
           set -euo pipefail
-          model="$(python -c 'import json,os; print(json.loads(os.environ["STAGING_AI_APPROVAL_JSON"])["model_revision"])')"
-          provider="$(python -c 'import json,os; print(json.loads(os.environ["STAGING_AI_APPROVAL_JSON"])["provider"])')"
           python scripts/release_render.py deploy \
             --service-id "$RENDER_STAGING_SERVICE_ID" --image-repository "$IMAGE_REPOSITORY" \
             --image-ref "$IMAGE_REF" --base-url https://phishlens-staging.onrender.com \
-            --environment staging --source-sha "$SOURCE_SHA" --provider "$provider" \
-            --model-revision "$model" > "$RUNNER_TEMP/phishlens-candidate/staging-deploy.json"
+            --environment staging --source-sha "$SOURCE_SHA" --provider "$RELEASE_PROVIDER" \
+            --model-revision "$RELEASE_MODEL_REVISION" > "$RUNNER_TEMP/staging-deploy.json"
+
+      - name: Retain redacted staging deployment identity
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phishlens-staging-deploy
+          path: ${{ runner.temp }}/staging-deploy.json
+          if-no-files-found: error
+          retention-days: 90
+
+  staging-acceptance:
+    name: Authenticated staging product acceptance
+    needs: [preflight, build-candidate, staging-neon, deploy-staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: staging
+    concurrency:
+      group: phishlens-release-product-acceptance
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      packages: read
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.preflight.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Download the immutable candidate and staging deployment evidence
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: phishlens-release-candidate
+          path: ${{ runner.temp }}/phishlens-candidate
+
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: phishlens-staging-deploy
+          path: ${{ runner.temp }}/phishlens-candidate
+
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: phishlens-staging-database-evidence
+          path: ${{ runner.temp }}/phishlens-candidate
+
+      - name: Verify GitHub staging acceptance environment protection rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/environments/staging" > "$RUNNER_TEMP/staging-environment.json"
+          gh api "repos/$GH_REPO/environments/staging/deployment-branch-policies" \
+            > "$RUNNER_TEMP/staging-branch-policies.json"
+          python -m scripts.verify_github_environment staging \
+            --input "$RUNNER_TEMP/staging-environment.json" \
+            --branch-policies "$RUNNER_TEMP/staging-branch-policies.json"
 
       - name: Install exact package acceptance dependencies
         run: |
@@ -382,14 +506,14 @@ jobs:
           STAGING_AUTH_URL: ${{ vars.PHISHLENS_STAGING_AUTH_URL }}
           STAGING_AUTH_DATABASE: ${{ vars.PHISHLENS_STAGING_AUTH_DATABASE }}
           STAGING_AUTH_TRUSTED_CHROME_ORIGIN: ${{ vars.STAGING_AUTH_TRUSTED_CHROME_ORIGIN }}
-          STAGING_NEON_BRANCH_ID: ${{ steps.neon-branch.outputs.branch_id }}
-          STAGING_NEON_PROJECT_ID: ${{ vars.STAGING_NEON_PROJECT_ID }}
-          PRODUCTION_NEON_PROJECT_ID: ${{ vars.PRODUCTION_NEON_PROJECT_ID }}
+          STAGING_NEON_BRANCH_ID: ${{ needs.staging-neon.outputs.neon_branch_id }}
+          STAGING_NEON_PROJECT_ID: ${{ needs.staging-neon.outputs.neon_project_id }}
+          PRODUCTION_NEON_PROJECT_ID: ${{ needs.staging-neon.outputs.production_project_id }}
           STAGING_NEON_BRANCH_KIND: schema-only
-          STAGING_NEON_PARENT_ID: ${{ vars.STAGING_NEON_PARENT_ID }}
-          STAGING_NEON_PRODUCTION_ROWS_PRESENT: ${{ vars.STAGING_NEON_PRODUCTION_ROWS_PRESENT }}
-          STAGING_MIGRATION_REVISION: ${{ steps.migrate-staging.outputs.migration_revision }}
-          PRODUCTION_NEON_BRANCH_ID: ${{ vars.PRODUCTION_NEON_BRANCH_ID }}
+          STAGING_NEON_PARENT_ID: ''
+          STAGING_NEON_PRODUCTION_ROWS_PRESENT: 'false'
+          STAGING_MIGRATION_REVISION: ${{ needs.staging-neon.outputs.migration_revision }}
+          PRODUCTION_NEON_BRANCH_ID: ${{ needs.staging-neon.outputs.production_branch_id }}
           STAGING_AI_APPROVAL_JSON: ${{ secrets.STAGING_AI_APPROVAL_JSON }}
           STAGING_AUTH_USER_A_EMAIL: ${{ secrets.STAGING_AUTH_USER_A_EMAIL }}
           STAGING_AUTH_USER_A_PASSWORD: ${{ secrets.STAGING_AUTH_USER_A_PASSWORD }}
@@ -413,7 +537,7 @@ jobs:
 
   production:
     name: Independently approved production promotion
-    needs: [preflight, build-candidate, staging]
+    needs: [preflight, build-candidate, staging-neon, deploy-staging, staging-acceptance]
     if: inputs.promote_production == true
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -483,7 +607,7 @@ jobs:
           IMAGE_REF: ${{ needs.build-candidate.outputs.image_ref }}
           IMAGE_DIGEST: ${{ needs.build-candidate.outputs.image_digest }}
           EXTENSION_SHA256: ${{ needs.build-candidate.outputs.extension_sha256 }}
-          STAGING_BRANCH_ID: ${{ needs.staging.outputs.neon_branch_id }}
+          STAGING_BRANCH_ID: ${{ needs.staging-neon.outputs.neon_branch_id }}
           PROMOTION_ENABLED: ${{ inputs.promote_production }}
           RELEASE_PROMOTION_ENABLED: ${{ vars.RELEASE_PROMOTION_ENABLED }}
           PRODUCTION_CONFIG_ATTESTATION: ${{ vars.PRODUCTION_RELEASE_CONFIG_ATTESTATION }}
@@ -613,7 +737,7 @@ jobs:
   release-outcome:
     name: Report release outcome
     if: always()
-    needs: [preflight, build-candidate, staging, production]
+    needs: [preflight, build-candidate, staging-neon, deploy-staging, staging-acceptance, production]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions: {}
@@ -623,12 +747,16 @@ jobs:
           PROMOTE_PRODUCTION: ${{ inputs.promote_production }}
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           BUILD_RESULT: ${{ needs.build-candidate.result }}
-          STAGING_RESULT: ${{ needs.staging.result }}
+          NEON_RESULT: ${{ needs.staging-neon.result }}
+          STAGING_DEPLOY_RESULT: ${{ needs.deploy-staging.result }}
+          STAGING_ACCEPTANCE_RESULT: ${{ needs.staging-acceptance.result }}
           PRODUCTION_RESULT: ${{ needs.production.result }}
         run: |
           set -euo pipefail
-          if [[ "$PREFLIGHT_RESULT" != success || "$BUILD_RESULT" != success || "$STAGING_RESULT" != success ]]; then
-            echo "Required preflight, build, or staging acceptance did not pass." >&2
+          if [[ "$PREFLIGHT_RESULT" != success || "$BUILD_RESULT" != success || \
+                "$NEON_RESULT" != success || "$STAGING_DEPLOY_RESULT" != success || \
+                "$STAGING_ACCEPTANCE_RESULT" != success ]]; then
+            echo "Required preflight, build, isolated migration, staging deploy, or authenticated acceptance did not pass." >&2
             exit 1
           fi
           if [[ "$PROMOTE_PRODUCTION" == true ]]; then
