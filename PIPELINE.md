@@ -2,29 +2,33 @@
 
 ## Current delivery and acceptance snapshot — November 27, 2026
 
-Release decision remains **NO-GO**; issue #153 remains open. This is a status snapshot, not an acceptance claim. PR #296 merged on November 26 and added the trusted staging controller; PR #282 is being aligned to the current `main` before another protected staging run.
+Release remains **NO-GO**; issue #153 remains open. This is a status snapshot, not a release approval. The evidence is checked against current GitHub `main` at `d2057e1c747efd97b7232c82e18d5445b49a9307` and read-only Render/GitHub metadata refreshed November 27.
 
 ### Main, merge gates, and trusted staging
 
-Current GitHub `main` is `11b40841fe251942244e494f9088baff6c105668`. Active ruleset #27733591 requires strict status checks for Backend checks, Extension checks, Staging integration, CodeQL, Secretary staging, Deterministic AI Evaluation, Dependency security, and Workflow lint. Ruleset #26782191 requires one approval and approval of the latest push. The required-check contract is verified from the active rulesets; a deliberately failing current required check has not yet been demonstrated to block merge.
+The active GitHub rulesets were re-read: ruleset #27733591 requires strict checks named Backend checks, Extension checks, Staging integration, CodeQL, Secretary staging, Deterministic AI Evaluation, Dependency security, and Workflow lint. Ruleset #26782191 requires one approval and approval of the latest push. A deliberately failing required check has not been run to prove merge blocking.
 
-The default-branch `trusted-hosted-staging.yml` controller is present on `main`. It checks the PR head and required statuses, attests the isolated Neon target, deploys only that exact SHA through protected environments, and uses trusted verification code for authenticated extension/CRUD acceptance. The old #282 head is behind `main` and its previous CI run failed before executing Hosted staging steps; it was not rerun. This branch update carries the current trusted workflow forward. A new exact-head protected staging run is still required, with the configured independent reviewer approval.
+The trusted default-branch staging controller is present. Its main-run [45944888266](https://github.com/kendshhh/PhishLens/actions/runs/45944888266) failed closed before Neon preflight or deploy because its source PR was already closed; authenticated acceptance and deployment were skipped. The controller change in this PR classifies a closed-PR run as not applicable, without deploying or publishing a green PR status. For open runtime PRs, the `needs-hosted-staging` label, exact-head checks, isolated Neon preflight, protected deployment and authenticated acceptance remain required.
 
-### Staging identity and live service
+### Staging and production evidence
 
-The staging mapping reported from Render matches the approved isolated Neon project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, host `ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`, database `phishlens_dev`, runtime role `phishlens_staging_app`, and migration role `neondb_owner`. The Auth endpoint points to the same staging project. After the staging database credentials were rotated and updated, `/health` and `/ready` returned 200 and readiness reported a connected database. The current live staging backend is still `30743b077169357455620b55233f75806ea636aa`; the new PR candidate has not been deployed or accepted. The migration credential has not yet been exercised by a current-candidate migration run. No product data or production database was used.
+The staging mapping was previously reported as the isolated Neon project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, the approved staging endpoint, database `phishlens_dev`, runtime role `phishlens_staging_app`, and migration role `neondb_owner`. Secret values were not read. Current Render API metadata confirms both Render services are on branch `main` with Auto-Deploy off. GitHub's `release-staging` environment currently has zero configured secrets, so the image promotion workflow cannot execute its protected deploy path yet.
 
-Production was not changed. Staging and production remain Git-backed Render services with auto-deploy off; a single immutable backend image and extension package have not been promoted through both environments. No exact-candidate Auth/CRUD/extension acceptance has passed. The earlier Account A 401 is not considered resolved until the protected acceptance run passes.
+Issue #42 records an installed-Chrome Auth and saved-report journey on November 27 using backend SHA `30743b077169357455620b55233f75806ea636aa` and the matching PR #258 package/run `45537485644`. It covers sign-in, history, create/open/edit, persistence after reload, delete, and the signed-out prompt. This is useful staging evidence for that pair; it does not establish cross-user isolation or acceptance of the current `main`/PR #282 candidate.
 
-### Model quality and release decision
+Production currently serves `811980c2cbf70d9957146bf329627f0826a018f1`, while `main` is `d2057e1c747efd97b7232c82e18d5445b49a9307`. The [production drift run](https://github.com/kendshhh/PhishLens/actions/runs/45944312082) correctly failed on that SHA mismatch. No production change was made. Both Render services remain Git-backed; no same-digest backend image and extension package promotion has been executed.
 
-Staging `/model-info` reports TF-IDF model `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. That establishes identity, not release quality. The historical English evaluation supports advisory use on that historical cohort only. No reviewed representative current-source holdout and approved numeric thresholds are recorded, so the model-quality gate remains blocked and AI release acceptance is not claimed.
+### AI and release controls
 
-### DORA, recovery, and operations
+The historical English TF-IDF evaluation supports advisory use on its historical cohort only. A reviewed, representative current-source holdout with approved thresholds has not been accepted for the release candidate. The code-level Gemini quota-order fix is in PR #282; this does not constitute model-quality approval.
 
-The latest reproducible DORA report is dated November 25: 68 successful Render deployment records, 62 exact merged-SHA-to-deploy matches from 130 merged PRs, and 108 main CI runs. Change failure rate, time to restore service, and deployment rework rate remain unmeasured; the report establishes no like-for-like optimization gain. See the [November 25 DORA report](docs/devops/dora-report-2026-11-25.md).
+No current production rollback rehearsal, isolated restore with measured RTO/RPO, verified alert delivery, or backup-responder exercise is evidenced. No versioned production release or changelog release record exists. Keep **NO-GO** until exact-candidate product acceptance, approved model quality, immutable promotion, post-deploy verification, and recovery evidence pass.
 
-A current-production-compatible rollback rehearsal, isolated restore with measured RTO/RPO, verified alert delivery, and backup responder exercise remain outstanding. No release tag or production promotion is authorized by this snapshot. Keep the release at **NO-GO** until product acceptance, approved model quality, immutable promotion, exact-SHA post-deploy verification, and recovery evidence pass.
+### Current DORA report
+
+The reproducible 28-day snapshot is [dated November 27](docs/devops/dora-report-2026-11-27.md), with redacted source data in [dora-source-2026-11-27.json](docs/devops/evidence/dora-source-2026-11-27.json). It records lead time for 60/140 merged PRs, 63 successful deploy records, and 115 CI runs (113 successful, 2 failed). Change fail rate, service recovery time, and deployment rework remain explicitly unmeasured; no comparable end-to-end optimization gain is established.
+
+The category-by-category evidence and closure conditions are in [the November 27 DevOps rubric closeout](docs/devops/devops-finalization-2026-11-27.md).
 ## Historical DevOps evidence snapshot — November 23, 2026
 
 The full matrix, compliance audit, and environment map for this date are recorded in [PR #282](https://github.com/kendshhh/PhishLens/pull/282).

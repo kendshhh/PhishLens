@@ -74,7 +74,18 @@ zero.
 
 # Pipeline Metrics
 
-## Current service identity refresh — 2026-11-21
+## Latest reproducible DORA snapshot — 2026-11-27
+
+The [28-day DORA report](dora-report-2026-11-27.md) and its redacted
+[source snapshot](evidence/dora-source-2026-11-27.json) were generated from
+GitHub and Render metadata at `2026-11-27T05:21:03Z`, against `main`
+`d2057e1c747efd97b7232c82e18d5445b49a9307`. The report records lead time and
+deployment frequency with explicit denominators, plus CI timing. Change failure
+rate, failed-deployment recovery time, deployment rework, and a comparable
+end-to-end optimization result remain unmeasured; see the report's limits.
+No application data, secret value, or AI inference content is included.
+
+## Historical service identity refresh — 2026-11-21
 
 This read-only refresh records service identity and endpoint behavior, not a
 performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`

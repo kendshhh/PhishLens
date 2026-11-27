@@ -1,7 +1,9 @@
 # DevOps closeout snapshot — 2026-11-25
 
-This is a current evidence snapshot, not a release approval. Product release
-remains **NO-GO** until the model-quality and immutable-artifact gates pass.
+This is a historical evidence snapshot, not a release approval. It is
+superseded by the [November 27 rubric closeout](devops-finalization-2026-11-27.md)
+and [current pipeline snapshot](../../PIPELINE.md). Product release remains
+**NO-GO** until the model-quality and immutable-artifact gates pass.
 
 ## Verified controls and current evidence
 

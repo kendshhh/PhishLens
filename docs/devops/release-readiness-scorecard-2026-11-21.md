@@ -1,4 +1,10 @@
-# DevOps release-readiness scorecard — 2026-11-21
+# Historical DevOps readiness checklist — 2026-11-21
+
+> Historical estimate only. The 41/100 below used an equal-weight 16-item
+> internal checklist, not the supplied 100-point CI/CD rubric. It is superseded
+> as a current evidence snapshot by the [November 27 rubric closeout](devops-finalization-2026-11-27.md)
+> and [current pipeline snapshot](../../PIPELINE.md). Do not present 41/100 as
+> the instructor's score.
 
 **Current release: NO-GO. Estimated DevOps evidence progress: 41/100.**
 

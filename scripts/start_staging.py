@@ -132,8 +132,9 @@ def _validate_effective_connection_identity(database: URL, name: str) -> None:
         )
 
 
-def _normalized_neon_host(host: str) -> str:
-    return re.sub(r"-pooler(?=\.)", "", host.rstrip(".").lower())
+def _canonical_neon_host(host: str) -> str:
+    """Normalize DNS presentation only; never infer aliases by rewriting labels."""
+    return host.rstrip(".").lower()
 
 
 def validate_hosted_database_urls(
@@ -145,12 +146,15 @@ def validate_hosted_database_urls(
     for name, database in (("runtime", runtime), ("migration", migration)):
         _validate_hosted_connection_query(database, name)
 
-    normalized_host = _normalized_neon_host(expected_host)
-    normalized_production_host = _normalized_neon_host(production_host)
-    if (expected_host.rstrip(".").lower() not in STAGING_NEON_ENDPOINT_HOSTS
+    allowed_staging_hosts = {
+        _canonical_neon_host(host) for host in STAGING_NEON_ENDPOINT_HOSTS
+    }
+    normalized_host = _canonical_neon_host(expected_host)
+    normalized_production_host = _canonical_neon_host(production_host)
+    if (normalized_host not in allowed_staging_hosts
             or not normalized_production_host.startswith("ep-")
             or not normalized_production_host.endswith(".aws.neon.tech")
-            or normalized_host == normalized_production_host):
+            or normalized_production_host in allowed_staging_hosts):
         raise SystemExit("Hosted staging must use the verified Neon staging endpoint.")
     if (not re.fullmatch(r"br-[a-z0-9-]{8,64}", staging_branch_id or "")
             or not re.fullmatch(r"br-[a-z0-9-]{8,64}", production_branch_id or "")
@@ -164,11 +168,12 @@ def validate_hosted_database_urls(
         raise SystemExit("Hosted staging requires an isolated host and the phishlens_staging_app role.")
     if runtime.database != "phishlens_dev" or migration.database != "phishlens_dev":
         raise SystemExit("Staging requires both database URLs to target phishlens_dev.")
-    if (
-        _normalized_neon_host(runtime.host) != normalized_host
-        or _normalized_neon_host(migration.host) != normalized_host
-    ):
-        raise SystemExit("Staging app and migration URLs must match the isolated STAGING_DATABASE_HOST endpoint.")
+    runtime_host = _canonical_neon_host(runtime.host or "")
+    migration_host = _canonical_neon_host(migration.host or "")
+    if runtime_host not in allowed_staging_hosts:
+        raise SystemExit("Staging runtime URL must use an explicitly approved Neon staging hostname.")
+    if migration_host not in allowed_staging_hosts:
+        raise SystemExit("Staging migration URL must use an explicitly approved Neon staging hostname.")
     if runtime.username != app_role or runtime.username in {"neondb_owner", "cloud_admin"}:
         raise SystemExit("Staging DATABASE_URL must use the configured non-owner app role.")
     if migration.username != "neondb_owner" or migration.username == runtime.username:
@@ -196,9 +201,16 @@ def main():
         production_branch_id = os.getenv("PRODUCTION_NEON_BRANCH_ID", "")
         if os.getenv("APP_ENV") != "staging":
             raise SystemExit("Hosted staging requires APP_ENV=staging before migrations.")
-        if _normalized_neon_host(expected_host) != _normalized_neon_host(
-                os.getenv("STAGING_NEON_EXPECTED_HOST", "")):
-            raise SystemExit("STAGING_DATABASE_HOST does not match the verified staging Neon branch endpoint.")
+        allowed_staging_hosts = {
+            _canonical_neon_host(host) for host in STAGING_NEON_ENDPOINT_HOSTS
+        }
+        configured_staging_host = _canonical_neon_host(expected_host)
+        pinned_staging_host = _canonical_neon_host(
+            os.getenv("STAGING_NEON_EXPECTED_HOST", "")
+        )
+        if (configured_staging_host not in allowed_staging_hosts
+                or pinned_staging_host not in allowed_staging_hosts):
+            raise SystemExit("Staging database host settings must use an explicitly approved Neon staging hostname.")
         if not migration_url:
             raise SystemExit("Hosted staging requires a separate STAGING_MIGRATION_DATABASE_URL.")
         app_role = os.getenv("STAGING_APP_DATABASE_ROLE", "").strip()
