@@ -333,7 +333,7 @@ export function createAnalysisClient(baseUrl, fetchImpl = globalThis.fetch, { cr
                 error.code = 'session_unavailable';
                 throw error;
             }
-            if (typeof token !== 'string' || !/^[-A-Za-z0-9._+\/]+=*$/.test(token)) {
+            if (typeof token !== 'string' || !/^[-A-Za-z0-9._~+\/]+=*$/.test(token)) {
                 const error = new Error('Sign in to access saved analyses.');
                 error.status = 401;
                 error.code = 'authentication_required';
