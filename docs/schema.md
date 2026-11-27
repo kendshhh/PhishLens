@@ -14,10 +14,31 @@ The checked-in migration chain is linear:
 | `0002_analysis_provenance` | Adds nullable `analysis_mode` and JSONB `analysis_provenance`; constrains mode to `mock`, `real`, or `unknown`. |
 | `0003_saved_analysis_idempotency` | Adds nullable `idempotency_key` and unique `(user_id, idempotency_key)` constraint. |
 | `0004_neon_auth_subject` | Adds nullable `users.neon_auth_subject` and a unique constraint for subject mapping. |
+| `0005_ai_request_quota` | Adds PostgreSQL quota buckets keyed by scope, hashed subject, and window start. |
 
-The current head in this source is `0004_neon_auth_subject`. Check the migration files
-before applying a different source revision; a database's current head is not inferred
-from the application version.
+The checked-in migration head is `0005_ai_request_quota`. Verify the applied revision separately for each database.
+
+## Saved-report ownership
+
+```mermaid
+erDiagram
+    USERS ||--o{ ANALYZED_EMAILS : owns
+    USERS {
+        uuid id PK
+        varchar neon_auth_subject UK
+    }
+    ANALYZED_EMAILS {
+        uuid id PK
+        uuid user_id FK
+        text subject
+    }
+```
+
+Every saved report has one owner. One user can own zero or more reports.
+In Neon Auth mode, the API validates the access token, maps its subject to
+`users.neon_auth_subject`, and scopes each report operation to the resolved
+`users.id`. The quota table is independent of report ownership and has no
+foreign key to either table.
 
 ## `users`
 
@@ -54,6 +75,14 @@ key. An index on `(user_id, created_at)` supports per-user history queries.
 
 Schema changes must use Alembic migrations. Do not replace migrations with `drop_all()` or
 `create_all()` against an existing database.
+
+## `ai_request_quota_buckets`
+
+The composite primary key is `(scope, subject_hash, window_start)`. The migration
+stores a request count, a cost upper bound and an update timestamp per bucket.
+The supported scopes are `ip_minute`, `ip_day`, `user_day`, and `daily_spend`.
+An index on `window_start` supports time-window queries. Quota enforcement is
+applied by backend code when the provider and environment settings enable it.
 
 ## Disposable local setup
 
