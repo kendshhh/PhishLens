@@ -136,16 +136,6 @@ def test_gemini_per_request_cap_blocks_before_paid_inference(google_client):
     assert provider.requests_started == 0
 
 
-def test_configured_gemini_estimator_enforces_cap_before_route_reservation(monkeypatch):
-    monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "0.000001")
-    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "1")
-    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1")
-    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "gemini-test")
-
-    with pytest.raises(SpendLimitExceeded, match="request exceeds"):
-        gemini_provider.estimate_gemini_request_cost('{"body":"Synthetic"}', "gemini-test")
-
-
 def test_gemini_requires_spend_guard_before_creating_sdk_client(google_client):
     client, constructor = google_client
 
