@@ -50,7 +50,7 @@ test("returns empty history", async () => {
     assert.deepEqual(result, []);
 });
 
-test("includes status and response detail on an HTTP failure", async () => {
+test("rejects an HTTP 503 response", async () => {
     globalThis.fetch = async () => ({
         ok: false,
         status: 503,
@@ -87,7 +87,28 @@ test("classifies HTTP 4xx responses as authentication or authorization failures"
     );
 });
 
-test("reports invalid response wrappers", async () => {
+
+for (const [status, body] of [
+    [400, "request timeout"],
+    [401, "fetch failed"],
+    [403, "timeout while checking authorization"],
+]) {
+    test(`does not retry permanent HTTP ${status} when the body looks transient`, async () => {
+        let calls = 0;
+        globalThis.fetch = async () => {
+            calls++;
+            return new Response(body, { status });
+        };
+
+        await assert.rejects(
+            getAnalyses("https://example.test"),
+            error => error.status === status && /timeout|fetch failed/i.test(error.message)
+        );
+        assert.equal(calls, 1);
+    });
+}
+
+test("rejects an invalid response wrapper", async () => {
     mockResponse({ wrong_field: [] });
 
     await assert.rejects(
@@ -153,7 +174,7 @@ test("accepts nullable result fields", async () => {
     assert.deepEqual(result, [pendingAnalysis]);
 });
 
-test("reports invalid JSON", async () => {
+test("rejects invalid JSON", async () => {
     globalThis.fetch = async () => ({
         ok: true,
         status: 200,
@@ -170,7 +191,7 @@ test("reports invalid JSON", async () => {
     );
 });
 
-test("reports a network failure", async () => {
+test("handles a network failure", async () => {
     globalThis.fetch = async () => {
         throw new TypeError("Network unavailable");
     };
