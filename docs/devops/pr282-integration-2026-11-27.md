@@ -10,7 +10,7 @@ The merge resolved overlaps in the shared CI workflow, pipeline and DevOps notes
 
 The current PR #268 head used for comparison is 63b000e17631f9514d8763c4c88d054cbcfc2e24, based on main at 11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0. The initial pairwise merge-tree check after the #281 merge identified overlaps in PIPELINE.md, the DevOps metrics and staging notes, extension/js/api.js, and three staging tests.
 
-The follow-up reconciliation retains the newer #282 evidence in this integration record, aligns shared historical documentation with the #268 snapshots, keeps the equivalent bearer-token validation, and splits the trusted-controller tests from the Issue 90 workflow tests. The final pairwise merge-tree result is recorded after this updated head is checked.
+The follow-up reconciliation retains the newer #282 evidence in this integration record, aligns shared historical documentation with the #268 snapshots, keeps the equivalent bearer-token validation, and splits the trusted-controller tests from the Issue 90 workflow tests. The pairwise merge-tree check after this reconciliation completed against the stated #268 head without conflict paths; #268 itself was not merged into #282.
 
 ## Checks
 
