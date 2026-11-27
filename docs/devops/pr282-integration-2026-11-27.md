@@ -1,75 +1,79 @@
-# Current PR #281 → #282 → #268 integration — 2026-11-27
+# PR #282 integration record — 2026-11-27 10:30 UTC
 
-This record documents the actual coordinated integration on PR #268. The
-branches remain open against `main`; no PR was merged to `main`, no production
-deployment occurred, and no production data was accessed.
+## Current release integration
 
-## Exact branch heads and merge order
+PR #268 merged to `main` at `88156d479d19eb0b8018ab76aa3170eb60079765`
+with tree `89a3b3e0701629497c4f1f14e756f26ca98a10c7`. Its exact candidate tree
+was accepted in protected staging run
+[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832).
+PR #281 is closed unmerged; its relevant changes were integrated through #268.
+The previous quota/runtime changes from PR #282 are also present in that merged
+tree.
 
-At the integration check, `main` was `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`.
-The current release branches were:
+The open PR #282 is now a documentation-only follow-up. Before this correction,
+head `77bd6065466b5218626218e7f3e2f3c8d215e66b` was based on current `main` and
+changed only this integration record. It did not change application code, CI
+workflows, dependencies, or database migrations. Its old description and this
+file previously contained stale integration SHAs and DORA values; those old
+values must not be treated as current.
 
-- PR #281: `0c48cbf240b963a35b5e4669417e118d5ea6573b`.
-- PR #282: `3131dae6f09c30b267ca4aa7b864694a44fd744c`.
-- PR #268's prior head: `554fd223ec98852acb12ebca01812530a84fde2d`.
+## Checks and staging semantics
 
-The combined #268 history is in this order:
+On the prior documentation head `77bd606`, CI run
+[45978321101](https://github.com/kendshhh/PhishLens/actions/runs/45978321101),
+CodeQL, deterministic AI evaluation, dependency security, workflow lint, and
+trusted Neon preflight completed successfully. The Issue 90 package was skipped
+by its path filter. `Secretary staging` reported explicit not-applicable success
+because no runtime files changed. Main controller run
+[45978972202](https://github.com/kendshhh/PhishLens/actions/runs/45978972202)
+likewise skipped Neon validation, staging deployment, and product acceptance.
+These N/A results are not hosted acceptance. This correction commit requires
+fresh exact-head checks; no result from `77bd606` is carried forward.
 
-1. Merge current #281 into the integration base: `1002b20`.
-2. Merge current #282: `e8016db`.
-3. Carry prior #268 work last: `9039d1a490d283cc7bcca9243aa02b705036a7dd`.
+The last authenticated product acceptance remains PR #268 run `45966647832` on
+candidate `d77491d8fd91252190755714df8e5fa475e9c13b`, with extension ZIP
+SHA-256 `495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
+It passed isolated staging Auth, persistent saved-report CRUD, reload
+persistence, account isolation, cleanup, and extension UX. The run recorded AI
+quality blocked (`approval_not_provided`) and no backend image digest. The
+current documentation follow-up does not repeat staging or change that evidence.
 
-This preserves the intentional #282-on-#281 history and the #268 integration
-branch. The child PRs were not retargeted, rebased, or closed to simplify the
-graph.
+## Post-publication verification of this correction
 
-## Conflict and migration results
+The correction commit `e665fdde1fabba9906a7e9170b5d80c0e5d39916` completed
+applicable CI in run
+[45982767567](https://github.com/kendshhh/PhishLens/actions/runs/45982767567):
+Backend, Extension, Staging integration, and migration source preflight passed;
+the Issue 90 package was skipped by its path filter. CodeQL
+([140450847115](https://github.com/kendshhh/PhishLens/runs/140450847115)),
+deterministic AI evaluation
+([45982767774](https://github.com/kendshhh/PhishLens/actions/runs/45982767774)),
+dependency security
+([45982767737](https://github.com/kendshhh/PhishLens/actions/runs/45982767737)),
+workflow lint
+([45982767583](https://github.com/kendshhh/PhishLens/actions/runs/45982767583)),
+and the migration/preflight job passed. The separate `verify-neon` and Issue 90
+jobs were skipped by their documented conditions. `Secretary staging` reported
+success with explicit N/A: no application/runtime changes; required CI passed.
+No Render staging deployment or authenticated acceptance was run on this
+documentation-only PR head. The PR remains open with changes requested.
 
-The shared CI and staging tests and the current DORA/DevOps records overlapped.
-Resolution retained the current trusted staging controller, #282 quota/staging
-changes, #281's later November 27 DORA snapshot, and the stable required check
-names. The old pairwise conflicts are resolved in actual merge commits; they
-are not pending merge-tree simulations. No PR in this set changes
-`backend/migrations/` or `backend/alembic.ini`, so no migration revision or
-down-revision was duplicated or reordered.
+## Current DORA evidence
 
-The #268 exact-head CI run found that
-`scripts/tests/test_hosted_staging_gate.py` referenced an undefined `ROOT`.
-The path definition is corrected in the current PR update. Focused tests pass,
-and the repository Python 3.12 suite passes 347 tests with 9 expected skips.
-GitHub must still rerun every required check on the new exact head.
+The reproducible 28-day snapshot refreshed at
+`2026-11-27T10:11:12.795930Z` against main `88156d479d19eb0b8018ab76aa3170eb60079765`
+reports a merge-to-live proxy median of 3.66 minutes (`60/143` merged PR SHAs
+matched), 63 successful production deploy records, and main CI median of 66.50
+seconds (`116/118` successful). Change failure rate, production failure recovery,
+deployment rework, and a comparable end-to-end optimization remain unmeasured.
+The DORA source and formulas are documented in
+[`dora-report-2026-11-27.md`](dora-report-2026-11-27.md); earlier snapshots are
+retained as dated evidence.
 
-## Exact-head status and staging evidence
+## Release decision
 
-On integrated SHA `9039d1a`:
-
-- Trusted Neon preflight passed in run
-  [45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015).
-- Backend, Extension, migration source preflight, Workflow lint, CodeQL,
-  dependency security, and deterministic AI evaluation passed.
-- Staging integration failed on the test import defect in run
-  [45963431013](https://github.com/kendshhh/PhishLens/actions/runs/45963431013),
-  so `Secretary staging` correctly failed. Protected authenticated acceptance
-  did not run for this SHA.
-
-Prior exact-head protected staging run
-[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
-passed for old SHA `554fd223` and its extension ZIP SHA-256
-`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It
-verified Auth sign-in, persistent saved-report CRUD, reload persistence,
-ownership/isolation, cleanup, and extension UX. Its AI status was blocked and
-backend image digest was absent. This evidence does not transfer to `9039d1a`
-or the corrected successor. The next head requires fresh CI, protected Neon
-preflight, independent reviewer approval, and authenticated acceptance.
-
-## DORA snapshot and release state
-
-The retained main report uses source collected at
-`2026-11-27T07:14:04.739580Z`: median merge-to-live proxy 3.66 minutes
-(`60/142` matched merged PRs), 63 successful deploy records, and CI median 66
-seconds (`115/117` passed). Change failure rate, failed-deployment recovery,
-deployment rework, and comparable end-to-end optimization remain unmeasured.
-
-Issue #153 remains **NO-GO**. The historical staging pass is not AI-quality
-approval, same-image promotion, production smoke, rollback/restore rehearsal,
-measured RTO/RPO, or alert delivery evidence.
+Issue #153 remains **NO-GO**. This record does not claim model-quality approval,
+image-backed same-digest production promotion, production product acceptance,
+current-compatible rollback, isolated restore with measured RTO/RPO, or tested
+alert delivery. No production deployment, production data access, release tag,
+or issue status change is part of this documentation update.
