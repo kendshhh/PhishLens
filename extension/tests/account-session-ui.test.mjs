@@ -107,7 +107,10 @@ test('demo signup requires verification; credentials remain local and reject rea
   await assert.rejects(adapter.signUp({ name: 'Demo', email: 'someone@gmail.com', password: 'Demo-only-123!' }), /fictional/);
   await adapter.signUp({ name: '<img src=x>', email: 'new@example.test', password: 'Demo-only-123!' });
   assert.equal(await adapter.restore(), null);
-  await assert.rejects(adapter.signIn({ email: 'new@example.test', password: 'Demo-only-123!' }), { status: 403 });
+  await assert.rejects(
+    adapter.signIn({ email: 'new@example.test', password: 'Demo-only-123!' }),
+    error => error.status === 403 && error.code === 'EMAIL_NOT_VERIFIED'
+  );
   const session = await adapter.verifyEmail({ email: 'new@example.test', code: '123456' });
   assert.equal(session.user.emailVerified, true);
   assert.deepEqual(await adapter.restore(), session);
