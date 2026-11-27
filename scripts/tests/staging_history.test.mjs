@@ -192,6 +192,7 @@ test('retries startup after a successful HTTP response body times out', async t 
             healthCalls++;
             response.writeHead(200, { 'Content-Type': 'application/json' });
             if (healthCalls === 1) {
+                response.flushHeaders();
                 response.write('{"status":');
                 return;
             }
