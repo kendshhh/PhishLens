@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { requireHttpsOrigin } from './https_origin.mjs';
+import { authResponseEvidence } from './staging_auth_diagnostics.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,6 +42,13 @@ const accessTokens = new Map();
 const createdIds = new Map();
 const createdAnalysisEvidence = new Map();
 const pendingCreates = new Set();
+const pendingAuthEvidence = new Set();
+
+async function flushAuthResponseEvidence() {
+  while (pendingAuthEvidence.size) {
+    await Promise.all([...pendingAuthEvidence]);
+  }
+}
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -389,10 +397,24 @@ async function observePage(observedPage) {
     if (!url.pathname.startsWith(prefix + '/') ||
         !((route === '/sign-in/email' && method === 'POST') ||
           (route === '/get-session' && method === 'GET'))) return;
-    attempt.responses.push({
-      service: url.origin === stagingAuthOrigin ? 'neon-auth' : 'render-auth-proxy',
-      route, status: response.status(),
-    });
+    const service = url.origin === stagingAuthOrigin ? 'neon-auth' : 'render-auth-proxy';
+    const status = response.status();
+    const entry = { service, route, status };
+    attempt.responses.push(entry);
+    if (status >= 400) {
+      // The helper bounds this body read; route and status were recorded above.
+      const task = authResponseEvidence({
+        service,
+        route,
+        status,
+        readPayload: () => response.json(),
+      }).then(diagnostic => Object.assign(entry, diagnostic));
+      pendingAuthEvidence.add(task);
+      void task.then(
+        () => pendingAuthEvidence.delete(task),
+        () => pendingAuthEvidence.delete(task),
+      );
+    }
   });
 }
 
@@ -411,6 +433,7 @@ async function signIn(account, email, password, { invalid = false } = {}) {
     await page.locator('#account-sign-in button[type="submit"]').click();
     if (invalid) {
       await alert.waitFor({ state: 'visible', timeout: 20000 });
+      await flushAuthResponseEvidence();
       assert.ok(attempt.responses.some(({ route, status }) => route === '/sign-in/email' && status === 401),
         'The intentional invalid-password attempt did not return the expected sign-in rejection');
       await page.locator('#account-sign-out').waitFor({ state: 'hidden' });
@@ -420,10 +443,12 @@ async function signIn(account, email, password, { invalid = false } = {}) {
       return;
     }
     await signOut.or(alert).first().waitFor({ state: 'visible', timeout: 30000 });
+    await flushAuthResponseEvidence();
     if (!await signOut.isVisible()) throw new Error('The extension rejected the sign-in or could not establish a session');
     assert.match(await page.locator('#account-status').textContent(), /signed in/i);
     evidence.product.sign_in = true;
   } catch {
+    await flushAuthResponseEvidence();
     // Playwright errors can include the arguments passed to fill(), including a password.
     const signInResponse = attempt.responses.findLast(({ route }) => route === '/sign-in/email');
     attempt.result = !signInResponse ? 'no-sign-in-response'
