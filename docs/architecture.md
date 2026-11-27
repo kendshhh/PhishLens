@@ -1,11 +1,11 @@
 # PhishLens architecture and environment map
 
 This is an architecture snapshot from 2026-11-14, not a claim that every hosted
-service uses the described workflow or runs this revision. For the November 21
-service identities, staging Auth finding and current release limits, use the
-[DevOps evidence index](devops/README.md),
-[environment map](devops/environment-map-2026-11-21.md), and
-[release record](devops/release-record-2026-11-21.md).
+service uses the described workflow or runs this revision. For the current
+staging target and release limits, use the
+[#251-based staging release record](devops/release-record-2026-11-22.md).
+The [November 21 environment map](devops/environment-map-2026-11-21.md) is a
+historical snapshot; its staging target is superseded.
 
 ## Staging integration decision — 2026-11-27
 
