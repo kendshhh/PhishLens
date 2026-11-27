@@ -6,6 +6,7 @@ const baseUrl = (process.env.STAGING_BASE_URL || 'http://127.0.0.1:8000').replac
 const timeoutMs = Number(process.env.STAGING_SMOKE_TIMEOUT_MS || 120000);
 const maxAttempts = Number(process.env.STAGING_MAX_ATTEMPTS || 30);
 const retryDelayMs = Number(process.env.STAGING_RETRY_DELAY_MS || 3000);
+const requestTimeoutMs = Number(process.env.STAGING_REQUEST_TIMEOUT_MS || 10000);
 const retryableStatuses = new Set([408, 425, 429]);
 const emitGithubOutput = process.argv.includes('--github-output');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -14,6 +15,7 @@ let currentStage = { name: 'startup readiness', endpoint: '/health', status: und
 function transient(error) {
     // Once an HTTP response exists, classify its status before reading any error text.
     if (Number.isInteger(error?.status)) {
+        if (error.status >= 200 && error.status < 400 && error.retryable === true) return true;
         return retryableStatuses.has(error.status) || (error.status >= 500 && error.status <= 599);
     }
     const messages = [];
@@ -46,7 +48,7 @@ async function readJson(path, remainingMs) {
     let response;
     try {
         response = await fetch(endpoint, {
-            signal: AbortSignal.timeout(Math.max(1, Math.min(10000, remainingMs))),
+            signal: AbortSignal.timeout(Math.max(1, Math.min(requestTimeoutMs, remainingMs))),
             redirect: 'error',
         });
     } catch (cause) {
@@ -74,9 +76,14 @@ async function readJson(path, remainingMs) {
         return await response.json();
     } catch (cause) {
         const reason = cause instanceof Error ? cause.message : String(cause);
-        throw requestError(`GET ${endpoint} returned invalid JSON: ${reason}`, {
+        const retryable = transient(cause);
+        const message = retryable
+            ? `GET ${endpoint} failed while reading the response body: ${reason}`
+            : `GET ${endpoint} returned invalid JSON: ${reason}`;
+        throw requestError(message, {
             endpoint,
             status: response.status,
+            retryable,
             cause,
         });
     }
@@ -167,9 +174,10 @@ async function writeFailureSummary(error) {
 
 async function main() {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 ||
+        !Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 1 ||
         !Number.isSafeInteger(maxAttempts) || maxAttempts < 1 ||
         !Number.isSafeInteger(retryDelayMs) || retryDelayMs < 0) {
-        throw new Error('STAGING_SMOKE_TIMEOUT_MS, STAGING_MAX_ATTEMPTS, and STAGING_RETRY_DELAY_MS must be valid non-negative integers (timeout and attempts must be positive).');
+        throw new Error('STAGING_SMOKE_TIMEOUT_MS, STAGING_REQUEST_TIMEOUT_MS, STAGING_MAX_ATTEMPTS, and STAGING_RETRY_DELAY_MS must be valid integers (timeout and attempts must be positive).');
     }
     const deadline = Date.now() + timeoutMs;
 
@@ -185,7 +193,7 @@ async function main() {
             {
                 attempts: 1,
                 delayMs: 0,
-                timeoutMs: Math.max(1, Math.min(10000, remainingMs)),
+                timeoutMs: Math.max(1, Math.min(requestTimeoutMs, remainingMs)),
             },
         );
         currentStage.status = items === null ? 401 : 200;
