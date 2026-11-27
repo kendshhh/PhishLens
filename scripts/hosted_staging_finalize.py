@@ -8,6 +8,10 @@ import sys
 import urllib.request
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts.deploy_staging import live_pr_matches, requested_pr_identity
 from scripts.secretary.github_api import APIError, ReadOnlyGitHub
 from scripts.secretary.preview import smoke
