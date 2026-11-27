@@ -43,7 +43,7 @@ class HostedStagingGateTests(unittest.TestCase):
             self.assertIn(required, condition.group(1))
 
     def test_hosted_package_job_is_read_only_and_never_deploys(self):
-        self.assertIn("permissions:\n    contents: read", self.readonly_job)
+        self.assertRegex(self.readonly_job, r"(?m)^    permissions:\n      contents: read$")
         self.assertNotIn("environment:", self.readonly_job)
         self.assertNotIn("secrets.", self.readonly_job)
         self.assertNotRegex(self.readonly_job, r"(?mi)^\s*- name: .*deploy")
