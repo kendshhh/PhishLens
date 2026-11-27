@@ -55,6 +55,30 @@ test('a frame that loads after timeout never receives the expired password reque
   f.sdk.dispose();
 });
 
+test('email verification RPCs expose only the fixed verification purpose and code fields', async () => {
+  const f = fixture();
+  try {
+    f.load();
+    const sending = f.sdk.emailOtp.sendVerificationOtp({ email: 'a@example.test', type: 'email-verification' });
+    await Promise.resolve();
+    assert.deepEqual(f.requests[0].data, {
+      type: 'phishlens-auth-request', channel: f.requests[0].data.channel,
+      id: 1, method: 'resend', input: { email: 'a@example.test' }, authUrl
+    });
+    f.reply(f.requests[0].data, { data: { type: 'phishlens-auth-result', channel: f.requests[0].data.channel,
+      id: f.requests[0].data.id, result: { data: { success: true } } } });
+    assert.deepEqual(await sending, { data: { success: true } });
+
+    const verifying = f.sdk.emailOtp.verifyEmail({ email: 'a@example.test', otp: '123456' });
+    await Promise.resolve();
+    assert.equal(f.requests[1].data.method, 'verifyEmail');
+    assert.deepEqual(f.requests[1].data.input, { email: 'a@example.test', code: '123456' });
+    f.reply(f.requests[1].data, { data: { type: 'phishlens-auth-result', channel: f.requests[1].data.channel,
+      id: f.requests[1].data.id, result: { data: { success: true } } } });
+    assert.deepEqual(await verifying, { data: { success: true } });
+  } finally { f.sdk.dispose(); }
+});
+
 test('closing the page rejects outstanding work and removes the bridge and listeners', async () => {
   const f = fixture();
   const pending = f.sdk.getSession();

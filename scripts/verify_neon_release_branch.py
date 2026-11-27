@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import re
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -31,10 +32,8 @@ def verify_branch(*, project_id: str, branch_id: str, production_project_id: str
         raise NeonReleaseError("Staging cannot target the production Neon branch")
     if expected_parent_id:
         raise NeonReleaseError("Staging branch must be an independent root")
-    if schema_only_attestation not in ("true", "false"):
-        raise NeonReleaseError(
-            "Protected environment must attest (explicitly record) whether this branch was initialized schema-only"
-        )
+    if schema_only_attestation != "true":
+        raise NeonReleaseError("Release staging requires an explicit schema-only branch attestation")
     if production_rows_present != "false":
         raise NeonReleaseError("Protected environment must attest that production rows are absent")
 
@@ -120,6 +119,15 @@ def main() -> int:
     parser.add_argument("--production-rows-present", default=os.getenv("STAGING_NEON_PRODUCTION_ROWS_PRESENT", ""))
     args = parser.parse_args()
     try:
+        config_path = Path(__file__).resolve().parents[1] / ".github/secretary.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        normalized = lambda host: re.sub(r"-pooler(?=\.)", "", host.strip().rstrip(".").lower())
+        if (
+            args.project_id != config.get("staging_neon_project_id")
+            or args.branch_id != config.get("staging_neon_branch_id")
+            or normalized(args.expected_host) != normalized(config.get("staging_database_host", ""))
+        ):
+            raise NeonReleaseError("Staging Neon target differs from the owner-approved release target")
         print(json.dumps(verify_branch(
             project_id=args.project_id, branch_id=args.branch_id,
             production_project_id=args.production_project_id,

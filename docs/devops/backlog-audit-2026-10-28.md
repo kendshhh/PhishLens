@@ -67,8 +67,8 @@ acceptance are represented by the two open PRs #59 and #61.
 
 ## Source of truth
 
-- Official course rubric and consultation guide: [`PhishLens_CI_Understanding_and_Consultation_Guide.pdf`](../../output/pdf/PhishLens_CI_Understanding_and_Consultation_Guide.pdf).
-- Verified Week 2 independent-work playbook: [`PhishLens_Week_2_Verified_Independent_Work_Playbook.pdf`](../../output/pdf/PhishLens_Week_2_Verified_Independent_Work_Playbook.pdf).
+- Official course rubric and consultation guide: `PhishLens_CI_Understanding_and_Consultation_Guide.pdf` (referenced by the October 28 audit; the PDF is not tracked in this repository snapshot, so retrieve it from the instructor before relying on it).
+- Verified Week 2 independent-work playbook: `PhishLens_Week_2_Verified_Independent_Work_Playbook.pdf` (referenced by the October 28 audit; the PDF is not tracked in this repository snapshot).
 - Sprint sheet: [Weekly and Daily Sprint Task Plan](https://docs.google.com/spreadsheets/d/18ppxRcZEK6mBNyZMQkZwFTLlmMyS9WHnRRoUKiPCe58/edit?gid=774483955#gid=774483955), including [Daily Tasks](https://docs.google.com/spreadsheets/d/18ppxRcZEK6mBNyZMQkZwFTLlmMyS9WHnRRoUKiPCe58/edit?gid=708811688#gid=708811688) and [Roles & Sources](https://docs.google.com/spreadsheets/d/18ppxRcZEK6mBNyZMQkZwFTLlmMyS9WHnRRoUKiPCe58/edit?gid=1253256473#gid=1253256473).
 - Open assigned GitHub issues were queried on October 28: [#36](https://github.com/kendshhh/PhishLens/issues/36), [#37](https://github.com/kendshhh/PhishLens/issues/37), [#39](https://github.com/kendshhh/PhishLens/issues/39), [#40](https://github.com/kendshhh/PhishLens/issues/40), and [#41](https://github.com/kendshhh/PhishLens/issues/41). #38 is closed.
 - The repository-wide PR state and related Sprint 2 issue states were refreshed from GitHub on October 29; see the checklist above and the detailed crosswalk in [week2-finish-checklist.md](week2-finish-checklist.md).

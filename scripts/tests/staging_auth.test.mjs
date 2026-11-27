@@ -327,4 +327,3 @@ test('authenticated CRUD requires idempotent replay and rejects changed input un
     assert.equal(calls.length, 2);
     assert.ok(calls.every(call => call.options.idempotencyKey === key));
 });
-
