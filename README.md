@@ -4,6 +4,10 @@ PhishLens is an AI-powered phishing email detection and analysis
 system. It helps users identify suspicious emails, understand
 risk indicators, and manage saved analysis reports.
 
+## Deployment Challenge Recording
+
+[Watch the Deployment Challenge video](https://drive.google.com/file/d/11s7JDsPGTSqzP5J0pLA16bMi2gjN1rv1/view?usp=drive_link)
+
 ## PR #268 check snapshot — November 21, 2026, 13:45 UTC
 
 At 13:45 UTC, PR #268 head `9036132d8ff70cbf9ceae97175a7f59ba0b1e61d`
