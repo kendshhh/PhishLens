@@ -269,7 +269,8 @@ def package(api, sha, number, config, output):
         api = PinnedExtensionGitHub(
             repo=api.repo, token=api.token, sha=sha,
             asset_limits={asset: ASSET_SIZE_LIMITS.get(asset, 512_000)
-                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS + ("js/ghost.js",)},
+                          for asset in ASSETS + ACCOUNT_UI_ASSETS + NEON_AUTH_ASSETS + LOCAL_SCANNER_ASSETS
+                          + ("js/ghost.js", "ai/retrieval.mjs")},
         )
     files = {asset: read_extension_asset(api, sha, asset) for asset in ASSETS}
     worker = files["background.js"].decode()
@@ -279,6 +280,8 @@ def package(api, sha, number, config, output):
     if local_scanner:
         for asset in LOCAL_SCANNER_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)
+        if re.search(rb"""from\s+['"]\./retrieval\.mjs['"]""", files["ai/live-workflow.mjs"]):
+            files["ai/retrieval.mjs"] = read_extension_asset(api, sha, "ai/retrieval.mjs")
     if b"./js/account-popup.js" in files["popup.js"]:
         for asset in ACCOUNT_UI_ASSETS:
             files[asset] = read_extension_asset(api, sha, asset)

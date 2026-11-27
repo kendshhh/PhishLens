@@ -69,6 +69,7 @@ for asset in (
     "ai/judge-contract.mjs",
     "ai/judge-worker.mjs",
     "ai/live-workflow.mjs",
+    "ai/retrieval.mjs",
     "ai/reevaluators.mjs",
     "ai/judge-assets.json",
     "ai/reevaluators/manifest.json",

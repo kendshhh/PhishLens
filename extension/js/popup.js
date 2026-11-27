@@ -733,6 +733,7 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
             const stage = (current.stage || '').toLowerCase();
             const progress = server ? 'Waiting for PhishLens server screening…' :
                 /load|download|initial|gpu/.test(stage) ? 'Preparing the on-device review…' :
+                /retriev/.test(stage) ? 'Retrieving local review guidance…' :
                 /judge|llm/.test(stage) ? 'Reviewing the email’s wording…' :
                 /reeval|classifier|krr|lightgbm/.test(stage) ? 'Comparing the checks…' : 'Checking the email text…';
             text('loading-heading', server ? 'Checking on server…' : 'Checking on this device…');
@@ -790,6 +791,9 @@ export function initializePopup({ documentImpl = document, chromeImpl = globalTh
         observationRows('evidence', evidence.slice(0, 3));
         observationRows('additional-evidence', evidence.slice(3));
         show('more-observations', evidence.length > 3);
+        const retrievedSources = server ? [] : (workflow?.judge?.retrieval?.sources || []);
+        rows('guidance-sources', retrievedSources.map(source => `${source.title} (${source.id})`));
+        show('guidance-context', retrievedSources.length > 0);
         const actions = server ? [] : result.actions;
         text('next-action', actions[0] || 'Verify unexpected requests through a website or contact method you already know.');
         rows('recommendations', actions.slice(1));

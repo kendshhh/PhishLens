@@ -18,7 +18,7 @@ SHA = "a" * 40
 
 
 class PreviewPackageOriginTests(unittest.TestCase):
-    def build_archive(self, worker):
+    def build_archive(self, worker, *, live_workflow=None):
         api = Mock()
         files = {
             "manifest.json": json.dumps({
@@ -29,6 +29,8 @@ class PreviewPackageOriginTests(unittest.TestCase):
             "background.js": worker.encode(),
             "js/popup.js": b"import { API_BASE_URL } from './config.js';\n",
         }
+        if live_workflow is not None:
+            files["ai/live-workflow.mjs"] = live_workflow.encode()
 
         def read(path):
             relative = path.split("contents/extension/", 1)[1].split("?", 1)[0]
@@ -79,6 +81,7 @@ class PreviewPackageOriginTests(unittest.TestCase):
         self.assert_staging_archive(output, "live-workflow.mjs")
         with ZipFile(output) as archive:
             names = set(archive.namelist())
+            self.assertNotIn("ai/retrieval.mjs", names)
             for asset in (
                 "ai/live-workflow.mjs",
                 "ai/local-analyzer.mjs",
@@ -86,6 +89,14 @@ class PreviewPackageOriginTests(unittest.TestCase):
                 "vendor/ml/ort-wasm-simd-threaded.jsep.wasm",
             ):
                 self.assertIn(asset, names)
+
+    def test_local_scanner_archive_includes_imported_retrieval_module(self):
+        output = self.build_archive(
+            "import { analyzeWithReview } from './ai/live-workflow.mjs';\n",
+            live_workflow="import { retrieveGuidance } from './retrieval.mjs';\n",
+        )
+        with ZipFile(output) as archive:
+            self.assertEqual(archive.read("ai/retrieval.mjs"), b"fixture:ai/retrieval.mjs")
 
 
 if __name__ == "__main__":
