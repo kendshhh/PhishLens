@@ -2,12 +2,13 @@ import json
 import logging
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.ai.schemas import AIAnalysisResult
-from backend.ai.spend_limit import GeminiRequestEstimate
+from backend.ai.spend_limit import GeminiRequestEstimate, SpendLimitExceeded
 from backend.app import main
 from backend.core import config
 
@@ -432,3 +433,28 @@ def test_ai_request_quota_rejection_stops_before_inference(monkeypatch):
     assert response.status_code == 429
     assert response.headers["Retry-After"] == "23"
     assert calls == []
+
+
+def test_per_request_cost_cap_rejects_before_shared_quota_reservation(monkeypatch):
+    class OverCapService:
+        def estimate_request(self, **_kwargs):
+            raise SpendLimitExceeded("Gemini request exceeds the configured USD spend cap")
+
+        def analyze_email(self, **_kwargs):
+            raise AssertionError("An over-cap request must not invoke inference")
+
+    reserve = Mock(side_effect=AssertionError("Over-cap request must not reserve shared quota"))
+    monkeypatch.setattr(main, "get_ai_service", lambda: (OverCapService(), "gemini"))
+    monkeypatch.setattr(main, "reserve_ai_request_quota", reserve)
+
+    with TestClient(main.app) as client:
+        response = client.post("/analyses", json={"text": "Synthetic mail"})
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error": {
+            "code": "analysis_unavailable",
+            "message": "Analysis temporarily unavailable",
+        }
+    }
+    reserve.assert_not_called()

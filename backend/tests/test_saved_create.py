@@ -171,6 +171,33 @@ def test_gemini_saved_create_logs_tokens_without_exposing_them(
     assert "estimated_cost_usd" not in response.json()
 
 
+def test_saved_create_per_request_cap_rejects_before_shared_quota_reservation(
+    create_context,
+    monkeypatch,
+):
+    context = create_context
+    context.ai_config.return_value = ("gemini", "synthetic-key", "synthetic-model")
+    monkeypatch.setenv("GEMINI_PER_REQUEST_COST_CAP_USD", "0.000001")
+    monkeypatch.setenv("GEMINI_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_OUTPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("GEMINI_COST_MODEL_ID", "synthetic-model")
+    reserve = Mock(side_effect=AssertionError("Over-cap request must not reserve shared quota"))
+    monkeypatch.setattr(saved_create, "reserve_ai_request_quota", reserve)
+
+    response = context.client.post(
+        "/api/analyses",
+        json={"body": "Synthetic email body"},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Email analysis is temporarily unavailable",
+        "code": "analysis_unavailable",
+    }
+    reserve.assert_not_called()
+    context.service.assert_not_awaited()
+
+
 def test_saved_create_kill_switch_stops_before_database_or_inference(
     create_context,
     monkeypatch,

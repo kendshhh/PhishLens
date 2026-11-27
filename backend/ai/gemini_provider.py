@@ -55,7 +55,9 @@ def estimate_gemini_request_cost(email_text: str, model: str) -> GeminiRequestEs
         model_id=model,
     )
     contents, config = _build_gemini_request(email_text, model)
-    return policy.estimate(**_spend_request(contents, config))
+    estimate = policy.estimate(**_spend_request(contents, config))
+    policy.require_within_cap(estimate)
+    return estimate
 
 
 class DailyQuotaExceeded(RuntimeError):
@@ -94,7 +96,9 @@ class GeminiProvider:
         if self.spend_policy is None:
             raise SpendLimitConfigurationError("Gemini request has no per-request spend policy")
         contents, config = _build_gemini_request(email_text, self.model)
-        return self.spend_policy.estimate(**_spend_request(contents, config))
+        estimate = self.spend_policy.estimate(**_spend_request(contents, config))
+        self.spend_policy.require_within_cap(estimate)
+        return estimate
 
     def analyze(
         self,
