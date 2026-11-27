@@ -1,8 +1,8 @@
 # PhishLens DORA delivery report — 2026-11-27
 
-**Snapshot:** `88156d479d19eb0b8018ab76aa3170eb60079765`<br>
-**Window:** 2026-10-30 11:04 UTC through 2026-11-27 11:04 UTC (28.00 days)<br>
-**Collected:** 2026-11-27T11:04:33.245272Z
+**Snapshot:** `fd23b186ad85f9d33e7f80dec03f09d9b7005403`<br>
+**Window:** 2026-10-30 14:35 UTC through 2026-11-27 14:35 UTC (28.00 days)<br>
+**Collected:** 2026-11-27T14:35:59.960338Z
 
 This report contains the four DORA delivery metrics and the current fifth metric,
 deployment rework rate. It also reports CI wall time as an internal pipeline
@@ -11,12 +11,12 @@ the course's “time to restore” is represented by failed-deployment recovery 
 
 | Metric | Result | Denominator and method |
 |---|---|---|
-| Change lead time | median 3.66 min; p90 8.61 min; range 2.26–19.81 min (n=60) | 60 unique merged PR SHAs matched exactly to the first successful Render deployment after merge, out of 143 merged PRs in the window. Uses merge-to-live as a reproducible proxy for commit-to-production; records without an exact SHA match are excluded. |
+| Change lead time | median 3.66 min; p90 8.61 min; range 2.26–19.81 min (n=60) | 60 unique merged PR SHAs matched exactly to the first successful Render deployment after merge, out of 146 merged PRs in the window. Uses merge-to-live as a reproducible proxy for commit-to-production; records without an exact SHA match are excluded. |
 | Deployment frequency | 63 successful Render deploy records; 2.25/day (15.75/week) | 63 records with `live` or `deactivated` status divided by 28.00 days. This is the complete set assembled from the retained Nov 14 inventory and the current Render inventory. |
 | Change fail rate | **Not measured** | Current source does not link production incidents or failed changes to the corresponding release SHA. Diagnostic only: 0/63 failed Render deployment attempts; this deploy-attempt proxy is not the DORA change fail rate. |
 | Failed-deployment recovery time | not measured (no qualifying production recovery records) | Recovery requires timestamps from production failure detection to verified service restoration. The available source contains no qualifying production recovery event; this is not zero. |
 | Deployment rework rate | not measured (deployments lack reviewed planned/unplanned classifications) | Requires each successful production deployment to be classified as planned or unplanned rework. No reviewed classification ledger is available; this is not zero. |
-| CI workflow wall time (supplemental) | median 66.50 s; p90 91.00 s; range 46.00–423.00 s (n=118) | 118 timed main-push CI runs; outcomes across 118 completed runs: 116 success, 2 failure, 0 cancelled; successful-run share 98.31%. From run start to completion, excluding queue before start and environment wait outside the workflow run. |
+| CI workflow wall time (supplemental) | median 67.00 s; p90 94.00 s; range 46.00–423.00 s (n=121) | 121 timed main-push CI runs; outcomes across 121 completed runs: 119 success, 2 failure, 0 cancelled; successful-run share 98.35%. From run start to completion, excluding queue before start and environment wait outside the workflow run. |
 
 ## Optimization result
 

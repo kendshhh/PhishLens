@@ -1,38 +1,54 @@
 # Controlled PhishLens release path
 
-Status snapshot at 2026-11-27 11:04 UTC (PR inventory 11:00 UTC; control-plane inventory 10:12 UTC; DORA inventory 11:04 UTC): issue #153 remains **NO-GO**. PR #268
-merged at 08:44 UTC as `88156d479d19eb0b8018ab76aa3170eb60079765`; its tree
-matches exact staging-accepted PR head `d77491d8fd91252190755714df8e5fa475e9c13b`.
-That head passed CI, required
-security/quality checks, trusted isolated Neon preflight, and protected hosted
-Auth/CRUD plus extension acceptance in run
-[`45966647832`](https://github.com/kendshhh/PhishLens/actions/runs/45966647832).
-The acceptance verified live staging SHA, Auth bridge, migration revision,
-sign-in, CRUD, persistence, isolation, cleanup, and extension UX; it recorded
-zero production requests/writes. Evidence is in
-[`the exact-head acceptance record`](evidence/2026-11-27-staging-acceptance-d77491d.md).
-It explicitly blocks AI quality (`approval_not_provided`) and has no backend
-image digest. PR #281 is closed unmerged and its intended changes are in #268.
-PR #282 remains open on its documentation-only follow-up at
-`27118fc610f2c01fd11a472e0939f6dc74cbe130`; its prior head `e665fdd` passed
-applicable CI, but those checks do not carry forward. On the current head,
-Backend, Extension, Staging integration, migration source preflight, CodeQL,
-dependency security, deterministic AI evaluation, dependency graph review, and
-workflow lint passed. Neon verification and hosted staging were skipped by the
-docs-only conditions; Secretary staging explicitly reported N/A. No hosted
-staging deployment or acceptance occurred.
-The post-merge trusted controller run `45968192019` skipped all jobs because it
-was triggered by a push, so the exact-PR acceptance remains the authoritative
-staging evidence for this identical source tree. No production
-release, version tag, or release authorization exists. Render Auto Deploy is
-off, but both services remain Git-backed and no tested image has been promoted.
-Do not dispatch production promotion.
+Status refreshed 2026-11-27 14:35 UTC. Issue #153 remains **NO-GO**.
 
-See the current [environment map](environment-map-2026-11-27.md),
-[rubric crosswalk](devops-rubric-readiness-2026-11-27.md), and
-[PR alignment record](pr-alignment-2026-11-27.md) for live identities, current
-branch relationships, and remaining criteria.
+The latest trusted staging acceptance is PR #306 source/backend SHA
+`131d282222361a6d29601f90a2930445ee4a61cf`, run
+[45999893591](https://github.com/kendshhh/PhishLens/actions/runs/45999893591).
+It passed exact-candidate inspection, isolated Neon validation, deployment,
+authenticated extension CRUD acceptance, and the required Secretary status.
+The installed extension ZIP SHA-256 is
+`376b26a4de0307c00b331d2e66ea4caf363ab8347c8a037df83e1a8b22ffeb08`.
+The run verified sign-in, persistent CRUD, reload, isolation, ownership,
+cleanup, and loading/success/auth/API/timeout UX, with zero production
+requests or writes. The current staging `/version` at 14:33 UTC still reports
+that accepted SHA. Full evidence is in
+[the exact-head record](evidence/2026-11-27-staging-acceptance-131d282.md).
 
+Current `main` is `fd23b186ad85f9d33e7f80dec03f09d9b7005403` (PR #307). A full
+Git-tree comparison confirms no application or migration files changed since
+the accepted candidate; only `docs/devops/local-backend-verification-2026-11-27.md`
+and `docs/schema.md` changed. This supports the product-path result for the
+same application/extension code, but the accepted ZIP still embeds PR SHA
+`131d282`; a release build must bind fresh exact-main provenance.
+
+Read-only endpoint probes at 14:32–14:33 UTC found production `/health` and
+`/ready` HTTP 200 with database connected, `/version` SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`, and `/model-info` reporting
+`provider_mode=disabled`, `analysis_enabled=false`. Staging returned HTTP 200
+for those routes and reported TF-IDF revision
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. The
+staging acceptance explicitly records model quality blocked as
+`approval_not_provided`; production inference remains disabled. These service
+checks did not access production product data.
+
+At 10:11–10:12 UTC, Render metadata still showed both services Git-backed with
+Auto Deploy off; the Render Production environment was unprotected. The
+repository release workflow has an image-backed digest promotion design, but
+no backend image digest or same-digest promotion exists yet. Production
+variables/credentials and staging release/migration inputs were missing from
+the last secret-name inventory. No production tag/release/changelog,
+production exact-SHA product smoke, current-compatible rollback rehearsal,
+fresh isolated restore/RTO/RPO, or tested alert delivery is evidenced. Do not
+dispatch production promotion or close issue #153.
+
+The current reproducible 28-day DORA report was collected at 14:35 UTC against
+main `fd23b18`. It reports a 3.66-minute merge-to-live proxy median (`60/146`
+matched), 63 successful deployment records (2.25/day), and 67-second main-CI
+median (`n=121`, 119 pass/2 fail). Change failure, failed-deployment recovery,
+and rework remain unknown. The measured PR #119 Backend-job improvement is
+small-sample (`n=2` each) and not an end-to-end trend. See the
+[report](dora-report-2026-11-27.md) and [rubric crosswalk](devops-rubric-readiness-2026-11-27.md).
 ## What the workflow does
 
 `.github/workflows/release-promotion.yml` is manual-only and rejects any ref
@@ -51,17 +67,17 @@ The backend image is pushed to GHCR; the extension ZIP remains a workflow
 artifact until a successful release publishes that exact ZIP.
 
 The trusted `workflow_run` controller is active on the default branch. It
-verifies the current PR head and required check results, then separates the
-Render deployment from PR-head acceptance. The required `Secretary staging`
-status is emitted only after successful exact-head authenticated acceptance;
-a skipped or missing applicable acceptance cannot be a success. PR #268 passed
-this path on exact head `d77491d` in run `45966647832`. Main-push controller
-run `45974461494` reported no runtime changes and skipped deployment and
-acceptance. The latest main controller run `45978972202` likewise reported no
-runtime changes and skipped Neon verification, deployment, and acceptance; it
-is not product evidence. Each runtime PR head needs its own controller run and
-approval.
-
+verifies the PR head and required checks, then separates Render deployment from
+PR-head acceptance. The required `Secretary staging` status is emitted only
+after successful exact-head authenticated acceptance; a skipped or missing
+applicable acceptance cannot be a success. The latest completed hosted run,
+[45999893591](https://github.com/kendshhh/PhishLens/actions/runs/45999893591),
+passed on exact candidate SHA `131d282222361a6d29601f90a2930445ee4a61cf` and
+emitted the required status only after product acceptance passed. Its detailed
+proof is in [the #306 acceptance record](evidence/2026-11-27-staging-acceptance-131d282.md).
+Later current-main differences are documentation-only; the PR candidate's
+package digest still embeds its original SHA, so a release must build and
+accept a manifest for the exact release SHA.
 The release-promotion workflow separates authority across three protected
 environments: `staging-neon-preflight` verifies isolated Neon metadata and
 migrates only the attested schema-only branch; `release-staging` uses the
@@ -259,12 +275,11 @@ digests and branch/service identities, not passwords, bearer tokens, email
 addresses, or report bodies. The staged report records only account subject
 hashes and synthetic row IDs are not emitted.
 
-The exact PR #268 candidate passed authenticated staging acceptance in
-`45966647832`; its source tree is the tree now on main. That report blocks AI
-quality (`approval_not_provided`) and records no backend image digest. PR #282's
-current documentation-only head has not deployed to staging; its `Secretary
-staging` N/A result is not product evidence. CI validates release-gate logic and
-builds an unpublished backend image, but has not promoted it. The release remains
-NO-GO until AI-owner approval exists, Render supports same-digest promotion, the
-production post-deploy checks pass, and rollback, restore, and alert evidence are
-recorded.
+The latest protected staging report is for PR #306 exact head `131d282`, not
+PR #268. Its source/backend SHA and package digest are recorded in
+[`the #306 acceptance evidence`](evidence/2026-11-27-staging-acceptance-131d282.md).
+It proves Auth/CRUD and extension UX for that candidate, but reports model
+quality `approval_not_provided` and no backend image digest. The release remains
+NO-GO until AI-owner approval exists, Render supports same-digest promotion,
+production post-deploy checks pass, and rollback, restore, and alert evidence
+are recorded.

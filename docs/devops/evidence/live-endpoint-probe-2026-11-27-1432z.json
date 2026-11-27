@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "repository": "kendshhh/PhishLens",
+  "main_sha_observed_at_utc": "fd23b186ad85f9d33e7f80dec03f09d9b7005403",
+  "method": "Unauthenticated no-cache GET requests to the public health, readiness, version, and model-info routes. No authenticated requests, writes, secrets, or product data were accessed.",
+  "observations": [
+    {
+      "service": "production",
+      "origin": "https://phishlens-api-ocvt.onrender.com",
+      "observed_start_utc": "2026-11-27T14:32:53.6212375Z",
+      "observed_end_utc": "2026-11-27T14:33:15.087954Z",
+      "routes": [
+        {
+          "path": "/health",
+          "http_status": 200,
+          "body": {
+            "status": "ok",
+            "service": "phishlens-api"
+          }
+        },
+        {
+          "path": "/ready",
+          "http_status": 200,
+          "body": {
+            "status": "ready",
+            "database": "connected"
+          }
+        },
+        {
+          "path": "/version",
+          "http_status": 200,
+          "body": {
+            "commit": "811980c2cbf70d9957146bf329627f0826a018f1",
+            "environment": "production"
+          }
+        },
+        {
+          "path": "/model-info",
+          "http_status": 200,
+          "body": {
+            "provider_mode": "disabled",
+            "analysis_enabled": false,
+            "supports_required_provider": false,
+            "accepts_tfidf_reports": false,
+            "accepts_local_reviews": false
+          }
+        }
+      ]
+    },
+    {
+      "service": "staging",
+      "origin": "https://phishlens-staging.onrender.com",
+      "observed_start_utc": "2026-11-27T14:33:29.664655Z",
+      "observed_end_utc": "2026-11-27T14:33:33.2599296Z",
+      "routes": [
+        {
+          "path": "/health",
+          "http_status": 200,
+          "body": {
+            "status": "ok",
+            "service": "phishlens-api"
+          }
+        },
+        {
+          "path": "/ready",
+          "http_status": 200,
+          "body": {
+            "status": "ready",
+            "database": "connected"
+          }
+        },
+        {
+          "path": "/version",
+          "http_status": 200,
+          "body": {
+            "commit": "131d282222361a6d29601f90a2930445ee4a61cf",
+            "environment": "staging"
+          }
+        },
+        {
+          "path": "/model-info",
+          "http_status": 200,
+          "body": {
+            "provider_mode": "tfidf",
+            "model_sha256": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c",
+            "supports_required_provider": true,
+            "alert_threshold_score": 0.8871260470833809,
+            "accepts_tfidf_reports": true,
+            "accepts_local_reviews": true
+          }
+        }
+      ]
+    }
+  ],
+  "correlation": {
+    "staging_sha_is_merged_pr_306_head": true,
+    "staging_sha_is_current_main": false,
+    "authenticated_acceptance_run_for_current_staging_sha": true,
+    "latest_exact_candidate_acceptance_sha": "131d282222361a6d29601f90a2930445ee4a61cf",
+    "latest_exact_candidate_extension_zip_sha256": "376b26a4de0307c00b331d2e66ea4caf363ab8347c8a037df83e1a8b22ffeb08",
+    "ai_quality_approval": "blocked: approval_not_provided",
+    "latest_exact_candidate_acceptance_run_id": 45999893591,
+    "staging_candidate_tree_matches_current_main_runtime_tree": true
+  },
+  "collection_note": "A previous concurrent collection exceeded its total observation window before staging returned. The individual staging routes were retried concurrently and all four returned HTTP 200; only the completed retry results appear above."
+}

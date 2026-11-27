@@ -1,56 +1,51 @@
-## Post-merge status and metrics boundary — PR inventory 2026-11-27 11:00 UTC; checks 10:48 UTC; DORA 11:04 UTC
+# PhishLens delivery metrics and evidence boundary
 
-PR #268 merged to main at 08:44 UTC as `88156d479d19eb0b8018ab76aa3170eb60079765`.
-Its tree is identical to PR candidate `d77491d8fd91252190755714df8e5fa475e9c13b`,
-which passed trusted staging acceptance in run `45966647832`. The first
-main-push trusted controller run `45968192019` skipped all jobs. A later run,
-`45974461494`, inspected the main commit and reported no application/runtime
-changes; it skipped Neon deploy and acceptance. PR #282's current diff is
-documentation-only at head `27118fc610f2c01fd11a472e0939f6dc74cbe130`.
-Backend, Extension, Staging integration, migration preflight, CodeQL, AI
-evaluation, dependency security, dependency graph review, and workflow lint
-passed. Neon verification and hosted staging are skipped by the docs-only
-conditions; Secretary staging explicitly reports N/A. No hosted product
-acceptance ran on #282. Main
-controller run `45978972202` also skipped target validation, deployment, and
-product acceptance. These are not
-new staging acceptance runs. A subsequent read-only staging `/version` request
-timed out. The last successful exact-candidate acceptance remains run
-`45966647832`; live staging is not reverified after it. The 28-day production
-DORA dataset was refreshed at 11:04 UTC, after #268 merged. It includes #268
-in the eligible merged-PR count, but staging activity is not counted as
-production delivery.
+## Current snapshot — 2026-11-27 14:35 UTC
 
-## Latest staging acceptance addendum — 2026-11-27 08:45 UTC
+The 28-day DORA source/report is refreshed against GitHub `main`
+`fd23b186ad85f9d33e7f80dec03f09d9b7005403`:
 
-Trusted controller run [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
-passed protected staging for PR #268 source/backend SHA
-`d77491d8fd91252190755714df8e5fa475e9c13b` and extension ZIP SHA-256
-`495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
-The live staging version matched the candidate, on isolated Neon branch
-`br-rough-sea-a1l6ehi1`, migration revision `0005_ai_request_quota`. Sign-in,
-persistent CRUD, reload persistence, ownership, two-account isolation, cleanup,
-and loading/success/authentication/API-error/timeout UX passed. The report records
-zero production API, Auth, or write requests and zero unexpected external
-requests. The candidate image digest is null; this is Git-backed staging, not
-same-image promotion.
+- Merge-to-first-successful-live-deploy proxy: median 3.66 minutes, p90 8.61,
+  `n=60` exact matched merged PR SHAs out of 146 merged PRs.
+- Successful Render deployment records: 63 over 28 days, 2.25/day. These are
+  deployment records, not necessarily unique customer-facing releases.
+- Change failure rate: **not measured**. Diagnostic failed-deploy attempts are
+  0/63 and are not used as a proxy for DORA CFR.
+- Failed-deployment recovery time: **not measured**; no qualifying measured
+  failure-to-verified-restoration interval is available.
+- Deployment rework: **not measured**; deployments lack a reviewed
+  planned/unplanned rework classification.
+- Supplemental main-push CI: median 67 seconds, p90 94, `n=121`; 119 success,
+  2 failures; completed-run share 98.35%.
 
-The same exact report marks AI quality **BLOCKED** (`approval_not_provided`) for
-TF-IDF revision `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`
-and release decision **NO-GO**. It is product acceptance evidence for this
-staging candidate only; it is excluded from production deployment frequency
-and lead-time counts. Redacted evidence and report digest are in
-[`2026-11-27-staging-acceptance-d77491d.md`](evidence/2026-11-27-staging-acceptance-d77491d.md).
+The reproducible source is
+[`evidence/dora-source-2026-11-27.json`](evidence/dora-source-2026-11-27.json),
+and generated output is [`dora-report-2026-11-27.md`](dora-report-2026-11-27.md).
+The measured PR #119 cached pinned-uv change lowers Backend-job median from
+61.52s to 50.92s (n=2 each, 17.2%); it is a small job-level result, not an
+end-to-end time or failure-rate trend. The staging-cache experiment was slower;
+the extension-cache run did not establish a gain.
 
-Exact-head CI [45966131065](https://github.com/kendshhh/PhishLens/actions/runs/45966131065),
-Workflow lint [45966130957](https://github.com/kendshhh/PhishLens/actions/runs/45966130957),
-Dependency security [45966131061](https://github.com/kendshhh/PhishLens/actions/runs/45966131061),
-Deterministic AI Evaluation [45966131179](https://github.com/kendshhh/PhishLens/actions/runs/45966131179),
-CodeQL [45966123755](https://github.com/kendshhh/PhishLens/actions/runs/45966123755),
-trusted Neon preflight [45966125445](https://github.com/kendshhh/PhishLens/actions/runs/45966125445),
-and the required post-acceptance `Secretary staging` status all passed for that
-SHA. The documentation update below does not change the production DORA sample.
+## Exact staging product acceptance — 2026-11-27 12:40 UTC
 
+Trusted run [45999893591](https://github.com/kendshhh/PhishLens/actions/runs/45999893591)
+passed for PR #306 source/backend SHA `131d282222361a6d29601f90a2930445ee4a61cf`
+and ZIP SHA-256 `376b26a4de0307c00b331d2e66ea4caf363ab8347c8a037df83e1a8b22ffeb08`.
+It passed Auth sign-in, persistent CRUD, reload, ownership/isolation, cleanup,
+and extension UX on isolated Neon staging, recording zero production requests
+or writes. The live staging service still reports that SHA at 14:33 UTC. Model
+quality remains blocked (`approval_not_provided`); no backend image digest or
+production release is present. The acceptance is excluded from production DORA
+denominators. See [full staging evidence](evidence/2026-11-27-staging-acceptance-131d282.md).
+
+## Production probes — 2026-11-27 14:32–14:33 UTC
+
+Read-only unauthenticated GETs found production `/health` and `/ready` HTTP 200
+with DB connected, `/version` at `811980c2cbf70d9957146bf329627f0826a018f1`,
+and `/model-info` reporting analysis disabled. Staging health/readiness returned
+200 and `/model-info` returned TF-IDF. These route probes did not exercise a
+user journey or access production product data; raw redacted responses are in
+[`evidence/live-endpoint-probe-2026-11-27-1432z.json`](evidence/live-endpoint-probe-2026-11-27-1432z.json).
 ## Earlier staging acceptance addendum — 2026-11-27 08:22 UTC (superseded)
 
 Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)

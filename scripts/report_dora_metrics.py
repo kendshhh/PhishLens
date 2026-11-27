@@ -232,14 +232,21 @@ the course's “time to restore” is represented by failed-deployment recovery 
 
 ## Optimization result
 
-No current like-for-like before/after pipeline optimization is established. The
-latest reusable comparison remains the October 21 staging-cache trial: two
-samples per condition; the whole staging job averaged 40.5 seconds before and
-44.0 seconds with cache. That experiment did not demonstrate an end-to-end gain.
-The October 28 extension-cache trial also did not show a job-time improvement.
-See [optimization evidence](optimizations.md). Keep this criterion open until a
-specific workflow change is compared with the same event, checks, runner, and
-queue/approval treatment over adequate samples.
+One implemented, measured job-level improvement is documented in PR [#119](https://github.com/kendshhh/PhishLens/pull/119), merged on November 4 as
+`98dd0dc13136f16c1159a9aedee870a84be066a3`: the cached, pinned-uv Backend
+checks job median was 50.92 s versus 61.52 s for the pip baseline (`n=2` per
+condition), 10.61 s or 17.2% lower. The samples used the same Backend checks
+and passed; current `main` still uses pinned uv with caching, with the setup
+action later updated in PR #283. This measures one backend job, not end-to-end
+PR/main delivery, and the small sample does not establish a sustained trend or
+a failure-rate improvement.
+
+Other measured trials were not wins: the October 21 staging-cache trial's
+whole-job median rose from 40.5 s to 44.0 s, and the October 28 extension-cache
+trial did not improve whole-job time. See [optimization evidence](optimizations.md)
+and the detailed [backend-job comparison](metrics.md#november-4-cached-uv-backend-job-comparison).
+The rubric's requirement for multiple optimizations with a downward end-to-end
+pipeline-time and failure-rate trend therefore remains open.
 
 ## Sources and limits
 

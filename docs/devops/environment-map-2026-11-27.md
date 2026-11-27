@@ -1,83 +1,67 @@
-# PhishLens environment and artifact map — PR inventory 2026-11-27 11:00 UTC; control plane 10:12 UTC; PR checks 10:48 UTC
+# PhishLens environment and artifact map — 2026-11-27 14:35 UTC
 
-Render and GitHub environment control-plane values below were read at 10:12 UTC;
-the PR inventory was refreshed at 11:00 UTC and exact-head PR checks at 10:48
-UTC. Secret values and product data were not read or copied. GitHub environment
-and repository inventory reports names/presence only. Render service
-configuration is limited to control-plane metadata; runtime variable values
-were not read.
+This record combines the 14:32–14:33 UTC public read-only service probes, the
+14:35 UTC DORA/main snapshot, exact staging acceptance run 45999893591
+(completed 12:40 UTC), and GitHub/Render control-plane metadata last read at
+10:11–10:12 UTC. No secret values or production product data were read.
 
-## Candidate mapping
+## Current source and deployment identities
 
-| Layer | Staging target | Production target | Evidence and state |
+| Layer | Staging | Production | Finding |
 |---|---|---|---|
-| Git source | `main` merge commit `88156d479d19eb0b8018ab76aa3170eb60079765`, tree `89a3b3e0701629497c4f1f14e756f26ca98a10c7`; merged PR #268 candidate SHA `d77491d8fd91252190755714df8e5fa475e9c13b`. PR #281 is closed unmerged; PR #282's current documentation-only head is `27118fc610f2c01fd11a472e0939f6dc74cbe130`. | Same `main` commit; latest Render deploy inventory reports SHA `811980c2cbf70d9957146bf329627f0826a018f1` | The merged main tree matches the exact tree accepted in trusted staging run `45966647832`. No post-merge product acceptance ran. PR #282 head `27118fc` passed applicable CI, CodeQL, AI, security and workflow checks; `verify-neon` was skipped, and Secretary staging explicitly reports N/A. No hosted acceptance is requested for its docs-only diff. See [PR alignment](pr-alignment-2026-11-27.md). |
-| Render service | `phishlens-staging`, `srv-db92irlg1s2s739404i0`, `https://phishlens-staging.onrender.com`; Git-backed Python, Auto Deploy off | `phishlens-api`, `srv-db7eap25b2lc73fkelpg`, `https://phishlens-api-ocvt.onrender.com`; Git-backed Python, Auto Deploy off | Control-plane metadata refreshed at 10:11 UTC. The latest trusted product acceptance remains run `45966647832` for SHA `d77491d`; it passed `/version`, health/readiness, Auth bridge and CRUD. `backend_image_digest` is null, so immutable promotion is absent. A later read-only staging `/version` probe timed out; current live staging identity is not reverified. Render marks the Production environment unprotected with network isolation off and `0.0.0.0/0` allowlist. |
-| Neon project/branch | Project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, expected host `ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`, application database `phishlens_dev` | Project `patient-bird-25428852`, branch `br-orange-sky-b3zzzyqc`, expected host `ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech` | Non-secret GitHub environment variables match these identities. The isolated staging branch was independently checked by trusted staging run `45966647832`. No production database was queried. |
-| Database roles/schema | Runtime role `phishlens_staging_app`; migration role `neondb_owner`; schema-only root; candidate migration revision `0005_ai_request_quota` | Production identities are separate | Trusted Neon preflight and the accepted staging run verified the candidate target and migration revision without querying production rows. `STAGING_MIGRATION_DATABASE_URL` is absent from current repository and environment secret inventories, so the separate image-promotion workflow cannot migrate yet. Never reuse a credential pasted into chat. |
-| Neon Auth | Staging endpoint on the approved Neon project; database `neondb`; API origin `https://phishlens-staging.onrender.com` | Separate production Auth and database values are configured at repository scope; they were not printed | Exact-head staging run verified the live Auth bridge and successful A/B sign-in. This does not authorize production Auth acceptance or reveal hosted values. |
-| Extension | Auth-enabled package built per candidate; Chrome extension ID `ceneonaedddlkdocdapimkfggbjcchlb`; trusted origin `chrome-extension://ceneonaedddlkdocdapimkfggbjcchlb` | Production default points to the production API/Auth | Accepted #268 ZIP SHA-256 `495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`, bound to source/backend SHA `d77491d`. Run `45966647832` installed this exact package during staging acceptance. |
-| AI model/provider | Staging candidate reported TF-IDF model revision `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`; model-quality gate remains blocked | Last production `/model-info` snapshot reported analysis disabled | AI owner policy/representative holdout approval is absent; run `45966647832` records `approval_not_provided`. Do not reuse Wilbert’s historical English advisory result as current release approval. |
+| Git source | Live SHA `131d282222361a6d29601f90a2930445ee4a61cf`; exact authenticated acceptance passed in [run 45999893591](https://github.com/kendshhh/PhishLens/actions/runs/45999893591). | Live SHA `811980c2cbf70d9957146bf329627f0826a018f1`; current GitHub `main` is `fd23b186ad85f9d33e7f80dec03f09d9b7005403`. | `main` and accepted candidate differ only in docs/schema-guide files; no application/migration source changed. Release provenance must still rebuild/bind the exact main SHA. |
+| Render service | `phishlens-staging`, `srv-db92irlg1s2s739404i0`, `https://phishlens-staging.onrender.com`, Git-backed; Auto Deploy off in 10:11 metadata. | `phishlens-api`, `srv-db7eap25b2lc73fkelpg`, `https://phishlens-api-ocvt.onrender.com`, Git-backed; Auto Deploy off in 10:11 metadata. | At 14:33 both health and readiness returned 200; staging DB connected. Render reports its Production environment unprotected, so the GitHub production environment does not by itself prove Render-side protection. |
+| Neon database | Project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, database `phishlens_dev`; schema-only branch. | Project `patient-bird-25428852`, branch `br-orange-sky-b3zzzyqc`; expected host `ep-dawn-band-b37l1bil.c-4.ap-southeast-1.aws.neon.tech`. | Protected staging run verified isolated staging project/branch, migration `0005_ai_request_quota`, and no production requests/writes. No production DB was queried. |
+| Runtime roles/Auth | Staging Auth mode `neon-auth`; A/B sign-in succeeded; runtime and migration role identities were validated in the protected acceptance path. | Production Auth was not exercised. | Current production Auth mapping and least-privilege/access controls are not re-attested. |
+| Extension artifact | ZIP SHA-256 `376b26a4de0307c00b331d2e66ea4caf363ab8347c8a037df83e1a8b22ffeb08`; exact candidate SHA `131d282`. | No approved production package/release artifact. | ZIP hash was independently verified after downloading the run artifact. The 14.8 MB ZIP was not committed; GitHub artifact retention is through 2026-12-04, so this is not durable release storage. |
+| Model/provider | TF-IDF revision `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`; staging product run passed; AI quality blocked (`approval_not_provided`). | `/model-info` reports provider disabled and analysis disabled. | Wilbert's 190/200 historical English phishing result, 1/1,000 legitimate false alerts and 1,200 valid outputs supports advisory use on that historical cohort only; it does not approve current model quality. |
 
-## GitHub controls and credential scopes
+## Read-only live probes — 2026-11-27 14:32–14:33 UTC
 
-| Environment | Required reviewer / ref control | Current credential or configuration state |
+| Service | `/health` | `/ready` | `/version` | `/model-info` |
+|---|---|---|---|---|
+| Production | 200, `ok` | 200, DB connected | `811980c2cbf70d9957146bf329627f0826a018f1` | 200, `provider_mode=disabled`, `analysis_enabled=false`, required provider unsupported |
+| Staging | 200, `ok` | 200, DB connected | `131d282222361a6d29601f90a2930445ee4a61cf` | 200, TF-IDF revision `a2f13c…`; see acceptance report for complete digest |
+
+Machine-readable responses are in
+[`evidence/live-endpoint-probe-2026-11-27-1432z.json`](evidence/live-endpoint-probe-2026-11-27-1432z.json).
+These were unauthenticated GETs to health/readiness/version/model-info only.
+The exact staging Auth/CRUD journey is separately recorded in
+[`evidence/2026-11-27-staging-acceptance-131d282.md`](evidence/2026-11-27-staging-acceptance-131d282.md).
+
+## GitHub and Render control-plane state
+
+The following reviewer, ruleset, service and secret-name inventory was read at
+10:11–10:12 UTC; it was not re-read during the public endpoint probe. Secret
+values were not read.
+
+| Environment | Previously verified protection | Missing/unverified inputs from last name-only inventory |
 |---|---|---|
-| `staging-neon-preflight` | `xxTrixia` and `kendshhh`; self-review prevented; only `main` | `NEON_API_KEY` is present. Required target identity variables are present. `STAGING_MIGRATION_DATABASE_URL` is absent from repository and environment secret inventories. |
-| `release-staging` | `xxTrixia` and `kendshhh`; self-review prevented; only `main` | `RENDER_STAGING_API_KEY` is present. `STAGING_RENDER_DATABASE_CONFIG_ATTESTATION`, `STAGING_RELEASE_PROVIDER`, and `STAGING_RELEASE_MODEL_REVISION` are absent from repository and environment variable inventories. |
-| `staging` | `xxTrixia` and `kendshhh`; self-review prevented; only `main` | Acceptance flag, trusted extension origin, and synthetic A/B account credentials are present. `STAGING_AI_APPROVAL_JSON` is absent. The Render deploy key is not present in this environment. |
-| `production` | `inaki3023`; self-review prevented; protected branches only | The environment has no variables or secrets. Repository and environment inventories lack `RENDER_PRODUCTION_API_KEY`, `RENDER_PRODUCTION_SERVICE_ID`, `RELEASE_PROMOTION_ENABLED`, and `PRODUCTION_RELEASE_CONFIG_ATTESTATION`. Production promotion cannot pass. |
+| `staging-neon-preflight` | Reviewers `xxTrixia` and `kendshhh`; self-review off; main-only refs. | `STAGING_MIGRATION_DATABASE_URL` absent; verify it is a fresh least-privilege migration credential before use. |
+| `release-staging` | Reviewers `xxTrixia` and `kendshhh`; self-review off; main-only refs. | `STAGING_RENDER_DATABASE_CONFIG_ATTESTATION`, `STAGING_RELEASE_PROVIDER`, and `STAGING_RELEASE_MODEL_REVISION` absent. |
+| `staging` | Reviewers `xxTrixia` and `kendshhh`; self-review off; main-only refs; synthetic acceptance credentials present by name. | `STAGING_AI_APPROVAL_JSON` absent because AI-owner approval has not been supplied. |
+| `production` | GitHub environment reviewer `inaki3023`; self-review off. | Production release variables/credentials absent from inventories; a second independent reviewer and Render-side protection are not evidenced. |
 
-## Current branch and environment controls
+At 10:11 UTC, classic branch protection and active ruleset `#27733591` agreed
+on eight strict contexts: Backend checks, Extension checks, Staging integration,
+CodeQL, Secretary staging, Deterministic AI Evaluation, Dependency security,
+and Workflow lint. One approval including latest-push approval and stale-review
+dismissal are enabled. A deliberate negative check-to-merge-blocking experiment
+has not been recorded.
 
-At 10:11 UTC, the classic `main` branch-protection endpoint and active ruleset
-`#27733591` agreed on eight strict required contexts: Backend checks, Extension
-checks, Staging integration, CodeQL, Secretary staging, Deterministic AI
-Evaluation, Dependency security, and Workflow lint. Main requires a pull request,
-one approval including latest-push approval, stale-review dismissal, and admin
-enforcement; force pushes and deletion are disabled. A deliberately failing
-required-check merge experiment has not been recorded.
+## Remaining closure items
 
-At 10:12 UTC, self-review was turned off for `staging`, `release-staging`, and
-`staging-neon-preflight`; their existing reviewer lists and `main`-only deployment
-ref policies were preserved. The GitHub API response does not expose the
-administrator-bypass setting for these environment reviewer rules, so that
-setting is not claimed here.
-
-## Last public-service observations
-
-At 2026-11-27 07:14 UTC, Render metadata showed the deploy identities above and
-Auto Deploy off for both services. Around 07:16 UTC, production `/model-info`
-returned HTTP 200 with analysis disabled. Read-only `/health`, `/ready`, and
-`/version` requests timed out after 15 seconds from this client. No product data,
-inference, or authenticated production request was made.
-
-The GitHub `production` environment is protected; Render separately reports its
-Production service environment as unprotected. The public API allowlist is
-`0.0.0.0/0` and Render network isolation is off, consistent with a client-facing
-API endpoint. This is not evidence that GitHub deployment credentials were
-exposed. No production service setting was changed.
-
-## Remaining mapping gates
-
-1. A service owner must privately attest that Render staging's runtime, migration,
-   and Auth settings use this approved Neon target and correct least-privilege
-    roles. `STAGING_RENDER_DATABASE_CONFIG_ATTESTATION` is absent from the
-    repository/environment variable inventories, even though earlier exact-head
-    staging acceptance passed.
-2. Provision a fresh migration-only database URL in `staging-neon-preflight`;
-   never reuse a credential from chat or copy the runtime role.
-3. Have the AI owner approve the policy and representative holdout, then record
-   the exact immutable provider/model identity and protected report.
-4. Configure the Render services for the approved immutable image flow only
-   through a reviewed service-owner change. Keep production untouched until the
-   exact image, staging acceptance, post-deploy checks, and independent approval
-   are all ready.
-5. Provision production promotion variables/credentials only after the service
-   mapping and image-backed release path exist. Keep issue #153 NO-GO in the
-   meantime.
-
-See [the 2026-11-27 rubric crosswalk](devops-rubric-readiness-2026-11-27.md),
-[controlled release record](controlled-release.md), and
-[current DORA report](dora-report-2026-11-27.md) and
-[PR alignment record](pr-alignment-2026-11-27.md).
+1. Platform owner privately re-attests Render runtime, migration and Auth
+   mappings against the approved staging Neon branch; create/provision a fresh
+   migration-only credential through the protected environment.
+2. Configure a supported image-backed Render path; retain one backend image
+   digest and extension ZIP durably; bind exact source, schema, model, Auth,
+   staging evidence and changelog in the release manifest.
+3. Obtain Wilbert/AI-owner threshold approval plus a permitted representative
+   holdout with independent labels, overlap review and exact model provenance.
+4. Configure protected production deployment authority and require exact-SHA
+   health, readiness, model/provider, and product acceptance after promotion.
+5. Rehearse compatible app rollback and fresh isolated Neon restore; measure
+   approved RTO/RPO and test alert delivery with named primary/backup responders.
+6. Keep issue #153 **NO-GO** until the above evidence exists. Never infer
+   production safety from a staging pass or health endpoint.

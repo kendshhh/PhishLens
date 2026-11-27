@@ -40,6 +40,13 @@ class DoraReportTests(unittest.TestCase):
         self.assertIn("not measured (no qualifying production recovery records)", report)
         self.assertIn("not measured (deployments lack reviewed planned/unplanned classifications)", report)
 
+    def test_optimization_report_distinguishes_job_gain_from_end_to_end_evidence(self):
+        report = render(self.snapshot)
+        self.assertIn("PR [#119]", report)
+        self.assertIn("17.2% lower", report)
+        self.assertIn("not end-to-end", report)
+        self.assertIn("failure-rate improvement", report)
+
     def test_rework_requires_complete_classification(self):
         self.snapshot["deployment_classifications"] = [{"classification": "planned"}]
         with self.assertRaisesRegex(ValueError, "every successful deployment"):

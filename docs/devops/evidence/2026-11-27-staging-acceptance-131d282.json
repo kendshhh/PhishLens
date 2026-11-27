@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "repository": "kendshhh/PhishLens",
+  "acceptance_date": "2026-11-27",
+  "workflow_run_id": 45999893591,
+  "workflow_run_url": "https://github.com/kendshhh/PhishLens/actions/runs/45999893591",
+  "workflow_event": "workflow_run",
+  "workflow_jobs": {
+    "Inspect exact PR candidate": "success",
+    "Verify isolated Neon target": "success",
+    "Deploy exact SHA to staging (trusted controller)": "success",
+    "Authenticated extension and CRUD acceptance": "success",
+    "Report required Secretary staging status": "success"
+  },
+  "candidate": {
+    "pull_request": 306,
+    "source_sha": "131d282222361a6d29601f90a2930445ee4a61cf",
+    "backend_source_sha": "131d282222361a6d29601f90a2930445ee4a61cf",
+    "extension_zip_sha256": "376b26a4de0307c00b331d2e66ea4caf363ab8347c8a037df83e1a8b22ffeb08",
+    "extension_zip_sha256_verified_after_download": true,
+    "backend_image_digest": null,
+    "extension_version": "0.1.0"
+  },
+  "staging": {
+    "api_origin": "https://phishlens-staging.onrender.com",
+    "neon_project_id": "ancient-brook-17208049",
+    "neon_branch_id": "br-rough-sea-a1l6ehi1",
+    "branch_kind": "schema-only",
+    "migration_revision": "0005_ai_request_quota",
+    "auth_mode": "neon-auth",
+    "live_version_sha_observed_at_2026-11-27T14:33:29Z": "131d282222361a6d29601f90a2930445ee4a61cf"
+  },
+  "product_acceptance": {
+    "status": "passed",
+    "sign_in": true,
+    "create": true,
+    "list": true,
+    "read": true,
+    "update": true,
+    "delete": true,
+    "persistence_after_reload": true,
+    "two_account_isolation": true,
+    "ownership_checks": true,
+    "cleanup": true,
+    "cleanup_pending": 0,
+    "user_experience": {
+      "loading": true,
+      "success": true,
+      "authentication_failure": true,
+      "api_error": true,
+      "timeout": true
+    },
+    "anonymous_history_rejected": true,
+    "production_api_requests": 0,
+    "production_auth_requests": 0,
+    "production_writes": 0
+  },
+  "ai_quality": {
+    "status": "blocked",
+    "reason": "approval_not_provided",
+    "provider": "tfidf",
+    "model_revision": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
+  },
+  "release_decision": "no-go",
+  "artifact_retention_note": "The 14.8 MB extension ZIP was not committed. GitHub's workflow artifact is retained through 2026-12-04; its verified SHA-256 is preserved here. No durable release artifact was published."
+}

@@ -3,9 +3,7 @@
 ## November 27 optimization status — one merged job-level improvement
 
 The current 28-day delivery snapshot is in
-[dora-report-2026-11-27.md](dora-report-2026-11-27.md). It records a 66.50-second
-main-push CI median (`n=118`), 116 successes and 2 failures, alongside 63
-successful production deploy records. Those current totals describe delivery;
+[dora-report-2026-11-27.md](dora-report-2026-11-27.md). It records a 67.00-second main-push CI median (`n=121`), 119 successes and 2 failures, alongside 63 successful Render deployment records. Those current totals describe delivery;
 they are not a before/after optimization comparison.
 
 PR [#119](https://github.com/kendshhh/PhishLens/pull/119) measured a like-for-like

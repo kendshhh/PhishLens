@@ -1,60 +1,61 @@
 # DevOps evidence and release records
 
-**Evidence snapshot at November 27, 2026 11:04 UTC. Release decision: NO-GO.**
-This index names the latest evidence and its limits. Historical records stay
-dated and retain their original findings; they are not current service state.
+**Evidence snapshot: 2026-11-27 14:35 UTC. Release decision: NO-GO.** The
+strongest current evidence is the exact-head protected staging acceptance for
+PR #306, not a production release.
 
-## Current snapshot — 2026-11-27
+`main` is `fd23b186ad85f9d33e7f80dec03f09d9b7005403`. Protected staging run
+[45999893591](https://github.com/kendshhh/PhishLens/actions/runs/45999893591)
+passed exact candidate deployment, Neon isolation, Auth, saved-report CRUD,
+persistence, isolation, ownership, cleanup, and extension UX on SHA
+`131d282222361a6d29601f90a2930445ee4a61cf`. Staging remained on that SHA at
+14:33 UTC. Current main differs from the accepted tree only in documentation
+files; exact-main artifact provenance still needs a release build. See the
+[acceptance evidence](evidence/2026-11-27-staging-acceptance-131d282.md).
 
-`main` is `88156d479d19eb0b8018ab76aa3170eb60079765`, the PR #268 merge commit.
-Its Git tree `89a3b3e0701629497c4f1f14e756f26ca98a10c7` matches the exact
-staging-accepted PR candidate tree for `d77491d8fd91252190755714df8e5fa475e9c13b`.
-A 10:11 UTC read-only Render deploy-inventory refresh still lists production SHA
-`811980c2cbf70d9957146bf329627f0826a018f1`; this is deploy metadata, not a live
-HTTP check. Render service metadata was re-read at 10:11 UTC and still reports
-both services Git-backed with Auto Deploy off; production's Render environment is
-unprotected and network-wide. GitHub environment metadata was re-read at 10:12 UTC
-without reading secret values. The last public `/model-info` probe reported
-analysis disabled; there has been no new production health or product check. See the [DORA report](dora-report-2026-11-27.md)
-and [pipeline snapshot](../../PIPELINE.md).
+Production at 14:32–14:33 UTC returned HTTP 200 for health/readiness with the
+database connected. It runs `811980c2cbf70d9957146bf329627f0826a018f1` and
+reports AI analysis disabled. Its service is still Git-backed; no backend image
+digest, production acceptance, release tag, or changelog exists. AI quality is
+blocked because reviewed representative holdout approval is missing.
 
-PR #268 merged at 08:44 UTC after independent review and exact-head required
-checks passed. PR #281 is now closed unmerged; its intended changes are integrated
-through #268. PR #282 remains open at head
-`27118fc610f2c01fd11a472e0939f6dc74cbe130` against current `main`; its only
-current changed file is a DevOps integration note. It is not the previous
-101-file runtime diff; the earlier code is already in #268. On this head,
-Backend, Extension, Staging integration, migration source preflight, CodeQL,
-dependency security, AI evaluation, dependency graph review, and workflow lint
-passed. `verify-neon` and hosted staging were skipped by the docs-only
-conditions; Secretary staging reported explicit N/A. No hosted product
-acceptance ran. The PR remains changes requested.
+The current [rubric crosswalk](devops-rubric-readiness-2026-11-27.md) records
+no perfect score; the [DORA report](dora-report-2026-11-27.md) is reproducible
+through 14:35 UTC and explicitly leaves change failure, failed-deployment
+recovery, and rework unknown. See also the current
+[environment map](environment-map-2026-11-27.md),
+[controlled-release record](controlled-release.md),
+[metrics](metrics.md), and [pipeline overview](../../PIPELINE.md).
 
-Exact-head CI, security, workflow-lint, deterministic AI, CodeQL, trusted Neon,
-and authenticated staging acceptance passed on #268 PR head
-`d77491d8fd91252190755714df8e5fa475e9c13b` in trusted controller run
-[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832).
-The main merge commit has the same Git tree. Post-merge controller run
-[45968192019](https://github.com/kendshhh/PhishLens/actions/runs/45968192019)
-skipped all jobs. Later run [45974461494](https://github.com/kendshhh/PhishLens/actions/runs/45974461494)
-inspected main and reported no runtime changes; deploy and acceptance jobs were
-skipped. Neither is a second product acceptance. A later read-only staging
-`/version` request timed out, so live staging is not freshly verified.
+The current open-PR alignment inventory was refreshed at 14:44 UTC against
+main `fd23b18`; it records 16 open PRs, live target branch SHAs, authors, changed
+files, stack relationships, duplicate updates, and migration-file results. See
+the [report](pr-alignment-2026-11-27.md) and [JSON snapshot](evidence/open-pr-alignment-2026-11-27-1444z.json).
 
-The accepted PR run verified Auth sign-in, persistent CRUD, reload,
-ownership/isolation, cleanup, and extension UX, with zero production requests
-or writes. The redacted report and digests are in [the exact-head acceptance
-record](evidence/2026-11-27-staging-acceptance-d77491d.md).
+The November 20 isolated Neon recovery drill was recorded on upstream `main` at
+commit [`811980c`](https://github.com/kendshhh/PhishLens/blob/811980c2cbf70d9957146bf329627f0826a018f1/docs/devops/recovery-drill-2026-11-20.md).
+It verified an isolated restore's schema and aggregate integrity, but that
+recovery point and drill branch were scheduled to expire November 27. Current
+availability and measured RTO/RPO are not verified; repeat with a fresh point.
 
-This does **not** close AI-quality acceptance: the report says
-`approval_not_provided` for TF-IDF model revision
-`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. Its
-backend image digest is null; Render is still Git-backed, so same-digest
-promotion is not proven. Current compatible production rollback, isolated
-restore with measured RTO/RPO, alert delivery, and complete DORA optimization
-measurements remain open. Issue #153 stays **NO-GO**. See the [current PR
-alignment record](pr-alignment-2026-11-27.md) and [rubric crosswalk](devops-rubric-readiness-2026-11-27.md).
+## Evidence rules
 
+1. Bind acceptance to exact source SHA, backend/extension identities, model,
+   Auth mode, database branch, workflow run, and timestamp.
+2. Distinguish repository checks, control-plane observations, live GET probes,
+   synthetic acceptance, human review, and owner approval.
+3. Keep secrets, connection strings, tokens, personal data, and report contents
+   out of evidence. Record only names, masked identities, hashes, counts, and
+   outcomes.
+4. Preserve dated snapshots; label old evidence instead of presenting it as
+   current.
+5. A staging PASS does not establish production release, AI quality, rollback,
+   or recovery readiness.
+6. Do not invent partial points: the rubric supplies criterion maxima and
+   broad bands, not an allocation formula within the bands.
+7. Do not merge/deploy production, publish a release, or alter shared data to
+   make a score appear complete. Keep issue #153 **NO-GO** until current evidence
+   supports GO.
 ## Historical PR snapshots
 
 The staging smoke and CI guard implementation is on review branch
