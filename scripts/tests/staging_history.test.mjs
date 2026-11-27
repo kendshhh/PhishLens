@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
@@ -11,6 +13,8 @@ import {
     readStagingHistory,
     writeHistoryAccessOutput,
 } from '../staging_history.mjs';
+
+const stagingSmokePath = fileURLToPath(new URL('../staging_smoke.mjs', import.meta.url));
 
 const validAnalysis = {
     id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c',
@@ -31,6 +35,30 @@ async function serve(t, handler) {
         server.close(resolve);
     }));
     return `http://127.0.0.1:${server.address().port}`;
+}
+
+function runStagingSmoke(baseUrl) {
+    const child = spawn(process.execPath, [stagingSmokePath], {
+        env: {
+            ...process.env,
+            STAGING_BASE_URL: baseUrl,
+            STAGING_SMOKE_TIMEOUT_MS: '3000',
+            STAGING_REQUEST_TIMEOUT_MS: '50',
+            STAGING_MAX_ATTEMPTS: '3',
+            STAGING_RETRY_DELAY_MS: '0',
+            GITHUB_OUTPUT: '',
+            GITHUB_STEP_SUMMARY: '',
+        },
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk; });
+
+    return new Promise((resolve, reject) => {
+        child.once('error', reject);
+        child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr }));
+    });
 }
 
 test('accepts anonymous history rejection when the API requires Bearer auth', async () => {
@@ -156,3 +184,48 @@ test('waits for GET /api/analyses to recover after readiness has passed', async 
     assert.deepEqual(items, [validAnalysis]);
     assert.equal(calls, 2);
 });
+
+test('retries startup after a successful HTTP response body times out', async t => {
+    let healthCalls = 0;
+    const baseUrl = await serve(t, (request, response) => {
+        if (request.url === '/health') {
+            healthCalls++;
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            if (healthCalls === 1) {
+                response.write('{"status":');
+                return;
+            }
+            response.end(JSON.stringify({ status: 'ok', service: 'phishlens-api' }));
+            return;
+        }
+        if (request.url === '/ready') {
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: 'ready', database: 'connected' }));
+            return;
+        }
+        response.writeHead(401, { 'WWW-Authenticate': 'Bearer' });
+        response.end(JSON.stringify({ detail: 'Sign in to access saved reports' }));
+    });
+
+    const result = await runStagingSmoke(baseUrl);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(healthCalls, 2);
+    assert.match(result.stderr, /failed while reading the response body/);
+});
+
+test('fails immediately when startup returns malformed JSON with HTTP 200', async t => {
+    let healthCalls = 0;
+    const baseUrl = await serve(t, (_request, response) => {
+        healthCalls++;
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end('{ malformed json');
+    });
+
+    const result = await runStagingSmoke(baseUrl);
+
+    assert.notEqual(result.code, 0);
+    assert.equal(healthCalls, 1);
+    assert.match(result.stderr, /returned invalid JSON/);
+});
+
