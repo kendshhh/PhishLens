@@ -1,0 +1,170 @@
+{
+  "format": "phishlens-staging-product-acceptance-v1",
+  "acceptance_mode": "pr-source",
+  "status": "passed",
+  "product_status": "passed",
+  "phase": "product_path_complete_model_quality_blocked",
+  "environment": "staging",
+  "production_requests": 0,
+  "production_writes": 0,
+  "production_auth_requests": 0,
+  "unexpected_external_requests": 0,
+  "product": {
+    "sign_in": true,
+    "create": true,
+    "read": true,
+    "list": true,
+    "update": true,
+    "persistence_after_reload": true,
+    "user_isolation": true,
+    "ownership_checks": true,
+    "delete": true,
+    "cleanup": true
+  },
+  "user_experience": {
+    "authentication_failure": true,
+    "success": true,
+    "loading": true,
+    "api_error": true,
+    "timeout": true
+  },
+  "ai_acceptance": {
+    "status": "blocked",
+    "reason_code": "approval_not_provided",
+    "provider": "tfidf",
+    "model_revision": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
+  },
+  "source_sha": "d77491d8fd91252190755714df8e5fa475e9c13b",
+  "backend_source_sha": "d77491d8fd91252190755714df8e5fa475e9c13b",
+  "backend_image_digest": null,
+  "extension_zip_sha256": "495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7",
+  "extension_version": "0.1.0",
+  "extension_id": "ceneonaedddlkdocdapimkfggbjcchlb",
+  "staging_api_origin": "https://phishlens-staging.onrender.com",
+  "extension_environment": "staging",
+  "database": {
+    "project_id": "ancient-brook-17208049",
+    "production_project_id": "patient-bird-25428852",
+    "branch_id": "br-rough-sea-a1l6ehi1",
+    "production_branch_id": "br-orange-sky-b3zzzyqc",
+    "branch_kind": "schema-only",
+    "parent_id": null,
+    "production_rows_present": false,
+    "migration_revision": "0005_ai_request_quota"
+  },
+  "auth": {
+    "mode": "neon-auth",
+    "enabled": true,
+    "branch_id": "br-rough-sea-a1l6ehi1",
+    "proxy_extension_origin": "chrome-extension://ceneonaedddlkdocdapimkfggbjcchlb",
+    "anonymous_history_rejected": true,
+    "sign_in_attempts": [
+      {
+        "account": "a",
+        "kind": "intentional-rejection",
+        "responses": [
+          {
+            "service": "neon-auth",
+            "route": "/get-session",
+            "status": 200
+          },
+          {
+            "service": "neon-auth",
+            "route": "/sign-in/email",
+            "status": 401,
+            "provider_error_code": "INVALID_EMAIL_OR_PASSWORD"
+          }
+        ]
+      },
+      {
+        "account": "a",
+        "kind": "sign-in",
+        "responses": [
+          {
+            "service": "neon-auth",
+            "route": "/sign-in/email",
+            "status": 200
+          },
+          {
+            "service": "neon-auth",
+            "route": "/get-session",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "account": "b",
+        "kind": "sign-in",
+        "responses": [
+          {
+            "service": "neon-auth",
+            "route": "/sign-in/email",
+            "status": 200
+          },
+          {
+            "service": "neon-auth",
+            "route": "/get-session",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "account": "a",
+        "kind": "sign-in",
+        "responses": [
+          {
+            "service": "neon-auth",
+            "route": "/sign-in/email",
+            "status": 200
+          },
+          {
+            "service": "neon-auth",
+            "route": "/get-session",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "account": "b",
+        "kind": "sign-in",
+        "responses": [
+          {
+            "service": "neon-auth",
+            "route": "/sign-in/email",
+            "status": 200
+          },
+          {
+            "service": "neon-auth",
+            "route": "/get-session",
+            "status": 200
+          }
+        ]
+      }
+    ]
+  },
+  "service": {
+    "version": {
+      "commit": "d77491d8fd91252190755714df8e5fa475e9c13b",
+      "environment": "staging"
+    },
+    "health": {
+      "status": "ok"
+    },
+    "ready": {
+      "status": "ready",
+      "database": "connected"
+    },
+    "model_info": {
+      "provider_mode": "tfidf",
+      "model_revision": "a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c"
+    }
+  },
+  "account_subject_sha256": {
+    "a": "5dd91a508b553308a322038b0b3c73b3879011daf35c864b2f1017a1611781d2",
+    "b": "59bddc0ac238a9cd48f7c1b07cc8675a1a554d0d07b2483ffa937ff0ebff6b5b"
+  },
+  "model_quality_blocked": true,
+  "failure_code": null,
+  "cleanup_pending": 0,
+  "evidence_path": "/home/runner/work/_temp/staging-evidence.json"
+}

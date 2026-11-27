@@ -1,4 +1,34 @@
-## Staging acceptance addendum — 2026-11-27 08:22 UTC
+## Latest staging acceptance addendum — 2026-11-27 08:45 UTC
+
+Trusted controller run [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
+passed protected staging for PR #268 source/backend SHA
+`d77491d8fd91252190755714df8e5fa475e9c13b` and extension ZIP SHA-256
+`495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
+The live staging version matched the candidate, on isolated Neon branch
+`br-rough-sea-a1l6ehi1`, migration revision `0005_ai_request_quota`. Sign-in,
+persistent CRUD, reload persistence, ownership, two-account isolation, cleanup,
+and loading/success/authentication/API-error/timeout UX passed. The report records
+zero production API, Auth, or write requests and zero unexpected external
+requests. The candidate image digest is null; this is Git-backed staging, not
+same-image promotion.
+
+The same exact report marks AI quality **BLOCKED** (`approval_not_provided`) for
+TF-IDF revision `a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`
+and release decision **NO-GO**. It is product acceptance evidence for this
+staging candidate only; it is excluded from production deployment frequency
+and lead-time counts. Redacted evidence and report digest are in
+[`2026-11-27-staging-acceptance-d77491d.md`](evidence/2026-11-27-staging-acceptance-d77491d.md).
+
+Exact-head CI [45966131065](https://github.com/kendshhh/PhishLens/actions/runs/45966131065),
+Workflow lint [45966130957](https://github.com/kendshhh/PhishLens/actions/runs/45966130957),
+Dependency security [45966131061](https://github.com/kendshhh/PhishLens/actions/runs/45966131061),
+Deterministic AI Evaluation [45966131179](https://github.com/kendshhh/PhishLens/actions/runs/45966131179),
+CodeQL [45966123755](https://github.com/kendshhh/PhishLens/actions/runs/45966123755),
+trusted Neon preflight [45966125445](https://github.com/kendshhh/PhishLens/actions/runs/45966125445),
+and the required post-acceptance `Secretary staging` status all passed for that
+SHA. The documentation update below does not change the production DORA sample.
+
+## Earlier staging acceptance addendum — 2026-11-27 08:22 UTC (superseded)
 
 Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
 passed the authenticated staging journey for prior PR #268 source/backend SHA

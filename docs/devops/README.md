@@ -1,41 +1,39 @@
 # DevOps evidence and release records
 
-**Evidence snapshot at November 27, 2026 08:22 UTC. Release decision: NO-GO.** This index names
-the current evidence set and its limits. Historical records stay dated and
-retain their original findings; successor links may be added, but do not treat old
-service IDs, workflow settings or deployment observations as current.
+**Evidence snapshot at November 27, 2026 08:45 UTC. Release decision: NO-GO.**
+This index names the latest evidence and its limits. Historical records stay
+dated and retain their original findings; they are not current service state.
 
 ## Current snapshot — 2026-11-27
 
-`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`; latest production Render
-deploy metadata remains on `811980c2cbf70d9957146bf329627f0826a018f1`.
-Production analysis is disabled; `/model-info` is available, while the
-read-only `/health`, `/ready`, and `/version` probes timed out from this client.
-See the [current DORA report](dora-report-2026-11-27.md) and
-[pipeline snapshot](../../PIPELINE.md).
+`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`; the latest read-only
+Render metadata snapshot remains production SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. Later
+staging acceptance did not query production. Production health and its current
+settings remain unverified after that earlier snapshot. See the [DORA report](dora-report-2026-11-27.md)
+and [pipeline snapshot](../../PIPELINE.md).
 
-Current coordinated PR heads are #268 `9039d1a490d283cc7bcca9243aa02b705036a7dd`,
+Current coordinated PR heads are #268 `d77491d8fd91252190755714df8e5fa475e9c13b`,
 #281 `0c48cbf240b963a35b5e4669417e118d5ea6573b`, and #282
 `3131dae6f09c30b267ca4aa7b864694a44fd744c`, all based on main
-`11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. #268 now integrates the current
-#281 and #282 heads. Its first exact integrated check run found a test import
-error (`ROOT` was undefined in `test_hosted_staging_gate.py`); the fix and fresh
-checks belong to the successor candidate, not the failing SHA.
+`11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. #268 integrates #281 then #282.
+The exact-head CI, security, workflow-lint, deterministic AI, CodeQL, and
+trusted Neon checks passed. Trusted hosted controller run
+[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
+passed exact-head staging deployment and authenticated extension/backend
+acceptance on #268 `d77491d`. It verified Auth sign-in, persistent CRUD,
+reload, ownership/isolation, cleanup, and extension UX, with zero production
+requests or writes. The redacted report and hashes are in
+[the exact-head acceptance record](evidence/2026-11-27-staging-acceptance-d77491d.md).
 
-Authenticated product acceptance passed for the prior #268 SHA
-`554fd223ec98852acb12ebca01812530a84fde2d` in trusted run
-[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400).
-It covered Neon Auth sign-in, persistent CRUD, reload, ownership/isolation,
-cleanup, and extension UX. The bound extension ZIP SHA-256 is
-`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. The
-report is [redacted and archived](evidence/2026-11-27-staging-acceptance-554fd223.md).
-It explicitly blocks AI quality, has no backend image digest, and does not
-transfer to integrated head `9039d1a` or any later SHA. On `9039d1a`, trusted
-Neon preflight passed, while `Staging integration` and `Secretary staging`
-failed following the test import error. No Auth/CRUD acceptance is claimed for
-that integrated head. See the [current PR alignment record](pr-alignment-2026-11-27.md).
-Release #153 stays **NO-GO**.
-Historical PR snapshots below remain for their named revisions only.
+This does **not** close AI-quality acceptance: the report says
+`approval_not_provided` for TF-IDF model revision
+`a2f13c256dd46c3267263f8de8f4f822206c5b0ceda96658713e2523a7f9559c`. Its
+backend image digest is null; Render is still Git-backed, so same-digest
+promotion is not proven. Current compatible production rollback, isolated
+restore with measured RTO/RPO, alert delivery, and complete DORA optimization
+measurements remain open. Issue #153 stays **NO-GO**. See the [current PR
+alignment record](pr-alignment-2026-11-27.md) and [rubric crosswalk](devops-rubric-readiness-2026-11-27.md).
 
 ## Historical PR snapshots
 
