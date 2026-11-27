@@ -26,7 +26,7 @@ class Element {
   get validity() {
     if (this.readOnly) return { valid: true };
     if (this.required && !this.value) return { valid: false };
-    if (this.type === 'email' && this.value && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(this.value)) {
+    if (this.type === 'email' && this.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value)) {
       return { valid: false };
     }
     return { valid: true };
