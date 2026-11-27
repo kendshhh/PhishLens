@@ -4,7 +4,12 @@ Results recorded November 27, 2026, Manila. The browser and database checks used
 synthetic data on the rehearsal Mac. The course's production walkthrough
 requirement needs its own release and verification evidence.
 
-## Approved local demo candidate
+## Candidate approved for local rehearsal only
+
+The approval covers the isolated Chrome rehearsal with synthetic data.
+[PR #293](https://github.com/kendshhh/PhishLens/pull/293) had requested changes
+and unresolved merge conflicts at the time of this record. The rehearsal
+approval carries no PR, hosted staging, or release approval.
 
 | Pin | Value |
 | --- | --- |
