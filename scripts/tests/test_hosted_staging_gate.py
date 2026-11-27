@@ -1,9 +1,12 @@
+"""Protect the current trusted hosted-staging deployment and acceptance gates."""
+
 from pathlib import Path
 import re
 import unittest
 
 
-WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
+ROOT = Path(__file__).resolve().parents[2]
+WORKFLOW = ROOT / ".github" / "workflows" / "trusted-hosted-staging.yml"
 
 
 def named_job(workflow_text, name):
@@ -13,13 +16,6 @@ def named_job(workflow_text, name):
     )
     if not match:
         raise AssertionError(f"workflow job {name!r} was not found")
-    return match.group(1)
-
-
-def job_condition(job_text):
-    match = re.search(r"(?ms)^    if:\s*(.*?)(?=^    (?:needs|runs-on):)", job_text)
-    if not match:
-        raise AssertionError("job-level if condition was not found")
     return match.group(1)
 
 
@@ -37,45 +33,50 @@ class HostedStagingGateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.workflow_text = WORKFLOW.read_text(encoding="utf-8")
-        cls.hosted_job = named_job(cls.workflow_text, "hosted-staging")
+        cls.deploy_job = named_job(cls.workflow_text, "deploy-staging")
+        cls.accept_job = named_job(cls.workflow_text, "accept-staging")
 
-    def test_hosted_job_keeps_a_required_status_and_fails_closed_on_bad_prerequisites(self):
-        condition = job_condition(self.hosted_job)
-        self.assertIn("always()", condition)
-        prerequisite_guard = named_step(
-            self.hosted_job,
-            "Fail instead of skipping when an eligible staging prerequisite failed",
+    def test_deployment_requires_eligible_candidate_and_successful_preflight(self):
+        self.assertIn("needs: [inspect, neon-preflight]", self.deploy_job)
+        self.assertIn(
+            "if: needs.inspect.outputs.disposition == 'eligible' && needs.neon-preflight.result == 'success'",
+            self.deploy_job,
         )
-        for dependency in ("staging", "hosted-staging-preflight", "backend"):
-            self.assertIn(f"needs.{dependency}.result", prerequisite_guard)
-        self.assertIn("PREFLIGHT_CURRENT", prerequisite_guard)
-        self.assertIn("if failures:", prerequisite_guard)
-        self.assertIn("Hosted staging prerequisites failed:", prerequisite_guard)
-
-    def test_render_deploy_step_repeats_all_dependency_success_gates(self):
-        step = named_step(
-            self.hosted_job,
-            "Deploy exact PR head using the trusted controller",
+        recheck = named_step(
+            self.deploy_job,
+            "Recheck the required status contract immediately before deployment",
         )
-        match = re.search(r"(?ms)^        if:\s*(.*?)(?=^        env:)", step)
-        self.assertIsNotNone(match, "deployment step must have its own if condition")
-        condition = match.group(1)
-        self.assertIn("success()", condition)
-        for dependency in ("staging", "hosted-staging-preflight", "backend"):
-            self.assertIn(f"needs.{dependency}.result == 'success'", condition)
-        self.assertIn("needs.staging.result == 'success'", condition)
-        self.assertIn("needs.hosted-staging-preflight.result == 'success'", condition)
-        self.assertIn("needs.backend.result == 'success'", condition)
-        self.assertIn("steps.staging-deploy-preflight.outputs.current == 'true'", condition)
+        self.assertIn("TRUSTED_STAGING_OPERATION: wait-for-checks", recheck)
+        self.assertIn("python -m scripts.secretary.trusted_staging", recheck)
+        deploy = named_step(
+            self.deploy_job,
+            "Deploy only the verified PR head with the protected Render credential",
+        )
+        self.assertIn("STAGING_COMMIT: ${{ needs.inspect.outputs.source_sha }}", deploy)
+        self.assertIn("STAGING_PR_HEAD_SHA: ${{ needs.inspect.outputs.source_sha }}", deploy)
+        self.assertIn("run: python scripts/deploy_staging.py", deploy)
 
-    def test_local_staging_monitors_process_and_uploads_log_even_after_failure(self):
-        staging_job = named_job(self.workflow_text, "staging")
-        self.assertIn('kill -0 "$api_pid"', staging_job)
-        self.assertIn("startup deadline expired", staging_job)
-        self.assertIn("--connect-timeout 1 --max-time 2", staging_job)
-        self.assertIn("name: Preserve local staging server log", staging_job)
-        self.assertIn("if: always()", staging_job)
-        self.assertIn("path: output/staging/staging-server.log", staging_job)
+    def test_authenticated_acceptance_waits_for_deployment_and_checks_exact_source(self):
+        self.assertIn("needs: [inspect, neon-preflight, deploy-staging]", self.accept_job)
+        self.assertIn(
+            "if: needs.inspect.outputs.disposition == 'eligible' && needs.deploy-staging.result == 'success'",
+            self.accept_job,
+        )
+        source = named_step(self.accept_job, "Check out the exact PR source for acceptance only")
+        self.assertIn("ref: ${{ needs.inspect.outputs.source_sha }}", source)
+        self.assertIn("path: pr-source", source)
+        acceptance = named_step(
+            self.accept_job,
+            "Run authenticated exact-package CRUD and extension acceptance",
+        )
+        self.assertIn("STAGING_ACCEPTANCE_MODE: pr-source", acceptance)
+        self.assertIn("node scripts/staging_extension_acceptance.mjs", acceptance)
+        evidence = named_step(
+            self.accept_job,
+            "Require authenticated CRUD/UX evidence for the exact candidate",
+        )
+        self.assertIn("python -m scripts.release_readiness verify-pr-staging", evidence)
+        self.assertIn("EXPECTED_SHA: ${{ needs.inspect.outputs.source_sha }}", evidence)
 
 
 if __name__ == "__main__":
