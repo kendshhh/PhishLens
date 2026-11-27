@@ -8,15 +8,20 @@ The protected staging mapping uses Neon project `ancient-brook-17208049`, branch
 `neondb` at `/neondb/auth`. Application and migration URLs remain pinned to
 `phishlens_dev` and their separate runtime/owner roles. The non-secret target
 identities are recorded in `.github/secretary.json`; connection strings and
-credentials are intentionally omitted. The integrated base is PR #268 commit
-`d31a76b`, followed by #251 → #276 → #270 → #267 → #266 → #258.
+credentials are intentionally omitted. The selected integration path targets `main` at
+`d2057e1c747efd97b7232c82e18d5445b49a9307`, which contains the #251-based mainline.
+PR #281 is not based on PR #268. Earlier pairwise merge simulations against #266 and
+#268 each produced conflicts, so those branch heads are not treated as part of this
+candidate. PR #281 code revision `c9346913605c459e79734152b9b4dc09d8253345` is the
+revision verified by CI.
 
-**Release status: NO-GO.** Hosted run `45040106942` passed the protected Neon,
-Render, and Auth mapping preflights and deployed candidate
+**Release status: NO-GO.** Historical hosted run `45040106942` passed the
+protected Neon, Render, and Auth mapping preflights and deployed candidate
 `4e4481d6279a7404d35b21d4a32ef5d0c280311b`. The staging service reported healthy
 and ready at migration revision `0004_neon_auth_subject`. Acceptance stopped
 during account A sign-in with HTTP 401, before report CRUD; the sanitized evidence
-records zero production requests and writes. No Render secret values were
+records zero production requests and writes. This was PR #266 candidate evidence,
+not a deployment or acceptance result for PR #281. No Render secret values were
 inspected and CI did not create Auth accounts. Confirm that both synthetic
 accounts exist and are verified on the protected `neondb` Auth target, and that
 the protected secret pair matches, before another hosted acceptance run. Schema
@@ -31,7 +36,8 @@ and production-row attestations remain separate release gates.
 | Render runtime | Expected DB `phishlens_dev`, role `phishlens_staging_app`, approved branch host | Current `DATABASE_URL` server identity not verified |
 | Render migration | Expected DB `phishlens_dev`, role `neondb_owner`, same approved branch host | Current migration server identity not verified |
 | Auth accounts | CI does not create accounts; hosted run `45040106942` received HTTP 401 for account A | Verify A/B registration, verified-email state, and protected secret mapping on the current Auth target |
-| Candidate | PR #266 candidate `4e4481d6279a7404d35b21d4a32ef5d0c280311b`; PR #281 carries the merge-order integration | Rerun acceptance after the account state is confirmed; do not reuse an earlier head's result |
+| Candidate | PR #281 verified code revision `c9346913605c459e79734152b9b4dc09d8253345` against `main` at `d2057e1c747efd97b7232c82e18d5445b49a9307` | CI run `45943315598` passed; no hosted deployment was performed |
+| Earlier hosted candidate | PR #266 candidate `4e4481d6279a7404d35b21d4a32ef5d0c280311b` | Run `45040106942` is historical and does not verify PR #281 |
 | Prior staging attempts | Run #449301 reached Auth sign-in and timed out for account A; run #449337 stopped on staging host/name mismatch | Historical failure evidence only; neither establishes current mapping |
 | Release approval | Issue #153 remains NO-GO; independent reviewer approval and complete release scorecard evidence are outstanding | Do not merge around required protection or mark release ready |
 
@@ -107,31 +113,22 @@ exact candidate SHA before any protected environment approval.
 The workflow expects these existing GitHub variables to describe the same
 approved target: `STAGING_NEON_PROJECT_ID`, `STAGING_NEON_BRANCH_ID`,
 `STAGING_NEON_EXPECTED_HOST`, `SECRETARY_STAGING_DB_HOST`,
-`PHISHLENS_STAGING_AUTH_URL`, `PHISHLENS_STAGING_AUTH_DATABASE`,
-`STAGING_BASE_URL`, `STAGING_AUTH_TRUSTED_CHROME_ORIGIN`,
-`STAGING_NEON_SCHEMA_ONLY_ATTESTATION`,
-`STAGING_NEON_PRODUCTION_ROWS_PRESENT`, and
-`STAGING_RENDER_DATABASE_CONFIG_ATTESTATION`. The Render service must use
-`DATABASE_URL`, `STAGING_MIGRATION_DATABASE_URL`,
-`STAGING_APP_DATABASE_ROLE`, `STAGING_DATABASE_HOST`,
-`STAGING_NEON_EXPECTED_HOST`, `STAGING_NEON_PROJECT_ID`,
-`STAGING_NEON_BRANCH_ID`, `NEON_AUTH_BASE_URL`, and
-`REPORT_AUTH_MODE=neon`. Verify names and masked identities privately; do not
-copy values into this record.
+`PHISHLENS_STAGING_AUTH_URL`, `PHISHLENS_ST## Current PR verification and merge boundary
 
-## Local verification and merge boundary
+PR #281 targets `main` at `d2057e1c747efd97b7232c82e18d5445b49a9307`, the
+selected #251-based mainline. Its verified code revision is
+`c9346913605c459e79734152b9b4dc09d8253345`; the PR is mergeable with no conflict.
+The #268-based title and stale verification summary have been corrected.
 
-The code proposal is based on PR #266's exact source branch, not the dirty local
-checkout. The current targeted offline release/deployment suites passed (109
-tests and 33 subtests); Ruff, the staging runner's Node syntax check, embedded
-workflow Python syntax, and `git diff --check` passed. A full `scripts/tests` run
-passed 284 tests but two package identity checks failed on this Windows checkout
-because Git's CRLF working-tree conversion changed the packaged `config.js`
-bytes. Running the package identity tests with the index's canonical LF bytes
-passed all six tests; no source change to `extension/js/config.js` was made. The
-later targeted run includes an additional Neon CLI target-pin regression test.
+[CI run 45943315598](https://github.com/kendshhh/PhishLens/actions/runs/45943315598)
+passed for that code revision. The staging integration job passed all 335 tests,
+including staging extension package verification. The synthetic Auth bridge
+browser acceptance passed against a local disposable PostgreSQL database; it
+covers the fixed generated-config parsing and registration/sign-out/sign-in
+sequence. Extension package identity verification and isolated Chromium
+acceptance also passed.
 
-Do not run hosted staging, migrations, account creation, or CRUD as part of local
-verification. Push only the reviewed code proposal to PR #266; merge only after
-the independent review and required checks approve the updated head. If those
-protections are unavailable, leave the PR open and retain NO-GO.
+This CI run did not deploy to protected hosted staging, create real Auth
+accounts, run a hosted migration, or touch production. Keep release status NO-GO
+until the protected-target attestations, hosted authenticated acceptance, and
+independent release approvals are complete.
