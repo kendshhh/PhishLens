@@ -1,47 +1,59 @@
-# PR #282 integration record — 2026-11-27
+# PR #282 integration record — 2026-11-27 10:30 UTC
 
-## Current heads and integration order
+## Current release integration
 
-- `main` is `88156d479d19eb0b8018ab76aa3170eb60079765`.
-- PR #281 is at `27f4c3cd22138a78aa30b34284ef1c16230fb4a7`, based on that `main`.
-  Its file tree is identical to `main` (`89a3b3e0701629497c4f1f14e756f26ca98a10c7`), so it contributes no remaining file changes.
-- PR #282 is at `3131dae6f09c30b267ca4aa7b864694a44fd744c`, based on the older
-  `main` commit `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`.
+PR #268 merged to `main` at `88156d479d19eb0b8018ab76aa3170eb60079765`
+with tree `89a3b3e0701629497c4f1f14e756f26ca98a10c7`. Its exact candidate tree
+was accepted in protected staging run
+[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832).
+PR #281 is closed unmerged; its relevant changes were integrated through #268.
+The previous quota/runtime changes from PR #282 are also present in that merged
+tree.
 
-Treat #281 as superseded and reconcile #282 directly with current `main`. The
-resulting #282 merge commit has the previous #282 head as its first parent and
-`88156d4` as its second parent. There is no reason to merge the empty #281 tree
-as an additional integration layer.
+The open PR #282 is now a documentation-only follow-up. Before this correction,
+head `77bd6065466b5218626218e7f3e2f3c8d215e66b` was based on current `main` and
+changed only this integration record. It did not change application code, CI
+workflows, dependencies, or database migrations. Its old description and this
+file previously contained stale integration SHAs and DORA values; those old
+values must not be treated as current.
 
-## Merge checks and conflict resolution
+## Checks and staging semantics
 
-On the exact heads above, `git merge-tree --write-tree --name-only` reports:
+On the prior documentation head `77bd606`, CI run
+[45978321101](https://github.com/kendshhh/PhishLens/actions/runs/45978321101),
+CodeQL, deterministic AI evaluation, dependency security, workflow lint, and
+trusted Neon preflight completed successfully. The Issue 90 package was skipped
+by its path filter. `Secretary staging` reported explicit not-applicable success
+because no runtime files changed. Main controller run
+[45978972202](https://github.com/kendshhh/PhishLens/actions/runs/45978972202)
+likewise skipped Neon validation, staging deployment, and product acceptance.
+These N/A results are not hosted acceptance. This correction commit requires
+fresh exact-head checks; no result from `77bd606` is carried forward.
 
-- `main` + #281: clean; merged tree equals current `main`.
-- #281 + #282: seven conflict paths: `PIPELINE.md`, the two DORA evidence files,
-  `docs/devops/metrics.md`, this integration record, and two staging test files.
-- `main` + #282: ten conflict paths, including both workflow files and the
-  release-promotion workflow test in addition to the overlapping evidence and
-  staging gate test files.
+The last authenticated product acceptance remains PR #268 run `45966647832` on
+candidate `d77491d8fd91252190755714df8e5fa475e9c13b`, with extension ZIP
+SHA-256 `495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
+It passed isolated staging Auth, persistent saved-report CRUD, reload
+persistence, account isolation, cleanup, and extension UX. The run recorded AI
+quality blocked (`approval_not_provided`) and no backend image digest. The
+current documentation follow-up does not repeat staging or change that evidence.
 
-The resolution keeps current `main`'s release workflows, CI workflow, and
-workflow tests. The schema-only Neon identity inputs and module-based migration
-invocation required by the release workflow are already present in that current
-workflow. For the shared DORA records, it keeps the newer snapshot collected at
-`2026-11-27T07:14:04.739580Z` rather than the older `05:58` snapshot from #282.
-The historical pairwise-conflict narrative is replaced by this current merge
-record. Non-conflicting #282 changes remain in the candidate.
+## Current DORA evidence
 
-No migration files or `backend/alembic.ini` are changed by this integration.
-The merge-tree check is rerun against the resulting #282 head and current `main`
-after the merge commit is created.
+The reproducible 28-day snapshot refreshed at
+`2026-11-27T10:11:12.795930Z` against main `88156d479d19eb0b8018ab76aa3170eb60079765`
+reports a merge-to-live proxy median of 3.66 minutes (`60/143` merged PR SHAs
+matched), 63 successful production deploy records, and main CI median of 66.50
+seconds (`116/118` successful). Change failure rate, production failure recovery,
+deployment rework, and a comparable end-to-end optimization remain unmeasured.
+The DORA source and formulas are documented in
+[`dora-report-2026-11-27.md`](dora-report-2026-11-27.md); earlier snapshots are
+retained as dated evidence.
 
-## Verification status
+## Release decision
 
-Local conflict-focused verification is recorded with the resulting candidate.
-GitHub Actions must complete on that exact head before its CI or staging
-acceptance is treated as current. Earlier checks and hosted runs on `3131dae`
-or older SHAs do not transfer to the reconciled candidate.
-
-The release remains **NO-GO**. No production deployment, production data
-access, release tag, or production promotion is part of this integration.
+Issue #153 remains **NO-GO**. This record does not claim model-quality approval,
+image-backed same-digest production promotion, production product acceptance,
+current-compatible rollback, isolated restore with measured RTO/RPO, or tested
+alert delivery. No production deployment, production data access, release tag,
+or issue status change is part of this documentation update.
