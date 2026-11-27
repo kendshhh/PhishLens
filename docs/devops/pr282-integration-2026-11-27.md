@@ -1,25 +1,75 @@
-# PR #282 integration record — 2026-11-27
+# Current PR #281 → #282 → #268 integration — 2026-11-27
 
-## Ordered branch integration
+This record documents the actual coordinated integration on PR #268. The
+branches remain open against `main`; no PR was merged to `main`, no production
+deployment occurred, and no production data was accessed.
 
-PR #281’s current head was 57649747fa6be401ca0310bc2a0ea1de6b0ab53f. It was merged first into PR #282’s pre-integration head 7551e4077e4f71f2768a3d090b7ce437d727eb60. The merge commit is 006fbf29cf8b1c5a4c0c5ddbb74aabafda50e55e; its first parent is the PR #282 candidate and its second parent is the PR #281 head.
+## Exact branch heads and merge order
 
-The merge resolved overlaps in the shared CI workflow, pipeline and DevOps notes. It keeps PR #281’s trusted staging workflow changes, the #282 current-main quota and staging-host changes, and the historical evidence from both branches. The authenticated-staging helper was unchanged in substance; its conflict was a trailing blank-line difference.
+At the integration check, `main` was `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`.
+The current release branches were:
 
-## Pairwise compatibility with PR #268
+- PR #281: `0c48cbf240b963a35b5e4669417e118d5ea6573b`.
+- PR #282: `3131dae6f09c30b267ca4aa7b864694a44fd744c`.
+- PR #268's prior head: `554fd223ec98852acb12ebca01812530a84fde2d`.
 
-The current PR #268 head used for comparison is 63b000e17631f9514d8763c4c88d054cbcfc2e24, based on main at 11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0. The initial pairwise merge-tree check after the #281 merge identified overlaps in PIPELINE.md, the DevOps metrics and staging notes, extension/js/api.js, and three staging tests.
+The combined #268 history is in this order:
 
-The follow-up reconciliation retains the newer #282 evidence in this integration record, aligns shared historical documentation with the #268 snapshots, keeps the equivalent bearer-token validation, and splits the trusted-controller tests from the Issue 90 workflow tests. The pairwise merge-tree check after this reconciliation completed against the stated #268 head without conflict paths; #268 itself was not merged into #282.
+1. Merge current #281 into the integration base: `1002b20`.
+2. Merge current #282: `e8016db`.
+3. Carry prior #268 work last: `9039d1a490d283cc7bcca9243aa02b705036a7dd`.
 
-## Checks
+This preserves the intentional #282-on-#281 history and the #268 integration
+branch. The child PRs were not retargeted, rebased, or closed to simplify the
+graph.
 
-Before integration, PR #282 head 7551e4077e4f71f2768a3d090b7ce437d727eb60 had successful required checks and trusted hosted staging acceptance, as confirmed in the latest reviewer diagnostics. The hosted run is [45949708542](https://github.com/kendshhh/PhishLens/actions/runs/45949708542). The Issue 90 package job was skipped by its exact-branch filter.
+## Conflict and migration results
 
-These results belong to the pre-integration SHA. Exact-head checks and protected hosted acceptance must be evaluated again on the final integrated head; no status from 7551e407 is carried forward. The final exact-head results are recorded in the refreshed PR description.
+The shared CI and staging tests and the current DORA/DevOps records overlapped.
+Resolution retained the current trusted staging controller, #282 quota/staging
+changes, #281's later November 27 DORA snapshot, and the stable required check
+names. The old pairwise conflicts are resolved in actual merge commits; they
+are not pending merge-tree simulations. No PR in this set changes
+`backend/migrations/` or `backend/alembic.ini`, so no migration revision or
+down-revision was duplicated or reordered.
 
-## Current DORA evidence and release status
+The #268 exact-head CI run found that
+`scripts/tests/test_hosted_staging_gate.py` referenced an undefined `ROOT`.
+The path definition is corrected in the current PR update. Focused tests pass,
+and the repository Python 3.12 suite passes 347 tests with 9 expected skips.
+GitHub must still rerun every required check on the new exact head.
 
-The November 27 report and redacted source snapshot are in [dora-report-2026-11-27.md](dora-report-2026-11-27.md) and [dora-source-2026-11-27.json](evidence/dora-source-2026-11-27.json). Against the 11f72ad main snapshot, the 28-day report records a 3.66-minute median merge-to-live lead-time proxy for 60 of 142 merged PRs, 63 successful deploy records, and 117 main CI runs (115 success, 2 failure; median 66 seconds, p90 91 seconds). Change failure rate, failed-deployment recovery time, deployment rework, and a comparable end-to-end optimization gain remain unmeasured.
+## Exact-head status and staging evidence
 
-No production deployment or production data access occurred. The release remains NO-GO.
+On integrated SHA `9039d1a`:
+
+- Trusted Neon preflight passed in run
+  [45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015).
+- Backend, Extension, migration source preflight, Workflow lint, CodeQL,
+  dependency security, and deterministic AI evaluation passed.
+- Staging integration failed on the test import defect in run
+  [45963431013](https://github.com/kendshhh/PhishLens/actions/runs/45963431013),
+  so `Secretary staging` correctly failed. Protected authenticated acceptance
+  did not run for this SHA.
+
+Prior exact-head protected staging run
+[45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
+passed for old SHA `554fd223` and its extension ZIP SHA-256
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It
+verified Auth sign-in, persistent saved-report CRUD, reload persistence,
+ownership/isolation, cleanup, and extension UX. Its AI status was blocked and
+backend image digest was absent. This evidence does not transfer to `9039d1a`
+or the corrected successor. The next head requires fresh CI, protected Neon
+preflight, independent reviewer approval, and authenticated acceptance.
+
+## DORA snapshot and release state
+
+The retained main report uses source collected at
+`2026-11-27T07:14:04.739580Z`: median merge-to-live proxy 3.66 minutes
+(`60/142` matched merged PRs), 63 successful deploy records, and CI median 66
+seconds (`115/117` passed). Change failure rate, failed-deployment recovery,
+deployment rework, and comparable end-to-end optimization remain unmeasured.
+
+Issue #153 remains **NO-GO**. The historical staging pass is not AI-quality
+approval, same-image promotion, production smoke, rollback/restore rehearsal,
+measured RTO/RPO, or alert delivery evidence.

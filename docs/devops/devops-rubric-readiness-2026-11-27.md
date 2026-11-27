@@ -1,4 +1,4 @@
-# DevOps rubric readiness — 2026-11-27 07:48 UTC
+# DevOps rubric readiness — 2026-11-27 08:22 UTC
 
 ## Decision
 
@@ -13,15 +13,15 @@ criterion.
 
 | Rubric criterion | Max | Current evidence | Gap to Excellent |
 |---|---:|---|---|
-| Pipeline design and coverage | 15 | **Partial.** Backend, extension, integration, migration, security, CodeQL, AI evaluation, workflow lint, staging acceptance, and production promotion stages are represented. Current PR #281 checks pass except protected staging is still waiting. | The controlled image promotion and production post-deploy user-flow verification are not live. Justification and current flow are documented in `PIPELINE.md`, but staging/production do not yet use the same immutable backend artifact. |
-| Automation and quality gates | 10 | **Partial.** Main classic protection and active ruleset currently agree on eight required contexts, strict up-to-date checks, one approval, stale-review dismissal, and latest-push approval. Admin bypass is off. The staging label is present on PR #281. | A deliberately failing required check has not been demonstrated to block merge in a controlled test. Production promotion still requires an explicit workflow dispatch and external environment approval; the path is not yet proven end to end. |
-| Optimization with measured results | 20 | **Partial.** The current 28-day DORA report is reproducible. Merge-to-live median is 3.66 minutes (`n=60` exact SHA matches of 142 merged PRs); deployment frequency is 63 successful records / 28 days; main-CI median is 66 seconds (`n=117`, 115 pass, 2 fail). Prior backend-job optimization comparisons are recorded. | No current like-for-like end-to-end optimization demonstrates a downward pipeline-time and failure-rate trend. Change fail rate, failed-deployment recovery, and rework are not measured. Prior small samples do not establish a dependable system-wide improvement. |
-| Environments and secrets | 10 | **Partial.** GitHub staging environments require xxTrixia, prevent self-review and admin bypass, and allow `main` only. Production uses a separate protected GitHub environment and independent reviewer. No secret values are in this evidence. | Render-to-Neon runtime/migration/Auth mapping and migration credential are not verified. Render production and staging are Git-backed Python services; Render's Production environment metadata is unprotected. The public API allowlist is `0.0.0.0/0` by design; it does not demonstrate deploy-credential exposure. Review platform access controls without disrupting the client-facing API. |
-| AI-aware pipeline practices | 10 | **Partial.** Mocked AI checks and deterministic AI evaluation run in CI. Staging acceptance correctly reports AI quality as blocked when approval evidence is absent. | The policy remains pending; the representative held-out report and approved thresholds are missing. Production analysis is disabled. A scheduled live provider smoke and shared durable spend/rate limits are not verified. The historical English cohort is advisory only. |
-| Release and rollback | 10 | **Partial / below Excellent.** A controlled release workflow, manifest validation, protected approval checks, and rollback documentation exist in the PR/repository. No production release was made. | No versioned release/tag/changelog exists. PR #281 promotion is unmerged and blocked on staging credentials, mapping attestation, AI approval, and image-backed Render configuration. A rollback compatible with current production schema/config has not been rehearsed. |
-| Reliability and incident handling | 10 | **Partial.** The sampled main CI success share is 115/117 (98.29%); runbooks and incident records exist. | Two sampled CI failures remain in the rate; 15 existing Dependabot alerts (12 high, 3 moderate) were reported by GitHub. Current alert delivery, named backup responder, alert-to-recovery exercise, production rollback, and measured RTO/RPO are not demonstrated. The isolated Nov 20 restore does not prove current service recovery. |
-| Metrics, documentation, and reporting | 10 | **Partial.** A dated DORA 4+1 source snapshot and generated report are published with sample counts and limits; pipeline, release, environment, and recovery documents exist. | Change fail rate, recovery time, and rework classifications remain unmeasured; current weekly/sprint completeness and a comparable optimization result are not established. Historical records remain explicitly dated. |
-| Live performance | 5 | **Partial / below Excellent.** Historical exact-head staging acceptance on PR #268 and #282 verified persistent CRUD, account isolation, and extension UX. | Those runs are not current for the latest heads. Current #268/#282 have no exact-head Auth/CRUD acceptance; #281's current protected preflight is waiting and its trusted controller failed closed. There is no approved AI result or production promotion. On Nov 27, `/model-info` returned HTTP 200 with analysis disabled, while `/health`, `/ready`, and `/version` timed out after 15 seconds from this client. No current production journey/performance demonstration is available. |
+| Pipeline design and coverage | 15 | **Partial.** CI covers backend, extension, migration source, security, CodeQL, workflow lint, deterministic AI checks, and a trusted staging controller. | On integrated PR #268 SHA `9039d1a`, CI Staging integration failed because a test imported an undefined `ROOT`; the correction is in this PR update and needs fresh exact-head CI. Production image promotion and automatic exact-SHA post-deploy acceptance are not live. |
+| Automation and quality gates | 10 | **Partial.** Main has eight required contexts, strict checks and independent review requirements in the latest captured settings. The trusted controller fails closed; Neon preflight passed for `9039d1a`. | The new SHA did not pass its first staging integration run, and its `Secretary staging` status failed accordingly. The controlled failure-to-block-merge experiment is not evidenced. Fresh checks and reviewer approval are required after the fix. |
+| Optimization with measured results | 20 | **Partial.** The reproducible 28-day report records a 3.66-minute merge-to-live proxy median (`60/142` matched), 63 successful deploy records, and CI median 66 seconds (`115/117` successful). | No comparable before/after result establishes a downward trend in end-to-end pipeline time and failure rate. Change failure rate, failed-deployment restore time, and deployment rework are not measured; no score is inferred from unknowns. |
+| Environments and secrets | 10 | **Partial.** GitHub staging credentials are isolated by protected environments; the successful 554fd run verified the isolated Neon branch through real staging acceptance without exposing values. | Render production and staging remain Git-backed; same-digest deployment is absent. Current release-promotion migration credential/config attestations remain incomplete. Recheck the masked Render-to-Neon/Auth mapping for the integrated head. |
+| AI-aware pipeline practices | 10 | **Partial.** Deterministic AI regression checks pass in CI. The hosted acceptance record explicitly marks quality blocked when no approval is supplied. | The policy is pending. No approved, representative holdout report bound to the exact release model exists; historical English evaluation is advisory only. Current model/provider acceptance and durable budget/alert evidence are missing. |
+| Release and rollback | 10 | **Partial / below Excellent.** Versioned manifest, gated workflow, staged artifact checks, and rollback documentation are implemented in the candidate. Production Auto Deploy is off. | Render is not image-backed; no identical backend digest was promoted, no production tag/release/changelog exists, and no current-schema-compatible production rollback has been rehearsed. |
+| Reliability and incident handling | 10 | **Partial.** Isolated staging CRUD passed for SHA `554fd223`; CI and recovery/runbook controls exist. | This does not demonstrate the integrated SHA or production availability. Current alert delivery, named backup responder, alert-to-recovery drill, application rollback, restore, and measured RTO/RPO are not proven. |
+| Metrics, documentation, and reporting | 10 | **Partial.** Dated DORA source/report, current PR integration record, and redacted exact-SHA staging evidence are published. Unknown values remain explicitly unknown. | CFR, restore time, rework, comparable end-to-end improvement, and a full current weekly/sprint metric log remain unmeasured. |
+| Live performance | 5 | **Partial.** Protected staging Auth/CRUD and extension UX passed on `554fd223` with ZIP SHA-256 `7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. | That run is stale for integrated `9039d1a`; its preflight passed, but CI integration failed before hosted acceptance. No approved AI result or production journey/performance demonstration exists. |
 
 ## Exact staging evidence
 
@@ -39,25 +39,31 @@ criterion.
   report `backend_image_digest: null`, `ai_quality_status: blocked`, and
   `release_decision: no-go`. They are exact candidate acceptance evidence, not
   a production release.
-- Current PR #268 head `554fd223ec98852acb12ebca01812530a84fde2d` and #282 head
-  `3131dae6f09c30b267ca4aa7b864694a44fd744c` pass CI and Neon preflight but
-  have no current hosted Auth/CRUD acceptance. Current PR #281 head
-  `27859a31674f99f17a5e26454104b3e6719493a7` passes source/local checks; its
-  Neon preflight is waiting for protected approval, and trusted controller run
-  `45957149389` failed closed for lack of an exact-head preflight attestation.
-  No acceptance is claimed for the current #281 head.
+- Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
+  passed on PR #268 SHA `554fd223ec98852acb12ebca01812530a84fde2d`, with backend
+  and deployed SHA matching, extension ZIP SHA-256
+  `7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`, Neon
+  project `ancient-brook-17208049`, branch `br-rough-sea-a1l6ehi1`, and migration
+  revision `0005_ai_request_quota`. It passed sign-in, persistent CRUD, reload,
+  ownership/isolation, cleanup, and extension UX. AI quality was blocked and
+  backend image digest was absent.
+- Current integrated #268 head `9039d1a490d283cc7bcca9243aa02b705036a7dd`
+  passed trusted Neon preflight [45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015).
+  Its first CI run [45963431013](https://github.com/kendshhh/PhishLens/actions/runs/45963431013)
+  failed one test import (`ROOT` undefined), causing `Secretary staging` to
+  fail. The issue is fixed in this PR update, but the next exact-head checks and
+  protected Auth/CRUD run have not completed. No acceptance is claimed for
+  `9039d1a` or its successor until then.
 
 The current dependency and merge-tree evidence is in the
 [PR alignment record](pr-alignment-2026-11-27.md).
 
 ## Required closure evidence
 
-1. Complete exact-head protected staging for PR #281 only after the reviewer
-   approves the current run and the mapping/migration credentials pass
-   preflight. Keep stale runs rejected.
-2. Privately verify Render runtime, migration, Neon project/branch/database,
-   app/migration roles, and Auth endpoint; provision a fresh least-privilege
-   migration credential. Do not publish values.
+1. Re-run CI on the corrected integrated #268 head, then obtain xxTrixia's
+   approval for that exact protected staging run. Reject or ignore stale heads.
+2. Reconfirm the isolated Neon/Render runtime mapping and least-privilege
+   migration settings without publishing values.
 3. Obtain AI owner approval for the policy and representative holdout report;
    require the exact provider/model identity and quality status before release.
 4. Configure a supported immutable image deployment for Render, promote the

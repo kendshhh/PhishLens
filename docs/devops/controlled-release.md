@@ -1,24 +1,21 @@
 # Controlled PhishLens release path
 
-Status snapshot at 2026-11-27 07:48 UTC: issue #153 remains NO-GO. The controlled-release
-workflow is manual-only and this workflow hardening is under review; no
-production release, version tag, or release authorization exists. Trusted
-hosted acceptance completed on earlier PR #268 head
-`63b000e17631f9514d8763c4c88d054cbcfc2e24` in run `45950870589` and earlier PR
-#282 head `7551e4077e4f71f2768a3d090b7ce437d727eb60` in run `45949708542`.
-Those results prove authenticated staging CRUD and extension UX only for those
-historical SHAs; both reports block AI quality and have no backend image
-digest. Current #268 (`554fd223ec98852acb12ebca01812530a84fde2d`) and #282
-(`3131dae6f09c30b267ca4aa7b864694a44fd744c`) have passing CI and Neon
-preflight but no current exact-head authenticated acceptance. PR #281 head
-`27859a31674f99f17a5e26454104b3e6719493a7` has passing source/local CI; its
-protected Neon preflight run `45956687871` is waiting for xxTrixia, and trusted
-controller run `45957149389` failed closed because the matching attestation was
-not yet available. Its required `Secretary staging` result failed; no hosted
-acceptance is claimed. Older PR #281 runs are stale. Production Auto Deploy is
-currently off, but Render remains Git-backed and has not promoted a tested
-image. Keep issue #153 at NO-GO. Do not dispatch production promotion until the
-external setup below is complete.
+Status snapshot at 2026-11-27 08:22 UTC: issue #153 remains **NO-GO**. Trusted
+hosted Auth/CRUD and extension acceptance passed on prior PR #268 SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` in run
+`45958860400`; redacted evidence is in
+[the acceptance record](evidence/2026-11-27-staging-acceptance-554fd223.md).
+It reported AI quality blocked and no backend image digest. Current integrated
+PR #268 SHA `9039d1a490d283cc7bcca9243aa02b705036a7dd` passed trusted Neon
+preflight, but its initial `Staging integration` run failed because
+`test_hosted_staging_gate.py` referenced undefined `ROOT`; `Secretary staging`
+failed as a result. The path correction is part of this PR update, and fresh
+exact-head checks plus protected staging are still required. Current #281 is
+`0c48cbf240b963a35b5e4669417e118d5ea6573b`, current #282 is
+`3131dae6f09c30b267ca4aa7b864694a44fd744c`; both are integrated in order into
+#268. No production release, version tag, or authorization exists. Render Auto
+Deploy is off, but both services remain Git-backed and no tested image has been
+promoted. Do not dispatch production promotion.
 
 See the current [environment map](environment-map-2026-11-27.md),
 [rubric crosswalk](devops-rubric-readiness-2026-11-27.md), and
@@ -110,9 +107,11 @@ check on 2026-11-27 found production service
 `srv-db7eap25b2lc73fkelpg` Git-backed to `main` with
 `autoDeploy=no` / `autoDeployTrigger=off`; its live deploy is still SHA
 `811980c2cbf70d9957146bf329627f0826a018f1`. Staging service
-`srv-db92irlg1s2s739404i0` is also Git-backed with auto-deploy off and is live
-on PR #268's SHA `63b000e17631f9514d8763c4c88d054cbcfc2e24`. The production
-auto-deploy stop is verified, but it is an interim control, not proof of
+`srv-db92irlg1s2s739404i0` is also Git-backed with auto-deploy off. Trusted
+staging run `45958860400` deployed and accepted prior PR #268 SHA `554fd223`
+on the isolated staging target; this does not establish the current integrated
+head and produced no backend image digest. The production auto-deploy stop is
+verified, but it is an interim control, not proof of
 digest-based promotion. The release preflight refuses Git-backed targets, so
 promotion remains blocked until both services are configured for the
 image-backed path. GitHub settings were rechecked and the required

@@ -1,3 +1,21 @@
+## Staging acceptance addendum — 2026-11-27 08:22 UTC
+
+Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
+passed the authenticated staging journey for prior PR #268 source/backend SHA
+`554fd223ec98852acb12ebca01812530a84fde2d` and extension ZIP SHA-256
+`7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It verified
+Neon Auth sign-in, persistent saved-report CRUD, reload persistence,
+ownership/isolation, cleanup, and extension UX. It recorded zero production
+requests/writes, AI quality blocked (`approval_not_provided`), and no backend
+image digest. This is product-acceptance evidence for that SHA only; it is not a
+production deployment and must not be added to the production DORA denominator.
+
+The integrated PR #268 SHA `9039d1a490d283cc7bcca9243aa02b705036a7dd` passed
+trusted Neon preflight but its initial staging integration failed on an
+undefined test `ROOT`, so no hosted acceptance ran on that SHA. A correction is
+included in the current PR update. Fresh checks and protected staging must pass
+before current-candidate acceptance is reported.
+
 ## Current audit and metric reconciliation — 2026-11-23
 
 This dated refresh retains the partial 28-day DORA reconstruction below and adds exact candidate evidence. GitHub main is `0338ad163a4892987a6a682aed29b95c22c322da`; main protection was rechecked and still requires eight status contexts plus one approval, latest-push approval, and stale-review dismissal, while blocking force-push and deletion.
