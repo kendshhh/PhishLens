@@ -47,10 +47,17 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
     return { user: { id: user.id, email: user.email, name: user.name || '', emailVerified: user.emailVerified === true }, expiresAt,
       token: session.token };
   }
+  async function requireConfirmedSignOut() {
+    if (await signOutStorage.isUnconfirmed()) {
+      throw Object.assign(failure(503), { code: 'signout_unconfirmed' });
+    }
+  }
   async function read() {
     const version = epoch;
+    if (signOutStorage?.isUnconfirmed) await requireConfirmedSignOut();
     if (signedOut || (signOutStorage && await signOutStorage.isBlocked()) || version !== epoch) return null;
     const current = await readProviderSession();
+    if (signOutStorage?.isUnconfirmed) await requireConfirmedSignOut();
     if ((signOutStorage && await signOutStorage.isBlocked()) || signedOut || version !== epoch) return null;
     return current;
   }
@@ -58,6 +65,8 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
   async function establish(action, email, allowNoSession = false) {
     const version = ++epoch;
     signedOut = true;
+    if (signOutStorage?.isUnconfirmed) await requireConfirmedSignOut();
+    if (version !== epoch) return null;
     await call(action);
     if (version !== epoch) return null;
     const current = await readProviderSession();
@@ -67,6 +76,8 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
     }
     if (current && current.user.email.toLowerCase() !== email.trim().toLowerCase()) throw failure(401);
     if (current) {
+      if (signOutStorage?.isUnconfirmed) await requireConfirmedSignOut();
+      if (version !== epoch) return null;
       await signOutStorage?.setBlocked(false);
       if (version !== epoch) return null;
       signedOut = false;
@@ -86,10 +97,22 @@ export function createNeonAccounts(sdk, { now = Date.now, timeoutMs = 12000, sig
     async signOut() {
       ++epoch;
       signedOut = true;
-      // Keep restoration blocked across popup and browser restarts if the
-      // provider is unreachable and its session cookie survives.
-      try { await signOutStorage?.setBlocked(true); }
-      finally { await call(() => sdk.signOut()); }
+      let locallyBlocked = false;
+      try {
+        if (signOutStorage) {
+          locallyBlocked = await signOutStorage.setBlocked(true) !== false;
+        }
+      } catch {
+        // The provider can still end the session if the local write fails.
+      }
+      try {
+        await call(() => sdk.signOut());
+      } catch (error) {
+        if (!locallyBlocked) error.code = 'signout_unconfirmed';
+        throw error;
+      }
+      try { await signOutStorage?.clearUnconfirmed?.(); }
+      catch { throw Object.assign(failure(503), { code: 'signout_unconfirmed' }); }
     },
     async getAccessToken(expectedUserId) {
       const current = await read();

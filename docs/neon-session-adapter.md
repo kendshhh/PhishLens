@@ -89,12 +89,14 @@ Sources inspected November 8, 2026:
   the user signs in again for a changed account. Provider changes in other
   clients are not claimed to appear instantly; checks do not run after popup
   closure. Each new popup restores from the provider.
-- Sign-out blocks local token access before requesting remote sign-out. Failed
-  remote logout leaves a boolean in extension storage, scoped to the Auth URL.
-  It blocks automatic restoration of a surviving cookie across popup and browser
-  restarts until a successful explicit sign-in confirms the
-  expected account. Password reset also blocks restoration of the previous
-  session. Already-issued JWTs can survive to expiry.
+- Sign-out clears report access in the current popup. A boolean saved in
+  extension storage blocks restoration of a surviving provider session on
+  reopen until explicit sign-in confirms the expected account. If the storage
+  write and provider sign-out both fail, the popup shows that sign-out is
+  unconfirmed and offers a retry. A fresh popup can still restore the active
+  provider session in that case. A successful provider sign-out completes the
+  operation even when the storage write fails. Password reset also blocks
+  restoration of the previous session. Already-issued JWTs can survive to expiry.
 - Password recovery uses the documented forgetPassword.emailOtp and
   emailOtp.resetPassword methods. Live delivery and branch configuration are
   unverified; no six-digit example code is accepted as live acceptance evidence.

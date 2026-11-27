@@ -174,6 +174,90 @@ test('failed remote logout blocks restoration in a new popup until explicit sign
   assert.ok(await openPopup().restore());
 });
 
+test('a reopened popup keeps reports blocked until an unconfirmed sign-out is retried', async t => {
+  let providerSession = true;
+  let providerUnavailable = true;
+  let localStorageUnavailable = true;
+  let sessionReads = 0;
+  let signInCalls = 0;
+  const sdk = {
+    async getSession() { sessionReads++; return { data: providerSession ? session(jwt()) : null }; },
+    signIn: { async email() { signInCalls++; providerSession = true; return { data: {} }; } },
+    async signOut() {
+      if (providerUnavailable) return { error: { status: 503 } };
+      providerSession = false;
+      return { data: { success: true } };
+    }
+  };
+  const local = {};
+  const browserSession = {};
+  const storage = {
+    async get(key) { return { [key]: local[key] }; },
+    async set(items) {
+      if (localStorageUnavailable) throw new Error('Local storage unavailable');
+      Object.assign(local, items);
+    },
+    async remove(key) { delete local[key]; }
+  };
+  const browserSessionStorage = {
+    async get(key) { return { [key]: browserSession[key] }; },
+    async set(items) { Object.assign(browserSession, items); },
+    async remove(key) { delete browserSession[key]; }
+  };
+  const openPopup = () => {
+    const { adapter, createClient } = createNeonIntegration({
+      config: { enabled: true, authUrl, database: 'test', apiOrigin }, apiOrigin,
+      hostPermissions: [apiOrigin + '/*'], storage, browserSessionStorage, sdkFactory: () => sdk
+    });
+    const accounts = createAccountSession({
+      adapter, createClient,
+      schedule: () => 0,
+      cancel() {}
+    });
+    t.after(() => accounts.dispose());
+    return accounts;
+  };
+
+  const first = openPopup();
+  await first.ready;
+  const states = [];
+  first.subscribe(state => states.push(state.status));
+  await first.signOut();
+
+  assert.deepEqual(states, ['signed-in', 'signing-out', 'sign-out-unconfirmed']);
+  assert.match(first.state.message, /session may still be active/);
+  await assert.rejects(first.client.listAnalyses(), { code: 'session_required' });
+  first.dispose();
+
+  assert.deepEqual(Object.keys(local), []);
+  assert.deepEqual(Object.values(browserSession), [true]);
+  const reopened = openPopup();
+  await reopened.ready;
+  assert.equal(reopened.state.status, 'sign-out-unconfirmed');
+  assert.match(reopened.state.message, /session may still be active/);
+  assert.equal(sessionReads, 1);
+  await assert.rejects(reopened.client.listAnalyses(), { code: 'session_required' });
+  await assert.rejects(reopened.signIn({ email: user.email, password: 'Synthetic-password' }),
+    { code: 'signout_unconfirmed' });
+  assert.equal(signInCalls, 0);
+  assert.equal(reopened.state.status, 'sign-out-unconfirmed');
+
+  localStorageUnavailable = false;
+  await reopened.signOut();
+  assert.equal(reopened.state.status, 'sign-out-unconfirmed');
+  assert.deepEqual(Object.values(browserSession), [true]);
+
+  providerUnavailable = false;
+  await reopened.signOut();
+  assert.equal(reopened.state.status, 'signed-out');
+  assert.deepEqual(Object.keys(browserSession), []);
+  assert.equal(providerSession, false);
+  const afterRetry = openPopup();
+  await afterRetry.ready;
+  assert.equal(afterRetry.state.status, 'signed-out');
+  assert.ok(await afterRetry.signIn({ email: user.email, password: 'Synthetic-password' }));
+});
+
 test('invalid registration stays local and duplicate errors are sanitized', async () => {
   let signUps = 0;
   const adapter = createNeonAccounts({

@@ -8,6 +8,7 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
   sdkFactory = createAuthClient, adapterFactory = BetterAuthVanillaAdapter,
   bridgeFactory = createNeonBridgeClient,
   storage = globalThis.chrome?.storage?.local,
+  browserSessionStorage = globalThis.chrome?.storage?.session,
   hostPermissions = globalThis.chrome?.runtime?.getManifest()?.host_permissions || [] } = {}) {
   if (!config?.enabled) return {};
   const url = new URL(config.authUrl);
@@ -45,11 +46,29 @@ export function createNeonIntegration({ config, apiOrigin, fetchImpl = globalThi
   }
 
   const key = 'phishlensSignedOut:' + url.href;
-  const signOutStorage = storage && {
-    async isBlocked() { return (await storage.get(key))[key] === true; },
+  const isUnconfirmed = async () => (await browserSessionStorage?.get(key))?.[key] === true;
+  const signOutStorage = (storage || browserSessionStorage) && {
+    isUnconfirmed,
+    async isBlocked() { return (await storage?.get(key))?.[key] === true; },
     async setBlocked(blocked) {
-      if (blocked) await storage.set({ [key]: true });
-      else await storage.remove(key);
+      if (!blocked) {
+        await storage?.remove(key);
+        return;
+      }
+      if (storage) {
+        try {
+          await storage.set({ [key]: true });
+          return !(await isUnconfirmed());
+        } catch (error) {
+          if (!browserSessionStorage) throw error;
+        }
+      }
+      // A retry marker survives popup closure even when local storage cannot be written.
+      await browserSessionStorage.set({ [key]: true });
+      return false;
+    },
+    async clearUnconfirmed() {
+      if (await isUnconfirmed()) await browserSessionStorage.remove(key);
     }
   };
   const adapter = createNeonAccounts(sdk, { signOutStorage });

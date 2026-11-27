@@ -26,12 +26,14 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
   for (const button of $('account-panel').querySelectorAll('[data-account-back]')) {
     button.addEventListener('click', () => { message(''); screen('sign-in'); });
   }
-  $('show-account').addEventListener('click', () => {
+  function openAccount() {
     visible('account-panel', true);
-    screen(accounts.state.status === 'signed-in' ? null : 'sign-in');
-  });
+    const showSignIn = !['signed-in', 'signing-out', 'sign-out-unconfirmed'].includes(accounts.state.status);
+    screen(showSignIn ? 'sign-in' : null);
+  }
+  $('show-account').addEventListener('click', openAccount);
   $('close-account').addEventListener('click', () => { clearSecrets(); visible('account-panel', false); $('show-account').focus(); });
-  $('reports-sign-in').addEventListener('click', () => { visible('account-panel', true); screen('sign-in'); });
+  $('reports-sign-in').addEventListener('click', openAccount);
   const controls = $('account-panel').querySelectorAll('button, input');
   async function run(action) {
     if (busy) return;
@@ -73,15 +75,26 @@ export function initializeAccountUI(accounts, doc = document, { preview = false 
     await accounts.resetPassword({ email: $('reset-email').value.trim(), code: $('reset-code').value.trim(), password: $('reset-password').value });
     screen('sign-in'); message('Password updated. Sign in with your new password.');
   });
-  $('account-sign-out').addEventListener('click', () => run(async () => { await accounts.signOut(); screen('sign-in'); message(accounts.state.message || 'Signed out. Local scanning is still available.'); }));
+  $('account-sign-out').addEventListener('click', () => run(async () => {
+    await accounts.signOut();
+    if (accounts.state.status === 'signed-out') {
+      screen('sign-in');
+      message(accounts.state.message || 'Signed out. Local scanning is still available.');
+    }
+  }));
   const unsubscribe = accounts.subscribe(state => {
     const signedIn = state.status === 'signed-in';
-    $('account-identity').textContent = signedIn ? state.user.name || state.user.email : 'Keep scanning without an account';
-    $('show-account').textContent = signedIn ? 'Account' : 'Sign in';
-    visible('account-sign-out', signedIn);
+    const unconfirmed = state.status === 'sign-out-unconfirmed';
+    const signingOut = state.status === 'signing-out';
+    const identity = signedIn ? state.user.name || state.user.email : 'Keep scanning without an account';
+    $('account-identity').textContent = signingOut || unconfirmed ? 'Account session' : identity;
+    $('show-account').textContent = signedIn || signingOut || unconfirmed ? 'Account' : 'Sign in';
+    $('reports-sign-in').textContent = unconfirmed ? 'Review sign-out' : 'Sign in to view reports';
+    $('account-sign-out').textContent = unconfirmed ? 'Retry sign-out' : 'Sign out';
+    visible('account-sign-out', signedIn || unconfirmed);
     visible('reports-account-gate', !signedIn);
     visible('personal-reports', signedIn);
-    message(state.message, state.status === 'expired');
+    message(state.message, state.status === 'expired' || unconfirmed);
     if (state.status === 'expired') { visible('account-panel', true); screen('sign-in'); }
     if (signedIn) screen(null, false);
   });
