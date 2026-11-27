@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { authEndpointName, extractProviderErrorCode } from '../../scripts/staging_auth_diagnostics.mjs';
+import { authEndpointName, authResponseEvidence, extractProviderErrorCode } from '../../scripts/staging_auth_diagnostics.mjs';
 
 test('labels only known Auth endpoints and never returns an arbitrary path', () => {
   assert.equal(authEndpointName('/api/auth/sign-in/email'), 'sign_in');
@@ -18,4 +18,32 @@ test('keeps only allowlisted provider codes in acceptance evidence', () => {
   assert.equal(extractProviderErrorCode({ message: 'INVALID_EMAIL_OR_PASSWORD' }), null);
   assert.equal(extractProviderErrorCode({ code: 'raw provider response with credentials' }), null);
   assert.equal(extractProviderErrorCode('INVALID_EMAIL_OR_PASSWORD'), null);
+});
+
+test('acceptance evidence includes only an allowlisted provider error code', () => {
+  const evidence = authResponseEvidence({
+    service: 'neon-auth',
+    route: '/sign-in/email',
+    status: 401,
+    payload: {
+      code: 'invalid_credentials',
+      message: 'account-a@example.test raw provider detail',
+    },
+  });
+  assert.deepEqual(evidence, {
+    service: 'neon-auth',
+    route: '/sign-in/email',
+    status: 401,
+    provider_error_code: 'INVALID_CREDENTIALS',
+  });
+  assert.equal(JSON.stringify(evidence).includes('account-a@example.test'), false);
+
+  const unknown = authResponseEvidence({
+    service: 'neon-auth',
+    route: '/sign-in/email',
+    status: 401,
+    payload: { code: 'account-a@example.test', message: 'raw provider detail' },
+  });
+  assert.equal(unknown.provider_error_code, null);
+  assert.equal(JSON.stringify(unknown).includes('raw provider detail'), false);
 });
