@@ -1,6 +1,9 @@
 # Staging and candidate acceptance
 
-**Status as of November 27, 2026:** Trusted hosted staging acceptance passed for PR #282 at pre-integration head 7551e4077e4f71f2768a3d090b7ce437d727eb60. This branch now includes PR #281; the integrated head needs fresh exact-head checks and protected hosted acceptance before it can be accepted. Release remains **NO-GO**.
+**Status as of November 25, 2026:** authenticated staging acceptance has not
+passed for a current release candidate. The release remains **NO-GO**. The
+trusted-controller changes described below are in the DevOps review branch and
+do not become the default-branch workflow until merged.
 
 ## Credential boundary
 
@@ -33,11 +36,21 @@ The controller uses separate jobs and environments:
   it publishes nothing for an eligible runtime PR, so it cannot overwrite the
   trusted controller's final result.
 
-The live staging and release-staging environments permit deployments from main only and do not allow administrator bypass. Both have required reviewers xxTrixia and kendshhh; self-review prevention is enabled. The staging environment retains its non-production Auth test credentials, while release-staging has the RENDER_STAGING_API_KEY secret name. Secret values were not read. Presence is not proof the key works; only a successful protected deploy can establish that.
+The live `staging` environment now permits deployments from `main` only. This
+prevents a PR-authored workflow from requesting its environment secrets. The
+existing `RENDER_STAGING_API_KEY` secret is still stored in that environment,
+but PR refs are denied by the environment policy. The trusted workflow instead
+expects a separately provisioned `RENDER_STAGING_API_KEY` in the main-only
+`release-staging` environment. Its non-secret variables now identify the
+approved isolated Neon/Auth target, but it has no secrets, so deployment still
+fails closed until a new Render key and required Neon migration credentials are
+provisioned there. Do not copy a masked value through chat or logs.
 
-PR #281 describes a separate release-promotion workflow that also needs its target configuration and migration credentials. Its November 25 note that release-staging had no provisioned secrets is an earlier snapshot; the November 27 settings read recorded the key secret name. The promotion workflow has not been executed, and staging acceptance does not qualify a production release.
-
-These controls preserve the required context name Secretary staging; they do not add or rename required checks. The latest GitHub ruleset read shows active strict ruleset #27733591 requires the eight CI/staging contexts. Ruleset #26782191 requires one review and approval of the latest push. Classic branch protection was not independently verified. PIPELINE.md and live settings should be refreshed whenever these controls change.
+These changes preserve the required context name `Secretary staging`; they do
+not add or rename required checks. The main branch still must use the same
+eight-context strict contract in classic protection and ruleset #27733591.
+`PIPELINE.md` and the live settings should be rechecked after the controller is
+merged.
 
 ## Exact-candidate acceptance
 

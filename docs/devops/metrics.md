@@ -74,22 +74,7 @@ zero.
 
 # Pipeline Metrics
 
-## Latest reproducible DORA snapshot — 2026-11-27
-
-The [28-day DORA report](dora-report-2026-11-27.md) and its redacted
-[source snapshot](evidence/dora-source-2026-11-27.json) were generated from
-GitHub and Render metadata at `2026-11-27T05:58:53Z`, against `main`
-`11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. The report records merge-to-live
-lead-time proxy median 3.66 minutes for 60/142 merged PRs, 63 successful deploy
-records in 28 days, and CI median 66 seconds across 117 runs (115 success, 2
-failure). Change failure rate, failed-deployment recovery time, deployment
-rework, and a comparable end-to-end optimization result remain unmeasured; see
-the report's limits. No application data, secret value, or AI inference content
-is included. Render's latest deploy record marked live is metadata, not a
-successful HTTP version or product-journey check; the Nov 27 `/version` request
-timed out.
-
-## Historical service identity refresh — 2026-11-21
+## Current service identity refresh — 2026-11-21
 
 This read-only refresh records service identity and endpoint behavior, not a
 performance sample. Production serves `811980c2cbf70d9957146bf329627f0826a018f1`
@@ -110,16 +95,6 @@ used the mainline-synchronized smoke helper. Neither run checked
 `/version`, deployed PR identity, or authenticated CRUD, and it is not a
 performance sample. Treat the deployment identity above as the 07:31 UTC
 control-plane observation.
-
-A later November 23 Render dashboard view showed production Auto-Deploy enabled
-on `main`; production still serves `811980c...`, behind current main. This
-supersedes the November 21 metadata observation that reported it disabled.
-Configured auto-deploy is not proof of exact merge-to-live behavior. See the [current environment map](environment-map-2026-11-21.md)
-and [release record](release-record-2026-11-21.md). The November 20
-delivery sample below remains the latest performance measurement; its service
-identity is historical.
-
-### Historical CI snapshots
 
 CI evidence is not a performance metric. PR #265 merged to main at
 `95975cd47dceeac74ea36054610956f0a1db1fa9`; its CI and CodeQL passed in runs
@@ -173,6 +148,14 @@ failed in [44899423134](https://github.com/kendshhh/PhishLens/actions/runs/44899
 No current PR CodeQL, Render deployment or authenticated CRUD evidence exists.
 This is a check snapshot, not a performance sample; the next docs-only sync
 needs its own checks.
+
+A later November 23 Render dashboard view showed production Auto-Deploy enabled
+on `main`; production still serves `811980c...`, behind current main. This
+supersedes the November 21 metadata observation that reported it disabled.
+Configured auto-deploy is not proof of exact merge-to-live behavior. See the [current environment map](environment-map-2026-11-21.md)
+and [release record](release-record-2026-11-21.md). The November 20
+delivery sample below remains the latest performance measurement; its service
+identity is historical.
 
 ## Latest measured delivery sample — 2026-11-20 17:05 UTC
 
