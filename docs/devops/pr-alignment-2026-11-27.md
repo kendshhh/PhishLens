@@ -1,91 +1,42 @@
-# Coordinated release PR alignment — November 27, 2026 08:22 UTC
+# Current open PR alignment — 2026-11-27 14:44 UTC
 
-This snapshot covers the coordinated release PR set, not every unrelated open
-PR. All three target `main` at `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` and
-are authored by `kendshhh`. Current GitHub PR metadata was refreshed before the
-integration check. Full file inventories remain linked from each PR.
+This is a read-only inventory of 16 open PRs from GitHub. Live target-branch SHAs were queried separately because GitHub PR `baseRefOid` values can remain at a prior comparison snapshot. Full head/base identities, author, all changed files, migration-file list, PR references, review state, and merge state are in [the machine-readable inventory](evidence/open-pr-alignment-2026-11-27-1444z.json). No PR was retargeted, rebased, merged, or closed.
 
-## Current dependency map
+| PR | Base branch @ live SHA | Head branch @ SHA | Author | Stack prerequisite | Migration files | Changed files / alignment |
+|---|---|---|---|---|---|---|
+| [#304](https://github.com/kendshhh/PhishLens/pull/304) docs(devops): refresh rubric, DORA, and release evidence | main @ fd23b18 | codex/devops-staging-evidence-sync-20261127 @ fe492e8 | kendshhh | none verified | none | 18 files; see JSON; Current evidence refresh; inventory captured before this refresh commit |
+| [#303](https://github.com/kendshhh/PhishLens/pull/303) Codex/local rag review | main @ fd23b18 | codex/local-rag-review @ 06bf732 | EnviousCoal | none verified | none | 64 files; see JSON; Overlaps PR #293 and #294 in AI/model and extension files; composition needs integrated tests |
+| [#298](https://github.com/kendshhh/PhishLens/pull/298) Sidebar polish: narrow layouts, account panel scroll, ghost tests | phishlens-ui-scan @ 6056419 | feat/sidebar-ui-andrei @ 1717724 | JupitraxNeptuna | PR #293 | none | extension/css/popup.css, extension/popup.html, extension/tests/ghost.test.mjs; Intentional child of PR #293; base SHA equals #293 head |
+| [#294](https://github.com/kendshhh/PhishLens/pull/294) feat(ai): integrate context-aware TF-IDF evaluation build | codex/release-gates-20261121 @ fcc81d0 | codex/pr269-context-model-20261125 @ 75e2162 | EnviousCoal | PR #266 | none | 29 files; see JSON; Intentional child of merged PR #266 branch; overlaps AI/model files with #303 |
+| [#293](https://github.com/kendshhh/PhishLens/pull/293) Refine the sidebar and integrate on-device scan results | main @ fd23b18 | phishlens-ui-scan @ 6056419 | xxTrixia | none verified | none | 58 files; see JSON; Parent of PR #298; overlaps AI/model files with #303 |
+| [#291](https://github.com/kendshhh/PhishLens/pull/291) build(deps): bump SQLAlchemy to 2.1.9 | feature/extension-auth-main-sync @ 71694c8 | codex/pr290-sqlalchemy-trusted-bump @ 2c1cb07 | kendshhh | PR #251 | none | backend/requirements-dev.txt, backend/requirements.in, backend/requirements.txt; Duplicates SQLAlchemy 2.1.9 bump with PR #290; intentionally based on merged PR #251 branch |
+| [#290](https://github.com/kendshhh/PhishLens/pull/290) build(deps): bump sqlalchemy from 2.1.8 to 2.1.9 in /backend | main @ fd23b18 | dependabot/pip/backend/sqlalchemy-2.1.9 @ fca8651 | app/dependabot | none verified | none | backend/requirements-dev.txt, backend/requirements.in, backend/requirements.txt; Duplicates SQLAlchemy 2.1.9 bump with PR #291 on the same three backend requirement files |
+| [#289](https://github.com/kendshhh/PhishLens/pull/289) build(deps-dev): bump ruff from 0.17.5 to 0.17.6 in /backend | main @ fd23b18 | dependabot/pip/backend/ruff-0.17.6 @ eff6259 | app/dependabot | none verified | none | backend/requirements-dev.txt; No direct overlap or prerequisite identified in this snapshot. |
+| [#288](https://github.com/kendshhh/PhishLens/pull/288) build(deps): bump fastapi from 0.163.0 to 0.165.0 in /backend | main @ fd23b18 | dependabot/pip/backend/fastapi-0.165.0 @ eac134d | app/dependabot | none verified | none | backend/requirements-dev.txt, backend/requirements.in, backend/requirements.txt; No direct overlap or prerequisite identified in this snapshot. |
+| [#287](https://github.com/kendshhh/PhishLens/pull/287) build(deps-dev): bump httpx2 from 2.16.0 to 2.16.2 in /backend | main @ fd23b18 | dependabot/pip/backend/httpx2-2.16.2 @ 80938bc | app/dependabot | none verified | none | backend/requirements-ai.txt, backend/requirements-dev.txt; No direct overlap or prerequisite identified in this snapshot. |
+| [#286](https://github.com/kendshhh/PhishLens/pull/286) build(deps-dev): bump eslint from 10.14.0 to 10.15.0 | main @ fd23b18 | dependabot/npm_and_yarn/eslint-10.15.0 @ e8c5143 | app/dependabot | none verified | none | package-lock.json, package.json; No direct overlap or prerequisite identified in this snapshot. |
+| [#285](https://github.com/kendshhh/PhishLens/pull/285) build(deps-dev): bump playwright from 1.65.0 to 1.65.1 | main @ fd23b18 | dependabot/npm_and_yarn/playwright-1.65.1 @ be5a94e | app/dependabot | none verified | none | package-lock.json, package.json; No direct overlap or prerequisite identified in this snapshot. |
+| [#282](https://github.com/kendshhh/PhishLens/pull/282) docs(devops): refresh current release evidence | main @ fd23b18 | codex/devops-evidence-go-20261123 @ 27118fc | kendshhh | none verified | none | docs/devops/pr282-integration-2026-11-27.md; Older release evidence, behind main, changes requested |
+| [#250](https://github.com/kendshhh/PhishLens/pull/250) Verify Sprint 4 AI integration for the Chrome extension | main @ fd23b18 | codex/sprint4-extension-20261119 @ 992a82a | EnviousCoal | none verified | none | 8 files; see JSON; No direct overlap or prerequisite identified in this snapshot. |
+| [#242](https://github.com/kendshhh/PhishLens/pull/242) build(deps): bump google-genai from 2.34.0 to 3.3.0 in /backend | main @ fd23b18 | dependabot/pip/backend/google-genai-3.3.0 @ b4be728 | app/dependabot | none verified | none | backend/requirements-dev.in, backend/requirements-dev.txt, backend/requirements.in, backend/requirements.txt; No direct overlap or prerequisite identified in this snapshot. |
+| [#237](https://github.com/kendshhh/PhishLens/pull/237) build(deps-dev): bump better-auth from 1.7.18 to 1.7.23 | main @ fd23b18 | dependabot/npm_and_yarn/better-auth-1.7.23 @ 399bdcb | app/dependabot | none verified | none | extension/vendor/neon/THIRD_PARTY_NOTICES.txt, extension/vendor/neon/sdk.mjs, package-lock.json, package.json; No direct overlap or prerequisite identified in this snapshot. |
 
-| PR | Branch and current head | Base | Files / migrations | Relationship, verification, and action |
-|---|---|---|---|---|
-| [#281](https://github.com/kendshhh/PhishLens/pull/281/files) | `codex/reconcile-staging-merge-order-20261122` @ `0c48cbf240b963a35b5e4669417e118d5ea6573b` | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 59 files in the captured PR diff; no migration files or `backend/alembic.ini` | Release-hardening parent. Exact current head is merged into the #268 integration branch by `1002b20`; its own review remains changes requested. Do not assume PR status transfers from the integration run. |
-| [#282](https://github.com/kendshhh/PhishLens/pull/282/files) | `codex/devops-evidence-go-20261123` @ `3131dae6f09c30b267ca4aa7b864694a44fd744c` | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 101 files in the captured PR diff; no migration files or `backend/alembic.ini` | Intentionally built on an older #281 head and reconciled with #268. Current #282 head is integrated after #281 by `e8016db`; review remains changes requested. Do not retarget or rewrite the stack merely to simplify the graph. |
-| [#268](https://github.com/kendshhh/PhishLens/pull/268/files) | `codex/devops-staging-closeout-20261121` @ `9039d1a490d283cc7bcca9243aa02b705036a7dd` (last remotely verified) | `main` @ `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0` | 114 files in the captured PR review; no migration files or `backend/alembic.ini` | Integration branch. It contains current #281, then current #282, then its prior #268 base. The exact-head run failed a Python test import; see checks below. A focused correction is being prepared. Keep this PR open and unmerged until fresh required checks, independent review, and current-head staging pass. |
+## Stacking, duplication, and order
 
-## Actual ordered integration
+- **Intentional stack:** PR #298 is based exactly on open PR #293 head `6056419`; preserve it as a child and review/merge #293 before #298.
+- **Intentional stack on a merged parent:** PR #294 uses the branch of merged PR #266 as its base (`fcc81d0`). PR #291 uses the branch of merged PR #251 (`71694c8`). Keep their lineage visible; recommend retargeting to current `main` only after confirming parent content is present and the owner approves the retarget.
+- **Duplicate dependency bump:** PR #290 and #291 modify the same three backend requirement files for SQLAlchemy 2.1.9. Select one clean main-based update after validation; do not merge both. PR #291 is additionally stacked on #251.
+- **AI/UI overlap:** PR #293, #294, and #303 overlap AI/model and extension files. PR #303 is based on main while #294 is based on the #266 branch. They need a combined conflict/tree review and tests in the intended order before merging.
+- **Release docs:** PR #282 is behind main with changes requested and contains an older integration note. This report is a later evidence snapshot; keep #282 unique history distinguishable and do not merge stale claims as current.
+- **Migration graph:** none of the 16 open PR file lists contains a migration file. This inventory finds no open-PR migration revision collision; it does not replace checking the merged migration graph or DB upgrade tests.
+- **PR #304:** documentation/evidence only; no application or workflow YAML change. Its self-row SHA is the observation-time SHA in the JSON and will advance when the refresh is committed/pushed.
 
-The current #268 tree records these parent relationships:
+## Recommended order
 
-1. Current #281 head `0c48cbf240b963a35b5e4669417e118d5ea6573b` was integrated
-   first by merge `1002b20`.
-2. Current #282 head `3131dae6f09c30b267ca4aa7b864694a44fd744c` was integrated
-   second by merge `e8016db`.
-3. Prior #268 head `554fd223ec98852acb12ebca01812530a84fde2d` was integrated last
-   by merge `9039d1a490d283cc7bcca9243aa02b705036a7dd`.
+1. Review this documentation evidence refresh (#304) against current main; it does not merge or deploy the release.
+2. Resolve overlapping AI changes among #293/#294/#303 with their authors, preserve #298 on #293, and integrate in a tested order.
+3. Choose a single SQLAlchemy 2.1.9 PR (#290 or #291); update/close the duplicate only after its owner confirms.
+4. Bring stale Dependabot PRs onto current main through their normal update workflow and rerun exact-head checks; do not rely on stale checks.
+5. Reconcile #282's old status with the new current evidence before any merge.
 
-This preserves the intended stack while making #268 the combined review
-candidate. The current merge is real Git history, not a simulated merge tree.
-The current #268 commit is still a candidate only; it has not been merged to
-`main`.
-
-## Migration and overlap audit
-
-The three PR diffs do not modify `backend/migrations/` or
-`backend/alembic.ini`; no child introduces a new revision or down-revision and
-there is no PR-set migration ordering dependency. The actual combined diff
-retains the existing migration-lineage guard. The protected staging acceptance
-on old SHA `554fd223` reported revision `0005_ai_request_quota`; this does not
-prove the integrated candidate's migration result, which must be checked again
-after its CI and staging run.
-
-The shared workflow and DevOps evidence files overlap. The integration keeps
-the trusted staging controller, current quota-ordering changes, current DORA
-source/report, and the existing stable required check names. The only exact-head
-runtime failure found so far is the undefined `ROOT` in
-`scripts/tests/test_hosted_staging_gate.py`; it is fixed in this PR update and
-covered by the focused tests. No duplicated migration work or dependency-update
-conflict was found in this set.
-
-## Checks and evidence identity
-
-For last remotely verified integrated SHA `9039d1a`:
-
-- CI [run 45963431013](https://github.com/kendshhh/PhishLens/actions/runs/45963431013)
-  passed Backend, Extension, and migration preflight but failed Staging
-  integration because `CI_WORKFLOW = ROOT / ...` referenced an undefined
-  `ROOT`. This made required `Secretary staging` fail closed. The Issue 90
-  package job was skipped by its exact-branch filter.
-- Trusted Neon preflight [run 45963430015](https://github.com/kendshhh/PhishLens/actions/runs/45963430015)
-  passed. Workflow lint [45963431058](https://github.com/kendshhh/PhishLens/actions/runs/45963431058),
-  Deterministic AI Evaluation [45963430986](https://github.com/kendshhh/PhishLens/actions/runs/45963430986),
-  Dependency security [45963431195](https://github.com/kendshhh/PhishLens/actions/runs/45963431195),
-  and CodeQL analysis [140386566053](https://github.com/kendshhh/PhishLens/runs/140386566053)
-  passed.
-- Authenticated staging acceptance passed earlier on exact SHA
-  `554fd223` only: trusted run
-  [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400).
-  It passed sign-in, CRUD, persistence, ownership/isolation, cleanup and
-  extension UX; ZIP SHA-256 was
-  `7d7082e1e1bc5f3c0fd0c89d8e1d85bb4ec0b3180cd19602cd87d322b955dccd`. It
-  reported AI quality blocked and no backend image digest. Do not treat it as
-  evidence for `9039d1a` or a successor.
-- The full local `scripts/tests` suite passed after the path correction under
-  the repo Python 3.12 virtual environment: 347 tests passed, 9 expected skips.
-  The focused hosted-gate tests also passed. These local results do not replace
-  fresh required GitHub checks.
-
-## DORA and release decision
-
-The latest published main-snapshot DORA report is based on source collected at
-`2026-11-27T07:14:04.739580Z`: merge-to-live proxy median 3.66 minutes (`60/142`
-merged PR SHAs matched), 63 successful deploy records, and main-CI median 66
-seconds (`115/117` runs passed). Change failure rate, failed-deployment
-recovery, deployment rework, and like-for-like end-to-end optimization remain
-unmeasured. A staging acceptance run is not a production deployment and does
-not alter those production denominators.
-
-Issue #153 remains **NO-GO**. No current-model approved holdout, image-backed
-same-digest production promotion, production post-deploy acceptance, compatible
-rollback rehearsal, measured data restore/RTO/RPO, or tested alert-to-response
-evidence has been established by this integration.
+This inventory is a point-in-time map. Check GitHub for new commits/reviews and re-run the collector before acting.

@@ -1,4 +1,52 @@
-## Staging acceptance addendum — 2026-11-27 08:22 UTC
+# PhishLens delivery metrics and evidence boundary
+
+## Current snapshot — 2026-11-27 14:35 UTC
+
+The 28-day DORA source/report is refreshed against GitHub `main`
+`fd23b186ad85f9d33e7f80dec03f09d9b7005403`:
+
+- Merge-to-first-successful-live-deploy proxy: median 3.66 minutes, p90 8.61,
+  `n=60` exact matched merged PR SHAs out of 146 merged PRs.
+- Successful Render deployment records: 63 over 28 days, 2.25/day. These are
+  deployment records, not necessarily unique customer-facing releases.
+- Change failure rate: **not measured**. Diagnostic failed-deploy attempts are
+  0/63 and are not used as a proxy for DORA CFR.
+- Failed-deployment recovery time: **not measured**; no qualifying measured
+  failure-to-verified-restoration interval is available.
+- Deployment rework: **not measured**; deployments lack a reviewed
+  planned/unplanned rework classification.
+- Supplemental main-push CI: median 67 seconds, p90 94, `n=121`; 119 success,
+  2 failures; completed-run share 98.35%.
+
+The reproducible source is
+[`evidence/dora-source-2026-11-27.json`](evidence/dora-source-2026-11-27.json),
+and generated output is [`dora-report-2026-11-27.md`](dora-report-2026-11-27.md).
+The measured PR #119 cached pinned-uv change lowers Backend-job median from
+61.52s to 50.92s (n=2 each, 17.2%); it is a small job-level result, not an
+end-to-end time or failure-rate trend. The staging-cache experiment was slower;
+the extension-cache run did not establish a gain.
+
+## Exact staging product acceptance — 2026-11-27 12:40 UTC
+
+Trusted run [45999893591](https://github.com/kendshhh/PhishLens/actions/runs/45999893591)
+passed for PR #306 source/backend SHA `131d282222361a6d29601f90a2930445ee4a61cf`
+and ZIP SHA-256 `376b26a4de0307c00b331d2e66ea4caf363ab8347c8a037df83e1a8b22ffeb08`.
+It passed Auth sign-in, persistent CRUD, reload, ownership/isolation, cleanup,
+and extension UX on isolated Neon staging, recording zero production requests
+or writes. The live staging service still reports that SHA at 14:33 UTC. Model
+quality remains blocked (`approval_not_provided`); no backend image digest or
+production release is present. The acceptance is excluded from production DORA
+denominators. See [full staging evidence](evidence/2026-11-27-staging-acceptance-131d282.md).
+
+## Production probes — 2026-11-27 14:32–14:33 UTC
+
+Read-only unauthenticated GETs found production `/health` and `/ready` HTTP 200
+with DB connected, `/version` at `811980c2cbf70d9957146bf329627f0826a018f1`,
+and `/model-info` reporting analysis disabled. Staging health/readiness returned
+200 and `/model-info` returned TF-IDF. These route probes did not exercise a
+user journey or access production product data; raw redacted responses are in
+[`evidence/live-endpoint-probe-2026-11-27-1432z.json`](evidence/live-endpoint-probe-2026-11-27-1432z.json).
+## Earlier staging acceptance addendum — 2026-11-27 08:22 UTC (superseded)
 
 Trusted run [45958860400](https://github.com/kendshhh/PhishLens/actions/runs/45958860400)
 passed the authenticated staging journey for prior PR #268 source/backend SHA
@@ -75,11 +123,13 @@ interval. Therefore the defensible conclusion is **CFR unknown and MTTR unknown*
 with one unresolved in-window production acceptance failure—not zero failures.
 
 The previous 69-record / 64-match snapshot remains historical and should not be
-used as the current window. Keep the 2026-11-20 optimization experiment separate
-from DORA: cached uv Backend median 50.92 s versus 61.52 s baseline, n=2 each,
-while the staging-cache whole-job median increased 3.5 s. These small samples do
-not establish a reliable end-to-end improvement; the optimization criterion
-remains **not met**.
+used as the current window. Keep optimization evidence separate from DORA:
+PR #119's cached-uv Backend job median was 50.92 s versus 61.52 s baseline
+(`n=2` each), and the change was merged to `main` on November 4. This is one
+implemented job-level improvement. The staging-cache whole-job median increased
+3.5 s. These small, job-scoped samples do not establish a reliable end-to-end
+improvement or a failure-rate trend; the rubric's multiple-optimization
+criterion remains **not met**.
 
 To close the DORA evidence gap, export the complete production deployment list
 for the full window (including the missing interval), identify and deduplicate
@@ -96,17 +146,20 @@ zero.
 
 The reproducible 28-day DORA snapshot is in
 [dora-report-2026-11-27.md](dora-report-2026-11-27.md), with its redacted
-[source data](evidence/dora-source-2026-11-27.json). The report gives a
-merge-to-live median of 3.66 minutes (`n=60` matched of 142 merged PRs),
-63 successful production deploy records (2.25/day), and a supplemental main-CI
-median of 66 seconds (`n=117`, 115 successes and 2 failures). Change fail rate,
-failed-deployment recovery time, deployment rework, and comparable optimization
-remain not measured; missing evidence is not reported as zero.
+[source data](evidence/dora-source-2026-11-27.json). Collected at 09:38 UTC
+against main `88156d4`, it reports a merge-to-live median of 3.66 minutes
+(`n=60` matched of 143 merged PRs), 63 successful production deploy records
+(2.25/day), and supplemental main-CI median 66.50 seconds (`n=118`, 116 successes
+and 2 failures). Change fail rate, failed-deployment recovery time, deployment
+rework, and comparable optimization remain not measured; missing evidence is not
+reported as zero.
 
 Read-only Render metadata at 2026-11-27 07:14 UTC identifies the latest
 production deploy as `dep-dc1716etlv9c73b8nl0g`, source
 `811980c2cbf70d9957146bf329627f0826a018f1`, created 2026-11-22T04:33:29Z.
-The service is a Git-backed Python service on `main` with Auto Deploy off.
+The 09:38 DORA deployment inventory reported the same live SHA. The service is
+a Git-backed Python service on `main` with Auto Deploy off per the 07:14
+configuration snapshot; no later configuration or HTTP health check was done.
 Production `GET /model-info` returned HTTP 200 around 07:16 UTC with analysis
 disabled, provider disabled, and TF-IDF reports not accepted. `GET /health`,
 `/ready`, and `/version` each timed out after 15 seconds from this client. These
@@ -316,12 +369,12 @@ finished its ordinary jobs on October 20 and started the protected hosted job
 on October 25. This is operational delay that needs a queue/approval policy
 review; it is not a reason to omit the protected check.
 
-The snapshot is descriptive, not a before/after experiment. The existing cached
-uv backend comparison remains **n=2 baseline and n=2 candidate** and measures
-the Backend job only. Its candidate median was 50.92 s versus 61.52 s, but that
-small job-level sample does not establish a reliable end-to-end improvement.
-PR and main workflows also have different check sets and are not an equivalent
-optimization pair. No timing win is claimed.
+The snapshot is descriptive, not a before/after experiment. The cached-uv
+comparison is **n=2 baseline and n=2 candidate** and measures the Backend job
+only. Its candidate median was 50.92 s versus 61.52 s, and the approach was
+merged in PR #119; this is an observed job-level timing gain, not a whole-pipeline
+gain. PR and main workflows also have different check sets and are not an
+equivalent optimization pair. No end-to-end timing or failure-rate win is claimed.
 
 ## Historical observations
 
@@ -703,8 +756,11 @@ measured candidate, not a guarantee for every run. Earlier uncached and mixed
 uv trials remain separately reported above and are not included in this
 cache-hit comparison.
 
-The current PR branch now uses the same pinned uv setup and cache dependency
-globs. Its new-head CI must pass before treating the updated PR head as verified.
+PR #119's uv/cache change was approved and merged as
+`98dd0dc13136f16c1159a9aedee870a84be066a3` on November 4. Current `main` retains
+pinned uv and caching; PR #283 later updated the setup action from v10.3.3 to
+v10.4.0. The Nov 4 comparison is therefore an implemented, measured backend-job
+result, with the sample-size and end-to-end limitations above.
 
 ### PR #268 follow-up — 2026-11-21 11:42 UTC
 

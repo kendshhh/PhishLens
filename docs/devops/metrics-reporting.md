@@ -1,13 +1,16 @@
 # Replay consultation metrics offline
 
 For the current PhishLens DORA 4+1 snapshot, see
-[the 2026-11-27 report](dora-report-2026-11-27.md) and its redacted source
-metadata. Reproduce it from the repository root with GitHub CLI and the
-authenticated Render CLI:
+[the 2026-11-27 report](dora-report-2026-11-27.md), collected at 11:04 UTC
+against main `88156d4`, and its redacted source metadata. Earlier snapshots are
+preserved in `dora-report-2026-11-27-premerge-0714z.md`,
+`dora-report-2026-11-27-postmerge-0938z.md`, and their matching JSON sources.
+Reproduce the current
+report from the repository root with GitHub CLI and the authenticated Render CLI:
 
 ```powershell
 ./scripts/collect_dora_evidence.ps1 -OutputPath docs/devops/evidence/dora-source-2026-11-27.json
-python -m scripts.report_dora_metrics docs/devops/evidence/dora-source-2026-11-27.json docs/devops/dora-report-2026-11-27.md
+py -3.12 -m scripts.report_dora_metrics docs/devops/evidence/dora-source-2026-11-27.json docs/devops/dora-report-2026-11-27.md
 ```
 
 The DORA report keeps change-failure rate, failed-deployment recovery time,

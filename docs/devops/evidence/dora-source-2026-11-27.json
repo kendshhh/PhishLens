@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "repository": "kendshhh/PhishLens",
-  "collected_at_utc": "2026-11-27T07:14:04.739580Z",
+  "collected_at_utc": "2026-11-27T14:35:59.960338Z",
   "window_utc": {
-    "start": "2026-10-30T07:14:04.739580Z",
-    "end": "2026-11-27T07:14:04.739580Z",
+    "start": "2026-10-30T14:35:59.960338Z",
+    "end": "2026-11-27T14:35:59.960338Z",
     "duration_days": 28
   },
-  "current_main_sha": "11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0",
+  "current_main_sha": "fd23b186ad85f9d33e7f80dec03f09d9b7005403",
   "production_sha": "811980c2cbf70d9957146bf329627f0826a018f1",
   "source_urls": {
     "ci_runs": "https://api.github.com/repos/kendshhh/PhishLens/actions/workflows/ci.yml/runs?branch=main&per_page=100",
@@ -1308,6 +1308,50 @@
       "finished_at_utc": "2026-11-27T05:57:44.000000Z",
       "conclusion": "success",
       "url": "https://github.com/kendshhh/PhishLens/actions/runs/45948720404"
+    },
+    {
+      "run_id": 45968012372,
+      "sha": "88156d479d19eb0b8018ab76aa3170eb60079765",
+      "event": "push",
+      "branch": "main",
+      "created_at_utc": "2026-11-27T08:44:29.000000Z",
+      "started_at_utc": "2026-11-27T08:44:29.000000Z",
+      "finished_at_utc": "2026-11-27T08:45:47.000000Z",
+      "conclusion": "success",
+      "url": "https://github.com/kendshhh/PhishLens/actions/runs/45968012372"
+    },
+    {
+      "run_id": 45997399706,
+      "sha": "334db0d6bd687beea3645b632e69cde7eada80ed",
+      "event": "push",
+      "branch": "main",
+      "created_at_utc": "2026-11-27T12:17:29.000000Z",
+      "started_at_utc": "2026-11-27T12:17:29.000000Z",
+      "finished_at_utc": "2026-11-27T12:19:22.000000Z",
+      "conclusion": "success",
+      "url": "https://github.com/kendshhh/PhishLens/actions/runs/45997399706"
+    },
+    {
+      "run_id": 46000717553,
+      "sha": "e66984eb002a85c6e1ffa3e936c47079ff958128",
+      "event": "push",
+      "branch": "main",
+      "created_at_utc": "2026-11-27T12:41:15.000000Z",
+      "started_at_utc": "2026-11-27T12:41:15.000000Z",
+      "finished_at_utc": "2026-11-27T12:42:57.000000Z",
+      "conclusion": "success",
+      "url": "https://github.com/kendshhh/PhishLens/actions/runs/46000717553"
+    },
+    {
+      "run_id": 46014305692,
+      "sha": "fd23b186ad85f9d33e7f80dec03f09d9b7005403",
+      "event": "push",
+      "branch": "main",
+      "created_at_utc": "2026-11-27T14:15:38.000000Z",
+      "started_at_utc": "2026-11-27T14:15:38.000000Z",
+      "finished_at_utc": "2026-11-27T14:17:13.000000Z",
+      "conclusion": "success",
+      "url": "https://github.com/kendshhh/PhishLens/actions/runs/46014305692"
     }
   ],
   "merged_pull_requests": [
@@ -2304,6 +2348,34 @@
       "head_sha": "c70473149dc5fd15e4be1414a8ad4e81855ee6ff",
       "base_branch": "main",
       "merged_at_utc": "2026-11-27T05:56:05.000000Z"
+    },
+    {
+      "number": 268,
+      "merge_sha": "88156d479d19eb0b8018ab76aa3170eb60079765",
+      "head_sha": "d77491d8fd91252190755714df8e5fa475e9c13b",
+      "base_branch": "main",
+      "merged_at_utc": "2026-11-27T08:44:26.000000Z"
+    },
+    {
+      "number": 305,
+      "merge_sha": "334db0d6bd687beea3645b632e69cde7eada80ed",
+      "head_sha": "0de48c3e1b3880b893d6f6b60cabad5fba9fedfa",
+      "base_branch": "main",
+      "merged_at_utc": "2026-11-27T12:17:26.000000Z"
+    },
+    {
+      "number": 306,
+      "merge_sha": "e66984eb002a85c6e1ffa3e936c47079ff958128",
+      "head_sha": "131d282222361a6d29601f90a2930445ee4a61cf",
+      "base_branch": "main",
+      "merged_at_utc": "2026-11-27T12:41:12.000000Z"
+    },
+    {
+      "number": 307,
+      "merge_sha": "fd23b186ad85f9d33e7f80dec03f09d9b7005403",
+      "head_sha": "d46facde8994e19fb090a77abb6b653e6de13630",
+      "base_branch": "main",
+      "merged_at_utc": "2026-11-27T14:15:36.000000Z"
     }
   ],
   "production_deployments": [
