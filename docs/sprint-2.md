@@ -25,9 +25,16 @@ under merged PR #58.
 
 November 13 backend acceptance handoff:
 
-- [#42 persistent CRUD](https://github.com/kendshhh/PhishLens/issues/42) still
-  needs evidence on the selected deployment for create, list/detail,
-  notes/feedback PATCH and a fresh reread, delete, and final detail 404.
+- [#42 persistent CRUD](https://github.com/kendshhh/PhishLens/issues/42) completed
+  connected staging acceptance on November 27, 2026. Chrome ran against Render
+  staging at `30743b077169357455620b55233f75806ea636aa` with the matching
+  [#258 staging package](https://github.com/kendshhh/PhishLens/actions/runs/45537485644).
+  One synthetic report was created, listed, opened, edited with notes and
+  feedback, and reopened in a fresh signed-in tab with its original prediction
+  and TF-IDF provenance. After deletion, reopening the stale entry received
+  the deployed detail handler's `Analysis not found` response (HTTP 404).
+  The refreshed list returned to the two original reports. The issue records
+  the redacted observations and the client checks used to identify the statuses.
 - [#43 CRUD tests](https://github.com/kendshhh/PhishLens/issues/43) recorded
   the disposable PostgreSQL run on `7ced6984ba5cdc962a756afd2ec642fbf274ec4d`.
   [PR #80](https://github.com/kendshhh/PhishLens/pull/80) later passed CI at
@@ -163,9 +170,8 @@ Kendra's asynchronous review of the Sprint 2 consultation recap is recorded in
 The recap distinguishes component and historical staging evidence from the
 selected deployment. PR #117's November 4 run `41745040091` is a synthetic
 staging acceptance record; it does not establish current-main production CRUD.
-Issue [#42](https://github.com/kendshhh/PhishLens/issues/42) remains open for
-the selected deployment's create/list/detail, notes/feedback PATCH, fresh
-reread, delete, and final 404 evidence.
+The remaining #42 staging verification from that recap was completed in the
+November 27 run recorded above.
 
 A read-only GET probe on November 14 found production `/version` at current
 `main` SHA `e6d0fd01fb7e74587c20bc420e16c453ad5f7ef8`; `/health` returned `ok`,
@@ -184,3 +190,18 @@ remain a proposal, not a team-approved retro. Original async standups, dated
 consultation attendance and individual presentations still require
 participant-sourced records. The recorded November 7 instructor feedback is a
 paraphrase only; no exact wording, score, or rubric entry is available.
+
+## November 25 — Leyan’s installed-Chrome staging trial
+
+I tested the PR #258 extension package (`30743b0`) in installed Chrome using
+the explicit staging page. Sign-in, History loading, saving and opening a
+synthetic report, editing notes, persistence after reload, deletion, and the
+signed-out prompt passed. The two original reports remained after cleanup.
+
+The local scan returned Uncertain because Chrome could not run the local
+review model during this trial. The saved-report flow passed.
+
+The final #44/#45 verification remains open pending a staging backend and
+extension package built from the same agreed merged `main` commit.
+
+[Installed-Chrome trial evidence](https://github.com/kendshhh/PhishLens/issues/45#issuecomment-7154563125)

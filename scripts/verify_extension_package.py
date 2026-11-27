@@ -89,7 +89,7 @@ def verify(archive, evidence_path, expected_source):
             if name in pinned_models and hashes[name] != pinned_models[name]:
                 raise ValueError("Model bytes differ from pinned asset manifest")
         manifest = json.loads(package.read("manifest.json"))
-        config = package.read("js/config.js").decode("utf-8")
+        config = package.read("js/config.js").decode("utf-8").replace("\r\n", "\n")
     if not isinstance(manifest, dict) or manifest.get("manifest_version") != 3:
         raise ValueError("Expected a Manifest V3 object")
     if manifest.get("version") != evidence.get("extension_version"):

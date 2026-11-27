@@ -3,7 +3,6 @@ run-name: ${{ github.event.action == 'labeled' && github.event.label.name != 'ne
 
 on:
   pull_request_target:
-    branches: [main]
     types: [opened, reopened, synchronize, ready_for_review, labeled]
 
 permissions:
@@ -13,7 +12,6 @@ jobs:
   verify-neon:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
       !github.event.pull_request.draft &&
       contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging') &&
       (github.event.action != 'labeled' || github.event.label.name == 'needs-hosted-staging') &&

@@ -38,3 +38,11 @@ export function extractProviderErrorCode(payload) {
   }
   return null;
 }
+
+export function authResponseEvidence({ service, route, status, payload }) {
+  const result = { service, route, status };
+  if (Number.isInteger(status) && status >= 400) {
+    result.provider_error_code = extractProviderErrorCode(payload);
+  }
+  return result;
+}

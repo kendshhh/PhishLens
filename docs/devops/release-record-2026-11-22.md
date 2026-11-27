@@ -1,46 +1,66 @@
-# Staging reliability and release checklist — updated 2026-11-25
+# Staging reliability and release checklist — updated 2026-11-27
 
-## Agreed integration base
+## Integration decision — 2026-11-27
 
-- PR #251 is merged into `main` at `28f136894ac0c220fc370feb926da335472b283d`. Use that accepted tree as the integration starting point.
-- PR #266 at `44ddb461308c29ac3014f9e0ce0b41db267e9d84` merges current `main` with the prior #266 head; it keeps #251's shared workflow, Auth, staging, and release implementations.
-- PR #268 and #281 are separate branches based on the older `54ce4af` main. PR #281 is not actually based on #268 despite its title; do not treat its proposed order as Git ancestry. Bring only agreed changes into a #251-based integration candidate.
-- The `phishlens-staging` / `staging-root` target documented on the parallel #268 branch is not the target used by the accepted #251-based staging run. Preserve the current target below when reconciling their docs.
-- #266 adds no database migration. Keep the single `0005_ai_request_quota` revision from #251, with `0004_neon_auth_subject` as its parent.
+**Selected proposal: the #251 staging target, carried forward by PR #266.**
+The release owner previously recorded the #251 integration as the accepted
+base. Current `main` is `46f0298d8e3299afa74e02882081be56c1de4933`; it includes
+#251's merge at `28f136894ac0c220fc370feb926da335472b283d`. The current PR #266
+branch is `251d7b83d6dc58324539be5668bbdd3aea8083dc`, 42 commits ahead of and
+zero behind that `main` base.
 
-## Current staging target
+The Nov. 25 recheck of #266 at `18fa7c8` found a clean standalone integration.
+That SHA is no longer the branch head. Use the current branch head and its own
+checks for any next step.
 
-The #251-based candidate uses Neon project `ancient-brook-17208049`, branch
-`br-rough-sea-a1l6ehi1`, PostgreSQL endpoint
+PR #268's `phishlens-staging` / `staging-root` target is a separate, unselected
+proposal. PR #281's `9e778d5` integration proposal is also unselected; its
+described order is not actual ancestry because #281 was based on `main`, not
+#268. Do not merge either branch wholesale into this selected path. If specific
+changes are later chosen, rebase them onto the selected base, preserve the
+#251 target, and verify the resulting exact SHA before staging.
+
+These docs record the integration choice only. They do not authorize production
+promotion.
+
+## Selected staging target
+
+The selected #251-based target uses Neon project `ancient-brook-17208049`,
+branch `br-rough-sea-a1l6ehi1`, PostgreSQL endpoint
 `ep-winter-wind-a1y2r1db.ap-southeast-1.aws.neon.tech`, application/migration
-database `phishlens_dev`, and Auth database `neondb` at `/neondb/auth`.
-The non-secret identities are pinned in `.github/secretary.json`; connection
-strings and credentials are intentionally omitted. Runtime and migration
-credentials remain separate and are verified privately by the protected staging
-workflow.
+database `phishlens_dev`, and Auth database `neondb` at `/neondb/auth`. The
+non-secret identities are pinned in `.github/secretary.json`; connection
+strings and credentials are intentionally omitted. Recheck runtime and
+migration identities privately for every new candidate.
 
-## Current evidence and decision
+## Current candidate status before this documentation update
 
-**Production release status: NO-GO.** Hosted staging run [45521263702](https://github.com/kendshhh/PhishLens/actions/runs/45521263702) completed on exact PR #266 head `44ddb461308c29ac3014f9e0ce0b41db267e9d84`. The trusted Neon check, migration-source preflight, backend checks, extension checks, staging integration, dependency/security checks, workflow lint, and Hosted staging passed on that head.
+PR #266's pre-edit head was `251d7b83d6dc58324539be5668bbdd3aea8083dc`. The
+latest Secretary report, [run 45930182262](https://github.com/kendshhh/PhishLens/actions/runs/45930182262),
+reported Extension checks passing, Backend checks in progress, and Staging
+integration missing. The reported preview deployment SHA was
+`01153fd81ea7301acb565c4f5ac47e0d0afc3dac`, not the exact PR head. This is not
+current-head hosted staging acceptance.
 
-Hosted staging verified the isolated Neon and Render mapping, confirmed migration head `0005_ai_request_quota`, deployed the exact PR head, completed authenticated extension saved-report acceptance and cleanup, and uploaded the staging extension/evidence artifact. This is evidence for `44ddb46` only. Do not reuse it as exact-head evidence after the PR advances.
+## Historical exact-head acceptance
 
-The earlier hosted attempts—including run `45040106942` with an HTTP 401 for account A, and runs that stopped on a Render update failure—are historical and superseded for `44ddb46`. They do not establish results for a later commit.
-
-The staging product path passed on that SHA. AI-quality approval and production promotion remain separate gates; CI and hosted staging success do not make the release GO. No production deployment is claimed.
+- PR #266 head `18fa7c8` passed its recorded [CI run 45525200065](https://github.com/kendshhh/PhishLens/actions/runs/45525200065)
+  and [Trusted staging Neon check 45525195574](https://github.com/kendshhh/PhishLens/actions/runs/45525195574),
+  including hosted acceptance. This evidence applies only to `18fa7c8`.
+- Earlier head `44ddb46` passed [Hosted staging run 45521263702](https://github.com/kendshhh/PhishLens/actions/runs/45521263702).
+  It is also historical and does not establish acceptance of a later head.
+- PR #268's alternate target and PR #281's proposed integration remain
+  separate from this evidence and from the selected #251 target.
 
 ## Evidence summary
 
-| Area | Evidence on `44ddb46` | Boundary |
+| Area | Current record | Boundary |
 | --- | --- | --- |
-| Protected target | Project, branch, PostgreSQL host, and Auth mapping matched the approved candidate target | No secret values are recorded here |
-| Render runtime and migration | Protected preflight passed for the staging service and the separate database roles | Recheck privately for a later candidate |
-| Migration lineage | Preflight passed through `0005_ai_request_quota` | Keep only one copy of the migration |
-| Auth and saved reports | Exact-head authenticated extension acceptance and saved-report CRUD/cleanup passed | Evidence is SHA-bound to `44ddb46` |
-| Browser package | Exact-head staging extension artifact and browser acceptance were preserved | Do not treat an artifact for another SHA as current |
-| AI quality | Not approved by the hosted staging check | Representative holdout review remains required |
-| Production release | NO-GO | No production deployment or approval is claimed |
-
+| Integration base | `main` at `46f0298`; #266 pre-edit head `251d7b8` was 42 ahead and 0 behind | New documentation commits require fresh exact-head checks |
+| Staging target | #251 target: `ancient-brook-17208049` / `br-rough-sea-a1l6ehi1` | Non-secret identities only; recheck runtime and migration mapping privately |
+| Current checks | Latest report on `251d7b8`: Extension passed, Backend in progress, Staging integration missing | No current-head hosted acceptance is established |
+| Prior staging runs | #266 heads `18fa7c8` and `44ddb46` passed their recorded hosted checks | SHA-bound historical evidence only |
+| Production release | **NO-GO** | No production deployment or approval is claimed |
 ## Changes retained in #266
 
 After reconciliation against #251, this PR's distinct changes are the non-secret
@@ -81,8 +101,8 @@ only; never write secret values here.
 
 ## Verification boundary
 
-The successful hosted run is for exact head `44ddb46`, before this documentation
-reconciliation. No local tests or staging actions were run for this documentation
-change. The next commit must use its own current-head CI and any required
-protected staging approval. Keep production status NO-GO until independent
-AI-quality approval and the separate promotion controls pass.
+This documentation reconciliation does not rerun tests or staging. It advances
+PR #266 beyond the previously checked code heads, so all existing CI and hosted
+acceptance results remain bound to their recorded SHAs. Require current-head CI
+and the protected staging gate before treating a later candidate as accepted.
+Production remains NO-GO; no production deployment or approval is claimed.
