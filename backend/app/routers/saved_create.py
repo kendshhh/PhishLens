@@ -2,6 +2,7 @@
 
 import re
 import time
+from asyncio import to_thread
 from collections.abc import Callable, Coroutine
 from typing import Annotated, Any, Literal, cast
 from uuid import UUID
@@ -13,6 +14,14 @@ from fastapi.routing import APIRoute
 from psycopg import Error as DatabaseError
 from pydantic import BaseModel
 
+from backend.ai.gemini_provider import estimate_gemini_request_cost
+from backend.ai.service import AIService
+from backend.app.ai_request_quota import (
+    AIQuotaConfigurationError,
+    AIQuotaExceeded,
+    AIQuotaStoreUnavailable,
+    reserve_ai_request_quota,
+)
 from backend.app.analysis_deadlines import AnalysisDeadline, AnalysisTimeoutError
 from backend.app.analysis_execution import (
     AnalysisInferenceError,
@@ -26,7 +35,11 @@ from backend.app.analysis_persistence import (
 from backend.app.analysis_schemas import CreateSavedAnalysis, SavedAnalysisDetail
 from backend.app.analysis_service import create_saved_analysis
 from backend.app.auth import report_owner
-from backend.app.observability import set_ai_observation
+from backend.app.observability import (
+    attach_ai_quota_observation,
+    attach_ai_usage_observation,
+    set_ai_observation,
+)
 from backend.core.config import ai_analysis_enabled, get_ai_config, get_database_url
 
 SavedCreateErrorCode = Literal[
@@ -36,6 +49,7 @@ SavedCreateErrorCode = Literal[
     "storage_unavailable",
     "analysis_timeout",
     "idempotency_conflict",
+    "rate_limited",
     "internal_error",
 ]
 
@@ -92,7 +106,7 @@ router = APIRouter(
     response_model=SavedAnalysisDetail,
     responses={
         status: {"model": SavedCreateError}
-        for status in (409, 422, 500, 502, 503, 504)
+        for status in (409, 422, 429, 500, 502, 503, 504)
     },
 )
 async def create_analysis(
@@ -258,7 +272,46 @@ async def create_analysis(
             "Email analysis is temporarily unavailable",
         )
 
+    if mode == "gemini":
+        try:
+            email_text = AIService._prepare_email(
+                subject=request.subject,
+                sender=None,
+                body=request.body,
+            )
+            estimate = estimate_gemini_request_cost(email_text, model)
+            reservation = await to_thread(
+                reserve_ai_request_quota,
+                http_request.client.host if http_request.client is not None else None,
+                user_id=str(owner_id) if owner_id is not None else None,
+                estimate=estimate,
+            )
+            attach_ai_quota_observation(http_request, reservation)
+        except AIQuotaExceeded as exc:
+            set_ai_observation(
+                http_request,
+                provider_mode=mode,
+                outcome="limited",
+                failure_code="ai_usage_limit",
+            )
+            limited = _error(429, "rate_limited", "AI usage limit reached")
+            limited.headers["Retry-After"] = str(exc.retry_after_seconds)
+            return limited
+        except (AIQuotaConfigurationError, AIQuotaStoreUnavailable, RuntimeError, ValueError):
+            set_ai_observation(
+                http_request,
+                provider_mode=mode,
+                outcome="unavailable",
+                failure_code="quota_unavailable",
+            )
+            return _error(
+                503,
+                "analysis_unavailable",
+                "Email analysis is temporarily unavailable",
+            )
+
     try:
+        provider_usage: dict[str, int | str] = {}
         saved = await create_saved_analysis(
             request,
             mode=cast(ProviderMode, mode),
@@ -266,8 +319,10 @@ async def create_analysis(
             model=model,
             deadline=deadline,
             idempotency_key=idempotency_key,
+            provider_usage=provider_usage,
             **owner_args,
         )
+        attach_ai_usage_observation(http_request, provider_usage)
         set_ai_observation(
             http_request,
             provider_mode=mode,

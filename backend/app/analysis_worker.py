@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 from google.genai import errors
 
+from backend.ai.errors import AIProviderTimeoutError
 from backend.ai.gemini_provider import DailyQuotaExceeded, GeminiProvider
 from backend.ai.mock_provider import MockProvider
 from backend.ai.service import AIProvider, AIService
@@ -49,7 +50,7 @@ def _failure_status(exception: Exception) -> str:
     while current is not None and id(current) not in seen:
         seen.add(id(current))
 
-        if isinstance(current, (TimeoutError, httpx.TimeoutException)):
+        if isinstance(current, (AIProviderTimeoutError, TimeoutError, httpx.TimeoutException)):
             return "timeout"
 
         if isinstance(current, (DailyQuotaExceeded, SpendLimitExceeded)):
@@ -96,9 +97,15 @@ def run_analysis_worker(
                     sender=None,
                     body=body,
                 )
+                serialized_result = result.model_dump(mode="json")
+                # Pydantic excludes these internal-only fields by default; pass
+                # them explicitly over this private IPC channel for access logs.
+                serialized_result["input_tokens"] = result.input_tokens
+                serialized_result["output_tokens"] = result.output_tokens
+                serialized_result["estimated_cost_usd"] = result.estimated_cost_usd
                 message = {
                     "status": "ok",
-                    "result": result.model_dump(mode="json"),
+                    "result": serialized_result,
                 }
             except Exception as exception:  # noqa: BLE001
                 # Unexpected inference failures must not expose exception text.

@@ -70,7 +70,7 @@ class HostedStagingIpv4Tests(unittest.TestCase):
             validate_hosted_urls(
                 make_url(MIGRATION_URL), make_url(MIGRATION_URL), DATABASE_HOST, "neondb_owner"
             )
-        with self.assertRaisesRegex(SystemExit, "match the isolated STAGING_DATABASE_HOST"):
+        with self.assertRaisesRegex(SystemExit, "explicitly approved Neon staging hostname"):
             validate_hosted_urls(
                 make_url(DATABASE_URL),
                 make_url(MIGRATION_URL.replace(DATABASE_HOST, "production.invalid")),
@@ -236,6 +236,70 @@ class HostedStagingIpv4Tests(unittest.TestCase):
             make_url(direct_runtime), make_url(direct_migration), DIRECT_DATABASE_HOST,
             "phishlens_staging_app",
         )
+
+        mixed_hosts = (
+            make_url(DATABASE_URL.replace(DATABASE_HOST, DIRECT_DATABASE_HOST.upper() + ".")),
+            make_url(MIGRATION_URL),
+        )
+        validate_hosted_urls(
+            mixed_hosts[0], mixed_hosts[1], DIRECT_DATABASE_HOST.upper() + ".",
+            "phishlens_staging_app",
+        )
+
+    def test_unlisted_hostname_is_rejected_without_pooler_rewriting(self):
+        unlisted_host = "ep-winter-wind-a1y2r1db.attacker-pooler.ap-southeast-1.aws.neon.tech"
+        cases = (
+            (
+                "runtime",
+                make_url(DATABASE_URL.replace(DATABASE_HOST, unlisted_host)),
+                make_url(MIGRATION_URL),
+            ),
+            (
+                "migration",
+                make_url(DATABASE_URL),
+                make_url(MIGRATION_URL.replace(DATABASE_HOST, unlisted_host)),
+            ),
+        )
+        for name, runtime, migration in cases:
+            with self.subTest(name=name), self.assertRaisesRegex(
+                SystemExit, "explicitly approved Neon staging hostname"
+            ):
+                validate_hosted_urls(
+                    runtime, migration, DATABASE_HOST, "phishlens_staging_app"
+                )
+
+    def test_unlisted_hostname_is_rejected_before_dns_or_migration(self):
+        unlisted_host = "ep-winter-wind-a1y2r1db.attacker-pooler.ap-southeast-1.aws.neon.tech"
+        runtime_url = DATABASE_URL.replace(DATABASE_HOST, unlisted_host)
+        migration_url = MIGRATION_URL.replace(DATABASE_HOST, unlisted_host)
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "RENDER": "true",
+                    "APP_ENV": "staging",
+                    "STAGING_DATABASE_HOST": DATABASE_HOST,
+                    "STAGING_NEON_EXPECTED_HOST": DIRECT_DATABASE_HOST,
+                    "STAGING_APP_DATABASE_ROLE": "phishlens_staging_app",
+                    "PRODUCTION_NEON_EXPECTED_HOST": PRODUCTION_DATABASE_HOST,
+                    "STAGING_NEON_PROJECT_ID": STAGING_PROJECT_ID,
+                    "PRODUCTION_NEON_PROJECT_ID": PRODUCTION_PROJECT_ID,
+                    "STAGING_NEON_BRANCH_ID": STAGING_BRANCH_ID,
+                    "PRODUCTION_NEON_BRANCH_ID": PRODUCTION_BRANCH_ID,
+                    "DATABASE_URL": runtime_url,
+                    "STAGING_MIGRATION_DATABASE_URL": migration_url,
+                },
+                clear=True,
+            ),
+            patch("scripts.start_staging.get_database_url", return_value=runtime_url),
+            patch("scripts.start_staging.socket.getaddrinfo") as lookup,
+            patch("scripts.start_staging.subprocess.run") as run,
+            self.assertRaisesRegex(SystemExit, "explicitly approved Neon staging hostname"),
+        ):
+            main()
+
+        lookup.assert_not_called()
+        run.assert_not_called()
 
     def test_matching_production_host_is_rejected_even_when_all_vars_agree(self):
 

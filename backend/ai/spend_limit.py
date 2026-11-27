@@ -92,6 +92,15 @@ class GeminiSpendPolicy:
             cost_upper_bound_usd=cost,
         )
 
+    def cost_for_usage(self, *, input_tokens: int, output_tokens: int) -> Decimal:
+        """Estimate cost from provider-reported tokens using configured rates."""
+        if input_tokens < 0 or output_tokens < 0:
+            raise ValueError("Token usage must be non-negative")
+        return (
+            Decimal(input_tokens) * self.input_usd_per_million_tokens
+            + Decimal(output_tokens) * self.output_usd_per_million_tokens
+        ) / MILLION
+
     def require_within_cap(self, estimate: GeminiRequestEstimate) -> None:
         if estimate.cost_upper_bound_usd > self.cap_usd:
             raise SpendLimitExceeded("Gemini request exceeds the configured USD spend cap")

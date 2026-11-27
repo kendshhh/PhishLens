@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.ai.errors import AnalysisUnavailableError
+from backend.ai.errors import AIProviderTimeoutError, AnalysisUnavailableError
 from backend.ai.gemini_provider import DailyQuotaExceeded, GeminiProvider
 from backend.ai.mock_provider import MockProvider
 from backend.ai.schemas import (
@@ -22,7 +22,14 @@ from backend.ai.schemas import (
 )
 from backend.ai.service import AIService
 from backend.ai.spend_limit import GeminiSpendPolicy, SpendLimitExceeded
+from backend.app.ai_request_quota import (
+    AIQuotaConfigurationError,
+    AIQuotaExceeded,
+    AIQuotaStoreUnavailable,
+    reserve_ai_request_quota,
+)
 from backend.app.observability import (
+    attach_ai_quota_observation,
     request_observability_middleware,
     set_ai_observation,
 )
@@ -223,6 +230,10 @@ def model_info():
             "model": AnalysisValidationErrorResponse,
             "description": "Invalid email input",
         },
+        429: {
+            "model": AnalysisFailureResponse,
+            "description": "AI request or daily spend limit reached",
+        },
         502: {
             "model": AnalysisFailureResponse,
             "description": "Analysis failed",
@@ -285,12 +296,63 @@ def analyze_email(
             "Required analysis provider is unavailable",
         )
 
+    if mode == "gemini":
+        try:
+            estimate = service.estimate_request(
+                subject=request.subject,
+                sender=request.sender,
+                body=request.text,
+            )
+            reservation = reserve_ai_request_quota(
+                http_request.client.host if http_request.client is not None else None,
+                user_id=None,
+                estimate=estimate,
+            )
+            attach_ai_quota_observation(http_request, reservation)
+        except AIQuotaExceeded as exc:
+            set_ai_observation(
+                http_request,
+                provider_mode=mode,
+                outcome="limited",
+                failure_code="ai_usage_limit",
+            )
+            limited = analysis_error(429, "rate_limited", "AI usage limit reached")
+            limited.headers["Retry-After"] = str(exc.retry_after_seconds)
+            return limited
+        except (AIQuotaConfigurationError, AIQuotaStoreUnavailable, RuntimeError, TypeError, ValueError):
+            set_ai_observation(
+                http_request,
+                provider_mode=mode,
+                outcome="unavailable",
+                failure_code="quota_unavailable",
+            )
+            return analysis_error(
+                503,
+                "analysis_unavailable",
+                "Analysis temporarily unavailable",
+            )
+
     try:
         result = service.analyze_email(
             subject=request.subject,
             sender=request.sender,
             body=request.text,
         )
+    except AIProviderTimeoutError:
+        set_ai_observation(
+            http_request,
+            provider_mode=mode,
+            outcome="failure",
+            failure_code="provider_timeout",
+            duration_ms=(time.perf_counter() - inference_started) * 1000,
+        )
+        timed_out = analysis_error(
+            504,
+            "inference_failed",
+            "Analysis timed out",
+        )
+        timed_out.headers["Retry-After"] = "5"
+        return timed_out
     except AnalysisUnavailableError:
         set_ai_observation(
             http_request,
@@ -375,6 +437,10 @@ def analyze_email(
         422: {
             "model": AnalysisValidationErrorResponse,
             "description": "Invalid email input",
+        },
+        429: {
+            "model": AnalysisFailureResponse,
+            "description": "AI request or daily spend limit reached",
         },
         502: {
             "model": AnalysisFailureResponse,
