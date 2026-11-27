@@ -39,10 +39,35 @@ export function extractProviderErrorCode(payload) {
   return null;
 }
 
-export function authResponseEvidence({ service, route, status, payload }) {
+export async function authResponseEvidence({
+  service, route, status, payload, readPayload, timeoutMs = 1000
+}) {
   const result = { service, route, status };
-  if (Number.isInteger(status) && status >= 400) {
-    result.provider_error_code = extractProviderErrorCode(payload);
+  if (!Number.isInteger(status) || status < 400) return result;
+
+  let responsePayload = payload;
+  if (typeof readPayload === 'function') {
+    let timer;
+    const bodyResult = await Promise.race([
+      Promise.resolve().then(readPayload).then(
+        value => ({ state: 'read', value }),
+        () => ({ state: 'unavailable' }),
+      ),
+      new Promise(resolve => {
+        timer = setTimeout(() => resolve({ state: 'timeout' }), timeoutMs);
+      }),
+    ]);
+    clearTimeout(timer);
+    if (bodyResult.state !== 'read') {
+      result.provider_error_code = null;
+      result.provider_error_code_status = bodyResult.state === 'timeout'
+        ? 'body_timeout'
+        : 'body_unavailable';
+      return result;
+    }
+    responsePayload = bodyResult.value;
   }
+
+  result.provider_error_code = extractProviderErrorCode(responsePayload);
   return result;
 }
