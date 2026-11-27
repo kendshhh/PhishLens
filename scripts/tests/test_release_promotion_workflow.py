@@ -5,7 +5,6 @@ import sys
 import unittest
 from pathlib import Path
 
-from scripts.migrate_release_staging import verified_migration_head
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/release-promotion.yml"
@@ -35,9 +34,23 @@ class ReleasePromotionWorkflowTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("schema-only staging branch", result.stdout)
 
-    def test_migration_lineage_checker_imports_and_matches_the_repository_head(self):
-        head = verified_migration_head()
-        self.assertRegex(head, r"^[A-Za-z0-9_]+$")
+    def test_migration_lineage_is_verified_through_its_supported_cli(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "verify_migration_lineage.py"),
+                "--repo-root",
+                str(ROOT),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Migration preflight passed:", result.stdout)
+        self.assertRegex(result.stdout, r"Alembic head is [A-Za-z0-9_]+\.")
 
 
 if __name__ == "__main__":
