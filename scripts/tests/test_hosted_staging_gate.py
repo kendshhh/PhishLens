@@ -26,7 +26,7 @@ def named_step(job_text, name):
     return match.group(1)
 
 
-CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+CI_WORKFLOW = WORKFLOW
 
 
 class HostedStagingGateTests(unittest.TestCase):
