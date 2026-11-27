@@ -87,23 +87,6 @@ test("classifies HTTP 4xx responses as authentication or authorization failures"
     );
 });
 
-test("classifies HTTP 4xx responses as authentication or authorization failures", async () => {
-    globalThis.fetch = async () => new Response("sign in required", {
-        status: 401,
-        headers: { "WWW-Authenticate": "Bearer" }
-    });
-
-    await assert.rejects(
-        getAnalyses("https://example.test", { retries: 0 }),
-        error => error.status === 401 &&
-            error.url === "https://example.test/api/analyses" &&
-            error.origin === "http" &&
-            error.category === "authentication_authorization" &&
-            error.code === "history_http_4xx" &&
-            error.wwwAuthenticate === "Bearer" &&
-            error.responseBody === "sign in required"
-    );
-});
 
 for (const [status, body] of [
     [400, "request timeout"],
