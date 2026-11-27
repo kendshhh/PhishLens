@@ -8,7 +8,7 @@ WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.y
 
 def named_job(workflow_text, name):
     match = re.search(
-        rf"(?ms)^  {re.escape(name)}:\n(.*?)(?=^  [a-zA-Z0-9_-]+:|\Z)",
+        rf"(?ms)^  {re.escape(name)}:\n(.*?)(?=^  [a-zA-Z0-9_-]+:|\\Z)",
         workflow_text,
     )
     if not match:
@@ -16,16 +16,9 @@ def named_job(workflow_text, name):
     return match.group(1)
 
 
-def job_condition(job_text):
-    match = re.search(r"(?ms)^    if:\s*(.*?)(?=^    (?:needs|runs-on):)", job_text)
-    if not match:
-        raise AssertionError("job-level if condition was not found")
-    return match.group(1)
-
-
 def named_step(job_text, name):
     match = re.search(
-        rf"(?ms)^      - name: {re.escape(name)}\n(.*?)(?=^      - (?:name:|uses:)|\Z)",
+        rf"(?ms)^      - name: {re.escape(name)}\n(.*?)(?=^      - (?:name:|uses:)|\\Z)",
         job_text,
     )
     if not match:
@@ -37,48 +30,42 @@ class HostedStagingGateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.workflow_text = WORKFLOW.read_text(encoding="utf-8")
-        cls.hosted_job = named_job(cls.workflow_text, "hosted-staging")
+        cls.readonly_job = named_job(cls.workflow_text, "issue-90-readonly-hosted")
 
-    def test_hosted_job_runs_prerequisite_failure_check_only_for_eligible_prs(self):
-        condition = job_condition(self.hosted_job)
-        self.assertIn("always()", condition)
-        self.assertIn("github.event_name == 'pull_request'", condition)
-        self.assertIn("contains(github.event.pull_request.labels.*.name, 'needs-hosted-staging')", condition)
-        self.assertIn("vars.SECRETARY_PREVIEW_ENABLED == 'true'", condition)
-        self.assertIn("vars.SECRETARY_REPLACES_LEGACY_STAGING != 'true'", condition)
-        self.assertIn("!github.event.pull_request.draft", condition)
-        self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", condition)
-        self.assertIn("github.event.pull_request.head.ref != 'codex/issue-90-readonly-artifact-v2-20261106'", condition)
+    def test_hosted_package_job_is_scoped_to_the_named_same_repository_pr(self):
+        condition = re.search(r"(?m)^    if:\s*(.*)$", self.readonly_job)
+        self.assertIsNotNone(condition, "read-only staging package job must be explicitly scoped")
+        for required in (
+            "github.event_name == 'pull_request'",
+            "github.event.pull_request.head.repo.full_name == github.repository",
+            "github.event.pull_request.head.ref == 'codex/issue-90-readonly-artifact-v2-20261106'",
+        ):
+            self.assertIn(required, condition.group(1))
 
-        failure_check = named_step(
-            self.hosted_job,
-            "Fail instead of skipping when an eligible staging prerequisite failed",
-        )
-        for dependency in ("STAGING_INTEGRATION_RESULT", "PREFLIGHT_RESULT", "BACKEND_RESULT"):
-            self.assertIn(dependency, failure_check)
-        self.assertIn("PREFLIGHT_CURRENT", failure_check)
-        self.assertIn("MIGRATION_REVISION", failure_check)
-        self.assertIn("if value != ('true' if name == 'current PR head' else 'success')", failure_check)
-        self.assertIn("if failures:", failure_check)
-        self.assertIn("raise SystemExit", failure_check)
+    def test_hosted_package_job_is_read_only_and_never_deploys(self):
+        self.assertIn("permissions:\n    contents: read", self.readonly_job)
+        self.assertNotIn("environment:", self.readonly_job)
+        self.assertNotIn("secrets.", self.readonly_job)
+        self.assertNotRegex(self.readonly_job, r"(?mi)^\s*- name: .*deploy")
+        self.assertIn("saved_analysis_crud_performed': False", self.readonly_job)
+        self.assertIn("production_writes_performed': False", self.readonly_job)
 
-    def test_render_deploy_requires_fresh_pr_head_preflight(self):
-        step = named_step(
-            self.hosted_job,
-            "Deploy exact PR head using the trusted controller",
+        read_identity = named_step(
+            self.readonly_job,
+            "Read current staging identity, readiness, and model",
         )
-        match = re.search(r"(?ms)^        if:\s*(.*?)(?=^        env:)", step)
-        self.assertIsNotNone(match, "deployment step must have its own if condition")
-        condition = match.group(1)
-        self.assertIn("steps.staging-deploy-preflight.outputs.current == 'true'", condition)
-        preflight = named_step(
-            self.hosted_job,
-            "Recheck PR head immediately before staging deploy",
+        package = named_step(
+            self.readonly_job,
+            "Build and verify a staging-only extension package",
         )
-        preflight_match = re.search(r"(?ms)^        if:\s*(.*?)(?=^        env:)", preflight)
-        self.assertIsNotNone(preflight_match, "deployment preflight must have its own if condition")
-        self.assertIn("steps.staging-final-preflight.outputs.current == 'true'", preflight_match.group(1))
-        self.assertIn("live_pr_matches", preflight)
+        recheck = named_step(
+            self.readonly_job,
+            "Recheck staging identity before upload",
+        )
+        self.assertIn("urlopen(request, timeout=30)", read_identity)
+        self.assertIn("package_staging_extension.py", package)
+        self.assertIn("verify_staging_extension_package.py", package)
+        self.assertIn("urlopen(request, timeout=30)", recheck)
 
     def test_local_staging_cleans_up_process_and_prints_log_on_smoke_failure(self):
         staging_job = named_job(self.workflow_text, "staging")
@@ -90,4 +77,3 @@ class HostedStagingGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
