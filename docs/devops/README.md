@@ -1,30 +1,50 @@
 # DevOps evidence and release records
 
-**Evidence snapshot at November 27, 2026 08:45 UTC. Release decision: NO-GO.**
+**Evidence snapshot at November 27, 2026 11:04 UTC. Release decision: NO-GO.**
 This index names the latest evidence and its limits. Historical records stay
 dated and retain their original findings; they are not current service state.
 
 ## Current snapshot — 2026-11-27
 
-`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`; the latest read-only
-Render metadata snapshot remains production SHA
-`811980c2cbf70d9957146bf329627f0826a018f1`, with analysis disabled. Later
-staging acceptance did not query production. Production health and its current
-settings remain unverified after that earlier snapshot. See the [DORA report](dora-report-2026-11-27.md)
+`main` is `88156d479d19eb0b8018ab76aa3170eb60079765`, the PR #268 merge commit.
+Its Git tree `89a3b3e0701629497c4f1f14e756f26ca98a10c7` matches the exact
+staging-accepted PR candidate tree for `d77491d8fd91252190755714df8e5fa475e9c13b`.
+A 10:11 UTC read-only Render deploy-inventory refresh still lists production SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`; this is deploy metadata, not a live
+HTTP check. Render service metadata was re-read at 10:11 UTC and still reports
+both services Git-backed with Auto Deploy off; production's Render environment is
+unprotected and network-wide. GitHub environment metadata was re-read at 10:12 UTC
+without reading secret values. The last public `/model-info` probe reported
+analysis disabled; there has been no new production health or product check. See the [DORA report](dora-report-2026-11-27.md)
 and [pipeline snapshot](../../PIPELINE.md).
 
-Current coordinated PR heads are #268 `d77491d8fd91252190755714df8e5fa475e9c13b`,
-#281 `0c48cbf240b963a35b5e4669417e118d5ea6573b`, and #282
-`3131dae6f09c30b267ca4aa7b864694a44fd744c`, all based on main
-`11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. #268 integrates #281 then #282.
-The exact-head CI, security, workflow-lint, deterministic AI, CodeQL, and
-trusted Neon checks passed. Trusted hosted controller run
-[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
-passed exact-head staging deployment and authenticated extension/backend
-acceptance on #268 `d77491d`. It verified Auth sign-in, persistent CRUD,
-reload, ownership/isolation, cleanup, and extension UX, with zero production
-requests or writes. The redacted report and hashes are in
-[the exact-head acceptance record](evidence/2026-11-27-staging-acceptance-d77491d.md).
+PR #268 merged at 08:44 UTC after independent review and exact-head required
+checks passed. PR #281 is now closed unmerged; its intended changes are integrated
+through #268. PR #282 remains open at head
+`27118fc610f2c01fd11a472e0939f6dc74cbe130` against current `main`; its only
+current changed file is a DevOps integration note. It is not the previous
+101-file runtime diff; the earlier code is already in #268. On this head,
+Backend, Extension, Staging integration, migration source preflight, CodeQL,
+dependency security, AI evaluation, dependency graph review, and workflow lint
+passed. `verify-neon` and hosted staging were skipped by the docs-only
+conditions; Secretary staging reported explicit N/A. No hosted product
+acceptance ran. The PR remains changes requested.
+
+Exact-head CI, security, workflow-lint, deterministic AI, CodeQL, trusted Neon,
+and authenticated staging acceptance passed on #268 PR head
+`d77491d8fd91252190755714df8e5fa475e9c13b` in trusted controller run
+[45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832).
+The main merge commit has the same Git tree. Post-merge controller run
+[45968192019](https://github.com/kendshhh/PhishLens/actions/runs/45968192019)
+skipped all jobs. Later run [45974461494](https://github.com/kendshhh/PhishLens/actions/runs/45974461494)
+inspected main and reported no runtime changes; deploy and acceptance jobs were
+skipped. Neither is a second product acceptance. A later read-only staging
+`/version` request timed out, so live staging is not freshly verified.
+
+The accepted PR run verified Auth sign-in, persistent CRUD, reload,
+ownership/isolation, cleanup, and extension UX, with zero production requests
+or writes. The redacted report and digests are in [the exact-head acceptance
+record](evidence/2026-11-27-staging-acceptance-d77491d.md).
 
 This does **not** close AI-quality acceptance: the report says
 `approval_not_provided` for TF-IDF model revision
@@ -163,17 +183,20 @@ point without checking Neon.
    evidence.
 7. Push, merge, deploy, change service/secret settings, write shared databases,
    or perform destructive recovery only with explicit authorization. Current
-   code changes are on PR #281 branch
-   `codex/reconcile-staging-merge-order-20261122`; no merge or production
-   deployment has occurred. The original dirty checkout is preserved.
+    evidence edits are on isolated branch
+    `codex/devops-staging-evidence-sync-20261127`; #268 is already merged and no
+    production deployment has occurred. The original dirty checkout is preserved.
 
 ## Current merge and release gates
 
-- Complete independent protected review and exact-head staging for PR #281 head
-  `27859a31674f99f17a5e26454104b3e6719493a7`; stale approvals are not valid.
+- Keep staging, release-staging, and staging-neon-preflight approvals
+  independent. Self-review is now prevented for each protected staging
+  environment. A deployment remains blocked until missing migration/release
+  inputs are provisioned and a protected candidate run succeeds.
 - Privately verify Render runtime/migration/Auth settings against the selected
   isolated Neon project and provision a new migration-only credential. Keep the
-  release mapping attestation `pending` until then.
+  release mapping attestation absent until then; do not treat this as merely
+  awaiting review.
 - Obtain the AI owner's approved representative holdout report and policy for
   the exact immutable provider/model. Historical English evaluation is not the
   current release-quality gate.

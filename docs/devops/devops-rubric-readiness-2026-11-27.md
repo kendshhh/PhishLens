@@ -1,4 +1,4 @@
-# DevOps rubric readiness — 2026-11-27 08:45 UTC
+# DevOps rubric readiness — 2026-11-27 11:04 UTC
 
 ## Decision
 
@@ -13,17 +13,51 @@ criterion.
 
 | Rubric criterion | Max | Current evidence | Gap to Excellent |
 |---|---:|---|---|
-| Pipeline design and coverage | 15 | **Strong, not Excellent.** On PR #268 head `d77491d8fd91252190755714df8e5fa475e9c13b`, Backend, Extension, Staging integration, migration preflight, Workflow lint, Dependency security, deterministic AI evaluation, CodeQL, trusted Neon preflight, and post-acceptance Secretary status all passed. | Production remains Git-backed; same-digest production promotion and exact-SHA production acceptance have not run. |
-| Automation and quality gates | 10 | **Strong, not Excellent.** The exact-head required checks and protected staging controller passed; PR review is approved on `d77491d`; unrelated Issue 90 staging job was explicitly skipped by its path filter. | A deliberately failing required check has not been shown to block merge. This documentation follow-up will create a new head and require fresh exact-head review/checks. |
-| Optimization with measured results | 20 | **Partial.** The reproducible 28-day report records a 3.66-minute merge-to-live proxy median (`60/142` matched), 63 successful deploy records, and CI median 66 seconds (`115/117` successful). | No comparable before/after result establishes a downward trend in end-to-end pipeline time and failure rate. Change failure rate, failed-deployment restore time, and deployment rework are not measured. |
-| Environments and secrets | 10 | **Strong for staging; partial overall.** Exact-head staging acceptance verified the isolated Neon project/branch, Auth bridge, migration revision, and staging service identity; the evidence records zero production requests or writes. | Production service/environment mapping is not privately re-attested; both Render services are Git-backed, and same-digest promotion is absent. |
+| Pipeline design and coverage | 15 | **Not Excellent.** PR #268 head `d77491d8fd91252190755714df8e5fa475e9c13b` passed Backend, Extension, Staging integration, migration preflight, Workflow lint, Dependency security, deterministic AI evaluation, CodeQL, trusted Neon preflight, and post-acceptance Secretary status. PR #268 merged as `88156d4`; the main tree is identical to the accepted candidate tree. | Main-push controller run `45974461494` reported no runtime changes and skipped deploy/acceptance; it is not product evidence. Production remains Git-backed; same-digest promotion and exact-SHA production acceptance have not run. |
+| Automation and quality gates | 10 | **Not Excellent.** At 10:11 UTC, classic protection and active ruleset #27733591 required the same eight strict contexts. Main requires one approval, latest-push approval, stale-review dismissal, and admin enforcement. At 10:12 UTC, self-review was prevented for all three protected staging environments while preserving `main`-only refs and reviewer lists. | No deliberately failing required-check experiment proves merge blocking. Current #282 is docs-only: all applicable checks passed, Secretary staging reports explicit N/A, and hosted staging was not triggered. |
+| Optimization with measured results | 20 | **Partial.** The reproducible 28-day report, refreshed 11:04 UTC, records a 3.66-minute merge-to-live proxy median (`60/143` matched), 63 successful deploy records, and CI median 66.50 seconds (`116/118` successful). | No comparable before/after result establishes a downward trend in end-to-end pipeline time and failure rate. Change failure rate, failed-deployment restore time, and deployment rework are not measured. |
+| Environments and secrets | 10 | **Partial overall; exact staging acceptance passed.** Exact-head staging acceptance verified the isolated Neon project/branch, Auth bridge, migration revision, and staging service identity; the evidence records zero production requests or writes. Staging environment self-review is now prevented. | Current Render runtime/migration/Auth mapping is not re-attested. Both services remain Git-backed; the production Render environment is marked unprotected; required release/migration secret names and production promotion variables are absent. |
 | AI-aware pipeline practices | 10 | **Partial.** Deterministic AI regression checks pass in CI, and the hosted acceptance gate records model quality as blocked when approval is absent. | No AI-owner-approved representative holdout report or threshold is bound to the candidate model. Current model acceptance and scheduled live inference smoke are blocked; historical English evidence is advisory only. |
 | Release and rollback | 10 | **Partial / below Excellent.** Versioned manifest validation, gated workflow, staging artifacts, and rollback documentation exist in the candidate. Production Auto Deploy is off. | Render is not image-backed; backend image digest is `null`, so identical-digest promotion is unproven. No production tag/release/changelog or current-schema-compatible rollback rehearsal exists. |
 | Reliability and incident handling | 10 | **Partial.** Exact-candidate staging sign-in, persistent CRUD, account isolation, cleanup, and extension UX passed. | Current alert delivery, named backup responder, alert-to-recovery drill, application rollback, database restore, and measured RTO/RPO are not proven. Staging acceptance is not production availability. |
 | Metrics, documentation, and reporting | 10 | **Partial.** A dated reproducible DORA report, refreshed cross-PR evidence, and redacted current staging proof are published. | Change failure rate, failed-deployment recovery time, deployment rework, a comparable end-to-end optimization, and a full current sprint metric log remain unmeasured. |
-| Live performance | 5 | **Strong staging demonstration; not full Excellent evidence.** The protected controller deployed and accepted the exact extension/backend candidate on isolated staging. | No production release/demo was performed; AI acceptance is blocked and the rubric's live verbal walkthrough cannot be established from repository evidence. |
+| Live performance | 5 | **Partial overall; staging demonstration evidence only.** The protected controller deployed and accepted the exact extension/backend candidate on isolated staging. | No production release/demo was performed; AI acceptance is blocked and the rubric's live verbal walkthrough cannot be established from repository evidence. |
 
-## Current exact-head evidence — 2026-11-27 08:45 UTC
+## Current exact-head evidence — PR inventory 2026-11-27 11:00 UTC; checks 10:48 UTC; control plane 10:12 UTC; DORA 11:04 UTC
+
+PR #268 merged at 08:44 UTC as main commit
+`88156d479d19eb0b8018ab76aa3170eb60079765`. Git confirms its tree
+`89a3b3e0701629497c4f1f14e756f26ca98a10c7` exactly matches the staging-tested
+PR candidate tree for `d77491d8fd91252190755714df8e5fa475e9c13b`. The merge did
+not change application source or migration graph. PR #281 is now closed
+unmerged. PR #282 remains open at head
+`27118fc610f2c01fd11a472e0939f6dc74cbe130` against current `main`; its only
+changed file is a DevOps integration note. Backend, Extension, Staging
+integration, migration source preflight, CodeQL, dependency security, AI
+evaluation, dependency graph review, and workflow lint passed. Neon and hosted
+acceptance are skipped for this docs-only diff, and Secretary staging explicitly
+reports N/A. No product acceptance ran on #282.
+The earlier runtime changes are already in #268/main; these checks do not
+represent hosted product acceptance.
+
+The post-merge trusted controller run
+[45968192019](https://github.com/kendshhh/PhishLens/actions/runs/45968192019)
+skipped all jobs. Later run [45974461494](https://github.com/kendshhh/PhishLens/actions/runs/45974461494)
+inspected main and reported no runtime changes; deployment and acceptance were
+skipped. Neither run is post-merge product acceptance. A subsequent read-only
+staging `/version` request timed out. The last positive live staging identity remains
+the authenticated exact-PR run below; no production check was performed.
+
+PR #282's current documentation-only head is
+`27118fc610f2c01fd11a472e0939f6dc74cbe130`. Exact-head Backend, Extension,
+Staging integration, migration source preflight, Workflow lint, Dependency
+security, deterministic AI evaluation, CodeQL, and dependency graph review
+passed. The `verify-neon` and Issue 90 jobs were skipped by their documented
+conditions; `Secretary staging` reported explicit N/A because there are no
+runtime changes. No hosted deployment or product acceptance ran. The previous
+main controller run `45978972202` also skipped Neon validation, deployment, and
+product acceptance; neither is a second product acceptance or production
+release.
 
 PR #268 head `d77491d8fd91252190755714df8e5fa475e9c13b` passed exact-head CI
 run [45966131065](https://github.com/kendshhh/PhishLens/actions/runs/45966131065),
@@ -35,10 +69,10 @@ and trusted Neon preflight [45966125445](https://github.com/kendshhh/PhishLens/a
 The trusted hosted controller [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
 passed exact-PR inspection, Neon isolation, controlled staging deployment,
 authenticated acceptance, and `Secretary staging`. The PR review decision is
-APPROVED on this exact SHA. The Issue 90 package job was skipped by its explicit
+APPROVED on this exact SHA and the PR was subsequently merged. The Issue 90 package job was skipped by its explicit
 path filter; it is not a substitute for the required checks.
 
-The live staging `/version` SHA and backend source SHA both equal `d77491d`.
+During the acceptance run, staging `/version` and backend source both reported `d77491d`; a later read-only `/version` probe timed out, so current staging identity is not freshly verified.
 The candidate extension ZIP SHA-256 is
 `495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
 On isolated Neon project `ancient-brook-17208049`, branch
@@ -56,7 +90,8 @@ staging product acceptance does not constitute AI-quality acceptance or
 production release evidence.
 
 The current dependency and merge-tree evidence is in the
-[PR alignment record](pr-alignment-2026-11-27.md).
+[PR alignment record](pr-alignment-2026-11-27.md), refreshed against all 16 open
+PRs at 11:00 UTC.
 
 ## Required closure evidence
 

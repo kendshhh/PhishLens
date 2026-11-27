@@ -1,6 +1,6 @@
 # PhishLens Pipeline
 
-## Delivery and acceptance evidence snapshot — November 27, 2026 08:45 UTC
+## Delivery and acceptance evidence snapshot — November 27, 2026 11:04 UTC
 
 The staging product path now has exact-head acceptance evidence, but release
 remains **NO-GO** and a 10/10 rubric result is not supported. The latest
@@ -13,18 +13,27 @@ the remaining evidence gaps.
 
 ### Main, PRs, and acceptance
 
-`main` is `11f72ad3de1a3d39a24ce1f5cea45f2f0262a5d0`. PR #268 head is
-`d77491d8fd91252190755714df8e5fa475e9c13b`; it integrates current PR #281
-`0c48cbf240b963a35b5e4669417e118d5ea6573b`, current PR #282
-`3131dae6f09c30b267ca4aa7b864694a44fd744c`, and its earlier #268 history in
-the recorded order. None of the three changes migration files. See the
+`main` is `88156d479d19eb0b8018ab76aa3170eb60079765`, merged from PR #268 at
+08:44 UTC. Its tree is identical to the exact-head candidate tree accepted on
+staging at PR SHA `d77491d8fd91252190755714df8e5fa475e9c13b` (tree
+`89a3b3e0701629497c4f1f14e756f26ca98a10c7`). #268 integrated the relevant
+changes from #281 and #282 before merging. PR #281 is now closed, unmerged, and
+superseded by #268. PR #282 remains open at
+`27118fc610f2c01fd11a472e0939f6dc74cbe130`, based on current `main`; its only
+current change is a documentation record, not the old runtime diff. Its
+Backend, Extension, Staging integration, and migration preflight passed in run
+`45984414458`. CodeQL, dependency security, AI evaluation, dependency graph
+review, and workflow lint also passed. Neon verification and hosted product
+acceptance were skipped by the docs-only conditions; Secretary staging was
+successful with explicit N/A. No hosted deployment or product journey ran on
+#282. Review remains changes requested. See the
 [PR alignment record](docs/devops/pr-alignment-2026-11-27.md).
 
 The exact-head CI, security, CodeQL, workflow-lint, deterministic AI, and
 trusted Neon checks passed on #268 `d77491d` (run links and check names are in
 the [rubric report](docs/devops/devops-rubric-readiness-2026-11-27.md)). The
 protected controller [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
-then verified the isolated Neon target, deployed the exact SHA to staging,
+verified the isolated Neon target, deployed the exact PR SHA to staging,
 installed the exact extension package, and passed authenticated sign-in,
 persistent CRUD, two-account isolation, cleanup, and extension UX. The
 required `Secretary staging` status was emitted only after acceptance passed.
@@ -33,6 +42,10 @@ The staging evidence is bound to source/backend SHA
 `495d9bb7d3a222b103a30de819f6a0e7c8d4c9844e9120c24b9d6f4a4b47bdb7`.
 It records zero production API/Auth requests and writes.
 
+The latest main-push controller run [45974461494](https://github.com/kendshhh/PhishLens/actions/runs/45974461494)
+inspected main and reported no runtime changes, so Neon deployment and product
+acceptance were skipped. This is an N/A check result, not a second acceptance.
+
 That run reports TF-IDF model quality **BLOCKED** (`approval_not_provided`),
 `backend_image_digest: null`, and `release_decision: no-go`. It proves the
 staging product path for that exact candidate; it does not prove AI quality,
@@ -40,16 +53,17 @@ immutable backend promotion, production availability, or production release.
 
 ### Production and service control
 
-The latest read-only Render metadata check in this snapshot was at 2026-11-27
-07:14 UTC. It reported production service `srv-db7eap25b2lc73fkelpg` using the
-Git-backed Python runtime on `main` with Auto Deploy off, live SHA
-`811980c2cbf70d9957146bf329627f0826a018f1`. Render metadata reported the
-Production environment unprotected and network-wide (`0.0.0.0/0`, network
-isolation off); GitHub's separate `production` environment requires independent
-review and disallows admin bypass. Around 07:16 UTC `/model-info` returned HTTP
-200 with analysis disabled; `/health`, `/ready`, and `/version` timed out from
-this client. The later staging controller did not query production. Production
-health and current settings remain unverified after that read-only snapshot.
+The 10:11 UTC read-only Render deployment inventory still reports production
+service `srv-db7eap25b2lc73fkelpg` live on SHA
+`811980c2cbf70d9957146bf329627f0826a018f1`. The 10:11 UTC Render service
+configuration still shows Git-backed Python, Auto Deploy off, and a Render
+Production environment marked unprotected with a
+network-wide allowlist (`0.0.0.0/0`, network isolation off). GitHub's separate
+`production` environment has a required reviewer and prevents self-review; its
+credential/configuration variables are absent. No production HTTP health or
+product acceptance check was made in this refresh. The last public `/model-info`
+probe was at 07:16 UTC and reported analysis disabled, while `/health`, `/ready`,
+and `/version` timed out. Treat production health and model state as unverified.
 
 Render staging is also Git-backed. Same-digest promotion, exact-SHA production
 smoke, approved AI holdout/policy, current-schema-compatible rollback, isolated
@@ -58,10 +72,12 @@ blockers. Keep issue #153 at NO-GO and do not create a release tag.
 
 ### Delivery metrics
 
-The reproducible 28-day DORA report collected on 2026-11-27 records a
-merge-to-live proxy median of 3.66 minutes (`n=60` matched of 142 merged PRs),
-63 successful production deploy records (2.25/day), and a supplemental main-CI
-median of 66 seconds (`n=117`, 115 pass, 2 fail). Change failure rate,
+The reproducible 28-day DORA report was refreshed at 11:04 UTC on 2026-11-27
+against main `88156d4`, after #268 merged. It records a merge-to-live proxy
+median of 3.66 minutes (`n=60` matched of 143 merged PRs), 63 successful
+production deploy records (2.25/day), and a supplemental main-CI median of
+66.50 seconds (`n=118`, 116 pass, 2 fail). The PR merge is in the eligible-merge
+denominator, but no production deployment of that candidate is recorded. Change failure rate,
 failed-deployment recovery time, deployment rework, and comparable
 before/after optimization results remain **not measured**. The staging run above
 is not added to production DORA counts. See the

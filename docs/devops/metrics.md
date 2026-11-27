@@ -1,3 +1,26 @@
+## Post-merge status and metrics boundary — PR inventory 2026-11-27 11:00 UTC; checks 10:48 UTC; DORA 11:04 UTC
+
+PR #268 merged to main at 08:44 UTC as `88156d479d19eb0b8018ab76aa3170eb60079765`.
+Its tree is identical to PR candidate `d77491d8fd91252190755714df8e5fa475e9c13b`,
+which passed trusted staging acceptance in run `45966647832`. The first
+main-push trusted controller run `45968192019` skipped all jobs. A later run,
+`45974461494`, inspected the main commit and reported no application/runtime
+changes; it skipped Neon deploy and acceptance. PR #282's current diff is
+documentation-only at head `27118fc610f2c01fd11a472e0939f6dc74cbe130`.
+Backend, Extension, Staging integration, migration preflight, CodeQL, AI
+evaluation, dependency security, dependency graph review, and workflow lint
+passed. Neon verification and hosted staging are skipped by the docs-only
+conditions; Secretary staging explicitly reports N/A. No hosted product
+acceptance ran on #282. Main
+controller run `45978972202` also skipped target validation, deployment, and
+product acceptance. These are not
+new staging acceptance runs. A subsequent read-only staging `/version` request
+timed out. The last successful exact-candidate acceptance remains run
+`45966647832`; live staging is not reverified after it. The 28-day production
+DORA dataset was refreshed at 11:04 UTC, after #268 merged. It includes #268
+in the eligible merged-PR count, but staging activity is not counted as
+production delivery.
+
 ## Latest staging acceptance addendum — 2026-11-27 08:45 UTC
 
 Trusted controller run [45966647832](https://github.com/kendshhh/PhishLens/actions/runs/45966647832)
@@ -126,17 +149,20 @@ zero.
 
 The reproducible 28-day DORA snapshot is in
 [dora-report-2026-11-27.md](dora-report-2026-11-27.md), with its redacted
-[source data](evidence/dora-source-2026-11-27.json). The report gives a
-merge-to-live median of 3.66 minutes (`n=60` matched of 142 merged PRs),
-63 successful production deploy records (2.25/day), and a supplemental main-CI
-median of 66 seconds (`n=117`, 115 successes and 2 failures). Change fail rate,
-failed-deployment recovery time, deployment rework, and comparable optimization
-remain not measured; missing evidence is not reported as zero.
+[source data](evidence/dora-source-2026-11-27.json). Collected at 09:38 UTC
+against main `88156d4`, it reports a merge-to-live median of 3.66 minutes
+(`n=60` matched of 143 merged PRs), 63 successful production deploy records
+(2.25/day), and supplemental main-CI median 66.50 seconds (`n=118`, 116 successes
+and 2 failures). Change fail rate, failed-deployment recovery time, deployment
+rework, and comparable optimization remain not measured; missing evidence is not
+reported as zero.
 
 Read-only Render metadata at 2026-11-27 07:14 UTC identifies the latest
 production deploy as `dep-dc1716etlv9c73b8nl0g`, source
 `811980c2cbf70d9957146bf329627f0826a018f1`, created 2026-11-22T04:33:29Z.
-The service is a Git-backed Python service on `main` with Auto Deploy off.
+The 09:38 DORA deployment inventory reported the same live SHA. The service is
+a Git-backed Python service on `main` with Auto Deploy off per the 07:14
+configuration snapshot; no later configuration or HTTP health check was done.
 Production `GET /model-info` returned HTTP 200 around 07:16 UTC with analysis
 disabled, provider disabled, and TF-IDF reports not accepted. `GET /health`,
 `/ready`, and `/version` each timed out after 15 seconds from this client. These
