@@ -77,20 +77,13 @@ try {
     await page.getByText('Verify your email to finish signing in.', { exact: false }).waitFor();
     await assertAccountHeadingVisible('account-verify-heading');
     assert.equal(await page.locator('#verify-email').inputValue(), 'casey@example.test');
+  assert.equal(await page.locator('#verify-email').evaluate(input => input.readOnly), true);
     assert.equal(await page.locator('#account-password').inputValue(), '');
   }
   await signInUnverified();
   await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
   await assertAccountHeadingVisible('account-sign-in-heading');
   await signInUnverified();
-  const resendStatus = await page.locator('#account-status').textContent();
-  for (const invalidEmail of ['', 'not-an-email']) {
-    await page.locator('#verify-email').fill(invalidEmail);
-    await page.getByRole('button', { name: 'Resend code', exact: true }).click();
-    assert.equal(await page.locator('#account-status').textContent(), resendStatus);
-    assert.equal(await page.locator('#verify-email').evaluate(input => input.validity.valid), false);
-  }
-  await page.locator('#verify-email').fill('casey@example.test');
   await page.getByRole('button', { name: 'Resend code', exact: true }).click();
   await page.getByRole('textbox', { name: 'Verification code', exact: true }).fill('000000');
   await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
@@ -112,7 +105,6 @@ try {
   await page.getByRole('button', { name: 'Sign out', exact: true }).waitFor();
   checks.push('no verify prompt before credentials; signup, unverified login opens verification with the email filled, OTP resend/retry and cleared password fields');
   checks.push('successful verification shows a confirmation and returns to sign-in; signing in afterwards grants access');
-  checks.push('resend rejects missing/malformed email before calling the account adapter');
   await page.getByRole('button', { name: 'Saved reports', exact: true }).click();
   await page.locator('#history-list li').waitFor();
   assert.match(await page.locator('#history-list').textContent(), /<img src=x> Demo/);

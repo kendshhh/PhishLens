@@ -83,6 +83,9 @@ jobs:
           TESTED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: npm run test:browser
 
+      - name: Test preview account UI in Chromium
+        run: npm run test:accounts
+
       - name: Require browser acceptance report and evidence
         run: |
           set -euo pipefail

@@ -9,19 +9,42 @@ class ClassList {
   toggle(name, force = !this.names.has(name)) { if (force) this.names.add(name); else this.names.delete(name); return force; }
 }
 class Element {
-  constructor(classes = '') { this.classList = new ClassList(classes); this.textContent = ''; this.value = ''; this.listeners = {}; }
+  constructor(classes = '', { type = '', required = false, readOnly = false } = {}) {
+    this.classList = new ClassList(classes);
+    this.textContent = '';
+    this.value = '';
+    this.listeners = {};
+    this.type = type;
+    this.required = required;
+    this.readOnly = readOnly;
+  }
   addEventListener(type, fn) { this.listeners[type] = fn; }
   setAttribute(name, value) { (this.attributes ??= {})[name] = value; }
   querySelectorAll() { return []; }
   focus() {}
   scrollIntoView() {}
-  reportValidity() { return true; }
+  get validity() {
+    if (this.readOnly) return { valid: true };
+    if (this.required && !this.value) return { valid: false };
+    if (this.type === 'email' && this.value && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(this.value)) {
+      return { valid: false };
+    }
+    return { valid: true };
+  }
+  reportValidity() { return this.validity.valid; }
 }
 
-async function render(signIn, extra = {}) {
+async function render(signIn, extra = {}, { editableVerificationEmail = false } = {}) {
   const html = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
-  const elements = new Map([...html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)].map(([tag, id]) =>
-    [id, new Element(/\bclass="([^"]*)"/.exec(tag)?.[1] ?? '')]));
+  const elements = new Map([...html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)].map(([tag, id]) => {
+    const attributes = {
+      type: /\btype="([^"]+)"/.exec(tag)?.[1] ?? '',
+      required: /\brequired\b/.test(tag),
+      readOnly: /\breadonly\b/i.test(tag)
+    };
+    if (id === 'verify-email' && editableVerificationEmail) attributes.readOnly = false;
+    return [id, new Element(/\bclass="([^"]*)"/.exec(tag)?.[1] ?? '', attributes)];
+  }));
   const state = { status: 'signed-out' };
   const accounts = { state, signIn, ...extra, subscribe(fn) { fn(state); return () => {}; } };
   initializeAccountUI(accounts, { getElementById: id => elements.get(id) });
@@ -70,6 +93,28 @@ test('generic forbidden responses do not get misreported as email verification',
   await ui.submitSignIn('casey@example.test', 'password');
   assert.deepEqual(ui.shown(), ['sign-in']);
   assert.equal(ui.$('account-status').textContent, 'This account is not allowed to sign in.');
+});
+
+test('resend rejects missing and malformed emails before calling the adapter in an editable validation fixture', async () => {
+  let resendCalls = 0;
+  const ui = await render(async () => true, {
+    resend: async () => { resendCalls += 1; }
+  }, { editableVerificationEmail: true });
+  const email = ui.$('verify-email');
+  const originalStatus = ui.$('account-status').textContent;
+
+  for (const invalidEmail of ['', 'not-an-email']) {
+    email.value = invalidEmail;
+    assert.equal(email.validity.valid, false);
+    await ui.$('resend-code').listeners.click();
+    assert.equal(resendCalls, 0);
+    assert.equal(ui.$('account-status').textContent, originalStatus);
+  }
+
+  email.value = 'casey@example.test';
+  assert.equal(email.validity.valid, true);
+  await ui.$('resend-code').listeners.click();
+  assert.equal(resendCalls, 1);
 });
 
 for (const [label, providerSignsIn] of [['without a session', false], ['even when the provider starts a session', true]]) {
