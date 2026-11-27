@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-import { classifyHistoryAccess, readStagingHistory, writeHistoryAccessOutput } from '../staging_history.mjs';
+import {
+    classifyHistoryAccess,
+    isRetryableStagingHistoryError,
+    readStagingHistory,
+    writeHistoryAccessOutput,
+} from '../staging_history.mjs';
+
+const stagingSmokePath = fileURLToPath(new URL('../staging_smoke.mjs', import.meta.url));
 
 const validAnalysis = {
     id: '29d80c39-ec0d-4db8-a6e5-87444ba2600c',
@@ -28,6 +37,30 @@ async function serve(t, handler) {
     return `http://127.0.0.1:${server.address().port}`;
 }
 
+function runStagingSmoke(baseUrl) {
+    const child = spawn(process.execPath, [stagingSmokePath], {
+        env: {
+            ...process.env,
+            STAGING_BASE_URL: baseUrl,
+            STAGING_SMOKE_TIMEOUT_MS: '3000',
+            STAGING_REQUEST_TIMEOUT_MS: '50',
+            STAGING_MAX_ATTEMPTS: '3',
+            STAGING_RETRY_DELAY_MS: '0',
+            GITHUB_OUTPUT: '',
+            GITHUB_STEP_SUMMARY: '',
+        },
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk; });
+
+    return new Promise((resolve, reject) => {
+        child.once('error', reject);
+        child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr }));
+    });
+}
+
 test('accepts anonymous history rejection when the API requires Bearer auth', async () => {
     const items = await readStagingHistory('https://staging.example.test/', async url => {
         assert.equal(url, 'https://staging.example.test/api/analyses');
@@ -47,7 +80,7 @@ test('rejects an unauthorized response without a Bearer challenge with diagnosti
         error => error.status === 401 &&
             error.url === 'https://staging.example.test/api/analyses' &&
             error.code === 'history_missing_bearer_challenge' &&
-            /without a Bearer challenge/.test(error.message)
+            /without the expected Bearer-scheme challenge/.test(error.message)
     );
 });
 
@@ -62,6 +95,37 @@ test('reports other staging history HTTP failures with status and response body'
             error.url === 'https://staging.example.test/api/analyses' &&
             /database unavailable/.test(error.responseBody)
     );
+});
+
+for (const [status, body] of [
+    [400, 'request timeout'],
+    [401, 'fetch failed'],
+    [403, 'timeout while checking authorization'],
+]) {
+    test(`does not retry permanent HTTP ${status} when the body looks transient`, async () => {
+        let calls = 0;
+        await assert.rejects(
+            readStagingHistory('https://staging.example.test', async () => {
+                calls++;
+                return new Response(body, { status });
+            }, { attempts: 3, delayMs: 0 }),
+            error => error.status === status && /timeout|fetch failed/i.test(error.message),
+        );
+
+        assert.equal(calls, 1);
+        assert.equal(isRetryableStagingHistoryError({ status }), false);
+    });
+}
+
+test('retries only explicit transient HTTP statuses and network text without a response', () => {
+    for (const status of [408, 425, 429, 500, 502, 503, 504, 599]) {
+        assert.equal(isRetryableStagingHistoryError({ status }), true, `HTTP ${status}`);
+    }
+    for (const status of [400, 401, 403, 404]) {
+        assert.equal(isRetryableStagingHistoryError({ status, message: 'request timeout' }), false, `HTTP ${status}`);
+    }
+    assert.equal(isRetryableStagingHistoryError(new TypeError('fetch failed')), true);
+    assert.equal(isRetryableStagingHistoryError(new Error('request timed out')), true);
 });
 
 test('returns schema-valid seeded history items in demo mode', async () => {
@@ -120,3 +184,48 @@ test('waits for GET /api/analyses to recover after readiness has passed', async 
     assert.deepEqual(items, [validAnalysis]);
     assert.equal(calls, 2);
 });
+
+test('retries startup after a successful HTTP response body times out', async t => {
+    let healthCalls = 0;
+    const baseUrl = await serve(t, (request, response) => {
+        if (request.url === '/health') {
+            healthCalls++;
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            if (healthCalls === 1) {
+                response.write('{"status":');
+                return;
+            }
+            response.end(JSON.stringify({ status: 'ok', service: 'phishlens-api' }));
+            return;
+        }
+        if (request.url === '/ready') {
+            response.writeHead(200, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ status: 'ready', database: 'connected' }));
+            return;
+        }
+        response.writeHead(401, { 'WWW-Authenticate': 'Bearer' });
+        response.end(JSON.stringify({ detail: 'Sign in to access saved reports' }));
+    });
+
+    const result = await runStagingSmoke(baseUrl);
+
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(healthCalls, 2);
+    assert.match(result.stderr, /failed while reading the response body/);
+});
+
+test('fails immediately when startup returns malformed JSON with HTTP 200', async t => {
+    let healthCalls = 0;
+    const baseUrl = await serve(t, (_request, response) => {
+        healthCalls++;
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end('{ malformed json');
+    });
+
+    const result = await runStagingSmoke(baseUrl);
+
+    assert.notEqual(result.code, 0);
+    assert.equal(healthCalls, 1);
+    assert.match(result.stderr, /returned invalid JSON/);
+});
+
